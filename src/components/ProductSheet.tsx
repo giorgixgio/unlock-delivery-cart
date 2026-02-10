@@ -5,7 +5,7 @@ import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Lock, CheckCircle, Flame, Users } from "lucide-react";
+import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart } from "lucide-react";
 import {
   getSimulatedStock,
   getStockLabel,
@@ -23,9 +23,14 @@ interface ProductSheetProps {
   onClose: () => void;
 }
 
-const ImageCarousel = ({ images, title }: { images: string[]; title: string }) => {
+const ImageCarousel = ({ images, title, productId }: { images: string[]; title: string; productId: string }) => {
   const [current, setCurrent] = useState(0);
   const imgs = images.length > 0 ? images : ["/placeholder.svg"];
+
+  // Reset to first image when product changes
+  useEffect(() => {
+    setCurrent(0);
+  }, [productId]);
 
   return (
     <div className="relative w-full aspect-square bg-muted overflow-hidden">
@@ -154,7 +159,6 @@ const DemoTimer = ({ productId }: { productId: string }) => {
     return () => clearInterval(interval);
   }, [timerEnd]);
 
-  // Subtle pulse every 10s
   useEffect(() => {
     const interval = setInterval(() => {
       setPulse(true);
@@ -173,40 +177,11 @@ const DemoTimer = ({ productId }: { productId: string }) => {
   );
 };
 
-const DeliveryQuestMini = () => {
-  const { total, isUnlocked, remaining } = useCart();
-  const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
-
-  return (
-    <div className="mx-4 py-3 px-3 rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-2 mb-1.5">
-        {isUnlocked ? (
-          <CheckCircle className="w-4 h-4 text-success" />
-        ) : (
-          <Lock className="w-4 h-4 text-muted-foreground" />
-        )}
-        <span className="text-sm font-bold text-foreground">
-          {isUnlocked ? "მიტანა განბლოკილია!" : "დაამატე პროდუქტები მიტანის განსაბლოკად"}
-        </span>
-      </div>
-      {!isUnlocked && (
-        <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
 const DescriptionSection = ({ description }: { description: string }) => {
   const [expanded, setExpanded] = useState(false);
 
   const bullets = useMemo(() => {
     if (!description) return [];
-    // Extract first 3 sentences as bullet benefits
     const sentences = description
       .replace(/<[^>]*>/g, "")
       .split(/[.!?]+/)
@@ -250,42 +225,39 @@ const DescriptionSection = ({ description }: { description: string }) => {
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked } = useCart();
   const navigate = useNavigate();
-  const [actionState, setActionState] = useState<"idle" | "added" | "unlocked" | "mission" | "finalize">("idle");
-  const wasUnlockedBefore = useRef(isUnlocked);
+  // "idle" → "added" (checkmark morphs into finalize via slide)
+  const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
+  const prevUnlocked = useRef(isUnlocked);
+  const [justUnlocked, setJustUnlocked] = useState(false);
 
   // Reset state when sheet opens/closes or product changes
   useEffect(() => {
     if (open) {
       setActionState("idle");
-      wasUnlockedBefore.current = isUnlocked;
+      prevUnlocked.current = isUnlocked;
+      setJustUnlocked(false);
     }
   }, [open, product?.id]);
 
-  // Transition from unlocked celebration to finalize
+  // Detect threshold crossing
   useEffect(() => {
-    if (actionState === "unlocked") {
-      const timer = setTimeout(() => setActionState("finalize"), 2000);
-      return () => clearTimeout(timer);
+    if (isUnlocked && !prevUnlocked.current) {
+      setJustUnlocked(true);
+      setTimeout(() => setJustUnlocked(false), 2000);
     }
-  }, [actionState]);
+    prevUnlocked.current = isUnlocked;
+  }, [isUnlocked]);
 
   if (!product) return null;
 
   const quantity = getQuantity(product.id);
 
   const handleAdd = () => {
-    const wasUnlocked = isUnlocked;
     addItem(product);
     setActionState("added");
     setTimeout(() => {
-      setActionState((prev) => {
-        if (prev !== "added") return prev;
-        if (!wasUnlocked) {
-          return "unlocked";
-        }
-        return "mission";
-      });
-    }, 1200);
+      setActionState("finalize");
+    }, 1000);
   };
 
   const handleFinalize = () => {
@@ -297,14 +269,13 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <DrawerContent className="max-h-[92vh] focus:outline-none">
         <DrawerTitle className="sr-only">{product.title}</DrawerTitle>
-        <div className="overflow-y-auto max-h-[calc(92vh-140px)]">
-          <ImageCarousel images={product.images} title={product.id} />
+        <div className="overflow-y-auto max-h-[calc(92vh-180px)]">
+          <ImageCarousel images={product.images} title={product.id} productId={product.id} />
 
           <div className="px-4 pt-3 pb-1">
             <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2">
               {product.title}
             </h2>
-            {/* Temu-style pricing */}
             {(() => {
               const oldPrice = getFakeOldPrice(product.id, product.price);
               const discount = getDiscountPercent(product.price, oldPrice);
@@ -324,15 +295,17 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             <ScarcityPanel productId={product.id} />
           </div>
           <DemoTimer productId={product.id} />
-          <div className="mt-3">
-            <DeliveryQuestMini />
-          </div>
           <DescriptionSection description={product.description} />
         </div>
 
         {/* Action zone — sticky */}
         <div className="border-t border-border p-4 bg-card space-y-3">
-          {/* Quantity selector — always visible when items in cart */}
+          {/* Delivery progress — always visible */}
+          <div className={`rounded-lg transition-all duration-500 ${justUnlocked ? "animate-glow-pulse" : ""}`}>
+            <DeliveryMissionBar />
+          </div>
+
+          {/* Quantity selector — visible when items in cart */}
           {quantity > 0 && (
             <div className="flex items-center justify-center gap-4">
               <Button
@@ -356,45 +329,36 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             </div>
           )}
 
-          {/* Morphing button area */}
-          {actionState === "unlocked" ? (
-            /* 🎉 Threshold just reached — celebration */
-            <div className="w-full h-14 rounded-xl bg-success flex items-center justify-center animate-threshold-unlock">
-              <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
-                <CheckCircle className="w-5 h-5" /> 🎉 მიტანა განბლოკილია!
-              </span>
-            </div>
-          ) : isUnlocked && actionState !== "added" ? (
-            /* Cart unlocked → Finalize CTA */
-            <Button
-              onClick={handleFinalize}
-              className="w-full h-14 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-300 glow-unlock"
-              size="lg"
-            >
-              შეკვეთის დასრულება
-            </Button>
-          ) : actionState === "added" ? (
-            /* Checkmark phase */
-            <div className="w-full h-14 rounded-xl bg-success flex items-center justify-center transition-all duration-300 scale-105">
-              <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
-                <Check className="w-5 h-5" /> დამატებულია
-              </span>
-            </div>
-          ) : actionState === "mission" && !isUnlocked ? (
-            /* Mission bar phase */
-            <div className="w-full py-2 px-1 rounded-xl border border-border bg-accent/20 transition-all duration-500">
-              <DeliveryMissionBar />
-            </div>
-          ) : (
-            /* Default add button */
-            <Button
-              onClick={handleAdd}
-              className="w-full h-14 text-base font-bold rounded-xl transition-all duration-200"
-              size="lg"
-            >
-              კალათაში — გადახდა მიტანისას
-            </Button>
-          )}
+          {/* Morphing button: idle → added ✓ → finalize (slide reveal) */}
+          <div className="relative w-full h-14 rounded-xl overflow-hidden">
+            {actionState === "added" ? (
+              <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
+                <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
+                  <Check className="w-5 h-5" /> დამატებულია
+                </span>
+              </div>
+            ) : actionState === "finalize" ? (
+              <button
+                onClick={handleFinalize}
+                className={`w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
+                  isUnlocked
+                    ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
+                    : "bg-primary text-primary-foreground animate-slide-reveal"
+                }`}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {isUnlocked ? "შეკვეთის დასრულება" : "კალათის ნახვა"}
+              </button>
+            ) : (
+              <Button
+                onClick={handleAdd}
+                className="w-full h-full text-base font-bold rounded-xl transition-all duration-200"
+                size="lg"
+              >
+                კალათაში — გადახდა მიტანისას
+              </Button>
+            )}
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

@@ -158,23 +158,30 @@
   filter: drop-shadow(0 0 8px hsl(var(--success) / 0.7));
 }
 
-@keyframes threshold-glow {
-  0% { box-shadow: 0 0 0 0 hsl(var(--success) / 0.5); transform: scale(1); }
-  30% { box-shadow: 0 0 20px 8px hsl(var(--success) / 0.4); transform: scale(1.03); }
-  60% { box-shadow: 0 0 30px 12px hsl(var(--success) / 0.2); transform: scale(1.01); }
-  100% { box-shadow: 0 0 0 0 hsl(var(--success) / 0); transform: scale(1); }
+@keyframes slide-reveal {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  40% {
+    clip-path: inset(0 20% 0 0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
 }
 
-.animate-threshold-unlock {
-  animation: threshold-glow 1.2s ease-out forwards;
+.animate-slide-reveal {
+  animation: slide-reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes confetti-burst {
-  0% { opacity: 1; transform: scale(0) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1.2) rotate(180deg); }
-  100% { opacity: 0; transform: scale(1.5) rotate(360deg); }
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--success) / 0); }
+  50% { box-shadow: 0 0 16px 4px hsl(var(--success) / 0.35); }
 }
 
-.animate-confetti {
-  animation: confetti-burst 0.8s ease-out forwards;
+.animate-glow-pulse {
+  animation: glow-pulse 1.5s ease-in-out;
 }
