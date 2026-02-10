@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save,
+  ArrowLeft, Loader2, User, Save,
   CheckCircle, AlertTriangle, ShieldAlert, GitMerge, Undo2, XCircle, PauseCircle, Sparkles,
 } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
+import EditableOrderFields from "@/components/admin/EditableOrderFields";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -652,44 +653,12 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Customer card */}
-        <div className="bg-card rounded-lg p-4 border border-border space-y-2">
-          <h3 className="font-bold text-sm flex items-center gap-2"><User className="w-4 h-4" /> Customer</h3>
-          <p className="text-sm">{order.customer_name}</p>
-          <p className="text-sm flex items-center gap-1"><Phone className="w-3 h-3" /> {order.customer_phone}</p>
-          {order.customer_email && (
-            <p className="text-sm flex items-center gap-1"><Mail className="w-3 h-3" /> {order.customer_email}</p>
-          )}
-        </div>
-
-        {/* Shipping address */}
-        <div className="bg-card rounded-lg p-4 border border-border space-y-2">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <MapPin className="w-4 h-4" /> Shipping
-            {order.is_tbilisi && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">Tbilisi</span>
-            )}
-          </h3>
-          <p className="text-sm font-medium">{order.normalized_city || order.city} {order.region}</p>
-          <p className="text-sm">{order.normalized_address || order.address_line1}</p>
-          {order.raw_city && order.normalized_city && order.raw_city !== order.normalized_city && (
-            <p className="text-xs text-muted-foreground">Raw: {order.raw_city}</p>
-          )}
-          {order.raw_address && order.normalized_address && order.raw_address !== order.normalized_address && (
-            <p className="text-xs text-muted-foreground">Raw: {order.raw_address}</p>
-          )}
-          {order.normalization_confidence != null && order.normalization_confidence < 1 && (
-            <p className="text-xs text-muted-foreground">
-              Confidence: {(order.normalization_confidence * 100).toFixed(0)}%
-            </p>
-          )}
-          {order.address_line2 && <p className="text-sm">{order.address_line2}</p>}
-          {order.notes_customer && (
-            <p className="text-xs text-muted-foreground italic">"{order.notes_customer}"</p>
-          )}
-        </div>
-      </div>
+      <EditableOrderFields
+        orderId={id!}
+        order={order}
+        actor={user?.email || "admin"}
+        onSaved={refreshOrder}
+      />
 
       {/* Items */}
       <div className="bg-card rounded-lg p-4 border border-border">
