@@ -6,8 +6,9 @@ import { useRecommendations } from "@/hooks/useRecommendations";
 import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
 import RecommendationBlock from "@/components/RecommendationBlock";
+import HomeHeaderTemuStyle from "@/components/HomeHeaderTemuStyle";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const INSERTION_INTERVAL = 6; // Insert recommendation block every 6 products (3 rows of 2)
 
@@ -62,15 +63,10 @@ const Index = () => {
   return (
     <main className="pb-52">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
-        <div className="container max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Package className="w-7 h-7" />
-          <h1 className="text-xl font-extrabold tracking-tight">მაღაზია</h1>
-        </div>
-      </header>
+      <HomeHeaderTemuStyle />
 
       {/* Category chips */}
-      <div className="sticky top-[60px] z-30 bg-background border-b border-border">
+      <div className="sticky top-[44px] z-30 bg-background border-b border-border">
         <ScrollArea className="w-full">
           <div className="flex gap-2 px-4 py-3">
             {CATEGORIES.map((cat) => (
