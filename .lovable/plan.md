@@ -1,89 +1,34 @@
 
 
-## Fetch and Integrate BigMart.ge Product Data (500+ SKUs)
+## Admin Credentials Setup
 
-### What We Have
+### What will be done
 
-Your Shopify store at bigmart.ge exposes a public JSON API with:
-- ~563 products across 14 real collections
-- Each product has: id, title, price, images, tags, SKU, variants, description
-- Collection endpoints let us map which products belong to which collection
+1. **Seed the admin user record** in the `admin_users` table via a database migration:
+   - Email: `info@bigmart.ge`
+   - Role: `admin`
+   - `is_active`: true
+   - This bypasses RLS since migrations run with elevated privileges.
 
-### Collections Found
+2. **Create the auth account** by temporarily adding a signup call in the admin login page (or using the Supabase auth API directly). Since the password `1234` is very short, I will use it as requested but note that it may be rejected by the auth system if minimum password length is enforced (default is 6 characters). If rejected, I will use `123456` instead.
 
-| Collection | Handle | Product Count |
-|---|---|---|
-| აბაზანა და სანტექნიკა | აბაზანა-სანტექნიკა | 22 |
-| ავტომობილი | ავტომობილი | 45 |
-| აქსესუარები | აქსესუარები | 11 |
-| ბავშვები | ბავშვები | 33 |
-| ბაღი და ეზო | ბაღი-ეზო | 16 |
-| განათება | განათება | 22 |
-| ელექტრონიკა და გაჯეტები | ელექტრონიკა-გაჯეტები | 13 |
-| თავის მოვლა და სილამაზე | თავის-მოვლა-სილამაზე | 50 |
-| სამზარეულო | სამზარეულო | 111 |
-| სახლი და ინტერიერი | სახლი-ინტერიერი | 51 |
-| სპორტი და აქტიური ცხოვრება | სპორტი-აქტიური-ცხოვრება | 24 |
-| ხელსაწყოები | ხელსაწყოები | 47 |
+3. **Sign-up approach**: Add a one-time utility or use an edge function to create the auth user with the provided credentials. The simplest approach is to call `supabase.auth.signUp()` from a small temporary script or directly seed it.
 
-### Implementation Plan
+### Technical Steps
 
-#### Step 1: Fetch all products at build time
+1. **Migration**: Insert row into `admin_users`
+   ```sql
+   INSERT INTO public.admin_users (email, role, is_active)
+   VALUES ('info@bigmart.ge', 'admin', true);
+   ```
 
-I will fetch products from your store's public API across all pages:
-- `bigmart.ge/products.json?limit=250&page=1` (first 250)
-- `bigmart.ge/products.json?limit=250&page=2` (next 250)
-- `bigmart.ge/products.json?limit=250&page=3` (remaining)
+2. **Edge function** `create-admin-user`: A one-time edge function that uses the service role key to create the auth user with `supabase.auth.admin.createUser()`. This ensures the user is created server-side with email confirmed. After use, this function can be removed.
 
-For collection mapping, I will fetch each collection's product list from:
-- `bigmart.ge/collections/{handle}/products.json`
+3. **Credentials**:
+   - Email: `info@bigmart.ge`
+   - Password: `123456` (minimum 6 characters required by auth system; `1234` will be rejected)
 
-#### Step 2: Create a product data module
-
-Replace `MOCK_PRODUCTS` in `src/lib/constants.ts` with real data. The new product type will include:
-
-```text
-Product {
-  id: string
-  title: string
-  price: number
-  compareAtPrice: number | null
-  image: string (primary image URL)
-  images: string[] (all image URLs)
-  category: string (collection handle)
-  tags: string[]
-  sku: string
-  available: boolean
-  description: string
-  vendor: string
-  handle: string
-}
-```
-
-Since 500+ products is too large for a single constants file, I will create a separate `src/data/products.ts` file.
-
-#### Step 3: Update categories
-
-Replace the current hardcoded `CATEGORIES` array with your real Shopify collections (the 12 real ones above, plus an "all" option).
-
-#### Step 4: Update components
-
-- **ProductCard**: Update to use new product fields (real images from Shopify CDN, real prices)
-- **BoosterRow**: Filter based on real product prices
-- **Index page**: Use real categories from collections
-- **Cart**: Works as-is since it references the Product type
-
-### Technical Details
-
-- Product data will be statically embedded in the bundle (no runtime API calls needed)
-- Shopify CDN image URLs will be used directly (fast, cached)
-- The `CategoryId` type will be updated to match real collection handles
-- Products belonging to multiple collections will use their primary/first collection
-
-### What You Will Get
-
-- All ~563 real products from BigMart.ge displayed in the store
-- Real collection-based category filtering
-- Real product images, prices, tags, and SKUs
-- Everything else (cart, delivery threshold, COD flow) continues working as before
+### Security Note
+- The edge function will be a one-time setup tool and should be deleted after the admin account is created.
+- The password should be changed after first login (recommended).
 
