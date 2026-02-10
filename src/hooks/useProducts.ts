@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Product } from "@/lib/constants";
 
 const STORE_URL = "https://bigmart.ge";
+const CACHE_KEY = "bigmart-products-cache";
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 const COLLECTION_HANDLES = [
   "აბაზანა-სანტექნიკა",
@@ -42,8 +44,8 @@ interface ShopifyProduct {
 }
 
 // Shopify CDN supports _WIDTHx on filename for resized images
-function shopifyThumb(src: string, size = 400): string {
-  if (!src) return "/placeholder.svg";
+export function shopifyThumb(src: string, size = 400): string {
+  if (!src || src === "/placeholder.svg") return "/placeholder.svg";
   return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
 }
 
@@ -86,12 +88,38 @@ async function fetchCollectionProducts(handle: string): Promise<Product[]> {
   return products;
 }
 
+function getFromLocalCache(): Product[] | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveToLocalCache(products: Product[]) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: products, timestamp: Date.now() }));
+  } catch {
+    // quota exceeded — ignore
+  }
+}
+
 async function fetchAllProducts(): Promise<Product[]> {
+  // Check localStorage cache first
+  const cached = getFromLocalCache();
+  if (cached) return cached;
+
   const results = await Promise.all(
     COLLECTION_HANDLES.map((handle) => fetchCollectionProducts(handle))
   );
 
-  // Deduplicate by product ID, keeping first occurrence (primary collection)
   const seen = new Set<string>();
   const allProducts: Product[] = [];
 
@@ -104,6 +132,7 @@ async function fetchAllProducts(): Promise<Product[]> {
     }
   }
 
+  saveToLocalCache(allProducts);
   return allProducts;
 }
 
@@ -111,7 +140,7 @@ export function useProducts() {
   return useQuery({
     queryKey: ["bigmart-products"],
     queryFn: fetchAllProducts,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes cache
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 }

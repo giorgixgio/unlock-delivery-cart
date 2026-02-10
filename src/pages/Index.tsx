@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CATEGORIES, CategoryId } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -14,6 +15,8 @@ const Index = () => {
     activeCategory === "all"
       ? products
       : products.filter((p) => p.category === activeCategory);
+
+  const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered);
 
   return (
     <main className="pb-52">
@@ -48,7 +51,6 @@ const Index = () => {
       </div>
 
       <div className="container max-w-2xl mx-auto px-4 pt-4">
-        {/* Booster row */}
         <BoosterRow products={products} />
 
         {isLoading ? (
@@ -58,12 +60,17 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* Product grid */}
             <div className="grid grid-cols-2 gap-3">
-              {filtered.map((product) => (
+              {visibleItems.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
+
+            {hasMore && (
+              <div ref={loaderRef} className="flex justify-center py-6">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
 
             {filtered.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
