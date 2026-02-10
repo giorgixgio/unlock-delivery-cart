@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, Trash2, Truck } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
+import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 
 const orderSchema = z.object({
   name: z.string().trim().min(1, "სახელი აუცილებელია").max(100),
@@ -18,6 +19,13 @@ const orderSchema = z.object({
   region: z.string().trim().min(1, "რეგიონი/ქალაქი აუცილებელია").max(100),
   address: z.string().trim().min(1, "მისამართი აუცილებელია").max(300),
 });
+
+const FIELDS = [
+  { key: "name", label: "სახელი", placeholder: "თქვენი სახელი", type: "text" },
+  { key: "phone", label: "ტელეფონი", placeholder: "5XX XXX XXX", type: "tel" },
+  { key: "region", label: "რეგიონი / ქალაქი", placeholder: "მაგ: თბილისი", type: "text" },
+  { key: "address", label: "მისამართი", placeholder: "ქუჩა, სახლი, ბინა", type: "text" },
+] as const;
 
 const Cart = () => {
   const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
@@ -41,6 +49,29 @@ const Cart = () => {
   const formRef = useRef<HTMLDivElement>(null);
   const [isButtonInView, setIsButtonInView] = useState(false);
 
+  // Remembered customer state
+  const [isRecognized, setIsRecognized] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Load saved customer on mount
+  useEffect(() => {
+    const saved = loadCustomerInfo();
+    if (saved && (saved.name || saved.phone)) {
+      setForm({
+        name: saved.name || "",
+        phone: saved.phone || "",
+        region: saved.region || "",
+        address: saved.address || "",
+      });
+      setIsRecognized(true);
+      // Set delivery location from saved region
+      if (saved.region) {
+        const lower = saved.region.trim().toLowerCase();
+        setManualLocation(lower === "თბილისი" || lower === "tbilisi");
+      }
+    }
+  }, [setManualLocation]);
+
   useEffect(() => {
     const el = buttonAnchorRef.current;
     if (!el) return;
@@ -52,8 +83,18 @@ const Cart = () => {
     return () => observer.disconnect();
   }, [items.length]);
 
+  // Auto-save customer info on field changes (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const persistForm = useCallback((data: typeof form) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveCustomerInfo(data);
+    }, 800);
+  }, []);
+
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    const next = { ...form, [field]: value };
+    setForm(next);
     setTouched((prev) => ({ ...prev, [field]: true }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
     // Update delivery location based on region/city field
@@ -61,12 +102,20 @@ const Cart = () => {
       const lower = value.trim().toLowerCase();
       setManualLocation(lower === "თბილისი" || lower === "tbilisi");
     }
+    // Save customer info
+    persistForm(next);
+  };
+
+  const handleStartEditing = () => {
+    setIsEditing(true);
+    // Mark all fields as touched so validation shows on submit
+    setTouched({ name: true, phone: true, region: true, address: true });
   };
 
   const handleSubmit = async () => {
-    // If form hasn't been interacted with, just scroll to it
+    // If form hasn't been interacted with and user isn't recognized, just scroll to it
     const hasAnyTouched = Object.values(touched).some(Boolean);
-    if (!hasAnyTouched) {
+    if (!hasAnyTouched && !isRecognized) {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -75,20 +124,18 @@ const Cart = () => {
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((e) => {
-        if (e.path[0] && touched[e.path[0] as string]) {
+        if (e.path[0]) {
           fieldErrors[e.path[0] as string] = e.message;
         }
       });
-      // If there are untouched empty fields, mark them as touched + show errors
+      // Mark all as touched
       const allFields = ["name", "phone", "region", "address"];
-      allFields.forEach((f) => {
-        if (!touched[f]) {
-          setTouched((prev) => ({ ...prev, [f]: true }));
-          const fieldError = result.error.errors.find((e) => e.path[0] === f);
-          if (fieldError) fieldErrors[f] = fieldError.message;
-        }
-      });
+      allFields.forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
+      // If recognized but in preview mode, switch to edit mode
+      if (isRecognized && !isEditing) {
+        setIsEditing(true);
+      }
       return;
     }
 
@@ -105,6 +152,8 @@ const Cart = () => {
         subtotal: total,
         total,
       });
+      // Clear saved customer info after successful order
+      clearCustomerInfo();
       clearCart();
       navigate("/success", { state: { orderNumber: order.public_order_number } });
     } catch (err) {
@@ -126,6 +175,9 @@ const Cart = () => {
       </main>
     );
   }
+
+  // Show compact "remembered" card when recognized and not editing
+  const showRecognizedCard = isRecognized && !isEditing;
 
   return (
     <main className="pb-24">
@@ -205,32 +257,82 @@ const Cart = () => {
           </div>
         </div>
 
-        {/* Order form */}
-        <div ref={formRef} className="bg-card rounded-lg p-4 shadow-card border border-border space-y-4">
-          <h2 className="text-lg font-bold text-foreground">შეკვეთის მონაცემები</h2>
-
-          <div className="space-y-3">
-            {[
-              { key: "name", label: "სახელი", placeholder: "თქვენი სახელი", type: "text" },
-              { key: "phone", label: "ტელეფონი", placeholder: "5XX XXX XXX", type: "tel" },
-              { key: "region", label: "რეგიონი / ქალაქი", placeholder: "მაგ: თბილისი", type: "text" },
-              { key: "address", label: "მისამართი", placeholder: "ქუჩა, სახლი, ბინა", type: "text" },
-            ].map((field) => (
-              <div key={field.key}>
-                <Label className="text-sm font-bold text-foreground">{field.label}</Label>
-                <Input
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  value={form[field.key as keyof typeof form]}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  className="mt-1 h-12 text-base rounded-lg"
-                />
-                {errors[field.key] && (
-                  <p className="text-sm text-destructive mt-1">{errors[field.key]}</p>
+        {/* Order form — recognized vs editable */}
+        <div ref={formRef} className="bg-card rounded-lg shadow-card border border-border overflow-hidden">
+          {showRecognizedCard ? (
+            /* ───── Remembered customer compact card ───── */
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-success/15 flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 text-success" />
+                  </div>
+                  <h2 className="text-base font-bold text-foreground">შენი მონაცემები</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartEditing}
+                  className="text-sm text-primary font-semibold h-8 px-3 gap-1.5"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  შეცვლა
+                </Button>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">სახელი</span>
+                  <span className="text-sm font-semibold text-foreground">{form.name || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">ტელეფონი</span>
+                  <span className="text-sm font-semibold text-foreground">{form.phone || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">ქალაქი</span>
+                  <span className="text-sm font-semibold text-foreground">{form.region || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">მისამართი</span>
+                  <span className="text-sm font-semibold text-foreground text-right max-w-[60%]">{form.address || "—"}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ───── Editable form ───── */
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-foreground">შეკვეთის მონაცემები</h2>
+                {isRecognized && isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                    className="text-sm text-muted-foreground font-medium h-8 px-3"
+                  >
+                    გაუქმება
+                  </Button>
                 )}
               </div>
-            ))}
-          </div>
+              <div className="space-y-3">
+                {FIELDS.map((field) => (
+                  <div key={field.key}>
+                    <Label className="text-sm font-bold text-foreground">{field.label}</Label>
+                    <Input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={form[field.key as keyof typeof form]}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                      className="mt-1 h-12 text-base rounded-lg"
+                    />
+                    {errors[field.key] && (
+                      <p className="text-sm text-destructive mt-1">{errors[field.key]}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Submit — inline anchor */}
