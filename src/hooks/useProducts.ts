@@ -41,14 +41,21 @@ interface ShopifyProduct {
   images: ShopifyImage[];
 }
 
+// Shopify CDN supports _WIDTHx on filename for resized images
+function shopifyThumb(src: string, size = 400): string {
+  if (!src) return "/placeholder.svg";
+  return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
+}
+
 function mapShopifyProduct(p: ShopifyProduct, category: string): Product {
   const variant = p.variants[0];
+  const originalImage = p.images[0]?.src || "/placeholder.svg";
   return {
     id: String(p.id),
     title: p.title,
     price: parseFloat(variant?.price || "0"),
     compareAtPrice: variant?.compare_at_price ? parseFloat(variant.compare_at_price) : null,
-    image: p.images[0]?.src || "/placeholder.svg",
+    image: shopifyThumb(originalImage, 400),
     images: p.images.map((img) => img.src),
     category,
     tags: p.tags || [],
