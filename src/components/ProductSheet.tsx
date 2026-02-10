@@ -261,8 +261,13 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   };
 
   const handleFinalize = () => {
-    onClose();
-    navigate("/cart");
+    if (isUnlocked) {
+      onClose();
+      navigate("/cart");
+    } else {
+      // Close sheet, return to homepage to continue shopping
+      onClose();
+    }
   };
 
   return (
@@ -343,11 +348,17 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 className={`w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
                   isUnlocked
                     ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
-                    : "bg-primary text-primary-foreground animate-slide-reveal"
+                    : "bg-accent text-foreground animate-slide-reveal"
                 }`}
               >
-                <ShoppingCart className="w-5 h-5" />
-                {isUnlocked ? "შეკვეთის დასრულება" : "კალათის ნახვა"}
+                {isUnlocked ? (
+                  <>
+                    <ShoppingCart className="w-5 h-5" />
+                    შეკვეთის დასრულება
+                  </>
+                ) : (
+                  "გააგრძელე შოპინგი მიტანის განსაბლოკად"
+                )}
               </button>
             ) : (
               <Button

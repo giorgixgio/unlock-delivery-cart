@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Minus, Plus, Trash2, Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -20,6 +20,14 @@ const Cart = () => {
   const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Gate: redirect home if not unlocked
+  useEffect(() => {
+    if (!isUnlocked) {
+      toast({ title: "დაამატე პროდუქტები მიტანის განსაბლოკად", duration: 3000 });
+      navigate("/", { replace: true });
+    }
+  }, [isUnlocked, navigate, toast]);
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -163,15 +171,10 @@ const Cart = () => {
         {/* Submit */}
         <Button
           onClick={handleSubmit}
-          disabled={!isUnlocked}
-          className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
-            isUnlocked ? "bg-success hover:bg-success/90 text-success-foreground" : ""
-          }`}
+          className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
           size="lg"
         >
-          {isUnlocked
-            ? "შეკვეთა — გადახდა მიტანისას"
-            : `გჭირდება კიდევ ${(40 - total).toFixed(1)} ₾`}
+          შეკვეთა — გადახდა მიტანისას
         </Button>
       </div>
     </main>
