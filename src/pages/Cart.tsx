@@ -12,6 +12,9 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
+import PredictiveInput from "@/components/PredictiveInput";
+import { getCitySuggestions, getAddressSuggestions, type Suggestion } from "@/lib/addressPredictor";
+import { supabase } from "@/integrations/supabase/client";
 
 const orderSchema = z.object({
   name: z.string().trim().min(1, "სახელი აუცილებელია").max(100),
@@ -19,13 +22,6 @@ const orderSchema = z.object({
   region: z.string().trim().min(1, "რეგიონი/ქალაქი აუცილებელია").max(100),
   address: z.string().trim().min(1, "მისამართი აუცილებელია").max(300),
 });
-
-const FIELDS = [
-  { key: "name", label: "სახელი", placeholder: "თქვენი სახელი", type: "text" },
-  { key: "phone", label: "ტელეფონი", placeholder: "5XX XXX XXX", type: "tel" },
-  { key: "region", label: "რეგიონი / ქალაქი", placeholder: "მაგ: თბილისი", type: "text" },
-  { key: "address", label: "მისამართი", placeholder: "ქუჩა, სახლი, ბინა", type: "text" },
-] as const;
 
 const Cart = () => {
   const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
@@ -51,7 +47,48 @@ const Cart = () => {
 
   // Remembered customer state
   const [isRecognized, setIsRecognized] = useState(false);
+
+  // Historical data for predictions
+  const [historicalCities, setHistoricalCities] = useState<string[]>([]);
+  const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Fetch historical cities/addresses for prediction
+  useEffect(() => {
+    const fetchHistorical = async () => {
+      try {
+        const { data: cities } = await supabase
+          .from("orders")
+          .select("normalized_city")
+          .not("normalized_city", "is", null)
+          .neq("normalized_city", "")
+          .neq("status", "merged")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        
+        const { data: addresses } = await supabase
+          .from("orders")
+          .select("normalized_address")
+          .not("normalized_address", "is", null)
+          .neq("normalized_address", "")
+          .neq("status", "merged")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        
+        if (cities) {
+          const unique = [...new Set(cities.map(c => c.normalized_city).filter(Boolean) as string[])];
+          setHistoricalCities(unique);
+        }
+        if (addresses) {
+          const unique = [...new Set(addresses.map(a => a.normalized_address).filter(Boolean) as string[])];
+          setHistoricalAddresses(unique);
+        }
+      } catch {
+        // Silently fail — predictions still work from dataset
+      }
+    };
+    fetchHistorical();
+  }, []);
 
   // Load saved customer on mount
   useEffect(() => {
@@ -315,21 +352,62 @@ const Cart = () => {
                 )}
               </div>
               <div className="space-y-3">
-                {FIELDS.map((field) => (
-                  <div key={field.key}>
-                    <Label className="text-sm font-bold text-foreground">{field.label}</Label>
-                    <Input
-                      type={field.type}
-                      placeholder={field.placeholder}
-                      value={form[field.key as keyof typeof form]}
-                      onChange={(e) => handleChange(field.key, e.target.value)}
-                      className="mt-1 h-12 text-base rounded-lg"
+                {/* Name */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">სახელი</Label>
+                  <Input
+                    type="text"
+                    placeholder="თქვენი სახელი"
+                    value={form.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    className="mt-1 h-12 text-base rounded-lg"
+                  />
+                  {errors.name && <p className="text-sm text-destructive mt-1">{errors.name}</p>}
+                </div>
+                {/* Phone */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
+                  <Input
+                    type="tel"
+                    placeholder="5XX XXX XXX"
+                    value={form.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    className="mt-1 h-12 text-base rounded-lg"
+                  />
+                  {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone}</p>}
+                </div>
+                {/* City — Predictive */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">რეგიონი / ქალაქი</Label>
+                  <div className="mt-1">
+                    <PredictiveInput
+                      value={form.region}
+                      onChange={(val) => handleChange("region", val)}
+                      onSelect={(s) => {
+                        handleChange("region", s.text);
+                      }}
+                      getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
+                      placeholder="მაგ: თბილისი"
+                      error={errors.region}
                     />
-                    {errors[field.key] && (
-                      <p className="text-sm text-destructive mt-1">{errors[field.key]}</p>
-                    )}
                   </div>
-                ))}
+                </div>
+                {/* Address — Predictive */}
+                <div>
+                  <Label className="text-sm font-bold text-foreground">მისამართი</Label>
+                  <div className="mt-1">
+                    <PredictiveInput
+                      value={form.address}
+                      onChange={(val) => handleChange("address", val)}
+                      onSelect={(s) => {
+                        handleChange("address", s.text);
+                      }}
+                      getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
+                      placeholder="ქუჩა, სახლი, ბინა"
+                      error={errors.address}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
