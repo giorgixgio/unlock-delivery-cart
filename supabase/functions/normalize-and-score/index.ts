@@ -142,8 +142,10 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     return cSkus.some((s: string) => orderSkuSet.has(s));
   });
 
-  if (strongMatches.length !== 1) return { merged: false };
+  if (strongMatches.length === 0) return { merged: false };
 
+  // Pick the most recent candidate (closest in time to this order)
+  strongMatches.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const match = strongMatches[0];
   const matchDate = new Date(match.created_at);
   const isPrimary = new Date(order.created_at) < matchDate;
