@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { ShoppingCart, Truck, Package, Settings, LogOut } from "lucide-react";
+import { ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/settings/courier-export", label: "Export Template", icon: FileSpreadsheet },
 ];
 
 const AdminLayout = () => {

@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Loader2, Download } from "lucide-react";
+import RiskBadge from "@/components/admin/RiskBadge";
+import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
+import OrdersExportModal from "@/components/admin/OrdersExportModal";
 
 const STATUS_OPTIONS = ["all", "new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold"];
 
@@ -53,6 +57,12 @@ interface OrderRow {
   status: string;
   assigned_to: string | null;
   tracking_number: string | null;
+  is_confirmed: boolean;
+  is_fulfilled: boolean;
+  risk_score: number;
+  risk_level: string;
+  risk_reasons: string[];
+  review_required: boolean;
   order_items: { image_url: string; quantity: number }[];
 }
 
@@ -65,12 +75,13 @@ const AdminOrders = () => {
   const [dateFilter, setDateFilter] = useState("all");
   const [sortField, setSortField] = useState<"created_at" | "total" | "status">("created_at");
   const [sortAsc, setSortAsc] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const fetchOrders = async () => {
     setLoading(true);
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, order_items(image_url, quantity)")
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, risk_score, risk_level, risk_reasons, review_required, order_items(image_url, quantity)")
       .order(sortField, { ascending: sortAsc });
 
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
@@ -101,7 +112,13 @@ const AdminOrders = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
+        <Button onClick={() => setExportOpen(true)} variant="outline" className="gap-2">
+          <Download className="w-4 h-4" />
+          Export to Courier
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -163,16 +180,13 @@ const AdminOrders = () => {
                   Date {sortField === "created_at" && (sortAsc ? "↑" : "↓")}
                 </th>
                 <th className="text-left px-4 py-3 font-bold">Customer</th>
-                <th className="text-left px-4 py-3 font-bold">City/Region</th>
                 <th className="text-left px-4 py-3 font-bold">Items</th>
                 <th className="text-left px-4 py-3 font-bold cursor-pointer" onClick={() => toggleSort("total")}>
                   Total {sortField === "total" && (sortAsc ? "↑" : "↓")}
                 </th>
-                <th className="text-left px-4 py-3 font-bold cursor-pointer" onClick={() => toggleSort("status")}>
-                  Status {sortField === "status" && (sortAsc ? "↑" : "↓")}
-                </th>
-                <th className="text-left px-4 py-3 font-bold">Assigned</th>
-                <th className="text-left px-4 py-3 font-bold">Tracking</th>
+                <th className="text-left px-4 py-3 font-bold">Status</th>
+                <th className="text-left px-4 py-3 font-bold">Fulfillment</th>
+                <th className="text-left px-4 py-3 font-bold">Risk</th>
               </tr>
             </thead>
             <tbody>
@@ -190,7 +204,6 @@ const AdminOrders = () => {
                     <div className="font-medium">{order.customer_name}</div>
                     <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.city || order.region}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       {order.order_items?.slice(0, 4).map((item, i) => (
@@ -207,18 +220,31 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-4 py-3 font-bold">{Number(order.total).toFixed(1)} ₾</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize ${statusColor[order.status] || "bg-muted text-foreground"}`}>
-                      {order.status.replace("_", " ")}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize w-fit ${statusColor[order.status] || "bg-muted text-foreground"}`}>
+                        {order.status.replace("_", " ")}
+                      </span>
+                      {order.review_required && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 w-fit">
+                          Review needed
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.assigned_to || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{order.tracking_number || "—"}</td>
+                  <td className="px-4 py-3">
+                    <FulfillmentBadge isConfirmed={order.is_confirmed} isFulfilled={order.is_fulfilled} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <RiskBadge riskLevel={order.risk_level} riskScore={order.risk_score} compact />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <OrdersExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 };

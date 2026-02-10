@@ -1,1 +1,7 @@
 project_id = "apkephplnoefbuxoyovr"
+
+[functions.normalize-and-score]
+verify_jwt = false
+
+[functions.export-courier]
+verify_jwt = false
