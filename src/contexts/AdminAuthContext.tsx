@@ -19,50 +19,30 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = async (email: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("admin_users")
-        .select("is_active")
-        .eq("email", email)
-        .maybeSingle();
-      if (error) {
-        console.error("Admin check error:", error);
-        return false;
-      }
-      return data?.is_active === true;
-    } catch (e) {
-      console.error("Admin check exception:", e);
-      return false;
-    }
-  };
-
   useEffect(() => {
-    let initialized = false;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user?.email) {
-        const admin = await checkAdmin(session.user.email);
-        setIsAdmin(admin);
+      if (newSession?.user?.email) {
+        // Use setTimeout to avoid Supabase auth deadlock
+        setTimeout(async () => {
+          try {
+            const { data } = await supabase
+              .from("admin_users")
+              .select("is_active")
+              .eq("email", newSession.user!.email!)
+              .maybeSingle();
+            setIsAdmin(data?.is_active === true);
+          } catch {
+            setIsAdmin(false);
+          }
+          setLoading(false);
+        }, 0);
       } else {
         setIsAdmin(false);
-      }
-      if (initialized) {
         setLoading(false);
       }
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user?.email) {
-        const admin = await checkAdmin(session.user.email);
-        setIsAdmin(admin);
-      }
-      initialized = true;
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
