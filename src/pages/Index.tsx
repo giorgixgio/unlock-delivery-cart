@@ -65,8 +65,8 @@ const Index = () => {
       {/* Header */}
       <HomeHeaderTemuStyle />
 
-      {/* Category chips */}
-      <div className="sticky top-[44px] z-30 bg-background border-b border-border">
+      {/* Category chips - no longer sticky, scrolls with content */}
+      <div className="bg-background border-b border-border">
         <ScrollArea className="w-full">
           <div className="flex gap-2 px-4 py-3">
             {CATEGORIES.map((cat) => (
