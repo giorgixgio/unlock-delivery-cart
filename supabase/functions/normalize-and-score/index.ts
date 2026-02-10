@@ -203,10 +203,12 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     internal_note: existingNote ? `${existingNote}\n${mergeNote}` : mergeNote,
     tags: newTags,
     merged_child_order_ids: [...existingChildIds, childId],
+    status: "new",
+    is_confirmed: false,
+    review_required: true,
     risk_score: 0,
     risk_level: "low",
-    risk_reasons: [],
-    review_required: false,
+    risk_reasons: ["auto_merged"],
   }).eq("id", primaryId);
 
   await supabase.from("orders").update({
