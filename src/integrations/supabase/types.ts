@@ -14,13 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          role?: string
+        }
+        Relationships: []
+      }
+      order_events: {
+        Row: {
+          actor: string
+          created_at: string
+          event_type: string
+          id: string
+          order_id: string
+          payload: Json
+        }
+        Insert: {
+          actor?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          order_id: string
+          payload?: Json
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          order_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          collection: string | null
+          created_at: string
+          icon_url: string | null
+          id: string
+          image_url: string
+          line_total: number
+          order_id: string
+          product_id: string
+          quantity: number
+          sku: string
+          tags: string[]
+          title: string
+          unit_price: number
+          variant_id: string | null
+        }
+        Insert: {
+          collection?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          image_url?: string
+          line_total?: number
+          order_id: string
+          product_id?: string
+          quantity?: number
+          sku?: string
+          tags?: string[]
+          title?: string
+          unit_price?: number
+          variant_id?: string | null
+        }
+        Update: {
+          collection?: string | null
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          image_url?: string
+          line_total?: number
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          sku?: string
+          tags?: string[]
+          title?: string
+          unit_price?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          assigned_to: string | null
+          channel: string
+          city: string
+          courier_name: string | null
+          courier_status: string | null
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          discount_total: number
+          id: string
+          internal_note: string | null
+          is_tbilisi: boolean
+          notes_customer: string | null
+          payment_method: string
+          public_order_number: string
+          region: string
+          shipping_fee: number
+          shopify_order_id: string | null
+          source: string
+          status: string
+          subtotal: number
+          tags: string[]
+          total: number
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line1?: string
+          address_line2?: string | null
+          assigned_to?: string | null
+          channel?: string
+          city?: string
+          courier_name?: string | null
+          courier_status?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          discount_total?: number
+          id?: string
+          internal_note?: string | null
+          is_tbilisi?: boolean
+          notes_customer?: string | null
+          payment_method?: string
+          public_order_number: string
+          region?: string
+          shipping_fee?: number
+          shopify_order_id?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          tags?: string[]
+          total?: number
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          assigned_to?: string | null
+          channel?: string
+          city?: string
+          courier_name?: string | null
+          courier_status?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          discount_total?: number
+          id?: string
+          internal_note?: string | null
+          is_tbilisi?: boolean
+          notes_customer?: string | null
+          payment_method?: string
+          public_order_number?: string
+          region?: string
+          shipping_fee?: number
+          shopify_order_id?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          tags?: string[]
+          total?: number
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_active_admin: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
