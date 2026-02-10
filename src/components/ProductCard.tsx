@@ -3,6 +3,8 @@ import { Plus, Minus } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
+import { getDemoBadges } from "@/lib/demoData";
+import ProductSheet from "@/components/ProductSheet";
 
 interface ProductCardProps {
   product: Product;
@@ -49,68 +51,111 @@ const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
   );
 };
 
+const CardBadges = ({ productId }: { productId: string }) => {
+  const badges = getDemoBadges(productId);
+  if (badges.length === 0) return null;
+  return (
+    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+      {badges.map((b) => (
+        <span
+          key={b}
+          className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"
+        >
+          {b}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 const ProductCard = memo(({ product }: ProductCardProps) => {
   const { addItem, updateQuantity, getQuantity } = useCart();
   const quantity = getQuantity(product.id);
   const [showFloat, setShowFloat] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [pressed, setPressed] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addItem(product);
     setShowFloat(true);
     setTimeout(() => setShowFloat(false), 600);
   };
 
+  const handleMinus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateQuantity(product.id, quantity - 1);
+  };
+
+  const handleCardClick = () => {
+    setSheetOpen(true);
+  };
+
   return (
-    <div className="relative bg-card rounded-lg shadow-card overflow-hidden border border-border">
-      {showFloat && (
-        <div className="absolute top-2 right-2 z-10 text-primary font-extrabold text-lg animate-float-up pointer-events-none">
-          +1
-        </div>
-      )}
+    <>
+      <div
+        className={`relative bg-card rounded-lg shadow-card overflow-hidden border border-border cursor-pointer transition-transform duration-150 ${
+          pressed ? "scale-[0.98] shadow-lg" : ""
+        }`}
+        onClick={handleCardClick}
+        onPointerDown={() => setPressed(true)}
+        onPointerUp={() => setPressed(false)}
+        onPointerLeave={() => setPressed(false)}
+      >
+        {showFloat && (
+          <div className="absolute top-2 right-2 z-10 text-primary font-extrabold text-lg animate-float-up pointer-events-none">
+            +1
+          </div>
+        )}
 
-      <LazyImage src={product.image} alt={product.title} />
+        <CardBadges productId={product.id} />
 
-      <div className="p-3">
-        <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
-          {product.title}
-        </p>
-        <p className="text-price text-primary mt-1">{product.price} ₾</p>
+        <LazyImage src={product.image} alt={product.title} />
 
-        <div className="flex items-center justify-between mt-3">
-          {quantity === 0 ? (
-            <Button
-              onClick={handleAdd}
-              className="w-full h-12 text-base font-bold rounded-lg"
-              size="lg"
-            >
-              <Plus className="w-5 h-5 mr-1" />
-              დამატება
-            </Button>
-          ) : (
-            <div className="flex items-center gap-3 w-full justify-between">
-              <Button
-                onClick={() => updateQuantity(product.id, quantity - 1)}
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 rounded-lg border-2"
-              >
-                <Minus className="w-5 h-5" />
-              </Button>
-              <span className="text-xl font-bold text-foreground min-w-[2rem] text-center">
-                {quantity}
-              </span>
+        <div className="p-3">
+          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
+            {product.title}
+          </p>
+          <p className="text-price text-primary mt-1">{product.price} ₾</p>
+
+          <div className="flex items-center justify-between mt-3">
+            {quantity === 0 ? (
               <Button
                 onClick={handleAdd}
-                size="icon"
-                className="h-12 w-12 rounded-lg"
+                className="w-full h-12 text-base font-bold rounded-lg"
+                size="lg"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-5 h-5 mr-1" />
+                დამატება
               </Button>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center gap-3 w-full justify-between">
+                <Button
+                  onClick={handleMinus}
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 rounded-lg border-2"
+                >
+                  <Minus className="w-5 h-5" />
+                </Button>
+                <span className="text-xl font-bold text-foreground min-w-[2rem] text-center">
+                  {quantity}
+                </span>
+                <Button
+                  onClick={handleAdd}
+                  size="icon"
+                  className="h-12 w-12 rounded-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <ProductSheet product={product} open={sheetOpen} onClose={() => setSheetOpen(false)} />
+    </>
   );
 });
 
