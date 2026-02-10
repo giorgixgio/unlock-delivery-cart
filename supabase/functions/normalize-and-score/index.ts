@@ -229,7 +229,24 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     { order_id: childId, actor: "system", event_type: "auto_merge", payload: { ...mergePayload, role: "child" } },
   ]);
 
-  return { merged: true, primary_order_id: primaryId };
+    // Re-normalize the primary order's address if it hasn't been normalized yet
+    const { data: primaryFresh } = await supabase.from("orders").select("normalized_city, normalization_confidence").eq("id", primaryId).single();
+    if (!primaryFresh?.normalized_city || primaryFresh?.normalization_confidence === null) {
+      // Trigger normalization for the primary order (skip merge step by marking it)
+      // We'll do it inline here since we have the data
+      const aiKey = Deno.env.get("LOVABLE_API_KEY");
+      const { normalizedCity, normalizedAddress, confidence, normNotes } = await normalizeAddress(primaryOrder, aiKey);
+      await supabase.from("orders").update({
+        raw_city: primaryOrder.raw_city || primaryOrder.city,
+        raw_address: primaryOrder.raw_address || primaryOrder.address_line1,
+        normalized_city: normalizedCity,
+        normalized_address: normalizedAddress,
+        normalization_confidence: confidence,
+        normalization_notes: normNotes,
+      }).eq("id", primaryId);
+    }
+
+    return { merged: true, primary_order_id: primaryId };
 }
 
 // ============================================================
