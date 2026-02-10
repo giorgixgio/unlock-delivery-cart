@@ -82,7 +82,7 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
               : "opacity-100 text-muted-foreground"
           }`}
         >
-          კიდევ {remaining.toFixed(1)} ₾ მიტანის განსაბლოკად
+          კიდევ {remaining.toFixed(1)} ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა
         </p>
       )}
     </div>
