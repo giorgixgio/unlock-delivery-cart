@@ -5,7 +5,7 @@ import DeliveryMissionBar from "./DeliveryMissionBar";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
-  const { items, total, itemCount, isUnlocked } = useCart();
+  const { items, total, itemCount, isUnlocked, remaining } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -55,20 +55,19 @@ const StickyCartHUD = () => {
         <DeliveryMissionBar mini />
 
         {/* CTA */}
-        <Button
-          onClick={() => navigate("/cart")}
-          disabled={!isUnlocked}
-          className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
-            isUnlocked
-              ? "bg-success hover:bg-success/90 text-success-foreground"
-              : ""
-          }`}
-          size="lg"
-        >
-          {isUnlocked
-            ? "შეკვეთა — გადახდა მიტანისას"
-            : `გჭირდება კიდევ ${(40 - total).toFixed(1)} ₾`}
-        </Button>
+        {isUnlocked ? (
+          <Button
+            onClick={() => navigate("/cart")}
+            className="w-full h-11 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
+            size="lg"
+          >
+            შეკვეთის დასრულება
+          </Button>
+        ) : (
+          <p className="text-center text-sm font-bold text-muted-foreground py-1">
+            კიდევ {remaining.toFixed(1)} ₾ მიტანის განსაბლოკად
+          </p>
+        )}
       </div>
     </div>
   );
