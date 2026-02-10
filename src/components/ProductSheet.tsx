@@ -114,45 +114,28 @@ const ScarcityPanel = ({ productId }: { productId: string }) => {
     ? "bg-destructive"
     : isMed
     ? "bg-secondary"
-    : "bg-success";
+    : "bg-primary";
 
-  const bgClass = isLow
-    ? "bg-destructive/10 border-destructive/30"
+  const iconColor = isLow
+    ? "text-destructive"
     : isMed
-    ? "bg-secondary/10 border-secondary/30"
-    : "bg-success/10 border-success/30";
+    ? "text-secondary"
+    : "text-primary";
 
   return (
-    <div className={`mx-4 py-3 px-3 rounded-lg border ${bgClass} space-y-2`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isLow ? (
-            <Flame className="w-4 h-4 text-destructive" />
-          ) : (
-            <Users className="w-4 h-4 text-success" />
-          )}
-          <span className="text-sm font-bold text-foreground">{label.text}</span>
-        </div>
-        <span className={`text-xs font-extrabold px-2 py-0.5 rounded ${
-          isLow ? "bg-destructive text-destructive-foreground" : isMed ? "bg-secondary text-secondary-foreground" : "bg-success text-success-foreground"
-        }`}>
-          {stock} დარჩა
-        </span>
+    <div className="mx-4 py-2.5 px-3 rounded-lg bg-card border border-border space-y-2">
+      <div className="flex items-center gap-2">
+        <Flame className={`w-4 h-4 ${iconColor} ${isLow ? "animate-pulse" : ""}`} />
+        <span className="text-sm font-bold text-foreground">{label.text}</span>
       </div>
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground font-medium">მარაგი დღეს</span>
-          <span className="text-xs font-bold text-foreground">{barPercent}%</span>
-        </div>
-        <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-            style={{ width: `${barPercent}%` }}
-          />
-          {isLow && (
-            <div className="absolute inset-0 rounded-full bg-destructive/20 animate-pulse" />
-          )}
-        </div>
+      <div className="relative h-5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+          style={{ width: `${barPercent}%` }}
+        />
+        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-foreground mix-blend-difference">
+          {stock} ცალი დარჩა მარაგში
+        </span>
       </div>
     </div>
   );
