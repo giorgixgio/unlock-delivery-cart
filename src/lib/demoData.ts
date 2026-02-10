@@ -59,6 +59,20 @@ export function getTimerEnd(productId: string): number {
   return now + dur * 1000;
 }
 
+const oldPriceStore = new Map<string, number>();
+
+export function getFakeOldPrice(productId: string, realPrice: number): number {
+  if (!oldPriceStore.has(productId)) {
+    const multiplier = 2 + seededRandom(productId + "_oldprice"); // 2x to 3x
+    oldPriceStore.set(productId, Math.round(realPrice * multiplier * 100) / 100);
+  }
+  return oldPriceStore.get(productId)!;
+}
+
+export function getDiscountPercent(realPrice: number, oldPrice: number): number {
+  return Math.round(((oldPrice - realPrice) / oldPrice) * 100);
+}
+
 export function formatCountdown(msLeft: number): string {
   if (msLeft <= 0) return "00:00:00";
   const totalSec = Math.floor(msLeft / 1000);

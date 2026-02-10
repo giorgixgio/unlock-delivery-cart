@@ -5,7 +5,7 @@ import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Lock, CheckCircle } from "lucide-react";
+import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Lock, CheckCircle, Flame, Users } from "lucide-react";
 import {
   getSimulatedStock,
   getStockLabel,
@@ -13,6 +13,8 @@ import {
   getDemoBadges,
   getTimerEnd,
   formatCountdown,
+  getFakeOldPrice,
+  getDiscountPercent,
 } from "@/lib/demoData";
 
 interface ProductSheetProps {
@@ -105,30 +107,51 @@ const ScarcityPanel = ({ productId }: { productId: string }) => {
   const label = getStockLabel(stock);
   const barPercent = getStockBarPercent(productId);
 
-  const barColor =
-    label.color === "red"
-      ? "bg-destructive"
-      : label.color === "orange"
-      ? "bg-secondary"
-      : "bg-success";
+  const isLow = label.color === "red";
+  const isMed = label.color === "orange";
+
+  const barColor = isLow
+    ? "bg-destructive"
+    : isMed
+    ? "bg-secondary"
+    : "bg-success";
+
+  const bgClass = isLow
+    ? "bg-destructive/10 border-destructive/30"
+    : isMed
+    ? "bg-secondary/10 border-secondary/30"
+    : "bg-success/10 border-success/30";
 
   return (
-    <div className="px-4 py-3 space-y-2">
-      <div className="flex items-center gap-2">
-        <span
-          className={`inline-block w-2.5 h-2.5 rounded-full ${
-            label.color === "red" ? "bg-destructive" : label.color === "orange" ? "bg-secondary" : "bg-success"
-          }`}
-        />
-        <span className="text-sm font-bold text-foreground">{label.text}</span>
+    <div className={`mx-4 py-3 px-3 rounded-lg border ${bgClass} space-y-2`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isLow ? (
+            <Flame className="w-4 h-4 text-destructive" />
+          ) : (
+            <Users className="w-4 h-4 text-success" />
+          )}
+          <span className="text-sm font-bold text-foreground">{label.text}</span>
+        </div>
+        <span className={`text-xs font-extrabold px-2 py-0.5 rounded ${
+          isLow ? "bg-destructive text-destructive-foreground" : isMed ? "bg-secondary text-secondary-foreground" : "bg-success text-success-foreground"
+        }`}>
+          {stock} დარჩა
+        </span>
       </div>
       <div>
-        <span className="text-xs text-muted-foreground font-medium">ხელმისაწვდომობა დღეს</span>
-        <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted mt-1">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground font-medium">მარაგი დღეს</span>
+          <span className="text-xs font-bold text-foreground">{barPercent}%</span>
+        </div>
+        <div className="relative h-3.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className={`h-full rounded-full transition-all ${barColor}`}
+            className={`h-full rounded-full transition-all duration-700 ${barColor}`}
             style={{ width: `${barPercent}%` }}
           />
+          {isLow && (
+            <div className="absolute inset-0 rounded-full bg-destructive/20 animate-pulse" />
+          )}
         </div>
       </div>
     </div>
@@ -281,7 +304,20 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2">
               {product.title}
             </h2>
-            <p className="text-price text-primary mt-1">{product.price} ₾</p>
+            {/* Temu-style pricing */}
+            {(() => {
+              const oldPrice = getFakeOldPrice(product.id, product.price);
+              const discount = getDiscountPercent(product.price, oldPrice);
+              return (
+                <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
+                  <span className="text-2xl font-extrabold text-primary">{product.price} ₾</span>
+                  <span className="text-base text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+                  <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">
+                    -{discount}%
+                  </span>
+                </div>
+              );
+            })()}
           </div>
           <TrustStrip />
           <ScarcityPanel productId={product.id} />

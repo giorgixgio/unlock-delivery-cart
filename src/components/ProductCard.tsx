@@ -3,7 +3,7 @@ import { Plus, Minus } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { getDemoBadges } from "@/lib/demoData";
+import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
 
 interface ProductCardProps {
@@ -116,7 +116,20 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
             {product.title}
           </p>
-          <p className="text-price text-primary mt-1">{product.price} ₾</p>
+          {/* Temu-style pricing */}
+          {(() => {
+            const oldPrice = getFakeOldPrice(product.id, product.price);
+            const discount = getDiscountPercent(product.price, oldPrice);
+            return (
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="text-price text-primary">{product.price} ₾</span>
+                <span className="text-sm text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+                <span className="bg-deal text-deal-foreground text-[11px] font-extrabold px-1.5 py-0.5 rounded">
+                  -{discount}%
+                </span>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center justify-between mt-3">
             {quantity === 0 ? (
