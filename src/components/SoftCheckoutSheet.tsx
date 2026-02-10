@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo, useRef } from "react";
+import { memo, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -7,8 +7,9 @@ import { useCart } from "@/contexts/CartContext";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { DELIVERY_THRESHOLD, Product } from "@/lib/constants";
-import { Plus, Check, Sparkles } from "lucide-react";
+import { Plus, Check, Sparkles, ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface SoftCheckoutSheetProps {
   open: boolean;
@@ -17,13 +18,67 @@ interface SoftCheckoutSheetProps {
   source: string;
 }
 
-const SheetProductCard = memo(({ product }: { product: Product }) => {
+// ── Fly-to-cart animation helper ──
+function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Badge pop regardless
+  targetEl.animate(
+    [{ transform: "scale(1)" }, { transform: "scale(1.3)" }, { transform: "scale(1)" }],
+    { duration: 300, easing: "ease-out" }
+  );
+
+  if (prefersReduced) return;
+
+  const imgRect = imgEl.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+
+  const clone = document.createElement("img");
+  clone.src = imgEl.src;
+  clone.style.cssText = `
+    position:fixed; z-index:9999; pointer-events:none; border-radius:8px;
+    width:${imgRect.width}px; height:${imgRect.height}px;
+    left:${imgRect.left}px; top:${imgRect.top}px;
+    object-fit:cover;
+  `;
+  document.body.appendChild(clone);
+
+  const dx = targetRect.left + targetRect.width / 2 - (imgRect.left + imgRect.width / 2);
+  const dy = targetRect.top + targetRect.height / 2 - (imgRect.top + imgRect.height / 2);
+
+  clone.animate(
+    [
+      { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: "1" },
+      { transform: `translate(${dx * 0.4}px,${dy * 0.3 - 40}px) scale(0.5) rotate(-15deg)`, opacity: "0.8", offset: 0.5 },
+      { transform: `translate(${dx}px,${dy}px) scale(0.15) rotate(-30deg)`, opacity: "0" },
+    ],
+    { duration: 500, easing: "cubic-bezier(0.2,0.8,0.2,1)", fill: "forwards" }
+  );
+
+  setTimeout(() => clone.remove(), 550);
+}
+
+// ── Product Card ──
+const SheetProductCard = memo(({
+  product,
+  cartIconRef,
+}: {
+  product: Product;
+  cartIconRef: React.RefObject<HTMLDivElement | null>;
+}) => {
   const { addItem, remaining } = useCart();
   const [added, setAdded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const handleAdd = () => {
     addItem(product);
     setAdded(true);
+
+    // Fly animation
+    if (imgRef.current && cartIconRef.current) {
+      flyToCart(imgRef.current, cartIconRef.current);
+    }
+
     const newRemaining = Math.max(0, remaining - product.price);
     if (newRemaining > 0) {
       toast(`დამატებულია — კიდევ ${newRemaining.toFixed(1)} ₾`, { duration: 1500 });
@@ -35,6 +90,7 @@ const SheetProductCard = memo(({ product }: { product: Product }) => {
     <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
       <div className="relative w-full aspect-square bg-muted overflow-hidden">
         <img
+          ref={imgRef}
           src={product.image}
           alt={product.title}
           className="w-full h-full object-cover"
@@ -42,26 +98,26 @@ const SheetProductCard = memo(({ product }: { product: Product }) => {
           decoding="async"
         />
       </div>
-      <div className="p-2.5 space-y-1.5">
-        <p className="text-xs font-medium text-foreground leading-tight line-clamp-2 min-h-[32px]">
+      <div className="p-2 space-y-1">
+        <p className="text-xs font-medium text-foreground leading-tight line-clamp-1">
           {product.title}
         </p>
         <p className="text-sm font-bold text-primary">{product.price} ₾</p>
         <Button
           onClick={handleAdd}
           size="sm"
-          className={`w-full h-8 text-xs font-bold rounded-md transition-all duration-200 ${
+          className={`w-full h-7 text-xs font-bold rounded-md transition-all duration-200 ${
             added ? "bg-success hover:bg-success text-success-foreground" : ""
           }`}
           disabled={added}
         >
           {added ? (
             <span className="flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" /> დამატებულია
+              <Check className="w-3 h-3" /> ✓
             </span>
           ) : (
             <span className="flex items-center gap-1">
-              <Plus className="w-3.5 h-3.5" /> დამატება
+              <Plus className="w-3 h-3" /> დამატება
             </span>
           )}
         </Button>
@@ -71,29 +127,35 @@ const SheetProductCard = memo(({ product }: { product: Product }) => {
 });
 SheetProductCard.displayName = "SheetProductCard";
 
+// ── Skeleton Grid ──
 const SkeletonGrid = () => (
-  <div className="grid grid-cols-2 gap-2.5">
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="space-y-2">
+  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+    {Array.from({ length: 8 }).map((_, i) => (
+      <div key={i} className="space-y-1.5">
         <Skeleton className="w-full aspect-square rounded-lg" />
         <Skeleton className="h-3 w-3/4" />
         <Skeleton className="h-4 w-1/3" />
-        <Skeleton className="h-8 w-full rounded-md" />
+        <Skeleton className="h-7 w-full rounded-md" />
       </div>
     ))}
   </div>
 );
 
+// ── Main Component ──
 const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutSheetProps) => {
-  const { total, isUnlocked, remaining } = useCart();
+  const { total, isUnlocked, remaining, itemCount } = useCart();
   const { data: products = [], isLoading } = useProducts();
   const { recommendations } = useRecommendations(products);
   const prevUnlocked = useRef(isUnlocked);
+  const navigate = useNavigate();
+  const cartIconRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const lastScrollTop = useRef(0);
 
   // Auto-close and proceed when threshold is reached
   useEffect(() => {
     if (open && isUnlocked && !prevUnlocked.current) {
-      // Small delay so user sees the success state
       const timer = setTimeout(() => {
         onClose();
         onProceed();
@@ -103,50 +165,126 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked, open, onClose, onProceed]);
 
+  // Reset collapse when sheet opens
+  useEffect(() => {
+    if (open) {
+      setHeaderCollapsed(false);
+      lastScrollTop.current = 0;
+    }
+  }, [open]);
+
+  // Scroll direction detection
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const st = el.scrollTop;
+    const delta = st - lastScrollTop.current;
+    if (delta > 15 && st > 60) {
+      setHeaderCollapsed(true);
+    } else if (delta < -12) {
+      setHeaderCollapsed(false);
+    }
+    lastScrollTop.current = st;
+  }, []);
+
   const progress = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
   const gap = remaining;
 
-  // Take up to 8 recommendations for the sheet
-  const sheetItems = useMemo(() => recommendations.slice(0, 8), [recommendations]);
+  const sheetItems = useMemo(() => recommendations.slice(0, 12), [recommendations]);
+
+  const handleViewCart = () => {
+    onClose();
+    navigate("/cart");
+  };
+
+  const hasRecs = sheetItems.length > 0;
+  const showEmpty = !isLoading && !hasRecs;
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-      <DrawerContent className="max-h-[85vh] focus:outline-none">
+      <DrawerContent className="max-h-[88vh] focus:outline-none flex flex-col">
         <DrawerTitle className="sr-only">მინიმალური შეკვეთა</DrawerTitle>
-        <div className="px-4 pt-4 pb-2 space-y-3">
-          {/* Header */}
-          <div className="text-center space-y-1">
-            <h2 className="text-lg font-extrabold text-foreground">
-              კიდევ {gap.toFixed(1)} ₾ დარჩა 🎉
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({DELIVERY_THRESHOLD} ₾)
-            </p>
+
+        {/* ── Header (collapsible) ── */}
+        <div
+          className={`flex-shrink-0 transition-all duration-300 ease-out overflow-hidden ${
+            headerCollapsed ? "max-h-12" : "max-h-48"
+          }`}
+        >
+          {/* Top bar — always visible */}
+          <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+            <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted">
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+
+            {headerCollapsed && (
+              <span className="text-xs font-bold text-muted-foreground">
+                {total.toFixed(1)} / {DELIVERY_THRESHOLD} ₾
+              </span>
+            )}
+
+            <button
+              onClick={handleViewCart}
+              className="relative p-1.5 rounded-md hover:bg-muted"
+            >
+              <div ref={cartIconRef}>
+                <ShoppingCart className="w-5 h-5 text-foreground" />
+              </div>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {itemCount}
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Progress bar */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs font-bold text-muted-foreground">
-              <span>{total.toFixed(1)} ₾</span>
-              <span>{DELIVERY_THRESHOLD} ₾</span>
+          {/* Expanded header content */}
+          <div className={`px-4 pb-2 space-y-2 transition-opacity duration-200 ${
+            headerCollapsed ? "opacity-0" : "opacity-100"
+          }`}>
+            <div className="text-center space-y-0.5">
+              <h2 className="text-lg font-extrabold text-foreground">
+                კიდევ {gap.toFixed(1)} ₾ დარჩა 🎉
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({DELIVERY_THRESHOLD} ₾)
+              </p>
             </div>
-            <Progress value={progress} className="h-3" />
+            <div className="space-y-0.5">
+              <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+                <span>{total.toFixed(1)} ₾</span>
+                <span>{DELIVERY_THRESHOLD} ₾</span>
+              </div>
+              <Progress value={progress} className="h-2.5" />
+            </div>
           </div>
         </div>
 
-        {/* Recommendations grid */}
-        <div className="px-4 pb-6 overflow-y-auto max-h-[55vh]">
-          <div className="flex items-center gap-2 mb-3">
+        {/* ── Scrollable content ── */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-4 pb-6"
+        >
+          <div className="flex items-center gap-2 mb-3 mt-1">
             <Sparkles className="w-4 h-4 text-primary" />
             <span className="text-sm font-bold text-foreground">რეკომენდაცია</span>
           </div>
 
-          {isLoading || sheetItems.length === 0 ? (
+          {isLoading ? (
             <SkeletonGrid />
+          ) : showEmpty ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              რეკომენდაციები ამჟამად არ არის — დაამატეთ კატალოგიდან
+            </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {sheetItems.map((product) => (
-                <SheetProductCard key={product.id} product={product} />
+                <SheetProductCard
+                  key={product.id}
+                  product={product}
+                  cartIconRef={cartIconRef}
+                />
               ))}
             </div>
           )}
