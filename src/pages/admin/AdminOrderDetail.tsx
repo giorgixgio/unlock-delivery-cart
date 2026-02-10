@@ -5,7 +5,9 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save, CheckCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+import RiskBadge from "@/components/admin/RiskBadge";
+import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold"];
 
@@ -47,6 +49,17 @@ interface OrderDetail {
   tracking_number: string | null;
   tracking_url: string | null;
   courier_status: string | null;
+  is_confirmed: boolean;
+  is_fulfilled: boolean;
+  risk_score: number;
+  risk_level: string;
+  risk_reasons: string[];
+  review_required: boolean;
+  raw_city: string | null;
+  raw_address: string | null;
+  normalized_city: string | null;
+  normalized_address: string | null;
+  normalization_confidence: number | null;
   order_items: {
     id: string;
     title: string;
@@ -75,7 +88,6 @@ const AdminOrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Editable fields
   const [status, setStatus] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -84,39 +96,38 @@ const AdminOrderDetail = () => {
   const [trackingUrl, setTrackingUrl] = useState("");
   const [adminUsers, setAdminUsers] = useState<{ email: string }[]>([]);
 
-  useEffect(() => {
+  const refreshOrder = async () => {
     if (!id) return;
-    const fetch = async () => {
-      const [{ data: orderData }, { data: eventsData }, { data: admins }] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url)")
-          .eq("id", id)
-          .single(),
-        supabase
-          .from("order_events")
-          .select("*")
-          .eq("order_id", id)
-          .order("created_at", { ascending: false }),
-        supabase.from("admin_users").select("email").eq("is_active", true),
-      ]);
+    const [{ data: orderData }, { data: eventsData }, { data: admins }] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url)")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("order_events")
+        .select("*")
+        .eq("order_id", id)
+        .order("created_at", { ascending: false }),
+      supabase.from("admin_users").select("email").eq("is_active", true),
+    ]);
 
-      if (orderData) {
-        const o = orderData as unknown as OrderDetail;
-        setOrder(o);
-        setStatus(o.status);
-        setAssignedTo(o.assigned_to || "");
-        setInternalNote(o.internal_note || "");
-        setCourierName(o.courier_name || "");
-        setTrackingNumber(o.tracking_number || "");
-        setTrackingUrl(o.tracking_url || "");
-      }
-      setEvents((eventsData as unknown as OrderEvent[]) || []);
-      setAdminUsers(admins || []);
-      setLoading(false);
-    };
-    fetch();
-  }, [id]);
+    if (orderData) {
+      const o = orderData as unknown as OrderDetail;
+      setOrder(o);
+      setStatus(o.status);
+      setAssignedTo(o.assigned_to || "");
+      setInternalNote(o.internal_note || "");
+      setCourierName(o.courier_name || "");
+      setTrackingNumber(o.tracking_number || "");
+      setTrackingUrl(o.tracking_url || "");
+    }
+    setEvents((eventsData as unknown as OrderEvent[]) || []);
+    setAdminUsers(admins || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { refreshOrder(); }, [id]);
 
   const logEvent = async (eventType: string, payload: Record<string, unknown>) => {
     await supabase.from("order_events").insert([{
@@ -156,26 +167,44 @@ const AdminOrderDetail = () => {
     if (Object.keys(updates).length > 0) {
       await supabase.from("orders").update(updates).eq("id", id);
     }
-
     for (const evt of eventLogs) {
       await logEvent(evt.type, evt.payload);
     }
 
-    // Refresh
-    const { data } = await supabase
-      .from("orders")
-      .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url)")
-      .eq("id", id)
-      .single();
-    if (data) setOrder(data as unknown as OrderDetail);
+    await refreshOrder();
+    setSaving(false);
+  };
 
-    const { data: evData } = await supabase
-      .from("order_events")
-      .select("*")
-      .eq("order_id", id)
-      .order("created_at", { ascending: false });
-    setEvents((evData as unknown as OrderEvent[]) || []);
+  const handleConfirm = async (override = false) => {
+    if (!order || !id) return;
+    if (order.review_required && !override) return;
+    setSaving(true);
+    await supabase.from("orders").update({
+      is_confirmed: true,
+      status: "confirmed",
+      review_required: false,
+    }).eq("id", id);
+    await logEvent("confirmation", { action: "confirmed", override });
+    await refreshOrder();
+    setSaving(false);
+  };
 
+  const handleMarkDuplicate = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    await supabase.from("orders").update({ status: "canceled", review_required: false }).eq("id", id);
+    await logEvent("risk_override", { action: "marked_duplicate_canceled" });
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  const handleToggleFulfilled = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    const newVal = !order.is_fulfilled;
+    await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
+    await logEvent("fulfillment_change", { is_fulfilled: newVal });
+    await refreshOrder();
     setSaving(false);
   };
 
@@ -194,7 +223,7 @@ const AdminOrderDetail = () => {
   return (
     <div className="p-6 space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => navigate("/admin/orders")} className="p-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -202,6 +231,13 @@ const AdminOrderDetail = () => {
         <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${statusColor[order.status] || "bg-muted"}`}>
           {order.status.replace("_", " ")}
         </span>
+        <FulfillmentBadge isConfirmed={order.is_confirmed} isFulfilled={order.is_fulfilled} />
+        <RiskBadge riskLevel={order.risk_level} riskScore={order.risk_score} />
+        {order.review_required && (
+          <span className="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> Review Required
+          </span>
+        )}
       </div>
 
       {/* Quick actions */}
@@ -237,6 +273,75 @@ const AdminOrderDetail = () => {
         </Button>
       </div>
 
+      {/* Confirm / Fulfill actions */}
+      <div className="flex flex-wrap gap-3">
+        {!order.is_confirmed && (
+          <>
+            <Button
+              onClick={() => handleConfirm(false)}
+              disabled={saving || order.review_required}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Confirm Order
+            </Button>
+            {order.review_required && (
+              <Button
+                onClick={() => handleConfirm(true)}
+                disabled={saving}
+                variant="outline"
+                className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Override & Confirm
+              </Button>
+            )}
+          </>
+        )}
+        {order.is_confirmed && (
+          <Button
+            onClick={handleToggleFulfilled}
+            disabled={saving}
+            variant="outline"
+            className="gap-2"
+          >
+            {order.is_fulfilled ? "Unmark Fulfilled" : "Mark Fulfilled"}
+          </Button>
+        )}
+        {order.review_required && (
+          <Button
+            onClick={handleMarkDuplicate}
+            disabled={saving}
+            variant="destructive"
+            className="gap-2"
+          >
+            Mark as Duplicate & Cancel
+          </Button>
+        )}
+      </div>
+
+      {/* Risk card */}
+      {(order.risk_score > 0 || order.review_required) && (
+        <div className="bg-card rounded-lg p-4 border border-amber-200 space-y-2">
+          <h3 className="font-bold text-sm flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-600" /> Risk Assessment
+          </h3>
+          <div className="flex items-center gap-3">
+            <RiskBadge riskLevel={order.risk_level} riskScore={order.risk_score} />
+            <span className="text-sm text-muted-foreground">Score: {order.risk_score}</span>
+          </div>
+          {order.risk_reasons.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {order.risk_reasons.map((reason, i) => (
+                <span key={i} className="px-2 py-0.5 rounded bg-muted text-xs text-muted-foreground">
+                  {reason}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Customer card */}
         <div className="bg-card rounded-lg p-4 border border-border space-y-2">
@@ -256,8 +361,19 @@ const AdminOrderDetail = () => {
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">Tbilisi</span>
             )}
           </h3>
-          <p className="text-sm">{order.city} {order.region}</p>
-          <p className="text-sm">{order.address_line1}</p>
+          <p className="text-sm font-medium">{order.normalized_city || order.city} {order.region}</p>
+          <p className="text-sm">{order.normalized_address || order.address_line1}</p>
+          {order.raw_city && order.normalized_city && order.raw_city !== order.normalized_city && (
+            <p className="text-xs text-muted-foreground">Raw: {order.raw_city}</p>
+          )}
+          {order.raw_address && order.normalized_address && order.raw_address !== order.normalized_address && (
+            <p className="text-xs text-muted-foreground">Raw: {order.raw_address}</p>
+          )}
+          {order.normalization_confidence != null && order.normalization_confidence < 1 && (
+            <p className="text-xs text-muted-foreground">
+              Confidence: {(order.normalization_confidence * 100).toFixed(0)}%
+            </p>
+          )}
           {order.address_line2 && <p className="text-sm">{order.address_line2}</p>}
           {order.notes_customer && (
             <p className="text-xs text-muted-foreground italic">"{order.notes_customer}"</p>

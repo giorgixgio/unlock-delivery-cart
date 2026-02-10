@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_export_settings: {
+        Row: {
+          created_at: string
+          dynamic_columns_map: Json
+          file_type: string
+          fixed_columns_map: Json
+          id: string
+          include_headers: boolean
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dynamic_columns_map?: Json
+          file_type?: string
+          fixed_columns_map?: Json
+          id?: string
+          include_headers?: boolean
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dynamic_columns_map?: Json
+          file_type?: string
+          fixed_columns_map?: Json
+          id?: string
+          include_headers?: boolean
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor: string
@@ -139,6 +175,7 @@ export type Database = {
           assigned_to: string | null
           channel: string
           city: string
+          cookie_id_hash: string | null
           courier_name: string | null
           courier_status: string | null
           created_at: string
@@ -149,11 +186,24 @@ export type Database = {
           discount_total: number
           id: string
           internal_note: string | null
+          ip_address: string | null
+          is_confirmed: boolean
+          is_fulfilled: boolean
           is_tbilisi: boolean
+          normalization_confidence: number | null
+          normalization_notes: string | null
+          normalized_address: string | null
+          normalized_city: string | null
           notes_customer: string | null
           payment_method: string
           public_order_number: string
+          raw_address: string | null
+          raw_city: string | null
           region: string
+          review_required: boolean
+          risk_level: string
+          risk_reasons: string[]
+          risk_score: number
           shipping_fee: number
           shopify_order_id: string | null
           source: string
@@ -164,6 +214,7 @@ export type Database = {
           tracking_number: string | null
           tracking_url: string | null
           updated_at: string
+          user_agent: string | null
         }
         Insert: {
           address_line1?: string
@@ -171,6 +222,7 @@ export type Database = {
           assigned_to?: string | null
           channel?: string
           city?: string
+          cookie_id_hash?: string | null
           courier_name?: string | null
           courier_status?: string | null
           created_at?: string
@@ -181,11 +233,24 @@ export type Database = {
           discount_total?: number
           id?: string
           internal_note?: string | null
+          ip_address?: string | null
+          is_confirmed?: boolean
+          is_fulfilled?: boolean
           is_tbilisi?: boolean
+          normalization_confidence?: number | null
+          normalization_notes?: string | null
+          normalized_address?: string | null
+          normalized_city?: string | null
           notes_customer?: string | null
           payment_method?: string
           public_order_number: string
+          raw_address?: string | null
+          raw_city?: string | null
           region?: string
+          review_required?: boolean
+          risk_level?: string
+          risk_reasons?: string[]
+          risk_score?: number
           shipping_fee?: number
           shopify_order_id?: string | null
           source?: string
@@ -196,6 +261,7 @@ export type Database = {
           tracking_number?: string | null
           tracking_url?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Update: {
           address_line1?: string
@@ -203,6 +269,7 @@ export type Database = {
           assigned_to?: string | null
           channel?: string
           city?: string
+          cookie_id_hash?: string | null
           courier_name?: string | null
           courier_status?: string | null
           created_at?: string
@@ -213,11 +280,24 @@ export type Database = {
           discount_total?: number
           id?: string
           internal_note?: string | null
+          ip_address?: string | null
+          is_confirmed?: boolean
+          is_fulfilled?: boolean
           is_tbilisi?: boolean
+          normalization_confidence?: number | null
+          normalization_notes?: string | null
+          normalized_address?: string | null
+          normalized_city?: string | null
           notes_customer?: string | null
           payment_method?: string
           public_order_number?: string
+          raw_address?: string | null
+          raw_city?: string | null
           region?: string
+          review_required?: boolean
+          risk_level?: string
+          risk_reasons?: string[]
+          risk_score?: number
           shipping_fee?: number
           shopify_order_id?: string | null
           source?: string
@@ -228,6 +308,7 @@ export type Database = {
           tracking_number?: string | null
           tracking_url?: string | null
           updated_at?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
