@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Download, AlertTriangle } from "lucide-react";
+import { Search, Loader2, Download, AlertTriangle, Upload } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
+import MassFulfillModal from "@/components/admin/MassFulfillModal";
 
 type Tab = "review" | "ready" | "merged" | "canceled";
 
@@ -81,6 +82,7 @@ const AdminOrders = () => {
   const [dateFilter, setDateFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportOpen, setExportOpen] = useState(false);
+  const [fulfillOpen, setFulfillOpen] = useState(false);
   const [counts, setCounts] = useState({ review: 0, ready: 0 });
 
   const fetchCounts = useCallback(async () => {
@@ -180,10 +182,16 @@ const AdminOrders = () => {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
-        <Button onClick={() => setExportOpen(true)} variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export to Courier
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setFulfillOpen(true)} variant="outline" className="gap-2">
+            <Upload className="w-4 h-4" />
+            Mass Fulfill
+          </Button>
+          <Button onClick={() => setExportOpen(true)} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export to Courier
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -368,6 +376,11 @@ const AdminOrders = () => {
       )}
 
       <OrdersExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
+      <MassFulfillModal
+        open={fulfillOpen}
+        onClose={() => setFulfillOpen(false)}
+        onComplete={() => { fetchOrders(); fetchCounts(); }}
+      />
     </div>
   );
 };
