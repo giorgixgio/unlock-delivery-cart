@@ -58,6 +58,10 @@ export default {
           DEFAULT: "hsl(var(--badge))",
           foreground: "hsl(var(--badge-foreground))",
         },
+        deal: {
+          DEFAULT: "hsl(var(--deal))",
+          foreground: "hsl(var(--deal-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
