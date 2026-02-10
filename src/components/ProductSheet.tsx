@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
@@ -250,24 +250,41 @@ const DescriptionSection = ({ description }: { description: string }) => {
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked } = useCart();
   const navigate = useNavigate();
-  // "idle" → "added" (checkmark) → "mission" (shows bar) OR "finalize" (if unlocked)
-  const [actionState, setActionState] = useState<"idle" | "added" | "mission" | "finalize">("idle");
+  const [actionState, setActionState] = useState<"idle" | "added" | "unlocked" | "mission" | "finalize">("idle");
+  const wasUnlockedBefore = useRef(isUnlocked);
 
   // Reset state when sheet opens/closes or product changes
   useEffect(() => {
-    if (open) setActionState("idle");
+    if (open) {
+      setActionState("idle");
+      wasUnlockedBefore.current = isUnlocked;
+    }
   }, [open, product?.id]);
+
+  // Transition from unlocked celebration to finalize
+  useEffect(() => {
+    if (actionState === "unlocked") {
+      const timer = setTimeout(() => setActionState("finalize"), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionState]);
 
   if (!product) return null;
 
   const quantity = getQuantity(product.id);
 
   const handleAdd = () => {
+    const wasUnlocked = isUnlocked;
     addItem(product);
     setActionState("added");
     setTimeout(() => {
-      // After checkmark, show mission bar or finalize
-      setActionState((prev) => prev === "added" ? "mission" : prev);
+      setActionState((prev) => {
+        if (prev !== "added") return prev;
+        if (!wasUnlocked) {
+          return "unlocked";
+        }
+        return "mission";
+      });
     }, 1200);
   };
 
@@ -340,11 +357,18 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
           )}
 
           {/* Morphing button area */}
-          {isUnlocked && actionState !== "idle" ? (
-            /* Cart unlocked + item added → Finalize CTA */
+          {actionState === "unlocked" ? (
+            /* 🎉 Threshold just reached — celebration */
+            <div className="w-full h-14 rounded-xl bg-success flex items-center justify-center animate-threshold-unlock">
+              <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
+                <CheckCircle className="w-5 h-5" /> 🎉 მიტანა განბლოკილია!
+              </span>
+            </div>
+          ) : (isUnlocked && actionState === "finalize") || (isUnlocked && actionState !== "idle" && actionState !== "added" && actionState !== "mission") ? (
+            /* Cart unlocked + celebration done → Finalize CTA */
             <Button
               onClick={handleFinalize}
-              className="w-full h-14 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-300"
+              className="w-full h-14 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-300 glow-unlock"
               size="lg"
             >
               შეკვეთის დასრულება
