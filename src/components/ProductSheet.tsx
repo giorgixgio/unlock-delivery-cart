@@ -364,8 +364,8 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 <CheckCircle className="w-5 h-5" /> 🎉 მიტანა განბლოკილია!
               </span>
             </div>
-          ) : (isUnlocked && actionState === "finalize") || (isUnlocked && actionState !== "idle" && actionState !== "added" && actionState !== "mission") ? (
-            /* Cart unlocked + celebration done → Finalize CTA */
+          ) : isUnlocked && actionState !== "added" ? (
+            /* Cart unlocked → Finalize CTA */
             <Button
               onClick={handleFinalize}
               className="w-full h-14 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-300 glow-unlock"
