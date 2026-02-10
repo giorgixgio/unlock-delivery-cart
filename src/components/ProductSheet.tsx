@@ -128,15 +128,15 @@ const ScarcityPanel = ({ productId }: { productId: string }) => {
         <Flame className={`w-4 h-4 ${iconColor} ${isLow ? "animate-pulse" : ""}`} />
         <span className="text-sm font-bold text-foreground">{label.text}</span>
       </div>
-      <div className="relative h-5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-700 ${barColor}`}
           style={{ width: `${barPercent}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-          {stock} ცალი დარჩა მარაგში
-        </span>
       </div>
+      <p className="text-xs font-bold text-foreground mt-1.5">
+        📦 {stock} ცალი დარჩა მარაგში
+      </p>
     </div>
   );
 };
