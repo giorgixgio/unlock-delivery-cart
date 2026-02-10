@@ -310,8 +310,8 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             <DeliveryMissionBar />
           </div>
 
-          {/* Quantity selector — visible when items in cart */}
-          {quantity > 0 && (
+          {/* Quantity selector — always visible when items in cart */}
+          {quantity > 0 && actionState !== "added" && (
             <div className="flex items-center justify-center gap-4">
               <Button
                 onClick={() => updateQuantity(product.id, quantity - 1)}
@@ -325,7 +325,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 {quantity}
               </span>
               <Button
-                onClick={handleAdd}
+                onClick={() => { addItem(product); }}
                 size="icon"
                 className="h-12 w-12 rounded-lg"
               >
