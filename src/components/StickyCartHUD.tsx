@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import DeliveryMissionBar from "./DeliveryMissionBar";
+import DeliveryInfoMini from "./DeliveryInfoMini";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
@@ -54,6 +55,7 @@ const StickyCartHUD = () => {
 
         {/* Mini mission bar */}
         <DeliveryMissionBar mini />
+        <DeliveryInfoMini />
 
         {/* CTA */}
         {isUnlocked ? (

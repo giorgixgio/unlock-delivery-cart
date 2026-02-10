@@ -5,6 +5,7 @@ import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
+import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart } from "lucide-react";
 import {
   getSimulatedStock,
@@ -294,6 +295,9 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 </div>
               );
             })()}
+          </div>
+          <div className="my-3">
+            <DeliveryInfoRow />
           </div>
           <TrustStrip />
           <div className="my-3">

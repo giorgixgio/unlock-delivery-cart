@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Minus, Plus, Trash2, Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
+import DeliveryInfoBox from "@/components/DeliveryInfoBox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +20,7 @@ const orderSchema = z.object({
 
 const Cart = () => {
   const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
+  const { setManualLocation } = useDelivery();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -51,6 +54,11 @@ const Cart = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setTouched((prev) => ({ ...prev, [field]: true }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    // Update delivery location based on region/city field
+    if (field === "region") {
+      const lower = value.trim().toLowerCase();
+      setManualLocation(lower === "თბილისი" || lower === "tbilisi");
+    }
   };
 
   const handleSubmit = () => {
@@ -161,6 +169,9 @@ const Cart = () => {
             </div>
           ))}
         </div>
+
+        {/* Delivery estimate */}
+        <DeliveryInfoBox />
 
         {/* COD info block */}
         <div className="bg-accent rounded-lg p-4 border border-primary/20 flex items-start gap-3">
