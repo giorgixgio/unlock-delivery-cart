@@ -100,8 +100,8 @@ const AdminOrders = () => {
       .eq("status", "confirmed")
       .eq("is_confirmed", true)
       .eq("review_required", false)
-      .neq("status", "merged")
-      .lt("risk_score", 25);
+      .eq("is_fulfilled", false)
+      .neq("status", "merged");
 
     setCounts({
       review: reviewCount || 0,
@@ -130,8 +130,8 @@ const AdminOrders = () => {
         .eq("status", "confirmed")
         .eq("is_confirmed", true)
         .eq("review_required", false)
+        .eq("is_fulfilled", false)
         .neq("status", "merged")
-        .lt("risk_score", 25)
         .order("created_at", { ascending: false });
     } else if (activeTab === "merged") {
       query = query
