@@ -2,10 +2,14 @@ import { useState } from "react";
 import { CATEGORIES, CategoryId } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useRecommendations } from "@/hooks/useRecommendations";
 import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
+import RecommendationBlock from "@/components/RecommendationBlock";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Package, Loader2 } from "lucide-react";
+
+const INSERTION_INTERVAL = 6; // Insert recommendation block every 6 products (3 rows of 2)
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
@@ -17,6 +21,43 @@ const Index = () => {
       : products.filter((p) => p.category === activeCategory);
 
   const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered);
+  const { recommendations, shouldShow, remaining } = useRecommendations(products);
+
+  // Build feed with interleaved recommendation blocks
+  const renderFeed = () => {
+    if (visibleItems.length === 0) return null;
+
+    const elements: React.ReactNode[] = [];
+    let productIndex = 0;
+
+    while (productIndex < visibleItems.length) {
+      // Render a batch of products
+      const batchEnd = Math.min(productIndex + INSERTION_INTERVAL, visibleItems.length);
+      for (let i = productIndex; i < batchEnd; i++) {
+        elements.push(
+          <ProductCard key={visibleItems[i].id} product={visibleItems[i]} />
+        );
+      }
+      productIndex = batchEnd;
+
+      // Insert recommendation block after each batch (if conditions met)
+      if (
+        shouldShow &&
+        recommendations.length > 0 &&
+        productIndex < visibleItems.length // don't add after last batch
+      ) {
+        elements.push(
+          <RecommendationBlock
+            key={`rec-${productIndex}`}
+            products={recommendations}
+            remaining={remaining}
+          />
+        );
+      }
+    }
+
+    return elements;
+  };
 
   return (
     <main className="pb-52">
@@ -61,9 +102,7 @@ const Index = () => {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3">
-              {visibleItems.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              {renderFeed()}
             </div>
 
             {hasMore && (
