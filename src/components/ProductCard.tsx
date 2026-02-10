@@ -35,6 +35,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
           alt={product.title}
           className="w-full h-full object-cover"
           loading="lazy"
+          decoding="async"
+          width={300}
+          height={300}
         />
       </div>
 

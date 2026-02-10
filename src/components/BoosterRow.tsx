@@ -41,6 +41,9 @@ const BoosterRow = ({ products }: BoosterRowProps) => {
                 alt={product.title}
                 className="w-full h-24 object-cover"
                 loading="lazy"
+                decoding="async"
+                width={128}
+                height={96}
               />
               <div className="p-2">
                 <p className="text-xs font-medium text-foreground line-clamp-1">{product.title}</p>
