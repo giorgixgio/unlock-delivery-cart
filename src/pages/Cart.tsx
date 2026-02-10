@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Minus, Plus, Trash2, Truck } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -31,6 +31,19 @@ const Cart = () => {
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const buttonAnchorRef = useRef<HTMLDivElement>(null);
+  const [isButtonInView, setIsButtonInView] = useState(false);
+
+  useEffect(() => {
+    const el = buttonAnchorRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsButtonInView(entry.isIntersecting),
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [items.length]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -66,7 +79,7 @@ const Cart = () => {
   }
 
   return (
-    <main className="pb-52">
+    <main className="pb-8">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="container max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
@@ -168,15 +181,32 @@ const Cart = () => {
           </div>
         </div>
 
-        {/* Submit */}
-        <Button
-          onClick={handleSubmit}
-          className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
-          size="lg"
-        >
-          შეკვეთა — გადახდა მიტანისას
-        </Button>
+        {/* Submit — inline anchor */}
+        <div ref={buttonAnchorRef}>
+          <Button
+            onClick={handleSubmit}
+            className={`w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200 ${isButtonInView ? "" : "invisible"}`}
+            size="lg"
+          >
+            შეკვეთა — გადახდა მიტანისას
+          </Button>
+        </div>
       </div>
+
+      {/* Sticky bottom button — hides when inline one is visible */}
+      {!isButtonInView && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
+          <div className="container max-w-2xl mx-auto">
+            <Button
+              onClick={handleSubmit}
+              className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
+              size="lg"
+            >
+              შეკვეთა — გადახდა მიტანისას
+            </Button>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
