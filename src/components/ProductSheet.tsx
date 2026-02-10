@@ -320,7 +320,9 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             })()}
           </div>
           <TrustStrip />
-          <ScarcityPanel productId={product.id} />
+          <div className="my-3">
+            <ScarcityPanel productId={product.id} />
+          </div>
           <DemoTimer productId={product.id} />
           <div className="mt-3">
             <DeliveryQuestMini />
