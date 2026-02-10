@@ -1,19 +1,25 @@
 import { Zap } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { MOCK_PRODUCTS, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-const BoosterRow = () => {
+interface BoosterRowProps {
+  products: Product[];
+}
+
+const BoosterRow = ({ products }: BoosterRowProps) => {
   const { isUnlocked, remaining, addItem } = useCart();
 
   if (isUnlocked) return null;
 
   // Show cheap items that could help reach threshold
-  const boosterItems = MOCK_PRODUCTS
-    .filter((p) => p.price <= 5)
+  const boosterItems = products
+    .filter((p) => p.price <= 5 && p.price > 0)
     .sort((a, b) => a.price - b.price)
     .slice(0, 8);
+
+  if (boosterItems.length === 0) return null;
 
   return (
     <div className="bg-accent border border-primary/20 rounded-lg p-4 mb-4">
