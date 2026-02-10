@@ -11,7 +11,7 @@ const StickyCartHUD = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (location.pathname === "/success" || location.pathname === "/cart") return null;
+  if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
   if (itemCount === 0) return null;
 
   return (

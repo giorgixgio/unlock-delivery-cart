@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { createOrder } from "@/lib/orderService";
 
 const orderSchema = z.object({
   name: z.string().trim().min(1, "სახელი აუცილებელია").max(100),
@@ -20,7 +21,7 @@ const orderSchema = z.object({
 
 const Cart = () => {
   const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
-  const { setManualLocation } = useDelivery();
+  const { setManualLocation, isTbilisi } = useDelivery();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -34,6 +35,7 @@ const Cart = () => {
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const buttonAnchorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -61,7 +63,7 @@ const Cart = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // If form hasn't been interacted with, just scroll to it
     const hasAnyTouched = Object.values(touched).some(Boolean);
     if (!hasAnyTouched) {
@@ -90,8 +92,27 @@ const Cart = () => {
       return;
     }
 
-    clearCart();
-    navigate("/success");
+    setSubmitting(true);
+    try {
+      const order = await createOrder({
+        customerName: form.name,
+        customerPhone: form.phone,
+        city: form.region,
+        region: form.region,
+        addressLine1: form.address,
+        isTbilisi,
+        items,
+        subtotal: total,
+        total,
+      });
+      clearCart();
+      navigate("/success", { state: { orderNumber: order.public_order_number } });
+    } catch (err) {
+      console.error("Order creation failed:", err);
+      toast({ title: "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.", variant: "destructive", duration: 4000 });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (items.length === 0) {
@@ -216,10 +237,11 @@ const Cart = () => {
         <div ref={buttonAnchorRef}>
           <Button
             onClick={handleSubmit}
+            disabled={submitting}
             className={`w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200 ${isButtonInView ? "" : "invisible"}`}
             size="lg"
           >
-            შეკვეთა — გადახდა მიტანისას
+            {submitting ? "იგზავნება..." : "შეკვეთა — გადახდა მიტანისას"}
           </Button>
         </div>
       </div>
@@ -230,10 +252,11 @@ const Cart = () => {
           <div className="container max-w-2xl mx-auto">
             <Button
               onClick={handleSubmit}
+              disabled={submitting}
               className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
               size="lg"
             >
-              შეკვეთა — გადახდა მიტანისას
+              {submitting ? "იგზავნება..." : "შეკვეთა — გადახდა მიტანისას"}
             </Button>
           </div>
         </div>

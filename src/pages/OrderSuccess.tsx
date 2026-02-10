@@ -1,9 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const OrderSuccess = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const orderNumber = (location.state as { orderNumber?: string })?.orderNumber;
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
@@ -13,6 +15,11 @@ const OrderSuccess = () => {
       <h1 className="text-2xl font-extrabold text-foreground mb-2">
         შეკვეთა წარმატებულია!
       </h1>
+      {orderNumber && (
+        <p className="text-lg font-bold text-primary mb-2">
+          {orderNumber}
+        </p>
+      )}
       <p className="text-muted-foreground text-base mb-2">
         თქვენი შეკვეთა მიღებულია.
       </p>
