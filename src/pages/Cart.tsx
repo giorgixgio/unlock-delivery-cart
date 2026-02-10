@@ -120,13 +120,22 @@ const Cart = () => {
     return () => observer.disconnect();
   }, [items.length]);
 
-  // Auto-save customer info on field changes (debounced)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Auto-save customer info — save immediately on every change (no debounce)
+  const formRef2 = useRef(form);
+  formRef2.current = form;
+
   const persistForm = useCallback((data: typeof form) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      saveCustomerInfo(data);
-    }, 800);
+    saveCustomerInfo(data);
+  }, []);
+
+  // Also save on unmount in case anything was missed
+  useEffect(() => {
+    return () => {
+      const current = formRef2.current;
+      if (current.name || current.phone || current.region || current.address) {
+        saveCustomerInfo(current);
+      }
+    };
   }, []);
 
   const handleChange = (field: string, value: string) => {
