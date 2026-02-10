@@ -133,7 +133,7 @@ const ScarcityPanel = ({ productId }: { productId: string }) => {
           className={`h-full rounded-full transition-all duration-700 ${barColor}`}
           style={{ width: `${barPercent}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-foreground mix-blend-difference">
+        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
           {stock} ცალი დარჩა მარაგში
         </span>
       </div>
