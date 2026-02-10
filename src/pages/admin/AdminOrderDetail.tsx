@@ -5,11 +5,11 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save, CheckCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save, CheckCircle, AlertTriangle, ShieldAlert, GitMerge } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 
-const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold"];
+const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
 const statusColor: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
@@ -20,6 +20,7 @@ const statusColor: Record<string, string> = {
   canceled: "bg-red-100 text-red-800",
   returned: "bg-gray-100 text-gray-800",
   on_hold: "bg-orange-100 text-orange-800",
+  merged: "bg-slate-100 text-slate-500",
 };
 
 interface OrderDetail {
@@ -238,7 +239,42 @@ const AdminOrderDetail = () => {
             <AlertTriangle className="w-3 h-3" /> Review Required
           </span>
         )}
+        {order.tags?.includes("auto_merged") && (
+          <span className="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-600 flex items-center gap-1">
+            <GitMerge className="w-3 h-3" /> Merged Order
+          </span>
+        )}
+        {order.status === "merged" && (
+          <span className="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-500 flex items-center gap-1">
+            <GitMerge className="w-3 h-3" /> Merged into another order
+          </span>
+        )}
       </div>
+
+      {/* Merge info banner */}
+      {order.status === "merged" && order.internal_note && (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-2">
+          <GitMerge className="w-4 h-4 text-slate-500" />
+          <span className="text-sm text-slate-600">{order.internal_note}</span>
+          {(() => {
+            const match = order.internal_note?.match(/order\s+([0-9a-f-]{36})/i);
+            if (match) {
+              return (
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => navigate(`/admin/orders/${match[1]}`)}>
+                  View primary order →
+                </Button>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
+      {order.tags?.includes("auto_merged") && order.status !== "merged" && order.internal_note?.includes("Auto-merged") && (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-2">
+          <GitMerge className="w-4 h-4 text-slate-500" />
+          <span className="text-sm text-slate-600">{order.internal_note.split("\n").filter(l => l.includes("Auto-merged")).join("; ")}</span>
+        </div>
+      )}
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3 items-end">

@@ -8,7 +8,7 @@ import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
 
-const STATUS_OPTIONS = ["all", "new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold"];
+const STATUS_OPTIONS = ["all", "new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
 const statusColor: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
@@ -19,6 +19,7 @@ const statusColor: Record<string, string> = {
   canceled: "bg-red-100 text-red-800",
   returned: "bg-gray-100 text-gray-800",
   on_hold: "bg-orange-100 text-orange-800",
+  merged: "bg-slate-100 text-slate-500",
 };
 
 const DATE_FILTERS = [
@@ -64,6 +65,8 @@ interface OrderRow {
   risk_reasons: string[];
   review_required: boolean;
   order_items: { image_url: string; quantity: number }[];
+  tags: string[];
+  internal_note: string | null;
 }
 
 const AdminOrders = () => {
@@ -81,10 +84,17 @@ const AdminOrders = () => {
     setLoading(true);
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, risk_score, risk_level, risk_reasons, review_required, order_items(image_url, quantity)")
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, risk_score, risk_level, risk_reasons, review_required, tags, internal_note, order_items(image_url, quantity)")
       .order(sortField, { ascending: sortAsc });
 
-    if (statusFilter !== "all") query = query.eq("status", statusFilter);
+    if (statusFilter === "merged") {
+      query = query.eq("status", "merged");
+    } else if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    } else {
+      // Default: hide merged orders
+      query = query.neq("status", "merged");
+    }
 
     const dateRange = getDateRange(dateFilter);
     if (dateRange.from) query = query.gte("created_at", dateRange.from);
@@ -196,7 +206,12 @@ const AdminOrders = () => {
                   onClick={() => navigate(`/admin/orders/${order.id}`)}
                   className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-bold text-primary">{order.public_order_number}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-bold text-primary">{order.public_order_number}</span>
+                    {order.tags?.includes("auto_merged") && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">Merged</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {new Date(order.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
