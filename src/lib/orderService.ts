@@ -72,9 +72,14 @@ export async function createOrder(input: OrderInput) {
   // Fire-and-forget: normalize and score
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     fetch(`${supabaseUrl}/functions/v1/normalize-and-score`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+      },
       body: JSON.stringify({ order_id: order.id }),
     });
   } catch (e) {
