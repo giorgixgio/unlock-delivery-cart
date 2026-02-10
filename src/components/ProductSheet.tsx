@@ -357,7 +357,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     შეკვეთის დასრულება
                   </>
                 ) : (
-                  "გააგრძელე შოპინგი მიტანის განსაბლოკად"
+                  "გააგრძელე შოპინგი — მინ. შეკვეთა 40 ₾"
                 )}
               </button>
             ) : (

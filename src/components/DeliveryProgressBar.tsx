@@ -1,4 +1,4 @@
-import { Lock, CheckCircle } from "lucide-react";
+import { ShoppingBag, CheckCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 
@@ -13,10 +13,10 @@ const DeliveryProgressBar = () => {
           {isUnlocked ? (
             <CheckCircle className="w-5 h-5 text-success animate-pop-in" />
           ) : (
-            <Lock className="w-5 h-5 text-muted-foreground" />
+            <ShoppingBag className="w-5 h-5 text-muted-foreground" />
           )}
           <span className="text-sm font-semibold text-foreground">
-            {isUnlocked ? "მიტანა განბლოკილია!" : `გჭირდება კიდევ ${remaining.toFixed(1)} ₾`}
+            {isUnlocked ? "უფასო მიტანა ✓" : `კიდევ ${remaining.toFixed(1)} ₾ მინიმალურ შეკვეთამდე`}
           </span>
         </div>
         <span className="text-sm font-bold text-foreground">

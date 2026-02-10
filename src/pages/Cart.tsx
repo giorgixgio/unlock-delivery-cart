@@ -24,7 +24,7 @@ const Cart = () => {
   // Gate: redirect home if not unlocked
   useEffect(() => {
     if (!isUnlocked) {
-      toast({ title: "დაამატე პროდუქტები მიტანის განსაბლოკად", duration: 3000 });
+      toast({ title: "მინიმალური შეკვეთა 40 ₾ — დაამატე პროდუქტები", duration: 3000 });
       navigate("/", { replace: true });
     }
   }, [isUnlocked, navigate, toast]);

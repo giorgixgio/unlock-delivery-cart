@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import DeliveryMissionBar from "./DeliveryMissionBar";
 import { Button } from "@/components/ui/button";
 
@@ -65,7 +66,7 @@ const StickyCartHUD = () => {
           </Button>
         ) : (
           <p className="text-center text-sm font-bold text-muted-foreground py-1">
-            კიდევ {remaining.toFixed(1)} ₾ მიტანის განსაბლოკად
+            კიდევ {remaining.toFixed(1)} ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა
           </p>
         )}
       </div>
