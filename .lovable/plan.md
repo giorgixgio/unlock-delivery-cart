@@ -1,87 +1,89 @@
 
 
-## 🛒 Georgian COD Ecommerce — "Delivery Unlock Quest"
+## Fetch and Integrate BigMart.ge Product Data (500+ SKUs)
 
-A custom ecommerce storefront designed for older, low-digital-literacy users in Georgian regions. The entire experience revolves around a gamified "unlock delivery" mechanic — users fill a progress bar to 40 GEL before they can place a COD order.
+### What We Have
 
----
+Your Shopify store at bigmart.ge exposes a public JSON API with:
+- ~563 products across 14 real collections
+- Each product has: id, title, price, images, tags, SKU, variants, description
+- Collection endpoints let us map which products belong to which collection
 
-### 🎨 Visual Identity
-- **Temu-inspired palette**: Vibrant orange-red primary, bright accent badges, white/light gray backgrounds, bold black text
-- **All text in Georgian (ქართული)**
-- Extra-large typography, high-contrast buttons, rounded soft-shadow cards
-- Subtle micro-animations (150–250ms) on interactions — no complex motion
-- Custom outlined icon set (Lucide icons), no emoji
+### Collections Found
 
----
+| Collection | Handle | Product Count |
+|---|---|---|
+| აბაზანა და სანტექნიკა | აბაზანა-სანტექნიკა | 22 |
+| ავტომობილი | ავტომობილი | 45 |
+| აქსესუარები | აქსესუარები | 11 |
+| ბავშვები | ბავშვები | 33 |
+| ბაღი და ეზო | ბაღი-ეზო | 16 |
+| განათება | განათება | 22 |
+| ელექტრონიკა და გაჯეტები | ელექტრონიკა-გაჯეტები | 13 |
+| თავის მოვლა და სილამაზე | თავის-მოვლა-სილამაზე | 50 |
+| სამზარეულო | სამზარეულო | 111 |
+| სახლი და ინტერიერი | სახლი-ინტერიერი | 51 |
+| სპორტი და აქტიური ცხოვრება | სპორტი-აქტიური-ცხოვრება | 24 |
+| ხელსაწყოები | ხელსაწყოები | 47 |
 
-### 📄 Pages
+### Implementation Plan
 
-**1. Homepage (მთავარი)**
-- Top: Horizontal scrollable category filter chips (6–10 categories)
-- Below: Full product grid — all SKUs visible, no detail pages needed
-- Each **ProductCard** shows: large image, large price in GEL, short Georgian title, oversized +/– buttons with quantity display
-- Floating "+1" animation on add
-- **BoosterRow** appears when cart < 40 GEL — a highlighted row of cheap items with "სწრაფად დაამატე" (Quick Add) one-tap buttons; auto-hides at 40+
+#### Step 1: Fetch all products at build time
 
-**2. Cart Page (კალათა)**
-- Delivery progress bar at top (same unlock mechanic)
-- Large, clear item list with +/– controls and remove button
-- Simple order form: სახელი (Name), ტელეფონი (Phone), რეგიონი/ქალაქი (Region/City), მისამართი (Address)
-- Visual COD explanation block: "თანხას გადაიხდით კურიერთან. ბარათი არ გჭირდებათ." (You pay the courier. No card needed.)
-- "შეკვეთა — გადახდა მიტანისას" (Order — Pay on Delivery) button, disabled below 40 GEL
+I will fetch products from your store's public API across all pages:
+- `bigmart.ge/products.json?limit=250&page=1` (first 250)
+- `bigmart.ge/products.json?limit=250&page=2` (next 250)
+- `bigmart.ge/products.json?limit=250&page=3` (remaining)
 
-**3. Order Success Page (შეკვეთა წარმატებულია)**
-- Celebratory confirmation with checkmark animation
-- Order summary and estimated delivery info
-- "მთავარ გვერდზე დაბრუნება" (Back to Home) button
+For collection mapping, I will fetch each collection's product list from:
+- `bigmart.ge/collections/{handle}/products.json`
 
----
+#### Step 2: Create a product data module
 
-### 🧩 Key Components
+Replace `MOCK_PRODUCTS` in `src/lib/constants.ts` with real data. The new product type will include:
 
-**StickyCartHUD (Global Bottom Bar)**
-- Always visible, sticks to bottom on all pages
-- Row of small selected-item thumbnails (inventory slot style)
-- Large cart total in GEL
-- Animated **DeliveryProgressBar** (0 → 40 GEL)
-- Dynamic text: "გჭირდება კიდევ X ₾" (below 40) → "მიტანა განბლოკილია! ✓" (at 40+)
-- Lock icon → checkmark animation at unlock threshold
-- Subtle glow effect when delivery unlocks
-- CTA button disabled/enabled based on threshold
+```text
+Product {
+  id: string
+  title: string
+  price: number
+  compareAtPrice: number | null
+  image: string (primary image URL)
+  images: string[] (all image URLs)
+  category: string (collection handle)
+  tags: string[]
+  sku: string
+  available: boolean
+  description: string
+  vendor: string
+  handle: string
+}
+```
 
-**DeliveryProgressBar**
-- Smooth animated fill bar with GEL markers
-- Color transition: gray/red → green at 40 GEL
-- Lock/unlock icon state
+Since 500+ products is too large for a single constants file, I will create a separate `src/data/products.ts` file.
 
-**ProductCard**
-- Large image, price, title, oversized +/– buttons
-- Add-to-cart floating animation
+#### Step 3: Update categories
 
-**BoosterRow**
-- Conditional row of low-price items for quick top-up
-- One-tap add, disappears when threshold met
+Replace the current hardcoded `CATEGORIES` array with your real Shopify collections (the 12 real ones above, plus an "all" option).
 
----
+#### Step 4: Update components
 
-### ⚙️ Technical Approach
+- **ProductCard**: Update to use new product fields (real images from Shopify CDN, real prices)
+- **BoosterRow**: Filter based on real product prices
+- **Index page**: Use real categories from collections
+- **Cart**: Works as-is since it references the Product type
 
-- **Shopify integration** for product catalog (fetching products) and order creation (COD orders via API)
-- Cart state managed entirely in Lovable (React context/state)
-- 40 GEL threshold stored as a configurable constant
-- Form validation with Zod for the checkout form
-- Mobile-first responsive design
+### Technical Details
 
----
+- Product data will be statically embedded in the bundle (no runtime API calls needed)
+- Shopify CDN image URLs will be used directly (fast, cached)
+- The `CategoryId` type will be updated to match real collection handles
+- Products belonging to multiple collections will use their primary/first collection
 
-### 🔧 Implementation Order
-1. Design system setup (Temu colors, Georgian fonts, large typography tokens)
-2. Cart context & delivery threshold logic
-3. ProductCard + product grid with category filters
-4. StickyCartHUD with DeliveryProgressBar
-5. BoosterRow component
-6. Cart page with order form
-7. Order success page
-8. Connect Shopify for product data & order submission
+### What You Will Get
+
+- All ~563 real products from BigMart.ge displayed in the store
+- Real collection-based category filtering
+- Real product images, prices, tags, and SKUs
+- Everything else (cart, delivery threshold, COD flow) continues working as before
 
