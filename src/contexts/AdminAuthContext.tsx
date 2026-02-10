@@ -20,15 +20,26 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState(true);
 
   const checkAdmin = async (email: string) => {
-    const { data } = await supabase
-      .from("admin_users")
-      .select("is_active")
-      .eq("email", email)
-      .maybeSingle();
-    return data?.is_active === true;
+    try {
+      const { data, error } = await supabase
+        .from("admin_users")
+        .select("is_active")
+        .eq("email", email)
+        .maybeSingle();
+      if (error) {
+        console.error("Admin check error:", error);
+        return false;
+      }
+      return data?.is_active === true;
+    } catch (e) {
+      console.error("Admin check exception:", e);
+      return false;
+    }
   };
 
   useEffect(() => {
+    let initialized = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -38,7 +49,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } else {
         setIsAdmin(false);
       }
-      setLoading(false);
+      if (initialized) {
+        setLoading(false);
+      }
     });
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -48,6 +61,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const admin = await checkAdmin(session.user.email);
         setIsAdmin(admin);
       }
+      initialized = true;
       setLoading(false);
     });
 
