@@ -1,13 +1,22 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save, CheckCircle, AlertTriangle, ShieldAlert, GitMerge } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ArrowLeft, Loader2, MapPin, User, Phone, Mail, Save,
+  CheckCircle, AlertTriangle, ShieldAlert, GitMerge, Undo2, XCircle, PauseCircle, Sparkles,
+} from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
@@ -56,11 +65,15 @@ interface OrderDetail {
   risk_level: string;
   risk_reasons: string[];
   review_required: boolean;
+  auto_confirmed: boolean;
+  auto_confirm_reason: string | null;
   raw_city: string | null;
   raw_address: string | null;
   normalized_city: string | null;
   normalized_address: string | null;
   normalization_confidence: number | null;
+  merged_into_order_id: string | null;
+  merged_child_order_ids: string[] | null;
   order_items: {
     id: string;
     title: string;
@@ -80,14 +93,27 @@ interface OrderEvent {
   payload: Record<string, unknown>;
 }
 
+interface MergedChildInfo {
+  id: string;
+  public_order_number: string;
+  created_at: string;
+  total: number;
+}
+
 const AdminOrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromTab = searchParams.get("from") || "review";
   const { user } = useAdminAuth();
+  const { toast } = useToast();
+
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [mergedChildren, setMergedChildren] = useState<MergedChildInfo[]>([]);
+  const [undoMergeOpen, setUndoMergeOpen] = useState(false);
 
   const [status, setStatus] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -104,7 +130,7 @@ const AdminOrderDetail = () => {
         .from("orders")
         .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url)")
         .eq("id", id)
-        .single(),
+        .maybeSingle(),
       supabase
         .from("order_events")
         .select("*")
@@ -122,6 +148,18 @@ const AdminOrderDetail = () => {
       setCourierName(o.courier_name || "");
       setTrackingNumber(o.tracking_number || "");
       setTrackingUrl(o.tracking_url || "");
+
+      // Fetch merged children
+      const childIds = o.merged_child_order_ids || [];
+      if (childIds.length > 0) {
+        const { data: children } = await supabase
+          .from("orders")
+          .select("id, public_order_number, created_at, total")
+          .in("id", childIds);
+        setMergedChildren((children as MergedChildInfo[]) || []);
+      } else {
+        setMergedChildren([]);
+      }
     }
     setEvents((eventsData as unknown as OrderEvent[]) || []);
     setAdminUsers(admins || []);
@@ -139,10 +177,64 @@ const AdminOrderDetail = () => {
     }]);
   };
 
+  const goBackToList = () => {
+    navigate(`/admin/orders?tab=${fromTab}`);
+  };
+
+  // === DECISION ACTIONS ===
+  const handleConfirmOrder = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    await supabase.from("orders").update({
+      is_confirmed: true,
+      status: "confirmed",
+      review_required: false,
+    }).eq("id", id);
+    await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
+    toast({ title: "Order confirmed ✓" });
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  const handleKeepOnHold = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    await supabase.from("orders").update({ status: "on_hold" }).eq("id", id);
+    await logEvent("kept_on_hold", { previous_status: order.status });
+    toast({ title: "Order placed on hold" });
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  const handleCancelDuplicate = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    const newTags = [...(order.tags || [])];
+    if (!newTags.includes("duplicate_confirmed")) newTags.push("duplicate_confirmed");
+    await supabase.from("orders").update({
+      status: "canceled",
+      review_required: false,
+      tags: newTags,
+    }).eq("id", id);
+    await logEvent("canceled_duplicate", { previous_status: order.status });
+    toast({ title: "Order canceled as duplicate" });
+    goBackToList();
+    setSaving(false);
+  };
+
+  const handleToggleFulfilled = async () => {
+    if (!order || !id) return;
+    setSaving(true);
+    const newVal = !order.is_fulfilled;
+    await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
+    await logEvent("fulfillment_change", { is_fulfilled: newVal });
+    await refreshOrder();
+    setSaving(false);
+  };
+
   const handleSave = async () => {
     if (!order || !id) return;
     setSaving(true);
-
     const updates: Record<string, unknown> = {};
     const eventLogs: { type: string; payload: Record<string, unknown> }[] = [];
 
@@ -171,43 +263,100 @@ const AdminOrderDetail = () => {
     for (const evt of eventLogs) {
       await logEvent(evt.type, evt.payload);
     }
-
+    toast({ title: "Changes saved" });
     await refreshOrder();
     setSaving(false);
   };
 
-  const handleConfirm = async (override = false) => {
+  // === UNDO MERGE ===
+  const canUndoMerge = order &&
+    order.tags?.includes("auto_merged") &&
+    !order.is_fulfilled &&
+    !["shipped", "delivered"].includes(order.status) &&
+    mergedChildren.length > 0;
+
+  const handleUndoMerge = async () => {
     if (!order || !id) return;
-    if (order.review_required && !override) return;
     setSaving(true);
+    setUndoMergeOpen(false);
+
+    const childIds = order.merged_child_order_ids || [];
+
+    for (const childId of childIds) {
+      // Find original status from merge event
+      const { data: _mergeEvents } = await supabase
+        .from("order_events")
+        .select("payload")
+        .eq("order_id", childId)
+        .eq("event_type", "auto_merge")
+        .limit(1);
+
+      // Check if child has tracking
+      const { data: childOrder } = await supabase
+        .from("orders")
+        .select("tracking_number, order_items(id)")
+        .eq("id", childId)
+        .maybeSingle();
+
+      if (childOrder?.tracking_number) {
+        toast({ title: "Cannot undo merge", description: "Child order has tracking number set.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+
+      // Restore child order
+      await supabase.from("orders").update({
+        status: "new",
+        is_confirmed: false,
+        is_fulfilled: false,
+        merged_into_order_id: null,
+        internal_note: null,
+        review_required: true,
+      }).eq("id", childId);
+
+      // Log undo on child
+      await supabase.from("order_events").insert({
+        order_id: childId,
+        actor: user?.email || "admin",
+        event_type: "undo_merge",
+        payload: { primary_order_id: id, action: "child_restored" } as unknown as import("@/integrations/supabase/types").Json,
+      });
+    }
+
+    // Remove items that came from children (items added after merge)
+    // We can't perfectly track which items were merged, so we recalculate from remaining items
+    const newTags = (order.tags || []).filter(t => t !== "auto_merged");
+    const noteLines = (order.internal_note || "").split("\n").filter(l => !l.includes("Auto-merged"));
+
     await supabase.from("orders").update({
-      is_confirmed: true,
-      status: "confirmed",
-      review_required: false,
+      merged_child_order_ids: [],
+      tags: newTags,
+      internal_note: noteLines.join("\n").trim() || null,
     }).eq("id", id);
-    await logEvent("confirmation", { action: "confirmed", override });
+
+    // Recalculate primary totals
+    const { data: remainingItems } = await supabase
+      .from("order_items")
+      .select("line_total")
+      .eq("order_id", id);
+    const newSubtotal = (remainingItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
+    await supabase.from("orders").update({
+      subtotal: newSubtotal,
+      total: newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0),
+    }).eq("id", id);
+
+    await logEvent("undo_merge", { children_restored: childIds });
+    toast({ title: "Merge undone", description: `${childIds.length} order(s) restored.` });
     await refreshOrder();
     setSaving(false);
   };
 
-  const handleMarkDuplicate = async () => {
-    if (!order || !id) return;
-    setSaving(true);
-    await supabase.from("orders").update({ status: "canceled", review_required: false }).eq("id", id);
-    await logEvent("risk_override", { action: "marked_duplicate_canceled" });
-    await refreshOrder();
-    setSaving(false);
-  };
-
-  const handleToggleFulfilled = async () => {
-    if (!order || !id) return;
-    setSaving(true);
-    const newVal = !order.is_fulfilled;
-    await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
-    await logEvent("fulfillment_change", { is_fulfilled: newVal });
-    await refreshOrder();
-    setSaving(false);
-  };
+  // Determine if this order needs review (show decision panel)
+  const needsReview = order && (
+    ["new", "on_hold"].includes(order.status) ||
+    !order.is_confirmed ||
+    order.review_required
+  ) && order.status !== "merged" && order.status !== "canceled";
 
   if (loading) {
     return (
@@ -225,7 +374,7 @@ const AdminOrderDetail = () => {
     <div className="p-6 space-y-6 max-w-5xl">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={() => navigate("/admin/orders")} className="p-1">
+        <button onClick={goBackToList} className="p-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-xl font-extrabold">{order.public_order_number}</h1>
@@ -237,6 +386,11 @@ const AdminOrderDetail = () => {
         {order.review_required && (
           <span className="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" /> Review Required
+          </span>
+        )}
+        {order.auto_confirmed && (
+          <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-700 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> Auto-confirmed
           </span>
         )}
         {order.tags?.includes("auto_merged") && (
@@ -251,28 +405,115 @@ const AdminOrderDetail = () => {
         )}
       </div>
 
-      {/* Merge info banner */}
-      {order.status === "merged" && order.internal_note && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-2">
-          <GitMerge className="w-4 h-4 text-slate-500" />
-          <span className="text-sm text-slate-600">{order.internal_note}</span>
-          {(() => {
-            const match = order.internal_note?.match(/order\s+([0-9a-f-]{36})/i);
-            if (match) {
-              return (
-                <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => navigate(`/admin/orders/${match[1]}`)}>
-                  View primary order →
-                </Button>
-              );
-            }
-            return null;
-          })()}
+      {/* Auto-confirm explanation */}
+      {order.auto_confirmed && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-emerald-600" />
+          <span className="text-sm text-emerald-700">
+            {order.auto_confirm_reason || "High confidence: clean address + no duplicate signals"}
+          </span>
         </div>
       )}
-      {order.tags?.includes("auto_merged") && order.status !== "merged" && order.internal_note?.includes("Auto-merged") && (
+
+      {/* Merged child banner */}
+      {order.status === "merged" && order.merged_into_order_id && (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center gap-2">
           <GitMerge className="w-4 h-4 text-slate-500" />
-          <span className="text-sm text-slate-600">{order.internal_note.split("\n").filter(l => l.includes("Auto-merged")).join("; ")}</span>
+          <span className="text-sm text-slate-600">This order was merged into another order.</span>
+          <Button variant="link" size="sm" className="h-auto p-0 text-primary" onClick={() => navigate(`/admin/orders/${order.merged_into_order_id}?from=${fromTab}`)}>
+            View primary order →
+          </Button>
+        </div>
+      )}
+
+      {/* Decision panel (only for Needs Review orders) */}
+      {needsReview && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+          <h3 className="font-bold text-sm text-amber-900 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Decision Required
+          </h3>
+          {order.risk_score > 0 && (
+            <div className="flex items-center gap-3 mb-2">
+              <RiskBadge riskLevel={order.risk_level} riskScore={order.risk_score} />
+              <div className="flex flex-wrap gap-1.5">
+                {order.risk_reasons.map((reason, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-amber-100 text-xs text-amber-800">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={handleConfirmOrder}
+              disabled={saving}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Confirm Order
+            </Button>
+            <Button
+              onClick={handleKeepOnHold}
+              disabled={saving}
+              variant="outline"
+              className="gap-2"
+            >
+              <PauseCircle className="w-4 h-4" />
+              Keep on Hold
+            </Button>
+            <Button
+              onClick={handleCancelDuplicate}
+              disabled={saving}
+              variant="destructive"
+              className="gap-2"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel as Duplicate
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Merged orders panel (primary order) */}
+      {mergedChildren.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <GitMerge className="w-4 h-4 text-slate-500" /> Merged Orders ({mergedChildren.length})
+            </h3>
+            {canUndoMerge && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50"
+                onClick={() => setUndoMergeOpen(true)}
+                disabled={saving}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Undo Merge
+              </Button>
+            )}
+            {order.is_fulfilled && (
+              <span className="text-xs text-muted-foreground">Cannot undo after fulfillment</span>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {mergedChildren.map((child) => (
+              <div key={child.id} className="flex items-center justify-between py-1.5 px-2 rounded bg-background border border-border text-sm">
+                <button
+                  className="font-bold text-primary hover:underline"
+                  onClick={() => navigate(`/admin/orders/${child.id}?from=${fromTab}`)}
+                >
+                  #{child.public_order_number}
+                </button>
+                <span className="text-muted-foreground">
+                  {new Date(child.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className="font-medium">{Number(child.total).toFixed(1)} ₾</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -307,34 +548,14 @@ const AdminOrderDetail = () => {
           <Save className="w-4 h-4 mr-1" />
           {saving ? "Saving..." : "Save Changes"}
         </Button>
+        <Button onClick={goBackToList} variant="outline" className="h-10">
+          Back to List
+        </Button>
       </div>
 
-      {/* Confirm / Fulfill actions */}
-      <div className="flex flex-wrap gap-3">
-        {!order.is_confirmed && (
-          <>
-            <Button
-              onClick={() => handleConfirm(false)}
-              disabled={saving || order.review_required}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Confirm Order
-            </Button>
-            {order.review_required && (
-              <Button
-                onClick={() => handleConfirm(true)}
-                disabled={saving}
-                variant="outline"
-                className="gap-2 border-amber-500 text-amber-700 hover:bg-amber-50"
-              >
-                <ShieldAlert className="w-4 h-4" />
-                Override & Confirm
-              </Button>
-            )}
-          </>
-        )}
-        {order.is_confirmed && (
+      {/* Fulfill actions */}
+      {order.is_confirmed && order.status !== "merged" && (
+        <div className="flex flex-wrap gap-3">
           <Button
             onClick={handleToggleFulfilled}
             disabled={saving}
@@ -343,21 +564,11 @@ const AdminOrderDetail = () => {
           >
             {order.is_fulfilled ? "Unmark Fulfilled" : "Mark Fulfilled"}
           </Button>
-        )}
-        {order.review_required && (
-          <Button
-            onClick={handleMarkDuplicate}
-            disabled={saving}
-            variant="destructive"
-            className="gap-2"
-          >
-            Mark as Duplicate & Cancel
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Risk card */}
-      {(order.risk_score > 0 || order.review_required) && (
+      {/* Risk card (only if score > 0 and not in decision panel already) */}
+      {order.risk_score > 0 && !needsReview && (
         <div className="bg-card rounded-lg p-4 border border-amber-200 space-y-2">
           <h3 className="font-bold text-sm flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-600" /> Risk Assessment
@@ -491,7 +702,7 @@ const AdminOrderDetail = () => {
                   <p className="text-xs text-muted-foreground">
                     {new Date(evt.created_at).toLocaleString("ka-GE")} — <span className="font-medium">{evt.actor}</span>
                   </p>
-                  <p className="text-sm font-medium capitalize">{evt.event_type.replace("_", " ")}</p>
+                  <p className="text-sm font-medium capitalize">{evt.event_type.replace(/_/g, " ")}</p>
                   {evt.payload && Object.keys(evt.payload).length > 0 && (
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {JSON.stringify(evt.payload)}
@@ -503,6 +714,22 @@ const AdminOrderDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Undo Merge Confirmation Dialog */}
+      <AlertDialog open={undoMergeOpen} onOpenChange={setUndoMergeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Undo Merge</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will restore {mergedChildren.length} child order(s) and recalculate totals. The restored orders will appear in "Needs Review". Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUndoMerge}>Undo Merge</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

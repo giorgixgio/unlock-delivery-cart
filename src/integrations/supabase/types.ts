@@ -173,6 +173,8 @@ export type Database = {
           address_line1: string
           address_line2: string | null
           assigned_to: string | null
+          auto_confirm_reason: string | null
+          auto_confirmed: boolean | null
           channel: string
           city: string
           cookie_id_hash: string | null
@@ -190,6 +192,8 @@ export type Database = {
           is_confirmed: boolean
           is_fulfilled: boolean
           is_tbilisi: boolean
+          merged_child_order_ids: string[] | null
+          merged_into_order_id: string | null
           normalization_confidence: number | null
           normalization_notes: string | null
           normalized_address: string | null
@@ -220,6 +224,8 @@ export type Database = {
           address_line1?: string
           address_line2?: string | null
           assigned_to?: string | null
+          auto_confirm_reason?: string | null
+          auto_confirmed?: boolean | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -237,6 +243,8 @@ export type Database = {
           is_confirmed?: boolean
           is_fulfilled?: boolean
           is_tbilisi?: boolean
+          merged_child_order_ids?: string[] | null
+          merged_into_order_id?: string | null
           normalization_confidence?: number | null
           normalization_notes?: string | null
           normalized_address?: string | null
@@ -267,6 +275,8 @@ export type Database = {
           address_line1?: string
           address_line2?: string | null
           assigned_to?: string | null
+          auto_confirm_reason?: string | null
+          auto_confirmed?: boolean | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -284,6 +294,8 @@ export type Database = {
           is_confirmed?: boolean
           is_fulfilled?: boolean
           is_tbilisi?: boolean
+          merged_child_order_ids?: string[] | null
+          merged_into_order_id?: string | null
           normalization_confidence?: number | null
           normalization_notes?: string | null
           normalized_address?: string | null

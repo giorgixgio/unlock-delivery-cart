@@ -63,8 +63,18 @@ Deno.serve(async (req) => {
       updates.review_required = true;
     }
 
+    // === AUTO-CONFIRM (low risk + high confidence) ===
+    if (riskLevel === "low" && riskScore === 0 && confidence >= 0.75) {
+      updates.auto_confirmed = true;
+      updates.auto_confirm_reason = "High confidence: clean address + no duplicate signals";
+      updates.is_confirmed = true;
+      updates.status = "confirmed";
+      updates.review_required = false;
+    }
+
     await supabase.from("orders").update(updates).eq("id", order_id);
 
+    // Log events
     if (riskScore > 0) {
       await supabase.from("order_events").insert({
         order_id,
@@ -74,7 +84,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, risk_score: riskScore, risk_level: riskLevel }), {
+    if (updates.auto_confirmed) {
+      await supabase.from("order_events").insert({
+        order_id,
+        actor: "system",
+        event_type: "auto_confirm",
+        payload: { reason: updates.auto_confirm_reason },
+      });
+    }
+
+    return new Response(JSON.stringify({ ok: true, risk_score: riskScore, risk_level: riskLevel, auto_confirmed: !!updates.auto_confirmed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
@@ -106,7 +125,6 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     .eq("is_fulfilled", false)
     .neq("status", "merged");
 
-  // Build identity filter: same cookie OR same phone
   const filters: string[] = [];
   if (order.cookie_id_hash) filters.push(`cookie_id_hash.eq.${order.cookie_id_hash}`);
   if (order.customer_phone) filters.push(`customer_phone.eq.${order.customer_phone}`);
@@ -124,19 +142,17 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     return cSkus.some((s: string) => orderSkuSet.has(s));
   });
 
-  if (strongMatches.length !== 1) return { merged: false }; // Only merge if exactly ONE match
+  if (strongMatches.length !== 1) return { merged: false };
 
   const match = strongMatches[0];
-
-  // Determine primary (earliest) and child (newest)
   const matchDate = new Date(match.created_at);
-  const isPrimary = orderDate < matchDate;
+  const isPrimary = new Date(order.created_at) < matchDate;
   const primaryOrder = isPrimary ? order : match;
   const childOrder = isPrimary ? match : order;
   const primaryId = primaryOrder.id;
   const childId = childOrder.id;
 
-  // Merge items: sum quantities for same SKU, append new ones
+  // Merge items
   const primaryItems: any[] = primaryOrder.order_items || [];
   const childItems: any[] = childOrder.order_items || [];
   const primarySkuMap = new Map<string, any>();
@@ -147,14 +163,12 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
   for (const childItem of childItems) {
     const existing = primarySkuMap.get(childItem.sku);
     if (existing) {
-      // Sum quantities
       const newQty = existing.quantity + childItem.quantity;
       const newLineTotal = newQty * Number(existing.unit_price);
       await supabase.from("order_items")
         .update({ quantity: newQty, line_total: newLineTotal })
         .eq("id", existing.id);
     } else {
-      // Append as new item on primary order
       await supabase.from("order_items").insert({
         order_id: primaryId,
         product_id: childItem.product_id || "",
@@ -175,36 +189,36 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
     .eq("order_id", primaryId);
   const newSubtotal = (updatedItems || []).reduce((sum: number, i: any) => sum + Number(i.line_total), 0);
 
-  // Update primary order
   const existingNote = primaryOrder.internal_note || "";
   const mergeNote = `Auto-merged same-day duplicate order: ${childId}`;
   const existingTags: string[] = primaryOrder.tags || [];
   const newTags = existingTags.includes("auto_merged") ? existingTags : [...existingTags, "auto_merged"];
+  const existingChildIds: string[] = primaryOrder.merged_child_order_ids || [];
 
   await supabase.from("orders").update({
     subtotal: newSubtotal,
     total: newSubtotal + Number(primaryOrder.shipping_fee || 0) - Number(primaryOrder.discount_total || 0),
     internal_note: existingNote ? `${existingNote}\n${mergeNote}` : mergeNote,
     tags: newTags,
+    merged_child_order_ids: [...existingChildIds, childId],
     risk_score: 0,
     risk_level: "low",
     risk_reasons: [],
     review_required: false,
   }).eq("id", primaryId);
 
-  // Update child order
   await supabase.from("orders").update({
     status: "merged",
     is_confirmed: false,
     is_fulfilled: false,
     internal_note: `Merged automatically into order ${primaryId}`,
+    merged_into_order_id: primaryId,
     risk_score: 0,
     risk_level: "low",
     risk_reasons: [],
     review_required: false,
   }).eq("id", childId);
 
-  // Log events on both
   const mergePayload = { primary_order_id: primaryId, child_order_id: childId, reason: "same_day_duplicate" };
   await supabase.from("order_events").insert([
     { order_id: primaryId, actor: "system", event_type: "auto_merge", payload: { ...mergePayload, role: "primary" } },
