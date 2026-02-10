@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
@@ -225,7 +225,7 @@ const DescriptionSection = ({ description }: { description: string }) => {
 
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked } = useCart();
-  const navigate = useNavigate();
+  const { handleCheckoutIntent } = useCheckoutGate();
   // "idle" → "added" (checkmark morphs into finalize via slide)
   const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
   const prevUnlocked = useRef(isUnlocked);
@@ -262,13 +262,8 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   };
 
   const handleFinalize = () => {
-    if (isUnlocked) {
-      onClose();
-      navigate("/cart");
-    } else {
-      // Close sheet, return to homepage to continue shopping
-      onClose();
-    }
+    onClose();
+    handleCheckoutIntent("pdp_sheet");
   };
 
   return (

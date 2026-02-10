@@ -1,14 +1,15 @@
 import { ShoppingCart } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+
 import DeliveryMissionBar from "./DeliveryMissionBar";
 import DeliveryInfoMini from "./DeliveryInfoMini";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
-  const { items, total, itemCount, isUnlocked, remaining } = useCart();
-  const navigate = useNavigate();
+  const { items, total, itemCount, isUnlocked } = useCart();
+  const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
 
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
@@ -57,20 +58,18 @@ const StickyCartHUD = () => {
         <DeliveryMissionBar mini />
         <DeliveryInfoMini />
 
-        {/* CTA */}
-        {isUnlocked ? (
-          <Button
-            onClick={() => navigate("/cart")}
-            className="w-full h-11 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
-            size="lg"
-          >
-            შეკვეთის დასრულება
-          </Button>
-        ) : (
-          <p className="text-center text-sm font-bold text-muted-foreground py-1">
-            კიდევ {remaining.toFixed(1)} ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა
-          </p>
-        )}
+        {/* CTA — always clickable */}
+        <Button
+          onClick={() => handleCheckoutIntent("floating")}
+          className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
+            isUnlocked
+              ? "bg-success hover:bg-success/90 text-success-foreground"
+              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+          }`}
+          size="lg"
+        >
+          შეკვეთის დასრულება
+        </Button>
       </div>
     </div>
   );

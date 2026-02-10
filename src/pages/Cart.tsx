@@ -29,13 +29,13 @@ const Cart = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Gate: redirect home if not unlocked
+  // Gate: redirect home if not unlocked (cart page requires minimum order)
   useEffect(() => {
-    if (!isUnlocked) {
+    if (!isUnlocked && items.length > 0) {
       toast({ title: "მინიმალური შეკვეთა 40 ₾ — დაამატე პროდუქტები", duration: 3000 });
       navigate("/", { replace: true });
     }
-  }, [isUnlocked, navigate, toast]);
+  }, [isUnlocked, navigate, toast, items.length]);
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
