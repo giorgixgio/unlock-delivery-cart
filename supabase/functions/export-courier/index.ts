@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
         C: order.normalized_city || order.raw_city || order.city || "",
         E: order.customer_phone || "",
         G: quantities,
-        H: order.id,
+        H: order.public_order_number,
         I: skus,
         K: String(Number(order.total || 0)),
         O: notes.join(" | "),
