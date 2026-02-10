@@ -100,6 +100,17 @@ interface MergedChildInfo {
   total: number;
 }
 
+interface PreviousOrder {
+  id: string;
+  public_order_number: string;
+  created_at: string;
+  total: number;
+  status: string;
+  is_fulfilled: boolean;
+  customer_phone: string;
+  order_items: { sku: string; title: string; quantity: number }[];
+}
+
 const AdminOrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -113,6 +124,7 @@ const AdminOrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mergedChildren, setMergedChildren] = useState<MergedChildInfo[]>([]);
+  const [previousOrders, setPreviousOrders] = useState<PreviousOrder[]>([]);
   const [undoMergeOpen, setUndoMergeOpen] = useState(false);
 
   const [status, setStatus] = useState("");
@@ -159,6 +171,23 @@ const AdminOrderDetail = () => {
         setMergedChildren((children as MergedChildInfo[]) || []);
       } else {
         setMergedChildren([]);
+      }
+
+      // Fetch previous orders from same customer (phone or cookie)
+      const orConditions: string[] = [];
+      if (o.customer_phone) orConditions.push(`customer_phone.eq.${o.customer_phone}`);
+      if ((o as any).cookie_id_hash) orConditions.push(`cookie_id_hash.eq.${(o as any).cookie_id_hash}`);
+      if (orConditions.length > 0) {
+        const { data: prevOrders } = await supabase
+          .from("orders")
+          .select("id, public_order_number, created_at, total, status, is_fulfilled, customer_phone, order_items(sku, title, quantity)")
+          .neq("id", id)
+          .or(orConditions.join(","))
+          .order("created_at", { ascending: false })
+          .limit(10);
+        setPreviousOrders((prevOrders as unknown as PreviousOrder[]) || []);
+      } else {
+        setPreviousOrders([]);
       }
     }
     setEvents((eventsData as unknown as OrderEvent[]) || []);
@@ -511,6 +540,40 @@ const AdminOrderDetail = () => {
                   {new Date(child.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </span>
                 <span className="font-medium">{Number(child.total).toFixed(1)} ₾</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Previous orders from same customer */}
+      {previousOrders.length > 0 && (
+        <div className="bg-card rounded-lg p-4 border border-border space-y-3">
+          <h3 className="font-bold text-sm flex items-center gap-2">
+            <User className="w-4 h-4 text-muted-foreground" /> Previous Orders from This Customer ({previousOrders.length})
+          </h3>
+          <div className="space-y-1.5">
+            {previousOrders.map((prev) => (
+              <div key={prev.id} className="flex items-center justify-between py-2 px-3 rounded bg-muted/30 border border-border text-sm">
+                <button
+                  className="font-bold text-primary hover:underline"
+                  onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}
+                >
+                  #{prev.public_order_number}
+                </button>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
+                  {prev.status.replace("_", " ")}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                  {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
+                </span>
+                <span className="font-medium">{Number(prev.total).toFixed(1)} ₾</span>
+                {prev.is_fulfilled && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">Fulfilled</span>
+                )}
               </div>
             ))}
           </div>

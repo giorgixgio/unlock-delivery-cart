@@ -25,7 +25,6 @@ Deno.serve(async (req) => {
       .eq("is_confirmed", true)
       .eq("is_fulfilled", false)
       .eq("status", "confirmed")
-      .eq("review_required", false)
       .order("created_at", { ascending: true });
 
     if (ordersErr) {
