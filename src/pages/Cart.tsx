@@ -79,7 +79,7 @@ const Cart = () => {
   }
 
   return (
-    <main className="pb-8">
+    <main className="pb-24">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
         <div className="container max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
