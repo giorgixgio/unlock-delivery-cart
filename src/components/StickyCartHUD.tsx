@@ -1,7 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import DeliveryProgressBar from "./DeliveryProgressBar";
+import DeliveryMissionBar from "./DeliveryMissionBar";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
@@ -9,9 +9,7 @@ const StickyCartHUD = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Don't show on success page
   if (location.pathname === "/success") return null;
-  // Don't show when cart empty
   if (itemCount === 0) return null;
 
   return (
@@ -20,14 +18,14 @@ const StickyCartHUD = () => {
         isUnlocked ? "border-success glow-unlock" : "border-primary"
       }`}
     >
-      <div className="container max-w-2xl mx-auto px-4 py-3 space-y-2">
-        {/* Item thumbnails row */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <div className="flex gap-1.5 flex-shrink-0">
-            {items.slice(0, 6).map((item) => (
+      <div className="container max-w-2xl mx-auto px-4 py-2.5 space-y-1.5">
+        {/* Row: thumbnails + total */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5 flex-shrink-0 overflow-x-auto">
+            {items.slice(0, 5).map((item) => (
               <div
                 key={item.product.id}
-                className="relative w-10 h-10 rounded-md overflow-hidden border-2 border-border flex-shrink-0"
+                className="relative w-9 h-9 rounded-md overflow-hidden border border-border flex-shrink-0"
               >
                 <img
                   src={item.product.image}
@@ -35,32 +33,32 @@ const StickyCartHUD = () => {
                   className="w-full h-full object-cover"
                 />
                 {item.quantity > 1 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
                     {item.quantity}
                   </span>
                 )}
               </div>
             ))}
-            {items.length > 6 && (
-              <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground border-2 border-border">
-                +{items.length - 6}
+            {items.length > 5 && (
+              <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground border border-border">
+                +{items.length - 5}
               </div>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-foreground" />
-            <span className="text-xl font-extrabold text-foreground">{total.toFixed(1)} ₾</span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <ShoppingCart className="w-4 h-4 text-foreground" />
+            <span className="text-lg font-extrabold text-foreground">{total.toFixed(1)} ₾</span>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <DeliveryProgressBar />
+        {/* Mini mission bar */}
+        <DeliveryMissionBar mini />
 
         {/* CTA */}
         <Button
           onClick={() => navigate("/cart")}
           disabled={!isUnlocked}
-          className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
+          className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
             isUnlocked
               ? "bg-success hover:bg-success/90 text-success-foreground"
               : ""

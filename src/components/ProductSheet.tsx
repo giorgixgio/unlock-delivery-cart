@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
+import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Lock, CheckCircle } from "lucide-react";
 import {
   getSimulatedStock,
@@ -240,8 +242,15 @@ const DescriptionSection = ({ description }: { description: string }) => {
 };
 
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
-  const { addItem, updateQuantity, getQuantity } = useCart();
-  const [justAdded, setJustAdded] = useState(false);
+  const { addItem, updateQuantity, getQuantity, isUnlocked } = useCart();
+  const navigate = useNavigate();
+  // "idle" → "added" (checkmark) → "mission" (shows bar) OR "finalize" (if unlocked)
+  const [actionState, setActionState] = useState<"idle" | "added" | "mission" | "finalize">("idle");
+
+  // Reset state when sheet opens/closes or product changes
+  useEffect(() => {
+    if (open) setActionState("idle");
+  }, [open, product?.id]);
 
   if (!product) return null;
 
@@ -249,19 +258,25 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   const handleAdd = () => {
     addItem(product);
-    setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 1200);
+    setActionState("added");
+    setTimeout(() => {
+      // After checkmark, show mission bar or finalize
+      setActionState((prev) => prev === "added" ? "mission" : prev);
+    }, 1200);
+  };
+
+  const handleFinalize = () => {
+    onClose();
+    navigate("/cart");
   };
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <DrawerContent className="max-h-[92vh] focus:outline-none">
         <DrawerTitle className="sr-only">{product.title}</DrawerTitle>
-        <div className="overflow-y-auto max-h-[calc(92vh-120px)]">
-          {/* A) Image carousel */}
+        <div className="overflow-y-auto max-h-[calc(92vh-140px)]">
           <ImageCarousel images={product.images} title={product.id} />
 
-          {/* B) Title + Trust */}
           <div className="px-4 pt-3 pb-1">
             <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2">
               {product.title}
@@ -269,24 +284,17 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             <p className="text-price text-primary mt-1">{product.price} ₾</p>
           </div>
           <TrustStrip />
-
-          {/* C) Scarcity */}
           <ScarcityPanel productId={product.id} />
-
-          {/* D) Timer */}
           <DemoTimer productId={product.id} />
-
-          {/* E) Delivery quest */}
           <div className="mt-3">
             <DeliveryQuestMini />
           </div>
-
-          {/* F) Description */}
           <DescriptionSection description={product.description} />
         </div>
 
-        {/* G) Action zone — sticky */}
+        {/* Action zone — sticky */}
         <div className="border-t border-border p-4 bg-card space-y-3">
+          {/* Quantity selector — always visible when items in cart */}
           {quantity > 0 && (
             <div className="flex items-center justify-center gap-4">
               <Button
@@ -309,21 +317,39 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
               </Button>
             </div>
           )}
-          <Button
-            onClick={handleAdd}
-            className={`w-full h-14 text-base font-bold rounded-xl transition-all duration-200 ${
-              justAdded ? "bg-success hover:bg-success/90 text-success-foreground scale-105" : ""
-            }`}
-            size="lg"
-          >
-            {justAdded ? (
-              <span className="flex items-center gap-2 animate-pop-in">
+
+          {/* Morphing button area */}
+          {isUnlocked && actionState !== "idle" ? (
+            /* Cart unlocked + item added → Finalize CTA */
+            <Button
+              onClick={handleFinalize}
+              className="w-full h-14 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-300"
+              size="lg"
+            >
+              შეკვეთის დასრულება
+            </Button>
+          ) : actionState === "added" ? (
+            /* Checkmark phase */
+            <div className="w-full h-14 rounded-xl bg-success flex items-center justify-center transition-all duration-300 scale-105">
+              <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
                 <Check className="w-5 h-5" /> დამატებულია
               </span>
-            ) : (
-              "კალათაში — გადახდა მიტანისას"
-            )}
-          </Button>
+            </div>
+          ) : actionState === "mission" && !isUnlocked ? (
+            /* Mission bar phase */
+            <div className="w-full py-2 px-1 rounded-xl border border-border bg-accent/20 transition-all duration-500">
+              <DeliveryMissionBar />
+            </div>
+          ) : (
+            /* Default add button */
+            <Button
+              onClick={handleAdd}
+              className="w-full h-14 text-base font-bold rounded-xl transition-all duration-200"
+              size="lg"
+            >
+              კალათაში — გადახდა მიტანისას
+            </Button>
+          )}
         </div>
       </DrawerContent>
     </Drawer>
