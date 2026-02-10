@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { MOCK_PRODUCTS, CATEGORIES, CategoryId } from "@/lib/constants";
+import { CATEGORIES, CategoryId } from "@/lib/constants";
+import { useProducts } from "@/hooks/useProducts";
 import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Package } from "lucide-react";
+import { Package, Loader2 } from "lucide-react";
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
+  const { data: products = [], isLoading } = useProducts();
 
   const filtered =
     activeCategory === "all"
-      ? MOCK_PRODUCTS
-      : MOCK_PRODUCTS.filter((p) => p.category === activeCategory);
+      ? products
+      : products.filter((p) => p.category === activeCategory);
 
   return (
     <main className="pb-52">
@@ -47,19 +49,28 @@ const Index = () => {
 
       <div className="container max-w-2xl mx-auto px-4 pt-4">
         {/* Booster row */}
-        <BoosterRow />
+        <BoosterRow products={products} />
 
-        {/* Product grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-lg font-medium">ამ კატეგორიაში პროდუქტი არ მოიძებნა</p>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground font-medium">პროდუქტები იტვირთება...</span>
           </div>
+        ) : (
+          <>
+            {/* Product grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {filtered.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            {filtered.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg font-medium">ამ კატეგორიაში პროდუქტი არ მოიძებნა</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>
