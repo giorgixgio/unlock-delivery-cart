@@ -31,7 +31,9 @@ const Cart = () => {
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const buttonAnchorRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [isButtonInView, setIsButtonInView] = useState(false);
 
   useEffect(() => {
@@ -47,21 +49,39 @@ const Cart = () => {
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleSubmit = () => {
+    // If form hasn't been interacted with, just scroll to it
+    const hasAnyTouched = Object.values(touched).some(Boolean);
+    if (!hasAnyTouched) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
     const result = orderSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((e) => {
-        if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
+        if (e.path[0] && touched[e.path[0] as string]) {
+          fieldErrors[e.path[0] as string] = e.message;
+        }
+      });
+      // If there are untouched empty fields, mark them as touched + show errors
+      const allFields = ["name", "phone", "region", "address"];
+      allFields.forEach((f) => {
+        if (!touched[f]) {
+          setTouched((prev) => ({ ...prev, [f]: true }));
+          const fieldError = result.error.errors.find((e) => e.path[0] === f);
+          if (fieldError) fieldErrors[f] = fieldError.message;
+        }
       });
       setErrors(fieldErrors);
       return;
     }
 
-    // Mock order submission — will be replaced with Shopify
     clearCart();
     navigate("/success");
   };
@@ -154,7 +174,7 @@ const Cart = () => {
         </div>
 
         {/* Order form */}
-        <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-4">
+        <div ref={formRef} className="bg-card rounded-lg p-4 shadow-card border border-border space-y-4">
           <h2 className="text-lg font-bold text-foreground">შეკვეთის მონაცემები</h2>
 
           <div className="space-y-3">
