@@ -2,6 +2,7 @@ import { ShoppingCart } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 
 import DeliveryMissionBar from "./DeliveryMissionBar";
 import DeliveryInfoMini from "./DeliveryInfoMini";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 const StickyCartHUD = () => {
   const { items, total, itemCount, isUnlocked } = useCart();
   const { openCart } = useCartOverlay();
+  const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
 
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
@@ -58,9 +60,15 @@ const StickyCartHUD = () => {
         <DeliveryMissionBar mini />
         <DeliveryInfoMini />
 
-        {/* CTA — always clickable */}
+        {/* CTA — opens cart if unlocked, otherwise shows soft checkout sheet */}
         <Button
-          onClick={() => openCart()}
+          onClick={() => {
+            if (isUnlocked) {
+              openCart();
+            } else {
+              handleCheckoutIntent("sticky_hud");
+            }
+          }}
           className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
             isUnlocked
               ? "bg-success hover:bg-success/90 text-success-foreground"
