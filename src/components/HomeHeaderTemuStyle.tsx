@@ -120,7 +120,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
     <>
       {/* ── Sticky header only ── */}
       <div className="sticky top-0 z-40" style={slideStyle}>
-        <header className="bg-foreground text-background shadow-md">
+        <header className="bg-card text-foreground shadow-sm border-b border-border">
           <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
