@@ -7,6 +7,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
 import { CheckoutGateProvider } from "@/contexts/CheckoutGateContext";
+import { CartOverlayProvider, useCartOverlay } from "@/contexts/CartOverlayContext";
 import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -38,6 +39,16 @@ const AdminLoginGuard = () => {
   return <AdminLogin />;
 };
 
+/** Legacy /cart route redirects to current page with cart overlay open */
+const LegacyCartRedirect = () => {
+  return <Navigate to="/?cart=1" replace />;
+};
+
+const CartOverlayRenderer = () => {
+  const { isCartOpen } = useCartOverlay();
+  return <Cart isOpen={isCartOpen} />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -47,37 +58,40 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <CheckoutGateProvider>
-                <Routes>
-                  {/* Storefront */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/success" element={<OrderSuccess />} />
-                  <Route path="/shop" element={<Shop />} />
+              <CartOverlayProvider>
+                <CheckoutGateProvider>
+                  <Routes>
+                    {/* Storefront */}
+                    <Route path="/" element={<Index />} />
+                    <Route path="/cart" element={<LegacyCartRedirect />} />
+                    <Route path="/success" element={<OrderSuccess />} />
+                    <Route path="/shop" element={<Shop />} />
 
-                  {/* Admin */}
-                  <Route path="/admin/login" element={<AdminLoginGuard />} />
-                  <Route
-                    path="/admin"
-                    element={
-                      <AdminGuard>
-                        <AdminLayout />
-                      </AdminGuard>
-                    }
-                  >
-                    <Route index element={<Navigate to="/admin/orders" replace />} />
-                    <Route path="orders" element={<AdminOrders />} />
-                    <Route path="orders/:id" element={<AdminOrderDetail />} />
-                    <Route path="shipping" element={<AdminShipping />} />
-                    <Route path="products" element={<AdminProducts />} />
-                    <Route path="settings" element={<AdminSettings />} />
-                    <Route path="settings/courier-export" element={<CourierExportSettings />} />
-                  </Route>
+                    {/* Admin */}
+                    <Route path="/admin/login" element={<AdminLoginGuard />} />
+                    <Route
+                      path="/admin"
+                      element={
+                        <AdminGuard>
+                          <AdminLayout />
+                        </AdminGuard>
+                      }
+                    >
+                      <Route index element={<Navigate to="/admin/orders" replace />} />
+                      <Route path="orders" element={<AdminOrders />} />
+                      <Route path="orders/:id" element={<AdminOrderDetail />} />
+                      <Route path="shipping" element={<AdminShipping />} />
+                      <Route path="products" element={<AdminProducts />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                      <Route path="settings/courier-export" element={<CourierExportSettings />} />
+                    </Route>
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <StickyCartHUD />
-              </CheckoutGateProvider>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <StickyCartHUD />
+                  <CartOverlayRenderer />
+                </CheckoutGateProvider>
+              </CartOverlayProvider>
             </BrowserRouter>
           </AdminAuthProvider>
         </DeliveryProvider>
