@@ -6,7 +6,7 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart } from "lucide-react";
+import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X } from "lucide-react";
 import {
   getSimulatedStock,
   getStockLabel,
@@ -270,6 +270,14 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <DrawerContent className="max-h-[92vh] focus:outline-none">
         <DrawerTitle className="sr-only">{product.title}</DrawerTitle>
+        {/* Sticky close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-30 w-11 h-11 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md"
+          aria-label="დახურვა"
+        >
+          <X className="w-5 h-5 text-foreground" />
+        </button>
         <div className="overflow-y-auto max-h-[calc(92vh-180px)]">
           <ImageCarousel images={product.images} title={product.id} productId={product.id} />
 
