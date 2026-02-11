@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import {
   Sheet,
   SheetContent,
@@ -64,6 +65,7 @@ const CategoryDrawer = ({ children }: { children: React.ReactNode }) => (
 /* ─── Main component ─── */
 const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => {
   const { itemCount } = useCart();
+  const { openCart } = useCartOverlay();
   const navigate = useNavigate();
 
   // If controlled externally, use that; otherwise manage internally
@@ -149,7 +151,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
                 <User className="w-5 h-5" />
               </button>
               <button
-                onClick={() => navigate("/cart")}
+                onClick={() => openCart()}
                 className="p-1.5 rounded-full hover:bg-background/10 transition-colors relative"
                 aria-label="კალათა"
               >
