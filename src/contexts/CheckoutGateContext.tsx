@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
 
 interface CheckoutGateContextType {
@@ -11,13 +11,13 @@ const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(u
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isUnlocked } = useCart();
-  const navigate = useNavigate();
+  const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
 
   const proceedToCheckout = useCallback(() => {
-    navigate("/cart");
-  }, [navigate]);
+    openCart();
+  }, [openCart]);
 
   const handleCheckoutIntent = useCallback(
     (src: string) => {

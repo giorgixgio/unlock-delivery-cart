@@ -9,7 +9,7 @@ import { useRecommendations } from "@/hooks/useRecommendations";
 import { DELIVERY_THRESHOLD, Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useCartOverlay } from "@/contexts/CartOverlayContext";
 
 interface SoftCheckoutSheetProps {
   open: boolean;
@@ -147,7 +147,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const { data: products = [], isLoading } = useProducts();
   const { recommendations } = useRecommendations(products);
   const prevUnlocked = useRef(isUnlocked);
-  const navigate = useNavigate();
+  const { openCart } = useCartOverlay();
   const cartIconRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
@@ -194,7 +194,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
 
   const handleViewCart = () => {
     onClose();
-    navigate("/cart");
+    openCart();
   };
 
   const hasRecs = sheetItems.length > 0;
