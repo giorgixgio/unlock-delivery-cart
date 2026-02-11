@@ -1,11 +1,10 @@
 import { useState, memo } from "react";
-import { Plus, Minus, Truck } from "lucide-react";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Plus, Minus } from "lucide-react";
+import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
-import { Progress } from "@/components/ui/progress";
 import { trackHeroAddToCart } from "@/lib/gridTracker";
 
 interface HeroProductCardProps {
@@ -13,13 +12,10 @@ interface HeroProductCardProps {
 }
 
 const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
-  const { addItem, updateQuantity, getQuantity, total } = useCart();
+  const { addItem, updateQuantity, getQuantity } = useCart();
   const quantity = getQuantity(product.id);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showFloat, setShowFloat] = useState(false);
-
-  const remaining = Math.max(0, DELIVERY_THRESHOLD - total);
-  const progress = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -41,7 +37,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
   return (
     <>
       <div
-        className="col-span-2 relative bg-card rounded-xl shadow-card overflow-hidden border-2 border-primary/30 cursor-pointer"
+        className="relative bg-card rounded-xl shadow-card overflow-hidden border-2 border-primary cursor-pointer ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
         onClick={() => setSheetOpen(true)}
       >
         {showFloat && (
@@ -50,79 +46,61 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           </div>
         )}
 
+        {/* Discount badge — top left like Temu */}
+        {discount > 0 && (
+          <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
+            ↓ {discount}% OFF
+          </div>
+        )}
+
         {/* Badge overlays */}
         {badges.length > 0 && (
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+          <div className="absolute top-8 left-2 z-10 flex flex-col gap-1">
             {badges.map((b) => (
-              <span key={b} className="bg-badge text-badge-foreground text-xs font-bold px-2 py-1 rounded shadow-sm">
+              <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                 {b}
               </span>
             ))}
           </div>
         )}
 
-        {/* Social proof badge */}
-        <div className="absolute top-3 right-3 z-10 bg-primary/90 text-primary-foreground text-xs font-bold px-2 py-1 rounded-full">
-          🔥 ტრენდული
-        </div>
-
-        {/* Image — larger */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        {/* Image */}
+        <div className="relative aspect-square overflow-hidden bg-muted">
           <img
             src={product.image}
             alt={product.title}
             className="w-full h-full object-cover"
-            width={600}
-            height={450}
+            width={400}
+            height={400}
           />
         </div>
 
-        <div className="p-4 space-y-3">
-          <h2 className="text-base font-extrabold text-foreground leading-tight line-clamp-2">
+        <div className="p-3 space-y-1.5">
+          <h2 className="text-sm font-bold text-foreground leading-tight line-clamp-2">
             {product.title}
           </h2>
 
-          {/* Pricing */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-2xl font-extrabold text-primary">{product.price} ₾</span>
-            <span className="text-sm text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
-            <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">
-              -{discount}%
-            </span>
-          </div>
-
-          {/* Free shipping progress */}
-          <div className="flex items-center gap-2">
-            <Truck className="w-4 h-4 text-success flex-shrink-0" />
-            <div className="flex-1 space-y-1">
-              {remaining > 0 ? (
-                <>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    კიდევ <span className="text-primary font-bold">{remaining.toFixed(1)} ₾</span> უფასო მიტანამდე
-                  </p>
-                  <Progress value={progress} className="h-1.5" />
-                </>
-              ) : (
-                <p className="text-xs font-bold text-success">✓ უფასო მიტანა გახსნილია!</p>
-              )}
-            </div>
+          {/* Pricing row */}
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-lg font-extrabold text-primary">{product.price} ₾</span>
+            <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
           </div>
 
           {/* Add to cart */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-1">
             {quantity === 0 ? (
-              <Button onClick={handleAdd} className="w-full h-12 text-base font-bold rounded-lg" size="lg">
-                <Plus className="w-5 h-5 mr-1" />
-                კალათაში დამატება
+              <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
+                <Plus className="w-4 h-4 mr-1" />
+                კალათაში
               </Button>
             ) : (
-              <div className="flex items-center gap-3 w-full justify-between">
-                <Button onClick={handleMinus} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
-                  <Minus className="w-5 h-5" />
+              <div className="flex items-center gap-2 w-full justify-between">
+                <Button onClick={handleMinus} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
+                  <Minus className="w-4 h-4" />
                 </Button>
-                <span className="text-xl font-bold text-foreground min-w-[2rem] text-center">{quantity}</span>
-                <Button onClick={handleAdd} size="icon" className="h-12 w-12 rounded-lg">
-                  <Plus className="w-5 h-5" />
+                <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
+                <Button onClick={handleAdd} size="icon" className="h-10 w-10 rounded-lg">
+                  <Plus className="w-4 h-4" />
                 </Button>
               </div>
             )}
