@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil, AlertTriangle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
@@ -33,19 +34,13 @@ interface CartOverlayProps {
  * Regression test: Open /shop?product_id=X → open cart → back → should still be on /shop?product_id=X
  */
 const Cart = ({ isOpen }: CartOverlayProps) => {
-  const { items, total, isUnlocked, updateQuantity, removeItem, clearCart } = useCart();
+  const { items, total, isUnlocked, remaining, updateQuantity, removeItem, clearCart } = useCart();
   const { closeCart } = useCartOverlay();
   const { setManualLocation, isTbilisi } = useDelivery();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Gate: close overlay if not unlocked (cart requires minimum order)
-  useEffect(() => {
-    if (isOpen && !isUnlocked && items.length > 0) {
-      toast({ title: "მინიმალური შეკვეთა 40 ₾ — დაამატე პროდუქტები", duration: 3000 });
-      closeCart();
-    }
-  }, [isOpen, isUnlocked, closeCart, toast, items.length]);
+  const canCheckout = total >= DELIVERY_THRESHOLD;
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -248,6 +243,21 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             <DeliveryProgressBar />
           </div>
 
+          {/* Threshold banner — shown when under minimum */}
+          {!canCheckout && (
+            <div className="bg-accent rounded-lg p-3 border border-primary/20 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-foreground text-sm">
+                  მინიმალური შეკვეთა {DELIVERY_THRESHOLD} ₾
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Items */}
           <div className="space-y-3">
             {items.map(({ product, quantity }) => (
@@ -420,12 +430,20 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           {/* Submit — inline anchor */}
           <div ref={buttonAnchorRef}>
             <Button
-              onClick={handleSubmit}
+              onClick={canCheckout ? handleSubmit : closeCart}
               disabled={submitting}
-              className={`w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200 ${isButtonInView ? "" : "invisible"}`}
+              className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
+                canCheckout
+                  ? "bg-success hover:bg-success/90 text-success-foreground"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              } ${isButtonInView ? "" : "invisible"}`}
               size="lg"
             >
-              {submitting ? "იგზავნება..." : "შეკვეთა — გადახდა მიტანისას"}
+              {submitting
+                ? "იგზავნება..."
+                : canCheckout
+                ? "შეკვეთა — გადახდა მიტანისას"
+                : `დაამატე კიდევ ${remaining.toFixed(1)} ₾`}
             </Button>
           </div>
         </div>
@@ -435,12 +453,20 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
             <div className="container max-w-2xl mx-auto">
               <Button
-                onClick={handleSubmit}
+                onClick={canCheckout ? handleSubmit : closeCart}
                 disabled={submitting}
-                className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground transition-all duration-200"
+                className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
+                  canCheckout
+                    ? "bg-success hover:bg-success/90 text-success-foreground"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                }`}
                 size="lg"
               >
-                {submitting ? "იგზავნება..." : "შეკვეთა — გადახდა მიტანისას"}
+                {submitting
+                  ? "იგზავნება..."
+                  : canCheckout
+                  ? "შეკვეთა — გადახდა მიტანისას"
+                  : `დაამატე კიდევ ${remaining.toFixed(1)} ₾`}
               </Button>
             </div>
           </div>

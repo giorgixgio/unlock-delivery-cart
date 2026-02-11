@@ -1,7 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import { useCartOverlay } from "@/contexts/CartOverlayContext";
 
 import DeliveryMissionBar from "./DeliveryMissionBar";
 import DeliveryInfoMini from "./DeliveryInfoMini";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
   const { items, total, itemCount, isUnlocked } = useCart();
-  const { handleCheckoutIntent } = useCheckoutGate();
+  const { openCart } = useCartOverlay();
   const location = useLocation();
 
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
@@ -60,7 +60,7 @@ const StickyCartHUD = () => {
 
         {/* CTA — always clickable */}
         <Button
-          onClick={() => handleCheckoutIntent("floating")}
+          onClick={() => openCart()}
           className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
             isUnlocked
               ? "bg-success hover:bg-success/90 text-success-foreground"

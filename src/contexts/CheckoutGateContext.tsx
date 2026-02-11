@@ -21,14 +21,10 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const handleCheckoutIntent = useCallback(
     (src: string) => {
-      if (isUnlocked) {
-        proceedToCheckout();
-      } else {
-        setSource(src);
-        setSheetOpen(true);
-      }
+      // Always open cart — threshold is enforced inside the cart on the submit button
+      openCart();
     },
-    [isUnlocked, proceedToCheckout]
+    [openCart]
   );
 
   return (
