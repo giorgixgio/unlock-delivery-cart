@@ -155,7 +155,7 @@ const Shop = () => {
       for (const product of section.products) {
         if (rendered >= INITIAL_LOAD) break;
 
-        if (section.type === "hero" && heroProduct) {
+        if (rendered === 0) {
           elements.push(<HeroProductCard key={product.id} product={product} />);
         } else {
           elements.push(<ProductCard key={product.id} product={product} />);
