@@ -37,7 +37,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
   return (
     <>
       <div
-        className="relative bg-card rounded-xl shadow-card overflow-hidden border-2 border-primary cursor-pointer ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+        className="relative bg-accent rounded-xl overflow-hidden border-[3px] border-primary cursor-pointer shadow-[0_0_16px_2px_hsl(var(--primary)/0.35)]"
         onClick={() => setSheetOpen(true)}
       >
         {showFloat && (
