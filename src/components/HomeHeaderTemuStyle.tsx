@@ -117,56 +117,55 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
   };
 
   return (
-    <div
-      className="sticky top-0 z-40"
-      style={slideStyle}
-    >
-      {/* ── Header bar ── */}
-      <header className="bg-primary text-primary-foreground shadow-md">
-        <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14">
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex-shrink-0 font-extrabold tracking-tight text-xl"
-          >
-            BigMart
-          </button>
-
-          <div className="flex-1 flex items-center gap-2 bg-primary-foreground/15 rounded-full px-3 h-9">
-            <Search className="w-4 h-4 opacity-70 flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="ძიება..."
-              className="bg-transparent text-primary-foreground placeholder:text-primary-foreground/60 text-sm w-full outline-none"
-              readOnly
-            />
-          </div>
-
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <CategoryDrawer>
-              <button className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors" aria-label="მენიუ">
-                <Menu className="w-5 h-5" />
-              </button>
-            </CategoryDrawer>
-            <button className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors" aria-label="ანგარიში">
-              <User className="w-5 h-5" />
-            </button>
+    <>
+      {/* ── Sticky header only ── */}
+      <div className="sticky top-0 z-40" style={slideStyle}>
+        <header className="bg-foreground text-background shadow-md">
+          <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14">
             <button
-              onClick={() => navigate("/cart")}
-              className="p-1.5 rounded-full hover:bg-primary-foreground/10 transition-colors relative"
-              aria-label="კალათა"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="flex-shrink-0 font-extrabold tracking-tight text-xl text-primary"
             >
-              <ShoppingCart className="w-5 h-5" />
-              {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-secondary text-secondary-foreground text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 leading-none">
-                  {itemCount}
-                </span>
-              )}
+              BigMart
             </button>
-          </div>
-        </div>
-      </header>
 
-      {/* ── Trust pill cards ── */}
+            <div className="flex-1 flex items-center gap-2 bg-background/10 rounded-full px-3 h-9 border border-background/20">
+              <Search className="w-4 h-4 opacity-70 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="ძიება..."
+                className="bg-transparent text-background placeholder:text-background/50 text-sm w-full outline-none"
+                readOnly
+              />
+            </div>
+
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <CategoryDrawer>
+                <button className="p-1.5 rounded-full hover:bg-background/10 transition-colors" aria-label="მენიუ">
+                  <Menu className="w-5 h-5" />
+                </button>
+              </CategoryDrawer>
+              <button className="p-1.5 rounded-full hover:bg-background/10 transition-colors" aria-label="ანგარიში">
+                <User className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => navigate("/cart")}
+                className="p-1.5 rounded-full hover:bg-background/10 transition-colors relative"
+                aria-label="კალათა"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 leading-none">
+                    {itemCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+      </div>
+
+      {/* ── Trust badges (NOT sticky) ── */}
       <div className="bg-background border-b border-border">
         <div className="container max-w-2xl mx-auto px-3 py-2 flex gap-2">
           <TrustModal title="უფასო მიტანა">
@@ -190,7 +189,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
         </div>
       </div>
 
-      {/* ── Green bar ── */}
+      {/* ── Green bar (NOT sticky) ── */}
       <div className="bg-success">
         <div className="container max-w-2xl mx-auto px-3 py-2 flex items-center">
           <TrustModal title="რატომ ჩვენ?">
@@ -207,7 +206,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
           </TrustModal>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
