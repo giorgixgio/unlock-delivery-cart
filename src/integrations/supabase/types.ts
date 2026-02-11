@@ -74,6 +74,45 @@ export type Database = {
         }
         Relationships: []
       }
+      grid_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          grid_position: number | null
+          grid_section: string | null
+          hero_product_id: string | null
+          id: string
+          metadata: Json
+          product_id: string | null
+          scroll_depth: number | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          grid_position?: number | null
+          grid_section?: string | null
+          hero_product_id?: string | null
+          id?: string
+          metadata?: Json
+          product_id?: string | null
+          scroll_depth?: number | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          grid_position?: number | null
+          grid_section?: string | null
+          hero_product_id?: string | null
+          id?: string
+          metadata?: Json
+          product_id?: string | null
+          scroll_depth?: number | null
+          session_id?: string | null
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor: string
@@ -321,6 +360,39 @@ export type Database = {
           tracking_url?: string | null
           updated_at?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      product_stats: {
+        Row: {
+          add_to_cart_count: number
+          id: string
+          last_30d_score: number
+          product_id: string
+          purchase_count: number
+          score: number
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          add_to_cart_count?: number
+          id?: string
+          last_30d_score?: number
+          product_id: string
+          purchase_count?: number
+          score?: number
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          add_to_cart_count?: number
+          id?: string
+          last_30d_score?: number
+          product_id?: string
+          purchase_count?: number
+          score?: number
+          updated_at?: string
+          view_count?: number
         }
         Relationships: []
       }

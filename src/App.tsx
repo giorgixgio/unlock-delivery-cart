@@ -20,6 +20,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminShipping from "./pages/admin/AdminShipping";
 import AdminProducts from "./pages/admin/AdminProducts";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
+import Shop from "./pages/Shop";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/success" element={<OrderSuccess />} />
+                  <Route path="/shop" element={<Shop />} />
 
                   {/* Admin */}
                   <Route path="/admin/login" element={<AdminLoginGuard />} />
