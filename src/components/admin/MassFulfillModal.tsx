@@ -235,7 +235,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       try {
         const { data: currentOrder } = await supabase
           .from("orders")
-          .select("status, courier_name, tracking_number")
+          .select("status, courier_name, tracking_number, version")
           .eq("id", row.matchedOrderId!)
           .single();
 
@@ -254,8 +254,16 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           updates.courier_name = "Onway";
         }
 
-        const { error } = await supabase.from("orders").update(updates).eq("id", row.matchedOrderId!);
+        // Versioned update — skip silently on conflict (another operator handled it)
+        const newVersion = ((currentOrder as any).version ?? 0) + 1;
+        const { data: updated, error } = await (supabase.from("orders") as any)
+          .update({ ...updates, version: newVersion })
+          .eq("id", row.matchedOrderId!)
+          .eq("version", (currentOrder as any).version ?? 0)
+          .select("id")
+          .maybeSingle();
         if (error) throw error;
+        if (!updated) continue; // conflict — skip this row
 
         await supabase.from("order_events").insert({
           order_id: row.matchedOrderId!,

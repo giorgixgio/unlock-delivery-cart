@@ -113,6 +113,30 @@ export type Database = {
         }
         Relationships: []
       }
+      idempotency_keys: {
+        Row: {
+          action_type: string
+          created_at: string
+          entity_id: string
+          idempotency_key: string
+          result_json: Json
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          entity_id: string
+          idempotency_key: string
+          result_json?: Json
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          entity_id?: string
+          idempotency_key?: string
+          result_json?: Json
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor: string
@@ -258,6 +282,7 @@ export type Database = {
           tracking_url: string | null
           updated_at: string
           user_agent: string | null
+          version: number
         }
         Insert: {
           address_line1?: string
@@ -309,6 +334,7 @@ export type Database = {
           tracking_url?: string | null
           updated_at?: string
           user_agent?: string | null
+          version?: number
         }
         Update: {
           address_line1?: string
@@ -360,6 +386,7 @@ export type Database = {
           tracking_url?: string | null
           updated_at?: string
           user_agent?: string | null
+          version?: number
         }
         Relationships: []
       }
