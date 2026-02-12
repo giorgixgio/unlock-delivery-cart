@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil, AlertTriangle, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil, ShoppingBag, CheckCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
 import DeliveryInfoBox from "@/components/DeliveryInfoBox";
@@ -16,6 +17,7 @@ import { createOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
+import { getFakeOldPrice } from "@/lib/demoData";
 import { supabase } from "@/integrations/supabase/client";
 
 const orderSchema = z.object({
@@ -36,6 +38,7 @@ interface CartOverlayProps {
 const Cart = ({ isOpen }: CartOverlayProps) => {
   const { items, total, isUnlocked, remaining, updateQuantity, removeItem, clearCart } = useCart();
   const { closeCart } = useCartOverlay();
+  const { handleCheckoutIntent } = useCheckoutGate();
   const { setManualLocation, isTbilisi } = useDelivery();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -243,10 +246,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             <DeliveryProgressBar />
           </div>
 
-          {/* Threshold banner — shown when under minimum */}
-          {!canCheckout && (
+          {/* Threshold banner */}
+          {canCheckout ? (
+            <div className="bg-success/10 rounded-lg p-3 border border-success/30 flex items-center gap-3 animate-success-reveal">
+              <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
+              <p className="font-bold text-success text-sm">🎉 უფასო მიტანა გახსნილია</p>
+            </div>
+          ) : (
             <div className="bg-accent rounded-lg p-3 border border-primary/20 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <ShoppingBag className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-foreground text-sm">
                   მინიმალური შეკვეთა {DELIVERY_THRESHOLD} ₾
@@ -430,7 +438,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           {/* Submit — inline anchor */}
           <div ref={buttonAnchorRef}>
             <Button
-              onClick={canCheckout ? handleSubmit : closeCart}
+              onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
               disabled={submitting}
               className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
                 canCheckout
@@ -443,7 +451,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 ? "იგზავნება..."
                 : canCheckout
                 ? "შეკვეთა — გადახდა მიტანისას"
-                : `დაამატე კიდევ ${remaining.toFixed(1)} ₾`}
+                : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
             </Button>
           </div>
         </div>
@@ -453,7 +461,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
             <div className="container max-w-2xl mx-auto">
               <Button
-                onClick={canCheckout ? handleSubmit : closeCart}
+                onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
                 disabled={submitting}
                 className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
                   canCheckout
@@ -466,7 +474,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   ? "იგზავნება..."
                   : canCheckout
                   ? "შეკვეთა — გადახდა მიტანისას"
-                  : `დაამატე კიდევ ${remaining.toFixed(1)} ₾`}
+                  : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
               </Button>
             </div>
           </div>

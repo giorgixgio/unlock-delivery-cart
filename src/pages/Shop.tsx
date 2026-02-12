@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
+import { useCart } from "@/contexts/CartContext";
 import { rankingEngine, getWeightedRandom } from "@/lib/rankingEngine";
 import { trackGridPositionClicked, trackScrollDepth, trackRandomAddToCart } from "@/lib/gridTracker";
 import { Product } from "@/lib/constants";
@@ -50,12 +51,15 @@ const Shop = () => {
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("product_id");
   const { data: allProducts = [], isLoading } = useProducts();
+  const { getQuantity } = useCart();
 
-  // Find hero product
+  // Find hero product — don't pin if already in cart
   const heroProduct = useMemo(() => {
     if (!productId || allProducts.length === 0) return null;
-    return allProducts.find((p) => p.id === productId || p.handle === productId) ?? null;
-  }, [productId, allProducts]);
+    const found = allProducts.find((p) => p.id === productId || p.handle === productId) ?? null;
+    if (found && getQuantity(found.id) > 0) return null; // Already in cart, don't pin
+    return found;
+  }, [productId, allProducts, getQuantity]);
 
   // Build ranked grid
   const { sections, initialFlat } = useMemo(() => {

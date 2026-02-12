@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { Truck, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
+import AnimatedNumber from "@/components/AnimatedNumber";
 
 interface DeliveryMissionBarProps {
-  /** Compact mode for sticky HUD — no text, thinner */
   mini?: boolean;
 }
 
@@ -12,8 +12,10 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
   const { total, isUnlocked, remaining } = useCart();
   const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
   const [bounce, setBounce] = useState(false);
+  const [microBounce, setMicroBounce] = useState(false);
   const [glow, setGlow] = useState(false);
   const prevUnlocked = useRef(isUnlocked);
+  const prevTotal = useRef(total);
 
   // Bounce truck + glow endpoint when unlocked
   useEffect(() => {
@@ -26,30 +28,39 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
 
+  // Micro-bounce truck when total changes (item added/removed)
+  useEffect(() => {
+    if (total !== prevTotal.current && total > 0 && !isUnlocked) {
+      setMicroBounce(true);
+      setTimeout(() => setMicroBounce(false), 400);
+    }
+    prevTotal.current = total;
+  }, [total, isUnlocked]);
+
   const barHeight = mini ? "h-2" : "h-2.5";
   const truckSize = mini ? "w-5 h-5" : "w-6 h-6";
   const pinSize = mini ? "w-4 h-4" : "w-5 h-5";
 
+  const truckAnimation = bounce
+    ? "animate-truck-bounce"
+    : microBounce
+    ? "animate-truck-micro-bounce"
+    : "";
+
   return (
     <div className={`w-full ${mini ? "" : "space-y-1.5"}`}>
-      {/* Track */}
       <div className="relative w-full">
-        {/* Background track */}
         <div className={`w-full ${barHeight} rounded-full overflow-hidden bg-muted/60`}>
-          {/* Animated gradient fill */}
           <div
-            className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+            className={`h-full rounded-full transition-[width] duration-500 ease-out ${
               isUnlocked ? "delivery-path-complete" : "delivery-path-active"
             }`}
             style={{ width: `${percent}%` }}
           />
         </div>
 
-        {/* Truck icon riding the path */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 transition-[left] duration-700 ease-out ${
-            bounce ? "animate-truck-bounce" : ""
-          }`}
+          className={`absolute top-1/2 -translate-y-1/2 transition-[left] duration-500 ease-out ${truckAnimation}`}
           style={{ left: `calc(${percent}% - ${mini ? 10 : 12}px)` }}
         >
           <Truck
@@ -59,7 +70,6 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           />
         </div>
 
-        {/* End marker */}
         <div
           className={`absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-500 ${
             glow ? "delivery-pin-glow scale-125" : ""
@@ -73,16 +83,23 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
         </div>
       </div>
 
-      {/* Micro-text (hidden in mini mode) */}
       {!mini && (
         <p
-          className={`text-xs font-semibold text-center transition-opacity duration-500 ${
+          className={`text-xs font-semibold text-center transition-all duration-500 ${
             isUnlocked
-              ? "opacity-0 h-0 overflow-hidden"
-              : "opacity-100 text-muted-foreground"
+              ? "text-success animate-success-reveal"
+              : remaining < 5
+              ? "almost-there-text"
+              : "text-muted-foreground"
           }`}
         >
-          კიდევ {remaining.toFixed(1)} ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა
+          {isUnlocked ? (
+            "🎉 უფასო მიტანა გახსნილია"
+          ) : remaining < 5 ? (
+            <>თითქმის მოხერხდა! კიდევ <AnimatedNumber value={remaining} /> ₾</>
+          ) : (
+            <>კიდევ <AnimatedNumber value={remaining} /> ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა</>
+          )}
         </p>
       )}
     </div>
