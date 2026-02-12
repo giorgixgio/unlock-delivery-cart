@@ -143,9 +143,20 @@ const AdminProducts = () => {
       return;
     }
 
-    const dataRows = rows.slice(1);
+    // Filter out completely empty rows (trailing blank rows from Excel)
+    const dataRows = rows.slice(1).filter((row) => {
+      const old = String(row[oldSkuIdx] || "").trim();
+      const nw = String(row[newSkuIdx] || "").trim();
+      return old || nw;
+    });
+
     const skuMap = new Map<string, VariantRow>();
     allRows.forEach((r) => skuMap.set(r.sku.toLowerCase(), r));
+
+    // Build set of all old SKUs being replaced (for swap detection)
+    const oldSkuSet = new Set(
+      dataRows.map((r) => String(r[oldSkuIdx] || "").trim().toLowerCase()).filter(Boolean)
+    );
 
     // Count occurrences for duplicate detection
     const oldSkuCounts = new Map<string, number>();
@@ -178,10 +189,13 @@ const AdminProducts = () => {
         return { rowNum: i + 2, oldSku, newSku, status: "not_found" as const, error: "old_sku not found in catalog" };
       }
 
-      // Check if new_sku already exists
+      // Check if new_sku already exists — but allow if that SKU is being freed up (swap)
       const conflict = skuMap.get(newSku.toLowerCase());
       if (conflict && conflict.productId !== match.productId) {
-        return { rowNum: i + 2, oldSku, newSku, status: "conflict" as const, matchedProductId: match.productId, matchedTitle: match.title, error: `new_sku already used by "${conflict.title}"` };
+        if (!oldSkuSet.has(newSku.toLowerCase())) {
+          return { rowNum: i + 2, oldSku, newSku, status: "conflict" as const, matchedProductId: match.productId, matchedTitle: match.title, error: `new_sku already used by "${conflict.title}"` };
+        }
+        // SKU is being reassigned elsewhere in this file — swap is OK
       }
 
       return { rowNum: i + 2, oldSku, newSku, status: "matched" as const, matchedProductId: match.productId, matchedTitle: match.title };
