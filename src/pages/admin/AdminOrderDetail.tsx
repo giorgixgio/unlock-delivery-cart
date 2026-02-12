@@ -19,6 +19,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
+import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
@@ -76,6 +77,7 @@ interface OrderDetail {
   normalization_confidence: number | null;
   merged_into_order_id: string | null;
   merged_child_order_ids: string[] | null;
+  version: number;
   order_items: {
     id: string;
     title: string;
@@ -215,27 +217,43 @@ const AdminOrderDetail = () => {
   // === DECISION ACTIONS (with audit logging) ===
   const handleConfirmOrder = async () => {
     if (!order || !id) return;
+    const idemKey = crypto.randomUUID();
     setSaving(true);
     try {
-      const { error } = await supabase.from("orders").update({
+      // Check idempotency
+      const idemCheck = await checkIdempotency(idemKey);
+      if (idemCheck.exists) {
+        toast({ title: "Order already confirmed (duplicate request)" });
+        await refreshOrder();
+        setSaving(false);
+        return;
+      }
+
+      // Versioned update
+      const newVersion = await versionedOrderUpdate(id, order.version, {
         is_confirmed: true,
         status: "confirmed",
         review_required: false,
-      }).eq("id", id);
-      if (error) throw error;
+      });
 
+      await recordIdempotency(idemKey, "ORDER_CONFIRM", id, { version: newVersion, status: "confirmed" });
       await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
-        payload: { before: { status: order.status, risk_level: order.risk_level }, after: { status: "confirmed" } },
+        payload: { before: { status: order.status, risk_level: order.risk_level, version: order.version }, after: { status: "confirmed", version: newVersion } },
       });
       toast({ title: "Order confirmed ✓" });
     } catch (err: any) {
-      await logSystemEventFailed({
-        entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
-        errorMessage: err?.message || String(err),
-      });
-      toast({ title: "Failed to confirm order", variant: "destructive" });
+      const msg = err?.message || String(err);
+      if (msg.includes("CONFLICT")) {
+        toast({ title: "Conflict", description: "Order was updated by another user. Refreshing…", variant: "destructive" });
+      } else {
+        await logSystemEventFailed({
+          entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
+          errorMessage: msg,
+        });
+        toast({ title: "Failed to confirm order", variant: "destructive" });
+      }
     }
     await refreshOrder();
     setSaving(false);
@@ -245,8 +263,7 @@ const AdminOrderDetail = () => {
     if (!order || !id) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("orders").update({ status: "on_hold" }).eq("id", id);
-      if (error) throw error;
+      await versionedOrderUpdate(id, order.version, { status: "on_hold" });
       await logEvent("kept_on_hold", { previous_status: order.status });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_HOLD", actorId: actor,
@@ -254,10 +271,15 @@ const AdminOrderDetail = () => {
       });
       toast({ title: "Order placed on hold" });
     } catch (err: any) {
-      await logSystemEventFailed({
-        entityType: "order", entityId: id, eventType: "ORDER_HOLD", actorId: actor,
-        errorMessage: err?.message || String(err),
-      });
+      const msg = err?.message || String(err);
+      if (msg.includes("CONFLICT")) {
+        toast({ title: "Conflict", description: "Order was updated by another user. Refreshing…", variant: "destructive" });
+      } else {
+        await logSystemEventFailed({
+          entityType: "order", entityId: id, eventType: "ORDER_HOLD", actorId: actor,
+          errorMessage: msg,
+        });
+      }
     }
     await refreshOrder();
     setSaving(false);
@@ -269,12 +291,11 @@ const AdminOrderDetail = () => {
     try {
       const newTags = [...(order.tags || [])];
       if (!newTags.includes("duplicate_confirmed")) newTags.push("duplicate_confirmed");
-      const { error } = await supabase.from("orders").update({
+      await versionedOrderUpdate(id, order.version, {
         status: "canceled",
         review_required: false,
         tags: newTags,
-      }).eq("id", id);
-      if (error) throw error;
+      });
       await logEvent("canceled_duplicate", { previous_status: order.status });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
@@ -283,11 +304,17 @@ const AdminOrderDetail = () => {
       toast({ title: "Order canceled as duplicate" });
       goBackToList();
     } catch (err: any) {
-      await logSystemEventFailed({
-        entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
-        errorMessage: err?.message || String(err),
-      });
+      const msg = err?.message || String(err);
+      if (msg.includes("CONFLICT")) {
+        toast({ title: "Conflict", description: "Order was updated by another user. Refreshing…", variant: "destructive" });
+      } else {
+        await logSystemEventFailed({
+          entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
+          errorMessage: msg,
+        });
+      }
     }
+    await refreshOrder();
     setSaving(false);
   };
 
@@ -296,18 +323,22 @@ const AdminOrderDetail = () => {
     setSaving(true);
     const newVal = !order.is_fulfilled;
     try {
-      const { error } = await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
-      if (error) throw error;
+      await versionedOrderUpdate(id, order.version, { is_fulfilled: newVal });
       await logEvent("fulfillment_change", { is_fulfilled: newVal });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
         payload: { before: { is_fulfilled: order.is_fulfilled }, after: { is_fulfilled: newVal } },
       });
     } catch (err: any) {
-      await logSystemEventFailed({
-        entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
-        errorMessage: err?.message || String(err),
-      });
+      const msg = err?.message || String(err);
+      if (msg.includes("CONFLICT")) {
+        toast({ title: "Conflict", description: "Order was updated by another user. Refreshing…", variant: "destructive" });
+      } else {
+        await logSystemEventFailed({
+          entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
+          errorMessage: msg,
+        });
+      }
     }
     await refreshOrder();
     setSaving(false);
@@ -348,8 +379,7 @@ const AdminOrderDetail = () => {
       if (trackingUrl !== (order.tracking_url || "")) updates.tracking_url = trackingUrl || null;
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await supabase.from("orders").update(updates).eq("id", id);
-        if (error) throw error;
+        await versionedOrderUpdate(id, order.version, updates);
       }
       for (const evt of eventLogs) {
         await logEvent(evt.type, evt.payload);
@@ -364,11 +394,16 @@ const AdminOrderDetail = () => {
 
       toast({ title: "Changes saved" });
     } catch (err: any) {
-      await logSystemEventFailed({
-        entityType: "order", entityId: id, eventType: "ORDER_SAVE", actorId: actor,
-        errorMessage: err?.message || String(err),
-      });
-      toast({ title: "Failed to save changes", variant: "destructive" });
+      const msg = err?.message || String(err);
+      if (msg.includes("CONFLICT")) {
+        toast({ title: "Conflict", description: "Order was updated by another user. Refreshing…", variant: "destructive" });
+      } else {
+        await logSystemEventFailed({
+          entityType: "order", entityId: id, eventType: "ORDER_SAVE", actorId: actor,
+          errorMessage: msg,
+        });
+        toast({ title: "Failed to save changes", variant: "destructive" });
+      }
     }
     await refreshOrder();
     setSaving(false);
