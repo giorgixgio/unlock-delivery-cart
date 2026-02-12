@@ -1,18 +1,32 @@
-import { ShoppingCart } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ShoppingCart, CheckCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import { usePulseCTA } from "@/hooks/usePulseCTA";
 
 import DeliveryMissionBar from "./DeliveryMissionBar";
 import DeliveryInfoMini from "./DeliveryInfoMini";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
-  const { items, total, itemCount, isUnlocked } = useCart();
+  const { items, total, itemCount, isUnlocked, remaining } = useCart();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
+  const pulse = usePulseCTA(itemCount > 0);
+
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const prevUnlocked = useRef(isUnlocked);
+
+  useEffect(() => {
+    if (isUnlocked && !prevUnlocked.current) {
+      setJustUnlocked(true);
+      setTimeout(() => setJustUnlocked(false), 2500);
+    }
+    prevUnlocked.current = isUnlocked;
+  }, [isUnlocked]);
 
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
   if (itemCount === 0) return null;
@@ -21,7 +35,7 @@ const StickyCartHUD = () => {
     <div
       className={`fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 shadow-lg transition-all duration-300 ${
         isUnlocked ? "border-success glow-unlock" : "border-primary"
-      }`}
+      } ${justUnlocked ? "animate-glow-pulse" : ""}`}
     >
       <div className="container max-w-2xl mx-auto px-4 py-2.5 space-y-1.5">
         {/* Row: thumbnails + total */}
@@ -30,7 +44,7 @@ const StickyCartHUD = () => {
             {items.slice(0, 5).map((item) => (
               <div
                 key={item.product.id}
-                className="relative w-9 h-9 rounded-md overflow-hidden border border-border flex-shrink-0"
+                className="relative w-9 h-9 rounded-md overflow-hidden border border-border flex-shrink-0 animate-scale-in"
               >
                 <img
                   src={item.product.image}
@@ -58,9 +72,18 @@ const StickyCartHUD = () => {
 
         {/* Mini mission bar */}
         <DeliveryMissionBar mini />
-        <DeliveryInfoMini />
 
-        {/* CTA — opens cart if unlocked, otherwise shows soft checkout sheet */}
+        {/* Success message or delivery info */}
+        {isUnlocked ? (
+          <div className="flex items-center justify-center gap-1.5 py-0.5 animate-success-reveal">
+            <CheckCircle className="w-3.5 h-3.5 text-success" />
+            <span className="text-xs font-bold text-success">🎉 უფასო მიტანა გახსნილია</span>
+          </div>
+        ) : (
+          <DeliveryInfoMini />
+        )}
+
+        {/* CTA */}
         <Button
           onClick={() => {
             if (isUnlocked) {
@@ -71,13 +94,20 @@ const StickyCartHUD = () => {
           }}
           className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${
             isUnlocked
-              ? "bg-success hover:bg-success/90 text-success-foreground"
-              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              ? `bg-success hover:bg-success/90 text-success-foreground ${pulse ? "animate-cta-pulse-success" : ""}`
+              : `bg-primary hover:bg-primary/90 text-primary-foreground ${pulse ? "animate-cta-pulse" : ""}`
           }`}
           size="lg"
         >
-          შეკვეთის დასრულება
+          {isUnlocked
+            ? "შეკვეთის დასრულება"
+            : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
         </Button>
+        {!isUnlocked && (
+          <p className="text-[10px] text-center text-muted-foreground font-medium">
+            მინ. შეკვეთა {40} ₾
+          </p>
+        )}
       </div>
     </div>
   );

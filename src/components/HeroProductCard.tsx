@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
 import { trackHeroAddToCart } from "@/lib/gridTracker";
+import { MicroBenefitRotating } from "@/components/MicroBenefits";
 
 interface HeroProductCardProps {
   product: Product;
@@ -85,6 +86,9 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
             <span className="text-lg font-extrabold text-primary">{product.price} ₾</span>
             <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
           </div>
+
+          {/* Micro-benefits */}
+          <MicroBenefitRotating />
 
           {/* Add to cart */}
           <div className="flex items-center justify-between pt-1">

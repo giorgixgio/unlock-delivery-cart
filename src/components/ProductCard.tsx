@@ -5,6 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
+import { MicroBenefitRotating } from "@/components/MicroBenefits";
 
 interface ProductCardProps {
   product: Product;
@@ -131,7 +132,10 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
             );
           })()}
 
-          <div className="flex items-center justify-between mt-3">
+          {/* Micro-benefits */}
+          <MicroBenefitRotating />
+
+          <div className="flex items-center justify-between mt-2">
             {quantity === 0 ? (
               <Button
                 onClick={handleAdd}
