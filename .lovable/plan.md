@@ -1,82 +1,39 @@
 
-# Cart Overlay Navigation Fix
 
-## Problem
-Cart is a separate route (`/cart`). When users press browser back from cart, they land on `/` (home) instead of returning to `/shop?product_id=...`. The cart header back button is hardcoded to `navigate("/")`.
+## Fix Bulk SKU Upload — Handle Swaps and Empty Rows
 
-## Root Causes
-1. **Cart back button hardcoded to home**: `Cart.tsx` line 233 uses `navigate("/")` instead of going back in history
-2. **Cart is a full route**: Opening cart pushes `/cart` onto the history stack, so back goes to the previous entry (which may be `/` if the user came from there originally)
-3. **No scroll position preservation**: After navigating away and back, scroll resets
+### Problem
+The bulk SKU upload in Product Management flags ~740 false errors on a valid 458-row file because:
+1. **552 "empty" rows**: Excel trailing blank rows are parsed and shown as errors.
+2. **191 "conflict" rows**: The file is a full SKU reassignment (e.g., "217 to 1" and "1 to 182"). The validator sees that new_sku "1" already exists in the catalog, but doesn't realize that SKU "1" is being freed up by another row in the same file.
 
-## Solution
+### Solution
 
-Convert the cart from a route-based page to a **full-screen overlay** rendered on top of the current page, integrated with browser history via `pushState`/`popstate`.
+**File: `src/pages/admin/AdminProducts.tsx`** — update the `handleBulkFile` validation logic:
 
-### Architecture
+1. **Auto-trim empty rows**: After parsing, filter out rows where both `oldSku` and `newSku` are empty. Never show them in the results.
 
-```text
-Before:  /shop?product_id=X  -->  navigate("/cart")  -->  back  -->  "/"
-After:   /shop?product_id=X  -->  pushState(overlay:cart)  -->  back  -->  popstate closes overlay
+2. **Swap-aware conflict detection**: Build a Set of all old_sku values in the file. When checking if a new_sku "conflicts" with an existing catalog SKU, also check if that existing SKU is in the old_sku set (meaning it will be freed up). If yes, mark it as "matched" (swap), not "conflict".
+
+### Technical Detail
+
+```
+// Before conflict check, build a set of all old SKUs being replaced
+const oldSkuSet = new Set(
+  dataRows.map(r => String(r[oldSkuIdx] || "").trim().toLowerCase()).filter(Boolean)
+);
+
+// In the conflict check:
+const conflict = skuMap.get(newSku.toLowerCase());
+if (conflict && conflict.productId !== match.productId) {
+  // If the conflicting SKU is itself being reassigned in this file, it's a swap — allow it
+  if (oldSkuSet.has(newSku.toLowerCase())) {
+    // OK — this SKU will be freed up by another row
+  } else {
+    return { ...conflict error... };
+  }
+}
 ```
 
-### Step-by-step
+After this fix, the same file should show ~458 matched rows (minus any genuinely missing SKUs) and zero empty/conflict noise.
 
-**1. Create CartOverlayContext** (`src/contexts/CartOverlayContext.tsx`)
-- Manages `isCartOpen` state
-- `openCart()`: saves `scrollY`, calls `history.pushState({ overlay: "cart" }, "", location.href)`
-- `closeCart()`: restores scroll position, calls `history.back()` if history state has overlay marker
-- Listens to `popstate` event: if overlay was open and state no longer has marker, close the cart UI
-- Supports deep-link: on mount, check URL for `?cart=1` param and auto-open
-
-**2. Refactor Cart.tsx to CartOverlay component**
-- Render as a full-screen fixed overlay (`fixed inset-0 z-50 bg-background overflow-y-auto`) instead of a `<main>` routed page
-- Replace `navigate("/")` back button with `closeCart()` from context
-- Replace `navigate("/success", ...)` with normal navigation (close overlay first)
-- Keep all existing checkout form logic unchanged
-- The unlock gate check redirects using `closeCart()` instead of `navigate("/")`
-
-**3. Update App.tsx routing**
-- Remove the `/cart` route from `<Routes>`
-- Render `<CartOverlay />` alongside `<StickyCartHUD />` (always mounted, visibility controlled by context)
-- Wrap with `<CartOverlayProvider>`
-
-**4. Update all cart navigation entry points**
-- `StickyCartHUD.tsx`: change `handleCheckoutIntent` flow to call `openCart()` instead of navigating to `/cart`
-- `CheckoutGateContext.tsx`: change `proceedToCheckout` from `navigate("/cart")` to `openCart()`
-- `SoftCheckoutSheet.tsx`: change `handleViewCart` from `navigate("/cart")` to `openCart()`
-- `ProductSheet.tsx`: update finalize handler
-
-**5. Scroll position preservation**
-- Before opening cart, store `window.scrollY` in the context
-- On close, restore scroll via `window.scrollTo(0, savedScrollY)`
-- Use `requestAnimationFrame` for reliable restoration after DOM settles
-
-**6. Deep link support**
-- If URL contains `?cart=1`, auto-open cart overlay on mount
-- On close, strip `cart=1` from URL using `replaceState`
-
-### What stays unchanged
-- All cart business logic (items, form, order submission, validation)
-- Cart UI and styling (just wrapped differently)
-- Product grid, ranking engine, infinite scroll
-- SoftCheckoutSheet and ProductSheet behavior
-- Admin routes
-
-### Files to create
-- `src/contexts/CartOverlayContext.tsx`
-
-### Files to modify
-- `src/pages/Cart.tsx` - convert from page to overlay component
-- `src/App.tsx` - remove `/cart` route, add overlay + provider
-- `src/contexts/CheckoutGateContext.tsx` - use `openCart()` instead of `navigate("/cart")`
-- `src/components/StickyCartHUD.tsx` - use `openCart()` for direct cart access
-- `src/components/SoftCheckoutSheet.tsx` - update `handleViewCart`
-- `src/components/ProductSheet.tsx` - update finalize flow
-
-### Edge cases handled
-- iOS swipe-back gesture triggers `popstate` which closes cart (same as back button)
-- Multiple overlays: popstate handler checks if cart is the active overlay before acting
-- Direct URL `/cart` (legacy): add a redirect route to open overlay via `?cart=1`
-- Order success: close overlay, then navigate to `/success`
-- Cart threshold gate: close overlay with toast instead of navigating to home
