@@ -13,6 +13,7 @@ import {
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import EditableOrderFields from "@/components/admin/EditableOrderFields";
+import EditableItemRow from "@/components/admin/EditableItemRow";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -718,24 +719,19 @@ const AdminOrderDetail = () => {
 
       <EditableOrderFields orderId={id!} order={order} actor={actor} onSaved={refreshOrder} />
 
-      {/* Items */}
+      {/* Editable Items */}
       <div className="bg-card rounded-lg p-4 border border-border">
         <h3 className="font-bold text-sm mb-3">Items</h3>
         <div className="space-y-2">
           {order.order_items.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-              <div className="w-10 h-10 rounded border border-border overflow-hidden flex-shrink-0">
-                <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{item.title}</p>
-                <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
-              </div>
-              <div className="text-sm text-right">
-                <p>{item.quantity} × {Number(item.unit_price).toFixed(1)} ₾</p>
-                <p className="font-bold">{Number(item.line_total).toFixed(1)} ₾</p>
-              </div>
-            </div>
+            <EditableItemRow
+              key={item.id}
+              item={item}
+              orderId={id!}
+              actor={actor}
+              canEdit={!order.is_fulfilled && !["shipped", "delivered", "canceled", "returned", "merged"].includes(order.status)}
+              onUpdated={refreshOrder}
+            />
           ))}
         </div>
       </div>

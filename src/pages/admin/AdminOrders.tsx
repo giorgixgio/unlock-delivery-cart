@@ -9,7 +9,7 @@ import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
 import MassFulfillModal from "@/components/admin/MassFulfillModal";
 
-type Tab = "review" | "ready" | "merged" | "canceled";
+type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled";
 
 const DATE_FILTERS = [
   { label: "All", value: "all" },
@@ -83,31 +83,36 @@ const AdminOrders = () => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportOpen, setExportOpen] = useState(false);
   const [fulfillOpen, setFulfillOpen] = useState(false);
-  const [counts, setCounts] = useState({ review: 0, ready: 0 });
+  const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
 
   const fetchCounts = useCallback(async () => {
-    // Needs Review count
-    const { count: reviewCount } = await supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .neq("status", "merged")
-      .neq("status", "canceled")
-      .neq("status", "returned")
-      .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true");
-
-    // Ready count
-    const { count: readyCount } = await supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "confirmed")
-      .eq("is_confirmed", true)
-      .eq("review_required", false)
-      .eq("is_fulfilled", false)
-      .neq("status", "merged");
+    const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .neq("status", "merged")
+        .neq("status", "canceled")
+        .neq("status", "returned")
+        .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true"),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .eq("is_confirmed", true)
+        .eq("review_required", false)
+        .eq("is_fulfilled", false)
+        .neq("status", "merged"),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("is_fulfilled", true)
+        .not("status", "in", "(canceled,returned,merged)"),
+    ]);
 
     setCounts({
       review: reviewCount || 0,
       ready: readyCount || 0,
+      fulfilled: fulfilledCount || 0,
     });
   }, []);
 
@@ -134,6 +139,11 @@ const AdminOrders = () => {
         .eq("review_required", false)
         .eq("is_fulfilled", false)
         .neq("status", "merged")
+        .order("created_at", { ascending: false });
+    } else if (activeTab === "fulfilled") {
+      query = query
+        .eq("is_fulfilled", true)
+        .not("status", "in", "(canceled,returned,merged)")
         .order("created_at", { ascending: false });
     } else if (activeTab === "merged") {
       query = query
@@ -224,6 +234,21 @@ const AdminOrders = () => {
           {counts.ready > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
               {counts.ready}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => switchTab("fulfilled")}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+            activeTab === "fulfilled"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Fulfilled
+          {counts.fulfilled > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800">
+              {counts.fulfilled}
             </span>
           )}
         </button>
