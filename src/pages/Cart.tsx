@@ -8,6 +8,7 @@ import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
 import DeliveryInfoBox from "@/components/DeliveryInfoBox";
+import SaleTotalDisplay from "@/components/SaleTotalDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -242,8 +243,13 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
         <div className="container max-w-2xl mx-auto px-4 pt-4 space-y-4">
           {/* Progress bar */}
-          <div className="bg-card rounded-lg p-4 shadow-card border border-border">
+          <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-3">
             <DeliveryProgressBar />
+            {/* Sale total with price-reveal animation on entry */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted-foreground">ჯამი:</span>
+              <SaleTotalDisplay animateOnMount size="md" />
+            </div>
           </div>
 
           {/* Threshold banner */}

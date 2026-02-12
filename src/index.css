@@ -227,3 +227,24 @@
   color: hsl(var(--success));
   text-shadow: 0 0 8px hsl(var(--success) / 0.2);
 }
+
+@keyframes sale-highlight {
+  0% { background-color: transparent; }
+  30% { background-color: hsl(var(--primary) / 0.1); }
+  100% { background-color: transparent; }
+}
+
+.animate-sale-highlight {
+  animation: sale-highlight 0.8s ease-out;
+  border-radius: 0.25rem;
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.4s ease-out forwards;
+}

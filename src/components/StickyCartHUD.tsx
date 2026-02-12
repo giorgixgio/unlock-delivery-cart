@@ -66,7 +66,19 @@ const StickyCartHUD = () => {
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <ShoppingCart className="w-4 h-4 text-foreground" />
-            <span className="text-lg font-extrabold text-foreground">{total.toFixed(1)} ₾</span>
+            {(() => {
+              const oldTotal = items.reduce((sum, { product, quantity }) => {
+                const p = product.compareAtPrice && product.compareAtPrice > product.price ? product.compareAtPrice : product.price;
+                return sum + p * quantity;
+              }, 0);
+              const hasSale = oldTotal > total;
+              return (
+                <span className="flex items-center gap-1.5">
+                  {hasSale && <span className="text-xs text-muted-foreground line-through">{oldTotal.toFixed(1)} ₾</span>}
+                  <span className="text-lg font-extrabold text-foreground">{total.toFixed(1)} ₾</span>
+                </span>
+              );
+            })()}
           </div>
         </div>
 
