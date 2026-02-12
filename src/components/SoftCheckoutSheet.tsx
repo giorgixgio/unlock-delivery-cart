@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
+import ProductSheet from "@/components/ProductSheet";
 
 interface SoftCheckoutSheetProps {
   open: boolean;
@@ -55,15 +56,18 @@ function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
 const SheetProductCard = memo(({
   product,
   cartIconRef,
+  onTapProduct,
 }: {
   product: Product;
   cartIconRef: React.RefObject<HTMLDivElement | null>;
+  onTapProduct: (product: Product) => void;
 }) => {
   const { addItem, remaining } = useCart();
   const [added, setAdded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addItem(product);
     setAdded(true);
     if (imgRef.current && cartIconRef.current) {
@@ -77,7 +81,10 @@ const SheetProductCard = memo(({
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
+    <div
+      className="bg-card rounded-lg border border-border overflow-hidden shadow-sm cursor-pointer active:scale-[0.97] transition-transform"
+      onClick={() => onTapProduct(product)}
+    >
       <div className="relative w-full aspect-square bg-muted overflow-hidden">
         <img ref={imgRef} src={product.image} alt={product.title}
           className="w-full h-full object-cover" loading="lazy" decoding="async" />
@@ -128,6 +135,13 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const scrollRef = useRef<HTMLDivElement>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const lastScrollTop = useRef(0);
+
+  // ProductSheet state for viewing product details
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
+
+  const handleTapProduct = useCallback((product: Product) => {
+    setSheetProduct(product);
+  }, []);
 
   // Auto-close and proceed when threshold is reached
   useEffect(() => {
@@ -194,12 +208,11 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           }
         }
         if (p.price <= 10) score += 5;
-        score += Math.random() * 3; // slight randomization for variety
+        score += Math.random() * 3;
         return { product: p, score };
       })
       .sort((a, b) => b.score - a.score);
 
-    // Diversity cap: max 4 per category
     const result: Product[] = [];
     const catCount: Record<string, number> = {};
     for (const { product } of scored) {
@@ -210,7 +223,6 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         if (result.length >= 18) break;
       }
     }
-    // Fill up if needed
     if (result.length < 12) {
       const picked = new Set(result.map((r) => r.id));
       for (const { product } of scored) {
@@ -232,104 +244,107 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const showEmpty = !isLoading && !hasContent;
 
   return (
-    <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-      <DrawerContent className="max-h-[88vh] focus:outline-none flex flex-col">
-        <DrawerTitle className="sr-only">მინიმალური შეკვეთა</DrawerTitle>
+    <>
+      <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
+        <DrawerContent className="max-h-[88vh] focus:outline-none flex flex-col">
+          <DrawerTitle className="sr-only">მინიმალური შეკვეთა</DrawerTitle>
 
-        {/* ── Header (collapsible) ── */}
-        <div className={`flex-shrink-0 transition-all duration-300 ease-out overflow-hidden ${
-          headerCollapsed ? "max-h-12" : "max-h-56"
-        }`}>
-          <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-            <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted">
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
-            {headerCollapsed && (
+          {/* ── Sticky Header (progress section) ── */}
+          <div className="flex-shrink-0 sticky top-0 z-20 bg-card border-b border-border/50 shadow-sm">
+            <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+              <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
               <span className="text-xs font-bold text-muted-foreground">
                 <AnimatedNumber value={total} /> / {DELIVERY_THRESHOLD} ₾
               </span>
-            )}
-            <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
-              <div ref={cartIconRef}>
-                <ShoppingCart className="w-5 h-5 text-foreground" />
+              <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
+                <div ref={cartIconRef}>
+                  <ShoppingCart className="w-5 h-5 text-foreground" />
+                </div>
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="px-4 pb-2 space-y-2">
+              <div className="text-center space-y-0.5">
+                <h2 className={`text-lg font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
+                  {almostThere ? "თითქმის მოხერხდა! 🔥" : `კიდევ ${gap.toFixed(1)} ₾ დარჩა 🎉`}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({DELIVERY_THRESHOLD} ₾)
+                </p>
               </div>
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
-            </button>
+              <DeliveryMissionBar />
+            </div>
           </div>
 
-          <div className={`px-4 pb-2 space-y-2 transition-opacity duration-200 ${
-            headerCollapsed ? "opacity-0" : "opacity-100"
-          }`}>
-            <div className="text-center space-y-0.5">
-              <h2 className={`text-lg font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
-                {almostThere ? "თითქმის მოხერხდა! 🔥" : `კიდევ ${gap.toFixed(1)} ₾ დარჩა 🎉`}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({DELIVERY_THRESHOLD} ₾)
-              </p>
-            </div>
-            <DeliveryMissionBar />
+          {/* ── Scrollable content ── */}
+          <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-6">
+            {isLoading ? (
+              <SkeletonGrid />
+            ) : showEmpty ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                რეკომენდაციები ამჟამად არ არის — დაამატეთ კატალოგიდან
+              </div>
+            ) : (
+              <>
+                {/* Section 1: Perfect to unlock */}
+                {gapFillers.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-3 mt-3">
+                      <Target className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-bold text-foreground">იდეალური გასახსნელად</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {gapFillers.map((product) => (
+                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 2: Recommended for you */}
+                {recommended.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-bold text-foreground">რეკომენდაცია შენთვის</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {recommended.map((product) => (
+                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </div>
 
-        {/* ── Scrollable content ── */}
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-6">
-          {isLoading ? (
-            <SkeletonGrid />
-          ) : showEmpty ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              რეკომენდაციები ამჟამად არ არის — დაამატეთ კატალოგიდან
+          {/* Unlocked state overlay */}
+          {isUnlocked && (
+            <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
+              <div className="text-center space-y-2 animate-success-reveal">
+                <p className="text-2xl font-extrabold text-success">🎉 მიტანა გახსნილია</p>
+                <p className="text-sm text-muted-foreground">გადამისამართება...</p>
+              </div>
             </div>
-          ) : (
-            <>
-              {/* Section 1: Perfect to unlock */}
-              {gapFillers.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-3 mt-1">
-                    <Target className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-bold text-foreground">იდეალური გასახსნელად</span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {gapFillers.map((product) => (
-                      <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Section 2: Recommended for you */}
-              {recommended.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-bold text-foreground">რეკომენდაცია შენთვის</span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {recommended.map((product) => (
-                      <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
           )}
-        </div>
+        </DrawerContent>
+      </Drawer>
 
-        {/* Unlocked state overlay */}
-        {isUnlocked && (
-          <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
-            <div className="text-center space-y-2 animate-success-reveal">
-              <p className="text-2xl font-extrabold text-success">🎉 მიტანა გახსნილია</p>
-              <p className="text-sm text-muted-foreground">გადამისამართება...</p>
-            </div>
-          </div>
-        )}
-      </DrawerContent>
-    </Drawer>
+      {/* ProductSheet opened from within Unlock Sheet */}
+      <ProductSheet
+        product={sheetProduct}
+        open={!!sheetProduct}
+        onClose={() => setSheetProduct(null)}
+      />
+    </>
   );
 };
 
