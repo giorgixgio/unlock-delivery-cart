@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -228,44 +229,70 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
 
     setStep("applying");
     let applied = 0;
+    const batchId = crypto.randomUUID();
 
     for (const row of toApply) {
-      const { data: currentOrder } = await supabase
-        .from("orders")
-        .select("status, courier_name, tracking_number")
-        .eq("id", row.matchedOrderId!)
-        .single();
+      try {
+        const { data: currentOrder } = await supabase
+          .from("orders")
+          .select("status, courier_name, tracking_number")
+          .eq("id", row.matchedOrderId!)
+          .single();
 
-      if (!currentOrder) continue;
+        if (!currentOrder) continue;
 
-      const updates: Record<string, unknown> = {
-        tracking_number: row.tracking,
-        is_fulfilled: true,
-      };
+        const updates: Record<string, unknown> = {
+          tracking_number: row.tracking,
+          is_fulfilled: true,
+        };
 
-      if (["confirmed", "new", "on_hold"].includes(currentOrder.status)) {
-        updates.status = "shipped";
+        if (["confirmed", "new", "on_hold"].includes(currentOrder.status)) {
+          updates.status = "shipped";
+        }
+
+        if (!currentOrder.courier_name) {
+          updates.courier_name = "Onway";
+        }
+
+        const { error } = await supabase.from("orders").update(updates).eq("id", row.matchedOrderId!);
+        if (error) throw error;
+
+        await supabase.from("order_events").insert({
+          order_id: row.matchedOrderId!,
+          actor: "admin",
+          event_type: "tracking_import_mass_fulfill",
+          payload: {
+            tracking: row.tracking,
+            order_ref: row.orderRef,
+            source_file: fileName,
+          } as any,
+        });
+
+        await logSystemEvent({
+          entityType: "import_batch",
+          entityId: batchId,
+          eventType: "COURIER_IMPORT_APPLY",
+          actorId: "admin",
+          payload: {
+            order_id: row.matchedOrderId,
+            tracking: row.tracking,
+            source_file: fileName,
+            before_status: currentOrder.status,
+          },
+        });
+
+        applied++;
+        setAppliedCount(applied);
+      } catch (err: any) {
+        await logSystemEventFailed({
+          entityType: "import_batch",
+          entityId: batchId,
+          eventType: "COURIER_IMPORT_APPLY",
+          actorId: "admin",
+          errorMessage: err?.message || String(err),
+          payload: { order_id: row.matchedOrderId, tracking: row.tracking },
+        });
       }
-
-      if (!currentOrder.courier_name) {
-        updates.courier_name = "Onway";
-      }
-
-      await supabase.from("orders").update(updates).eq("id", row.matchedOrderId!);
-
-      await supabase.from("order_events").insert({
-        order_id: row.matchedOrderId!,
-        actor: "admin",
-        event_type: "tracking_import_mass_fulfill",
-        payload: {
-          tracking: row.tracking,
-          order_ref: row.orderRef,
-          source_file: fileName,
-        } as any,
-      });
-
-      applied++;
-      setAppliedCount(applied);
     }
 
     setStep("done");

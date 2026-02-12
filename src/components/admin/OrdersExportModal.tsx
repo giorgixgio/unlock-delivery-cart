@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Download, X } from "lucide-react";
 import * as XLSX from "xlsx";
+import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 
 const COLUMN_HEADERS: Record<string, string> = {
   A: "Shipping First Name",
@@ -62,6 +63,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
 
   const handleDownload = async () => {
     setDownloading(true);
+    const batchId = crypto.randomUUID();
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download`, {
@@ -73,7 +75,6 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
 
       const { rows, includeHeaders, columns } = data;
 
-      // Build XLSX client-side
       const sheetData: string[][] = [];
       if (includeHeaders) {
         sheetData.push(columns.map((c: string) => COLUMN_HEADERS[c] || c));
@@ -85,9 +86,24 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       XLSX.utils.book_append_sheet(wb, ws, "Orders");
       XLSX.writeFile(wb, `courier_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
+      await logSystemEvent({
+        entityType: "export_batch",
+        entityId: batchId,
+        eventType: "COURIER_EXPORT_CREATE",
+        actorId: "admin",
+        payload: { order_count: rows.length },
+      });
+
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error("Export failed:", e);
+      await logSystemEventFailed({
+        entityType: "export_batch",
+        entityId: batchId,
+        eventType: "COURIER_EXPORT_CREATE",
+        actorId: "admin",
+        errorMessage: e?.message || String(e),
+      });
     } finally {
       setDownloading(false);
     }

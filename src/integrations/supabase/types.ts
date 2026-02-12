@@ -396,6 +396,42 @@ export type Database = {
         }
         Relationships: []
       }
+      system_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          event_id: string
+          event_type: string
+          payload_json: Json
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          event_id?: string
+          event_type: string
+          payload_json?: Json
+          status?: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          event_id?: string
+          event_type?: string
+          payload_json?: Json
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

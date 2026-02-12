@@ -18,6 +18,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
@@ -136,6 +137,8 @@ const AdminOrderDetail = () => {
   const [trackingUrl, setTrackingUrl] = useState("");
   const [adminUsers, setAdminUsers] = useState<{ email: string }[]>([]);
 
+  const actor = user?.email || "admin";
+
   const refreshOrder = async () => {
     if (!id) return;
     const [{ data: orderData }, { data: eventsData }, { data: admins }] = await Promise.all([
@@ -162,7 +165,6 @@ const AdminOrderDetail = () => {
       setTrackingNumber(o.tracking_number || "");
       setTrackingUrl(o.tracking_url || "");
 
-      // Fetch merged children
       const childIds = o.merged_child_order_ids || [];
       if (childIds.length > 0) {
         const { data: children } = await supabase
@@ -174,7 +176,6 @@ const AdminOrderDetail = () => {
         setMergedChildren([]);
       }
 
-      // Fetch previous orders from same customer (phone or cookie)
       const orConditions: string[] = [];
       if (o.customer_phone) orConditions.push(`customer_phone.eq.${o.customer_phone}`);
       if ((o as any).cookie_id_hash) orConditions.push(`cookie_id_hash.eq.${(o as any).cookie_id_hash}`);
@@ -201,7 +202,7 @@ const AdminOrderDetail = () => {
   const logEvent = async (eventType: string, payload: Record<string, unknown>) => {
     await supabase.from("order_events").insert([{
       order_id: id!,
-      actor: user?.email || "admin",
+      actor,
       event_type: eventType,
       payload: payload as unknown as import("@/integrations/supabase/types").Json,
     }]);
@@ -211,17 +212,31 @@ const AdminOrderDetail = () => {
     navigate(`/admin/orders?tab=${fromTab}`);
   };
 
-  // === DECISION ACTIONS ===
+  // === DECISION ACTIONS (with audit logging) ===
   const handleConfirmOrder = async () => {
     if (!order || !id) return;
     setSaving(true);
-    await supabase.from("orders").update({
-      is_confirmed: true,
-      status: "confirmed",
-      review_required: false,
-    }).eq("id", id);
-    await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
-    toast({ title: "Order confirmed ✓" });
+    try {
+      const { error } = await supabase.from("orders").update({
+        is_confirmed: true,
+        status: "confirmed",
+        review_required: false,
+      }).eq("id", id);
+      if (error) throw error;
+
+      await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
+        payload: { before: { status: order.status, risk_level: order.risk_level }, after: { status: "confirmed" } },
+      });
+      toast({ title: "Order confirmed ✓" });
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+      toast({ title: "Failed to confirm order", variant: "destructive" });
+    }
     await refreshOrder();
     setSaving(false);
   };
@@ -229,9 +244,21 @@ const AdminOrderDetail = () => {
   const handleKeepOnHold = async () => {
     if (!order || !id) return;
     setSaving(true);
-    await supabase.from("orders").update({ status: "on_hold" }).eq("id", id);
-    await logEvent("kept_on_hold", { previous_status: order.status });
-    toast({ title: "Order placed on hold" });
+    try {
+      const { error } = await supabase.from("orders").update({ status: "on_hold" }).eq("id", id);
+      if (error) throw error;
+      await logEvent("kept_on_hold", { previous_status: order.status });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_HOLD", actorId: actor,
+        payload: { before: { status: order.status }, after: { status: "on_hold" } },
+      });
+      toast({ title: "Order placed on hold" });
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_HOLD", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+    }
     await refreshOrder();
     setSaving(false);
   };
@@ -239,16 +266,28 @@ const AdminOrderDetail = () => {
   const handleCancelDuplicate = async () => {
     if (!order || !id) return;
     setSaving(true);
-    const newTags = [...(order.tags || [])];
-    if (!newTags.includes("duplicate_confirmed")) newTags.push("duplicate_confirmed");
-    await supabase.from("orders").update({
-      status: "canceled",
-      review_required: false,
-      tags: newTags,
-    }).eq("id", id);
-    await logEvent("canceled_duplicate", { previous_status: order.status });
-    toast({ title: "Order canceled as duplicate" });
-    goBackToList();
+    try {
+      const newTags = [...(order.tags || [])];
+      if (!newTags.includes("duplicate_confirmed")) newTags.push("duplicate_confirmed");
+      const { error } = await supabase.from("orders").update({
+        status: "canceled",
+        review_required: false,
+        tags: newTags,
+      }).eq("id", id);
+      if (error) throw error;
+      await logEvent("canceled_duplicate", { previous_status: order.status });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
+        payload: { before: { status: order.status }, after: { status: "canceled" }, reason: "duplicate" },
+      });
+      toast({ title: "Order canceled as duplicate" });
+      goBackToList();
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+    }
     setSaving(false);
   };
 
@@ -256,8 +295,20 @@ const AdminOrderDetail = () => {
     if (!order || !id) return;
     setSaving(true);
     const newVal = !order.is_fulfilled;
-    await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
-    await logEvent("fulfillment_change", { is_fulfilled: newVal });
+    try {
+      const { error } = await supabase.from("orders").update({ is_fulfilled: newVal }).eq("id", id);
+      if (error) throw error;
+      await logEvent("fulfillment_change", { is_fulfilled: newVal });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
+        payload: { before: { is_fulfilled: order.is_fulfilled }, after: { is_fulfilled: newVal } },
+      });
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+    }
     await refreshOrder();
     setSaving(false);
   };
@@ -265,35 +316,60 @@ const AdminOrderDetail = () => {
   const handleSave = async () => {
     if (!order || !id) return;
     setSaving(true);
-    const updates: Record<string, unknown> = {};
-    const eventLogs: { type: string; payload: Record<string, unknown> }[] = [];
+    try {
+      const updates: Record<string, unknown> = {};
+      const eventLogs: { type: string; payload: Record<string, unknown> }[] = [];
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
 
-    if (status !== order.status) {
-      updates.status = status;
-      eventLogs.push({ type: "status_change", payload: { from: order.status, to: status } });
-    }
-    if (assignedTo !== (order.assigned_to || "")) {
-      updates.assigned_to = assignedTo || null;
-      eventLogs.push({ type: "assignment", payload: { assigned_to: assignedTo } });
-    }
-    if (internalNote !== (order.internal_note || "")) {
-      updates.internal_note = internalNote || null;
-      eventLogs.push({ type: "note", payload: { note: internalNote } });
-    }
-    if (courierName !== (order.courier_name || "")) updates.courier_name = courierName || null;
-    if (trackingNumber !== (order.tracking_number || "")) {
-      updates.tracking_number = trackingNumber || null;
-      eventLogs.push({ type: "tracking_update", payload: { tracking_number: trackingNumber, courier_name: courierName } });
-    }
-    if (trackingUrl !== (order.tracking_url || "")) updates.tracking_url = trackingUrl || null;
+      if (status !== order.status) {
+        updates.status = status;
+        before.status = order.status;
+        after.status = status;
+        eventLogs.push({ type: "status_change", payload: { from: order.status, to: status } });
+      }
+      if (assignedTo !== (order.assigned_to || "")) {
+        updates.assigned_to = assignedTo || null;
+        before.assigned_to = order.assigned_to;
+        after.assigned_to = assignedTo || null;
+        eventLogs.push({ type: "assignment", payload: { assigned_to: assignedTo } });
+      }
+      if (internalNote !== (order.internal_note || "")) {
+        updates.internal_note = internalNote || null;
+        eventLogs.push({ type: "note", payload: { note: internalNote } });
+      }
+      if (courierName !== (order.courier_name || "")) updates.courier_name = courierName || null;
+      if (trackingNumber !== (order.tracking_number || "")) {
+        updates.tracking_number = trackingNumber || null;
+        before.tracking_number = order.tracking_number;
+        after.tracking_number = trackingNumber || null;
+        eventLogs.push({ type: "tracking_update", payload: { tracking_number: trackingNumber, courier_name: courierName } });
+      }
+      if (trackingUrl !== (order.tracking_url || "")) updates.tracking_url = trackingUrl || null;
 
-    if (Object.keys(updates).length > 0) {
-      await supabase.from("orders").update(updates).eq("id", id);
+      if (Object.keys(updates).length > 0) {
+        const { error } = await supabase.from("orders").update(updates).eq("id", id);
+        if (error) throw error;
+      }
+      for (const evt of eventLogs) {
+        await logEvent(evt.type, evt.payload);
+      }
+
+      // Determine the most specific event type
+      const sysEventType = before.status !== undefined ? "ORDER_STATUS_SET" : "ORDER_SAVE";
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: sysEventType as any, actorId: actor,
+        payload: { before, after },
+      });
+
+      toast({ title: "Changes saved" });
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_SAVE", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+      toast({ title: "Failed to save changes", variant: "destructive" });
     }
-    for (const evt of eventLogs) {
-      await logEvent(evt.type, evt.payload);
-    }
-    toast({ title: "Changes saved" });
     await refreshOrder();
     setSaving(false);
   };
@@ -312,76 +388,73 @@ const AdminOrderDetail = () => {
 
     const childIds = order.merged_child_order_ids || [];
 
-    for (const childId of childIds) {
-      // Find original status from merge event
-      const { data: _mergeEvents } = await supabase
-        .from("order_events")
-        .select("payload")
-        .eq("order_id", childId)
-        .eq("event_type", "auto_merge")
-        .limit(1);
+    try {
+      for (const childId of childIds) {
+        const { data: childOrder } = await supabase
+          .from("orders")
+          .select("tracking_number, order_items(id)")
+          .eq("id", childId)
+          .maybeSingle();
 
-      // Check if child has tracking
-      const { data: childOrder } = await supabase
-        .from("orders")
-        .select("tracking_number, order_items(id)")
-        .eq("id", childId)
-        .maybeSingle();
+        if (childOrder?.tracking_number) {
+          toast({ title: "Cannot undo merge", description: "Child order has tracking number set.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
 
-      if (childOrder?.tracking_number) {
-        toast({ title: "Cannot undo merge", description: "Child order has tracking number set.", variant: "destructive" });
-        setSaving(false);
-        return;
+        await supabase.from("orders").update({
+          status: "new",
+          is_confirmed: false,
+          is_fulfilled: false,
+          merged_into_order_id: null,
+          internal_note: null,
+          review_required: true,
+        }).eq("id", childId);
+
+        await supabase.from("order_events").insert({
+          order_id: childId,
+          actor,
+          event_type: "undo_merge",
+          payload: { primary_order_id: id, action: "child_restored" } as unknown as import("@/integrations/supabase/types").Json,
+        });
       }
 
-      // Restore child order
+      const newTags = (order.tags || []).filter(t => t !== "auto_merged");
+      const noteLines = (order.internal_note || "").split("\n").filter(l => !l.includes("Auto-merged"));
+
       await supabase.from("orders").update({
-        status: "new",
-        is_confirmed: false,
-        is_fulfilled: false,
-        merged_into_order_id: null,
-        internal_note: null,
-        review_required: true,
-      }).eq("id", childId);
+        merged_child_order_ids: [],
+        tags: newTags,
+        internal_note: noteLines.join("\n").trim() || null,
+      }).eq("id", id);
 
-      // Log undo on child
-      await supabase.from("order_events").insert({
-        order_id: childId,
-        actor: user?.email || "admin",
-        event_type: "undo_merge",
-        payload: { primary_order_id: id, action: "child_restored" } as unknown as import("@/integrations/supabase/types").Json,
+      const { data: remainingItems } = await supabase
+        .from("order_items")
+        .select("line_total")
+        .eq("order_id", id);
+      const newSubtotal = (remainingItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
+      await supabase.from("orders").update({
+        subtotal: newSubtotal,
+        total: newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0),
+      }).eq("id", id);
+
+      await logEvent("undo_merge", { children_restored: childIds });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_UNDO_MERGE", actorId: actor,
+        payload: { children_restored: childIds, child_count: childIds.length },
       });
+      toast({ title: "Merge undone", description: `${childIds.length} order(s) restored.` });
+    } catch (err: any) {
+      await logSystemEventFailed({
+        entityType: "order", entityId: id, eventType: "ORDER_UNDO_MERGE", actorId: actor,
+        errorMessage: err?.message || String(err),
+      });
+      toast({ title: "Undo merge failed", variant: "destructive" });
     }
-
-    // Remove items that came from children (items added after merge)
-    // We can't perfectly track which items were merged, so we recalculate from remaining items
-    const newTags = (order.tags || []).filter(t => t !== "auto_merged");
-    const noteLines = (order.internal_note || "").split("\n").filter(l => !l.includes("Auto-merged"));
-
-    await supabase.from("orders").update({
-      merged_child_order_ids: [],
-      tags: newTags,
-      internal_note: noteLines.join("\n").trim() || null,
-    }).eq("id", id);
-
-    // Recalculate primary totals
-    const { data: remainingItems } = await supabase
-      .from("order_items")
-      .select("line_total")
-      .eq("order_id", id);
-    const newSubtotal = (remainingItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
-    await supabase.from("orders").update({
-      subtotal: newSubtotal,
-      total: newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0),
-    }).eq("id", id);
-
-    await logEvent("undo_merge", { children_restored: childIds });
-    toast({ title: "Merge undone", description: `${childIds.length} order(s) restored.` });
     await refreshOrder();
     setSaving(false);
   };
 
-  // Determine if this order needs review (show decision panel)
   const needsReview = order && (
     ["new", "on_hold"].includes(order.status) ||
     !order.is_confirmed ||
@@ -456,7 +529,7 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      {/* Decision panel (only for Needs Review orders) */}
+      {/* Decision panel */}
       {needsReview && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
           <h3 className="font-bold text-sm text-amber-900 flex items-center gap-2">
@@ -475,37 +548,20 @@ const AdminOrderDetail = () => {
             </div>
           )}
           <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={handleConfirmOrder}
-              disabled={saving}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Confirm Order
+            <Button onClick={handleConfirmOrder} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <CheckCircle className="w-4 h-4" /> Confirm Order
             </Button>
-            <Button
-              onClick={handleKeepOnHold}
-              disabled={saving}
-              variant="outline"
-              className="gap-2"
-            >
-              <PauseCircle className="w-4 h-4" />
-              Keep on Hold
+            <Button onClick={handleKeepOnHold} disabled={saving} variant="outline" className="gap-2">
+              <PauseCircle className="w-4 h-4" /> Keep on Hold
             </Button>
-            <Button
-              onClick={handleCancelDuplicate}
-              disabled={saving}
-              variant="destructive"
-              className="gap-2"
-            >
-              <XCircle className="w-4 h-4" />
-              Cancel as Duplicate
+            <Button onClick={handleCancelDuplicate} disabled={saving} variant="destructive" className="gap-2">
+              <XCircle className="w-4 h-4" /> Cancel as Duplicate
             </Button>
           </div>
         </div>
       )}
 
-      {/* Merged orders panel (primary order) */}
+      {/* Merged orders panel */}
       {mergedChildren.length > 0 && (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -513,15 +569,8 @@ const AdminOrderDetail = () => {
               <GitMerge className="w-4 h-4 text-slate-500" /> Merged Orders ({mergedChildren.length})
             </h3>
             {canUndoMerge && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50"
-                onClick={() => setUndoMergeOpen(true)}
-                disabled={saving}
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                Undo Merge
+              <Button variant="outline" size="sm" className="gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setUndoMergeOpen(true)} disabled={saving}>
+                <Undo2 className="w-3.5 h-3.5" /> Undo Merge
               </Button>
             )}
             {order.is_fulfilled && (
@@ -531,10 +580,7 @@ const AdminOrderDetail = () => {
           <div className="space-y-1.5">
             {mergedChildren.map((child) => (
               <div key={child.id} className="flex items-center justify-between py-1.5 px-2 rounded bg-background border border-border text-sm">
-                <button
-                  className="font-bold text-primary hover:underline"
-                  onClick={() => navigate(`/admin/orders/${child.id}?from=${fromTab}`)}
-                >
+                <button className="font-bold text-primary hover:underline" onClick={() => navigate(`/admin/orders/${child.id}?from=${fromTab}`)}>
                   #{child.public_order_number}
                 </button>
                 <span className="text-muted-foreground">
@@ -547,7 +593,7 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      {/* Previous orders from same customer */}
+      {/* Previous orders */}
       {previousOrders.length > 0 && (
         <div className="bg-card rounded-lg p-4 border border-border space-y-3">
           <h3 className="font-bold text-sm flex items-center gap-2">
@@ -556,10 +602,7 @@ const AdminOrderDetail = () => {
           <div className="space-y-1.5">
             {previousOrders.map((prev) => (
               <div key={prev.id} className="flex items-center justify-between py-2 px-3 rounded bg-muted/30 border border-border text-sm">
-                <button
-                  className="font-bold text-primary hover:underline"
-                  onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}
-                >
+                <button className="font-bold text-primary hover:underline" onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}>
                   #{prev.public_order_number}
                 </button>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
@@ -585,11 +628,7 @@ const AdminOrderDetail = () => {
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <Label className="text-xs">Status</Label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium"
-          >
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium">
             {STATUSES.map((s) => (
               <option key={s} value={s}>{s.replace("_", " ")}</option>
             ))}
@@ -597,11 +636,7 @@ const AdminOrderDetail = () => {
         </div>
         <div>
           <Label className="text-xs">Assign to</Label>
-          <select
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            className="h-10 px-3 rounded-lg border border-border bg-card text-sm"
-          >
+          <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="h-10 px-3 rounded-lg border border-border bg-card text-sm">
             <option value="">Unassigned</option>
             {adminUsers.map((a) => (
               <option key={a.email} value={a.email}>{a.email}</option>
@@ -620,18 +655,13 @@ const AdminOrderDetail = () => {
       {/* Fulfill actions */}
       {order.is_confirmed && order.status !== "merged" && (
         <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={handleToggleFulfilled}
-            disabled={saving}
-            variant="outline"
-            className="gap-2"
-          >
+          <Button onClick={handleToggleFulfilled} disabled={saving} variant="outline" className="gap-2">
             {order.is_fulfilled ? "Unmark Fulfilled" : "Mark Fulfilled"}
           </Button>
         </div>
       )}
 
-      {/* Risk card (only if score > 0 and not in decision panel already) */}
+      {/* Risk card */}
       {order.risk_score > 0 && !needsReview && (
         <div className="bg-card rounded-lg p-4 border border-amber-200 space-y-2">
           <h3 className="font-bold text-sm flex items-center gap-2">
@@ -644,21 +674,14 @@ const AdminOrderDetail = () => {
           {order.risk_reasons.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {order.risk_reasons.map((reason, i) => (
-                <span key={i} className="px-2 py-0.5 rounded bg-muted text-xs text-muted-foreground">
-                  {reason}
-                </span>
+                <span key={i} className="px-2 py-0.5 rounded bg-muted text-xs text-muted-foreground">{reason}</span>
               ))}
             </div>
           )}
         </div>
       )}
 
-      <EditableOrderFields
-        orderId={id!}
-        order={order}
-        actor={user?.email || "admin"}
-        onSaved={refreshOrder}
-      />
+      <EditableOrderFields orderId={id!} order={order} actor={actor} onSaved={refreshOrder} />
 
       {/* Items */}
       <div className="bg-card rounded-lg p-4 border border-border">
@@ -690,7 +713,7 @@ const AdminOrderDetail = () => {
         <div className="flex justify-between font-bold border-t border-border pt-1.5"><span>Total</span><span>{Number(order.total).toFixed(1)} ₾</span></div>
       </div>
 
-      {/* Fulfillment / Tracking */}
+      {/* Fulfillment & Tracking */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
         <h3 className="font-bold text-sm">Fulfillment & Tracking</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -747,7 +770,7 @@ const AdminOrderDetail = () => {
         )}
       </div>
 
-      {/* Undo Merge Confirmation Dialog */}
+      {/* Undo Merge Dialog */}
       <AlertDialog open={undoMergeOpen} onOpenChange={setUndoMergeOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
