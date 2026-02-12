@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, Trash2, Truck, UserCheck, Pencil, ShoppingBag, CheckCircle } from "lucide-react";
+import { ArrowLeft, Truck, UserCheck, Pencil, CheckCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -8,7 +8,8 @@ import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryProgressBar from "@/components/DeliveryProgressBar";
 import DeliveryInfoBox from "@/components/DeliveryInfoBox";
-import SaleTotalDisplay from "@/components/SaleTotalDisplay";
+import CartTotalBreakdown from "@/components/CartTotalBreakdown";
+import CartItemRow from "@/components/CartItemRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,6 @@ import { createOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
-import { getFakeOldPrice } from "@/lib/demoData";
 import { supabase } from "@/integrations/supabase/client";
 
 const orderSchema = z.object({
@@ -242,79 +242,31 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         </header>
 
         <div className="container max-w-2xl mx-auto px-4 pt-4 space-y-4">
-          {/* Progress bar */}
+          {/* Progress bar — single free shipping indicator */}
           <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-3">
             <DeliveryProgressBar />
-            {/* Sale total with price-reveal animation on entry */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted-foreground">ჯამი:</span>
-              <SaleTotalDisplay animateOnMount size="md" />
-            </div>
+            {!canCheckout && (
+              <p className="text-sm text-muted-foreground text-center">
+                დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
+              </p>
+            )}
           </div>
 
-          {/* Threshold banner */}
-          {canCheckout ? (
-            <div className="bg-success/10 rounded-lg p-3 border border-success/30 flex items-center gap-3 animate-success-reveal">
-              <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
-              <p className="font-bold text-success text-sm">🎉 უფასო მიტანა გახსნილია</p>
-            </div>
-          ) : (
-            <div className="bg-accent rounded-lg p-3 border border-primary/20 flex items-start gap-3">
-              <ShoppingBag className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-foreground text-sm">
-                  მინიმალური შეკვეთა {DELIVERY_THRESHOLD} ₾
-                </p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Temu-style total breakdown with dopamine animation */}
+          <div className="bg-card rounded-lg p-4 shadow-card border border-border">
+            <CartTotalBreakdown animateOnMount />
+          </div>
 
           {/* Items */}
           <div className="space-y-3">
             {items.map(({ product, quantity }) => (
-              <div
+              <CartItemRow
                 key={product.id}
-                className="flex items-center gap-3 bg-card rounded-lg p-3 shadow-card border border-border"
-              >
-                <img
-                  src={product.image}
-                  alt={product.title}
-                  className="w-16 h-16 rounded-md object-cover flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground line-clamp-1">{product.title}</p>
-                  <p className="text-lg font-bold text-primary">{(product.price * quantity).toFixed(1)} ₾</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => updateQuantity(product.id, quantity - 1)}
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10 rounded-lg"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="text-lg font-bold w-6 text-center">{quantity}</span>
-                  <Button
-                    onClick={() => updateQuantity(product.id, quantity + 1)}
-                    size="icon"
-                    className="h-10 w-10 rounded-lg"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() => removeItem(product.id)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+                product={product}
+                quantity={quantity}
+                onUpdateQuantity={updateQuantity}
+                onRemove={removeItem}
+              />
             ))}
           </div>
 
