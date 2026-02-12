@@ -20,6 +20,7 @@ import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminShipping from "./pages/admin/AdminShipping";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminSystemEvents from "./pages/admin/AdminSystemEvents";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
 import Shop from "./pages/Shop";
 
@@ -82,6 +83,7 @@ const App = () => (
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="products" element={<AdminProducts />} />
+                      <Route path="system-events" element={<AdminSystemEvents />} />
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
                     </Route>
