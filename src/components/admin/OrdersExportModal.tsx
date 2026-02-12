@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Download, X } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -64,6 +65,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
   const handleDownload = async () => {
     setDownloading(true);
     const batchId = crypto.randomUUID();
+    const fileName = `courier_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download`, {
@@ -73,7 +75,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
 
       if (data.error) throw new Error(data.error);
 
-      const { rows, includeHeaders, columns } = data;
+      const { rows, includeHeaders, columns, orderIds } = data;
 
       const sheetData: string[][] = [];
       if (includeHeaders) {
@@ -84,14 +86,37 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       const ws = XLSX.utils.aoa_to_sheet(sheetData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Orders");
-      XLSX.writeFile(wb, `courier_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, fileName);
+
+      // Create export batch record
+      await (supabase.from("export_batches") as any).insert({
+        id: batchId,
+        created_by: "admin",
+        order_count: rows.length,
+        template_name: "default",
+        file_name: fileName,
+        status: "completed",
+      });
+
+      // Create export row snapshots (if orderIds available from edge function)
+      if (orderIds && Array.isArray(orderIds)) {
+        const exportRows = orderIds.map((oid: string, i: number) => ({
+          batch_id: batchId,
+          order_id: oid,
+          public_order_number: rows[i]?.[columns.indexOf("H")] || "",
+          snapshot_json: { row_data: rows[i] },
+        }));
+        if (exportRows.length > 0) {
+          await (supabase.from("export_rows") as any).insert(exportRows);
+        }
+      }
 
       await logSystemEvent({
         entityType: "export_batch",
         entityId: batchId,
         eventType: "COURIER_EXPORT_CREATE",
         actorId: "admin",
-        payload: { order_count: rows.length },
+        payload: { order_count: rows.length, file_name: fileName },
       });
 
       onClose();

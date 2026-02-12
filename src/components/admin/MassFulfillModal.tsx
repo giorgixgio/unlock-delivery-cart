@@ -231,6 +231,34 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     let applied = 0;
     const batchId = crypto.randomUUID();
 
+    // Create import batch record
+    await (supabase.from("import_batches") as any).insert({
+      id: batchId,
+      created_by: "admin",
+      file_name: fileName,
+      total_rows: rows.length,
+      matched: summary?.matched || 0,
+      unmatched: summary?.unmatched || 0,
+      errors: 0,
+      status: "applying",
+    });
+
+    // Stage all rows
+    const stagingRows = rows.map((r) => ({
+      batch_id: batchId,
+      row_number: r.rowNum,
+      order_ref: r.orderRef,
+      tracking_number: r.tracking,
+      raw_json: { tracking: r.tracking, orderRef: r.orderRef },
+      match_status: r.matchResult,
+      matched_order_id: r.matchedOrderId || null,
+      matched_order_number: r.matchedOrderNumber || null,
+      error_message: r.skipReason || null,
+    }));
+    await (supabase.from("import_staging_rows") as any).insert(stagingRows);
+
+    let failCount = 0;
+
     for (const row of toApply) {
       try {
         const { data: currentOrder } = await supabase
@@ -289,9 +317,22 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           },
         });
 
+        // Mark staging row as applied
+        await (supabase.from("import_staging_rows") as any)
+          .update({ applied: true, applied_at: new Date().toISOString(), match_status: "applied" })
+          .eq("batch_id", batchId)
+          .eq("matched_order_id", row.matchedOrderId);
+
         applied++;
         setAppliedCount(applied);
       } catch (err: any) {
+        failCount++;
+        // Mark staging row as failed
+        await (supabase.from("import_staging_rows") as any)
+          .update({ match_status: "failed", error_message: err?.message || String(err) })
+          .eq("batch_id", batchId)
+          .eq("matched_order_id", row.matchedOrderId);
+
         await logSystemEventFailed({
           entityType: "import_batch",
           entityId: batchId,
@@ -303,8 +344,17 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       }
     }
 
+    // Update batch status
+    await (supabase.from("import_batches") as any)
+      .update({
+        status: failCount > 0 ? "partial" : "completed",
+        errors: failCount,
+        applied_at: new Date().toISOString(),
+      })
+      .eq("id", batchId);
+
     setStep("done");
-    toast({ title: `${applied} orders fulfilled and tracking updated ✓` });
+    toast({ title: `${applied} orders fulfilled and tracking updated ✓${failCount > 0 ? ` (${failCount} failed)` : ""}` });
     onComplete();
   };
 

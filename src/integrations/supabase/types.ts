@@ -74,6 +74,71 @@ export type Database = {
         }
         Relationships: []
       }
+      export_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          order_count: number
+          status: string
+          template_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          order_count?: number
+          status?: string
+          template_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          order_count?: number
+          status?: string
+          template_name?: string | null
+        }
+        Relationships: []
+      }
+      export_rows: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          order_id: string
+          public_order_number: string | null
+          snapshot_json: Json
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          order_id: string
+          public_order_number?: string | null
+          snapshot_json?: Json
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          public_order_number?: string | null
+          snapshot_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "export_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grid_events: {
         Row: {
           created_at: string
@@ -136,6 +201,101 @@ export type Database = {
           result_json?: Json
         }
         Relationships: []
+      }
+      import_batches: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          created_by: string | null
+          errors: number
+          file_name: string | null
+          id: string
+          matched: number
+          status: string
+          total_rows: number
+          unmatched: number
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          errors?: number
+          file_name?: string | null
+          id?: string
+          matched?: number
+          status?: string
+          total_rows?: number
+          unmatched?: number
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          errors?: number
+          file_name?: string | null
+          id?: string
+          matched?: number
+          status?: string
+          total_rows?: number
+          unmatched?: number
+        }
+        Relationships: []
+      }
+      import_staging_rows: {
+        Row: {
+          applied: boolean
+          applied_at: string | null
+          batch_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          match_status: string
+          matched_order_id: string | null
+          matched_order_number: string | null
+          order_ref: string | null
+          raw_json: Json
+          row_number: number
+          tracking_number: string | null
+        }
+        Insert: {
+          applied?: boolean
+          applied_at?: string | null
+          batch_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          match_status?: string
+          matched_order_id?: string | null
+          matched_order_number?: string | null
+          order_ref?: string | null
+          raw_json?: Json
+          row_number: number
+          tracking_number?: string | null
+        }
+        Update: {
+          applied?: boolean
+          applied_at?: string | null
+          batch_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          match_status?: string
+          matched_order_id?: string | null
+          matched_order_number?: string | null
+          order_ref?: string | null
+          raw_json?: Json
+          row_number?: number
+          tracking_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_staging_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_events: {
         Row: {
