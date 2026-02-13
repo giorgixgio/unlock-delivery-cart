@@ -70,6 +70,7 @@ const CardBadges = ({ productId }: { productId: string }) => {
 };
 
 const ProductCard = memo(({ product }: ProductCardProps) => {
+  const isOOS = product.available === false;
   const { addItem, updateQuantity, getQuantity } = useCart();
   const quantity = getQuantity(product.id);
   const [showFloat, setShowFloat] = useState(false);
@@ -111,7 +112,16 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
         <CardBadges productId={product.id} />
 
-        <LazyImage src={product.image} alt={product.title} />
+        <div className="relative">
+          <LazyImage src={product.image} alt={product.title} />
+          {isOOS && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">
+                Sold Out
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="p-3">
           <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
@@ -136,7 +146,11 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           <MicroBenefitRotating />
 
           <div className="flex items-center justify-between mt-2">
-            {quantity === 0 ? (
+            {isOOS ? (
+              <Button disabled className="w-full h-12 text-base font-bold rounded-lg opacity-50" size="lg">
+                Sold Out
+              </Button>
+            ) : quantity === 0 ? (
               <Button
                 onClick={handleAdd}
                 className="w-full h-12 text-base font-bold rounded-lg"

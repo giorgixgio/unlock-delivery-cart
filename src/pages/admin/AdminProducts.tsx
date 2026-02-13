@@ -77,6 +77,15 @@ function saveConflicts(conflicts: Record<string, VariantRow["skuConflict"]>) {
   localStorage.setItem(CONFLICT_STORAGE_KEY, JSON.stringify(conflicts));
 }
 
+// Stock overrides persistence
+const STOCK_OVERRIDES_KEY = "bigmart-stock-overrides";
+function loadStockOverrides(): Record<string, boolean> {
+  try { return JSON.parse(localStorage.getItem(STOCK_OVERRIDES_KEY) || "{}"); } catch { return {}; }
+}
+function saveStockOverrides(o: Record<string, boolean>) {
+  localStorage.setItem(STOCK_OVERRIDES_KEY, JSON.stringify(o));
+}
+
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
   const { toast } = useToast();
@@ -89,6 +98,16 @@ const AdminProducts = () => {
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
+  const [stockOverrides, setStockOverrides] = useState<Record<string, boolean>>(loadStockOverrides);
+
+  const handleToggleStock = (productId: string, currentlyAvailable: boolean) => {
+    const newOverrides = { ...stockOverrides, [productId]: !currentlyAvailable };
+    setStockOverrides(newOverrides);
+    saveStockOverrides(newOverrides);
+    toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
+  };
+
+  const oosCount = useMemo(() => Object.values(stockOverrides).filter(v => v === false).length, [stockOverrides]);
 
   const allRows = useMemo(() => {
     const rows = productsToVariantRows(products || []);
@@ -100,10 +119,11 @@ const AdminProducts = () => {
   }, [products, skuConflicts]);
 
   const conflictRows = useMemo(() => allRows.filter(r => r.skuConflict), [allRows]);
+  const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
 
   // SKU-first search
   const filtered = useMemo(() => {
-    const source = activeTab === "conflicts" ? conflictRows : allRows;
+    const source = activeTab === "conflicts" ? conflictRows : activeTab === "oos" ? oosRows : allRows;
     const q = search.trim().toLowerCase();
     if (!q) return source;
 
@@ -120,7 +140,7 @@ const AdminProducts = () => {
         r.sku.toLowerCase().includes(q) ||
         r.vendor.toLowerCase().includes(q)
     );
-  }, [allRows, conflictRows, search, activeTab]);
+  }, [allRows, conflictRows, oosRows, search, activeTab]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -405,9 +425,13 @@ const AdminProducts = () => {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${row.available ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
-                    {row.available ? "Active" : "Draft"}
-                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleStock(row.productId, row.available); }}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors hover:opacity-80 ${row.available ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"}`}
+                    title={row.available ? "Click to mark Out of Stock" : "Click to mark In Stock"}
+                  >
+                    {row.available ? "Active" : "Out of Stock"}
+                  </button>
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[100px]">{row.vendor || "—"}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[100px]">{row.category || "—"}</td>
@@ -437,9 +461,14 @@ const AdminProducts = () => {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-          <Package className="w-6 h-6" /> Product Management
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
+            <Package className="w-6 h-6" /> Product Management
+          </h1>
+          {oosCount > 0 && (
+            <Badge variant="destructive" className="text-xs">{oosCount} out of stock</Badge>
+          )}
+        </div>
         <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
           <Upload className="w-4 h-4" />
           Bulk Update SKUs
@@ -577,6 +606,14 @@ const AdminProducts = () => {
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(0); }}>
         <TabsList>
           <TabsTrigger value="all">All Products</TabsTrigger>
+          <TabsTrigger value="oos" className="gap-1.5">
+            Out of Stock
+            {oosRows.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                {oosRows.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="conflicts" className="gap-1.5">
             Conflicting SKUs
             {conflictRows.length > 0 && (
@@ -624,6 +661,21 @@ const AdminProducts = () => {
                   </div>
                 </div>
               )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="oos" className="space-y-3 mt-3">
+          {oosRows.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Package className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="font-medium">All products are in stock</p>
+              <p className="text-sm">Click the status badge on any product to toggle availability.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">{oosRows.length} product{oosRows.length > 1 ? "s" : ""} marked out of stock</p>
+              {renderProductTable(activeTab === "oos" ? pageRows : oosRows)}
             </>
           )}
         </TabsContent>
