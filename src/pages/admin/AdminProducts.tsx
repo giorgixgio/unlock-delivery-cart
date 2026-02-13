@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useProducts, shopifyThumb } from "@/hooks/useProducts";
+import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -316,10 +316,11 @@ const AdminProducts = () => {
   const renderProductTable = (rows: VariantRow[]) => (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50">
+         <thead className="bg-muted/50">
           <tr>
             <th className="text-left px-3 py-3 font-bold w-14">Image</th>
             <th className="text-left px-3 py-3 font-bold">Product</th>
+            <th className="text-left px-3 py-3 font-bold w-8"></th>
             <th className="text-left px-3 py-3 font-bold">SKU</th>
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
@@ -338,7 +339,7 @@ const AdminProducts = () => {
                 <td className="px-3 py-2">
                   <div className="w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
                     {row.image && row.image !== "/placeholder.svg" ? (
-                      <img src={shopifyThumb(row.image, 100)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <img src={row.image} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
                     )}
@@ -351,6 +352,19 @@ const AdminProducts = () => {
                       <AlertTriangle className="w-3 h-3" /> SKU Conflict
                     </Badge>
                   )}
+                </td>
+                <td className="px-1 py-2">
+                  <button
+                    className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Copy product link"
+                    onClick={() => {
+                      const url = `${window.location.origin}/shop?product_id=${row.handle || row.productId}`;
+                      navigator.clipboard.writeText(url);
+                      toast({ title: "Link copied!", description: url });
+                    }}
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                  </button>
                 </td>
                 <td className="px-3 py-2">
                   {editingSku === row.productId ? (
