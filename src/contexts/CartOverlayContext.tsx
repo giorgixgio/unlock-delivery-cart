@@ -4,6 +4,8 @@ interface CartOverlayContextType {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
+  /** Silently dismiss overlay without history.back — use before programmatic navigation */
+  dismissCart: () => void;
 }
 
 const CartOverlayContext = createContext<CartOverlayContextType | undefined>(undefined);
@@ -38,6 +40,11 @@ export const CartOverlayProvider: React.FC<{ children: React.ReactNode }> = ({ c
     });
   }, [isCartOpen]);
 
+  const dismissCart = useCallback(() => {
+    setIsCartOpen(false);
+    isClosingRef.current = false;
+  }, []);
+
   // Listen for popstate (browser back / iOS swipe-back)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -71,7 +78,7 @@ export const CartOverlayProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   return (
-    <CartOverlayContext.Provider value={{ isCartOpen, openCart, closeCart }}>
+    <CartOverlayContext.Provider value={{ isCartOpen, openCart, closeCart, dismissCart }}>
       {children}
     </CartOverlayContext.Provider>
   );
