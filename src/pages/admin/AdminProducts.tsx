@@ -91,8 +91,8 @@ const AdminProducts = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
-  const handleToggleStock = (productId: string, currentlyAvailable: boolean) => {
-    setStockOverride(productId, !currentlyAvailable);
+  const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
+    await setStockOverride(productId, !currentlyAvailable);
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
   };
 

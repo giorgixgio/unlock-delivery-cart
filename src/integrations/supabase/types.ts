@@ -583,6 +583,27 @@ export type Database = {
         }
         Relationships: []
       }
+      product_stock_overrides: {
+        Row: {
+          available: boolean
+          product_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          available?: boolean
+          product_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          available?: boolean
+          product_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       system_events: {
         Row: {
           actor_id: string | null
