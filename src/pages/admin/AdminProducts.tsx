@@ -106,11 +106,9 @@ const AdminProducts = () => {
     const newOverrides = { ...stockOverrides, [productId]: !currentlyAvailable };
     setStockOverrides(newOverrides);
     saveStockOverrides(newOverrides);
-    // Directly update the query cache so all consumers see the change immediately
-    queryClient.setQueryData(["bigmart-products"], (old: any[] | undefined) => {
-      if (!old) return old;
-      return old.map(p => p.id === productId ? { ...p, available: !currentlyAvailable } : p);
-    });
+    // Force React Query to re-run fetchAllProducts which now applies overrides
+    queryClient.removeQueries({ queryKey: ["bigmart-products"] });
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
   };
 

@@ -109,45 +109,50 @@ function saveToLocalCache(products: Product[]) {
 
 async function fetchAllProducts(): Promise<Product[]> {
   const cached = getFromLocalCache();
-  if (cached) return cached;
+  let products: Product[];
 
-  const allRaw: ShopifyProduct[] = [];
-  let page = 1;
+  if (cached) {
+    products = cached;
+  } else {
+    const allRaw: ShopifyProduct[] = [];
+    let page = 1;
 
-  while (true) {
-    const res = await fetch(
-      `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
-    );
-    if (!res.ok) break;
-    const data = await res.json();
-    if (!data.products || data.products.length === 0) break;
-    allRaw.push(...data.products);
-    if (data.products.length < 250) break;
-    page++;
-  }
-
-  const seen = new Set<string>();
-  const allProducts: Product[] = [];
-
-  for (const raw of allRaw) {
-    const id = String(raw.id);
-    if (!seen.has(id)) {
-      seen.add(id);
-      allProducts.push(mapShopifyProduct(raw));
+    while (true) {
+      const res = await fetch(
+        `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      if (!data.products || data.products.length === 0) break;
+      allRaw.push(...data.products);
+      if (data.products.length < 250) break;
+      page++;
     }
+
+    const seen = new Set<string>();
+    products = [];
+
+    for (const raw of allRaw) {
+      const id = String(raw.id);
+      if (!seen.has(id)) {
+        seen.add(id);
+        products.push(mapShopifyProduct(raw));
+      }
+    }
+
+    saveToLocalCache(products);
   }
 
-  saveToLocalCache(allProducts);
-  return allProducts;
-}
-
-function applyStockOverrides(products: Product[]): Product[] {
+  // Always apply admin stock overrides
   try {
     const overrides = JSON.parse(localStorage.getItem("bigmart-stock-overrides") || "{}");
     if (Object.keys(overrides).length > 0) {
-      return products.map(p => overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p);
+      products = products.map(p =>
+        overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p
+      );
     }
   } catch {}
+
   return products;
 }
 
@@ -155,7 +160,6 @@ export function useProducts() {
   return useQuery({
     queryKey: ["bigmart-products"],
     queryFn: fetchAllProducts,
-    select: applyStockOverrides,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
