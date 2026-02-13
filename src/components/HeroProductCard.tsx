@@ -7,6 +7,7 @@ import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoDa
 import ProductSheet from "@/components/ProductSheet";
 import { trackHeroAddToCart } from "@/lib/gridTracker";
 import { MicroBenefitRotating } from "@/components/MicroBenefits";
+import { getStockOverrides } from "@/lib/stockOverrideStore";
 
 interface HeroProductCardProps {
   product: Product;
@@ -35,7 +36,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
 
-  const isOOS = product.available === false;
+  const overrides = getStockOverrides();
+  const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
 
   return (
     <>

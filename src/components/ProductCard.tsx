@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
 import { MicroBenefitRotating } from "@/components/MicroBenefits";
+import { getStockOverrides } from "@/lib/stockOverrideStore";
 
 interface ProductCardProps {
   product: Product;
@@ -70,7 +71,8 @@ const CardBadges = ({ productId }: { productId: string }) => {
 };
 
 const ProductCard = memo(({ product }: ProductCardProps) => {
-  const isOOS = product.available === false;
+  const overrides = getStockOverrides();
+  const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
   const { addItem, updateQuantity, getQuantity } = useCart();
   const quantity = getQuantity(product.id);
   const [showFloat, setShowFloat] = useState(false);
