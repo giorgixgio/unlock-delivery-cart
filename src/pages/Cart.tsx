@@ -201,7 +201,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCart();
       // Close overlay first, then navigate to success
       closeCart();
-      navigate("/success", { state: { orderNumber: order.public_order_number } });
+      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal: total } });
     } catch (err) {
       console.error("Order creation failed:", err);
       toast({ title: "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.", variant: "destructive", duration: 4000 });
