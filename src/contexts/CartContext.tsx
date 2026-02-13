@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { Product, CartItem, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { isProductOOS } from "@/lib/stockOverrideStore";
+import { trackAddToCart } from "@/lib/metaPixel";
 
 const CART_STORAGE_KEY = "lb_cart";
 
@@ -53,6 +54,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn(`Blocked add-to-cart: product ${product.id} is out of stock`);
       return;
     }
+    trackAddToCart(product);
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {

@@ -1,11 +1,21 @@
+import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { trackPurchase } from "@/lib/metaPixel";
 
 const OrderSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const orderNumber = (location.state as { orderNumber?: string })?.orderNumber;
+  const state = location.state as { orderNumber?: string; orderTotal?: number } | null;
+  const orderNumber = state?.orderNumber;
+  const orderTotal = state?.orderTotal;
+
+  useEffect(() => {
+    if (orderTotal != null) {
+      trackPurchase(orderTotal, orderNumber);
+    }
+  }, []);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">

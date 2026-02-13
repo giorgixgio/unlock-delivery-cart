@@ -19,6 +19,7 @@ import {
   getDiscountPercent,
 } from "@/lib/demoData";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
+import { trackViewContent } from "@/lib/metaPixel";
 
 interface ProductSheetProps {
   product: Product | null;
@@ -235,11 +236,12 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   // Track initial item count when sheet opens
   useEffect(() => {
-    if (open) {
+    if (open && product) {
       setActionState("idle");
       prevUnlocked.current = isUnlocked;
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
+      trackViewContent(product);
     }
   }, [open, product?.id]);
 
