@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -45,6 +45,12 @@ const LegacyCartRedirect = () => {
   return <Navigate to="/?cart=1" replace />;
 };
 
+/** Legacy /products/:handle route from old Shopify store → redirect to shop */
+const LegacyProductRedirect = () => {
+  const { handle } = useParams();
+  return <Navigate to={`/shop?product_id=${handle}`} replace />;
+};
+
 const CartOverlayRenderer = () => {
   const { isCartOpen } = useCartOverlay();
   return <Cart isOpen={isCartOpen} />;
@@ -67,6 +73,8 @@ const App = () => (
                     <Route path="/cart" element={<LegacyCartRedirect />} />
                     <Route path="/success" element={<OrderSuccess />} />
                     <Route path="/shop" element={<Shop />} />
+                    {/* Legacy Shopify product URLs → redirect to shop with handle */}
+                    <Route path="/products/:handle" element={<LegacyProductRedirect />} />
 
                     {/* Admin */}
                     <Route path="/admin/login" element={<AdminLoginGuard />} />
