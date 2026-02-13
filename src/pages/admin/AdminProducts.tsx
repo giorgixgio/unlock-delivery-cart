@@ -106,7 +106,11 @@ const AdminProducts = () => {
     const newOverrides = { ...stockOverrides, [productId]: !currentlyAvailable };
     setStockOverrides(newOverrides);
     saveStockOverrides(newOverrides);
-    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
+    // Directly update the query cache so all consumers see the change immediately
+    queryClient.setQueryData(["bigmart-products"], (old: any[] | undefined) => {
+      if (!old) return old;
+      return old.map(p => p.id === productId ? { ...p, available: !currentlyAvailable } : p);
+    });
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
   };
 
