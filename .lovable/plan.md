@@ -1,68 +1,56 @@
 
+## Fix: Bulletproof Out-of-Stock on Storefront
 
-## Out-of-Stock System: Admin Toggle + Beautiful Shop Experience
+### Root Cause
 
-### What this does
+The current approach applies stock overrides at the `useProducts()` hook level using `useSyncExternalStore` + `useMemo`. This works in simple cases, but fails in several real-world scenarios:
 
-1. **Admin: Toggle products out of stock** -- add a clickable status badge in the product table that toggles `available` on/off (persisted in localStorage so it survives page reloads). Currently the "Active/Draft" badge is display-only.
+1. **Stale `extraItems` in infinite scroll** -- Products loaded via infinite scroll are stored in React state (`extraItems`). These are snapshot copies of product objects. Even when overrides change and `allProducts` updates, the already-loaded `extraItems` keep their old `available` value.
 
-2. **Shop page: When hero product is out of stock** -- instead of hiding it or showing an ugly error, display it as a premium "discovery" landing with a beautiful "JUST SOLD OUT" badge, greyed-out image overlay, and disabled add-to-cart. The section label changes to "Discover similar products" so it feels like an opportunity, not a dead end.
+2. **React Query cache timing** -- `useMemo` depends on `[rawProducts, overrides]`. If React Query serves the same cached array reference (same object identity), `useMemo` skips recalculation even when overrides changed, because the `overrides` object from `useSyncExternalStore` might not trigger a re-render if the component unmounted and remounted (e.g., route change).
 
-3. **Regular grid cards: out-of-stock treatment** -- show a subtle "Sold Out" overlay on the image with disabled buttons, but keep the card visible and tappable (ProductSheet still opens).
+3. **Hot reload resets** -- Every code change in Lovable triggers a hot reload. Module-level `currentOverrides` reinitializes from `loadFromStorage()`, but the React Query cache may still hold stale product data from the previous session.
 
-4. **Ranking engine: prioritize relevant products when hero is OOS** -- currently the engine filters out `available === false` products from related/trending. When the hero is OOS, the related section should STILL use the hero's category/tags to surface the most relevant alternatives first, and the section label should reflect discovery intent.
+### Solution: Check overrides at the component level (defense in depth)
 
----
+Instead of relying solely on `product.available` being correct when passed as a prop, make `ProductCard` and `HeroProductCard` directly check the override store. This is a 100% reliable approach because it reads the override at render time, regardless of how the product data was cached or passed.
 
-### Technical Changes
+### File Changes
 
-**File: `src/pages/admin/AdminProducts.tsx`**
+**`src/components/ProductCard.tsx`**
+- Import `getStockOverrides` from the override store
+- At the top of the component, compute the real availability:
+  ```
+  const overrides = getStockOverrides();
+  const isOOS = overrides[product.id] !== undefined 
+    ? !overrides[product.id] 
+    : product.available === false;
+  ```
+- This replaces the current `const isOOS = product.available === false;`
 
-- Add localStorage-backed `stockOverrides: Record<string, boolean>` state (key: `bigmart-stock-overrides`)
-- Make the "Active/Draft" badge clickable -- clicking toggles the product's availability in the override map
-- Show a small indicator count in the header: "X products marked out of stock"
-- Add an "Out of Stock" tab filter alongside "All" and "Conflicts"
+**`src/components/HeroProductCard.tsx`**
+- Same change: import `getStockOverrides` and compute `isOOS` directly from the override store at render time
+- This replaces the current `const isOOS = product.available === false;`
 
-**File: `src/hooks/useProducts.ts`**
+**`src/lib/rankingEngine.ts`**
+- Import `getStockOverrides` from the override store
+- In `getRelated()`, `getTrending()`, and `getWeightedRandom()`: when checking `p.available !== false`, also check the override store:
+  ```
+  const overrides = getStockOverrides();
+  const isAvailable = (p) => {
+    if (overrides[p.id] !== undefined) return overrides[p.id];
+    return p.available !== false;
+  };
+  ```
+- This ensures the ranking engine never includes OOS products in results, even if the product data passed to it has stale `available` values
 
-- After mapping products, apply stock overrides from localStorage before returning
-- This ensures the entire app sees the correct `available` status without any Shopify writes
+### What stays the same
 
-**File: `src/components/HeroProductCard.tsx`**
+- The `useProducts` hook still applies overrides (for components that rely on `product.available`)
+- The `stockOverrideStore` module stays unchanged
+- Admin toggle logic stays unchanged
+- No database changes needed
 
-- Check `product.available` -- if false:
-  - Add a semi-transparent dark overlay on the image
-  - Show a large, premium "JUST SOLD OUT" badge (white text on dark glass background, slight blur)
-  - Hide the add-to-cart button area
-  - Keep the card tappable (ProductSheet still opens for browsing)
-  - Change border from primary glow to a muted/elegant style
+### Why this is bulletproof
 
-**File: `src/components/ProductCard.tsx`**
-
-- Check `product.available` -- if false:
-  - Add a subtle dark overlay on the image with small "Sold Out" text
-  - Disable the add-to-cart button (show greyed out "Sold Out" instead)
-  - Keep card tappable for ProductSheet
-
-**File: `src/pages/Shop.tsx`**
-
-- When `heroProduct` exists and `heroProduct.available === false`:
-  - Still show the hero card (HeroProductCard handles the sold-out display)
-  - Change the "related" section label to "აღმოაჩინე მსგავსი" (Discover similar)
-  - Remove the current fallback "product not found" message for OOS heroes (it's not "not found", it's sold out)
-
-**File: `src/lib/rankingEngine.ts`**
-
-- In `getRelated()`: allow the hero itself to be unavailable (don't filter hero from input), but still filter unavailable items from the candidates list
-- In `rankingEngine()`: when hero is present but unavailable, still use it for related scoring -- just don't include unavailable items in the results (except the hero itself in position 0)
-- This ensures users landing on an OOS product link see the most relevant alternatives immediately
-
----
-
-### What does NOT change
-
-- No Shopify API writes
-- No database writes
-- No changes to cart logic, pricing, or checkout
-- The ranking engine still filters out OOS products from trending/weighted/related results (only the hero position shows an OOS product)
-- Stock overrides are admin-local (localStorage) -- purely for demo/management purposes
+Every place that checks availability now reads directly from the override store at render time. There is zero dependency on prop drilling, cache timing, or memoization. Even if every other layer fails, the components and ranking engine will always see the correct stock status.
