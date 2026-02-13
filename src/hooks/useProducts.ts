@@ -138,22 +138,24 @@ async function fetchAllProducts(): Promise<Product[]> {
   }
 
   saveToLocalCache(allProducts);
+  return allProducts;
+}
 
-  // Apply admin stock overrides from localStorage
+function applyStockOverrides(products: Product[]): Product[] {
   try {
     const overrides = JSON.parse(localStorage.getItem("bigmart-stock-overrides") || "{}");
     if (Object.keys(overrides).length > 0) {
-      return allProducts.map(p => overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p);
+      return products.map(p => overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p);
     }
   } catch {}
-
-  return allProducts;
+  return products;
 }
 
 export function useProducts() {
   return useQuery({
     queryKey: ["bigmart-products"],
     queryFn: fetchAllProducts,
+    select: applyStockOverrides,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
