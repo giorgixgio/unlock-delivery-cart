@@ -3,7 +3,7 @@ import { useSyncExternalStore, useMemo } from "react";
 import { Product } from "@/lib/constants";
 import { getStockOverrides, subscribeOverrides, applyOverrides } from "@/lib/stockOverrideStore";
 
-const STORE_URL = "https://bigmart.ge";
+const STORE_URL = "https://bigmart-9917.myshopify.com";
 const CACHE_KEY = "bigmart-products-v2";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
