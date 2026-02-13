@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from "react";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Product } from "@/lib/constants";
@@ -18,6 +18,7 @@ import {
   getFakeOldPrice,
   getDiscountPercent,
 } from "@/lib/demoData";
+import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface ProductSheetProps {
   product: Product | null;
@@ -230,6 +231,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   const prevUnlocked = useRef(isUnlocked);
   const [justUnlocked, setJustUnlocked] = useState(false);
   const initialItemCount = useRef(0);
+  const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
 
   // Track initial item count when sheet opens
   useEffect(() => {
@@ -251,11 +253,14 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   if (!product) return null;
 
+  const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
+
   const quantity = getQuantity(product.id);
   // Show threshold UI only if cart has items (either before opening or after adding)
   const showThresholdUI = itemCount > 0;
 
   const handleAdd = () => {
+    if (isOOS) return;
     addItem(product);
     setActionState("added");
     setTimeout(() => setActionState("finalize"), 1000);
@@ -309,55 +314,63 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
         {/* Action zone — sticky */}
         <div className="border-t border-border p-4 bg-card space-y-3">
-          {/* Delivery progress — only when cart has items */}
-          {showThresholdUI && (
-            <div className={`rounded-lg transition-all duration-500 ${justUnlocked ? "animate-glow-pulse" : ""}`}>
-              <DeliveryMissionBar />
+          {isOOS ? (
+            <div className="w-full h-14 rounded-xl bg-muted flex items-center justify-center">
+              <span className="text-muted-foreground font-bold text-base">ამოიწურა — Sold Out</span>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Delivery progress — only when cart has items */}
+              {showThresholdUI && (
+                <div className={`rounded-lg transition-all duration-500 ${justUnlocked ? "animate-glow-pulse" : ""}`}>
+                  <DeliveryMissionBar />
+                </div>
+              )}
 
-          {/* Quantity selector */}
-          {quantity > 0 && actionState !== "added" && (
-            <div className="flex items-center justify-center gap-4">
-              <Button onClick={() => updateQuantity(product.id, quantity - 1)} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
-                <Minus className="w-5 h-5" />
-              </Button>
-              <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
-              <Button onClick={() => addItem(product)} size="icon" className="h-12 w-12 rounded-lg">
-                <Plus className="w-5 h-5" />
-              </Button>
-            </div>
-          )}
+              {/* Quantity selector */}
+              {quantity > 0 && actionState !== "added" && (
+                <div className="flex items-center justify-center gap-4">
+                  <Button onClick={() => updateQuantity(product.id, quantity - 1)} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
+                    <Minus className="w-5 h-5" />
+                  </Button>
+                  <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
+                  <Button onClick={() => addItem(product)} size="icon" className="h-12 w-12 rounded-lg">
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                </div>
+              )}
 
-          {/* Morphing button */}
-          <div className="relative w-full h-14 rounded-xl overflow-hidden">
-            {actionState === "added" ? (
-              <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
-                <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
-                  <Check className="w-5 h-5" /> დამატებულია
-                </span>
-              </div>
-            ) : actionState === "finalize" ? (
-              <button
-                onClick={handleFinalize}
-                className={`w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
-                  isUnlocked
-                    ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
-                    : "bg-accent text-foreground animate-slide-reveal"
-                }`}
-              >
-                {isUnlocked ? (
-                  <><ShoppingCart className="w-5 h-5" /> შეკვეთის დასრულება</>
+              {/* Morphing button */}
+              <div className="relative w-full h-14 rounded-xl overflow-hidden">
+                {actionState === "added" ? (
+                  <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
+                    <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
+                      <Check className="w-5 h-5" /> დამატებულია
+                    </span>
+                  </div>
+                ) : actionState === "finalize" ? (
+                  <button
+                    onClick={handleFinalize}
+                    className={`w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
+                      isUnlocked
+                        ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
+                        : "bg-accent text-foreground animate-slide-reveal"
+                    }`}
+                  >
+                    {isUnlocked ? (
+                      <><ShoppingCart className="w-5 h-5" /> შეკვეთის დასრულება</>
+                    ) : (
+                      "გააგრძელე შოპინგი — მინ. შეკვეთა 40 ₾"
+                    )}
+                  </button>
                 ) : (
-                  "გააგრძელე შოპინგი — მინ. შეკვეთა 40 ₾"
+                  <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
+                    {showThresholdUI ? "კალათაში — გადახდა მიტანისას" : "დამატება კალათაში"}
+                  </Button>
                 )}
-              </button>
-            ) : (
-              <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
-                {showThresholdUI ? "კალათაში — გადახდა მიტანისას" : "დამატება კალათაში"}
-              </Button>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </DrawerContent>
     </Drawer>
