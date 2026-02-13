@@ -197,11 +197,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         subtotal: total,
         total,
       });
+      const orderTotal = total;
+      const orderNumber = order.public_order_number;
       clearCustomerInfo();
       clearCart();
-      // Close overlay first, then navigate to success
-      closeCart();
-      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal: total } });
+      // Navigate to success page (navigating away closes the cart overlay naturally)
+      navigate("/success", { state: { orderNumber, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
       toast({ title: "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.", variant: "destructive", duration: 4000 });
