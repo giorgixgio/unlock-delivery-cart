@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useProducts } from "@/hooks/useProducts";
+import { useQueryClient } from "@tanstack/react-query";
 import { Product } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ function saveStockOverrides(o: Record<string, boolean>) {
 }
 
 const AdminProducts = () => {
+  const queryClient = useQueryClient();
   const { data: products, isLoading } = useProducts();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -104,6 +106,7 @@ const AdminProducts = () => {
     const newOverrides = { ...stockOverrides, [productId]: !currentlyAvailable };
     setStockOverrides(newOverrides);
     saveStockOverrides(newOverrides);
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
   };
 
