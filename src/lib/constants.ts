@@ -14,6 +14,7 @@ export const CATEGORIES = [
   { id: "ბაღი-ეზო", label: "ბაღი & ეზო" },
   { id: "ელექტრონიკა-გაჯეტები", label: "ელექტრონიკა" },
   { id: "აქსესუარები", label: "აქსესუარები" },
+  { id: "uncategorized", label: "სხვა" },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
