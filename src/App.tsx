@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -45,10 +45,13 @@ const LegacyCartRedirect = () => {
   return <Navigate to="/?cart=1" replace />;
 };
 
-/** Legacy /products/:handle route from old Shopify store → redirect to shop */
+/** Legacy /products/:handle route from old Shopify store → redirect to shop, preserving all query params */
 const LegacyProductRedirect = () => {
   const { handle } = useParams();
-  return <Navigate to={`/shop?product_id=${handle}`} replace />;
+  const [searchParams] = useSearchParams();
+  const newParams = new URLSearchParams(searchParams);
+  newParams.set("product_id", handle || "");
+  return <Navigate to={`/shop?${newParams.toString()}`} replace />;
 };
 
 const CartOverlayRenderer = () => {
