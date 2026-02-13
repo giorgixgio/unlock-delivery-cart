@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useProducts } from "@/hooks/useProducts";
-import { useQueryClient } from "@tanstack/react-query";
+import { setStockOverride, getStockOverrides } from "@/lib/stockOverrideStore";
 import { Product } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -78,17 +78,7 @@ function saveConflicts(conflicts: Record<string, VariantRow["skuConflict"]>) {
   localStorage.setItem(CONFLICT_STORAGE_KEY, JSON.stringify(conflicts));
 }
 
-// Stock overrides persistence
-const STOCK_OVERRIDES_KEY = "bigmart-stock-overrides";
-function loadStockOverrides(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(STOCK_OVERRIDES_KEY) || "{}"); } catch { return {}; }
-}
-function saveStockOverrides(o: Record<string, boolean>) {
-  localStorage.setItem(STOCK_OVERRIDES_KEY, JSON.stringify(o));
-}
-
 const AdminProducts = () => {
-  const queryClient = useQueryClient();
   const { data: products, isLoading } = useProducts();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -100,19 +90,13 @@ const AdminProducts = () => {
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
-  const [stockOverrides, setStockOverrides] = useState<Record<string, boolean>>(loadStockOverrides);
 
   const handleToggleStock = (productId: string, currentlyAvailable: boolean) => {
-    const newOverrides = { ...stockOverrides, [productId]: !currentlyAvailable };
-    setStockOverrides(newOverrides);
-    saveStockOverrides(newOverrides);
-    // Force React Query to re-run fetchAllProducts which now applies overrides
-    queryClient.removeQueries({ queryKey: ["bigmart-products"] });
-    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
+    setStockOverride(productId, !currentlyAvailable);
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
   };
 
-  const oosCount = useMemo(() => Object.values(stockOverrides).filter(v => v === false).length, [stockOverrides]);
+  const oosCount = useMemo(() => Object.values(getStockOverrides()).filter(v => v === false).length, [products]);
 
   const allRows = useMemo(() => {
     const rows = productsToVariantRows(products || []);

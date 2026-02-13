@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useSyncExternalStore, useMemo } from "react";
 import { Product } from "@/lib/constants";
+import { getStockOverrides, subscribeOverrides, applyOverrides } from "@/lib/stockOverrideStore";
 
 const STORE_URL = "https://bigmart.ge";
 const CACHE_KEY = "bigmart-products-v2";
@@ -109,58 +111,62 @@ function saveToLocalCache(products: Product[]) {
 
 async function fetchAllProducts(): Promise<Product[]> {
   const cached = getFromLocalCache();
-  let products: Product[];
 
-  if (cached) {
-    products = cached;
-  } else {
-    const allRaw: ShopifyProduct[] = [];
-    let page = 1;
+  if (cached) return cached;
 
-    while (true) {
-      const res = await fetch(
-        `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
-      );
-      if (!res.ok) break;
-      const data = await res.json();
-      if (!data.products || data.products.length === 0) break;
-      allRaw.push(...data.products);
-      if (data.products.length < 250) break;
-      page++;
-    }
+  const allRaw: ShopifyProduct[] = [];
+  let page = 1;
 
-    const seen = new Set<string>();
-    products = [];
-
-    for (const raw of allRaw) {
-      const id = String(raw.id);
-      if (!seen.has(id)) {
-        seen.add(id);
-        products.push(mapShopifyProduct(raw));
-      }
-    }
-
-    saveToLocalCache(products);
+  while (true) {
+    const res = await fetch(
+      `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
+    );
+    if (!res.ok) break;
+    const data = await res.json();
+    if (!data.products || data.products.length === 0) break;
+    allRaw.push(...data.products);
+    if (data.products.length < 250) break;
+    page++;
   }
 
-  // Always apply admin stock overrides
-  try {
-    const overrides = JSON.parse(localStorage.getItem("bigmart-stock-overrides") || "{}");
-    if (Object.keys(overrides).length > 0) {
-      products = products.map(p =>
-        overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p
-      );
-    }
-  } catch {}
+  const seen = new Set<string>();
+  const products: Product[] = [];
 
+  for (const raw of allRaw) {
+    const id = String(raw.id);
+    if (!seen.has(id)) {
+      seen.add(id);
+      products.push(mapShopifyProduct(raw));
+    }
+  }
+
+  saveToLocalCache(products);
   return products;
 }
 
+/**
+ * Returns products with stock overrides applied reactively.
+ * When an admin toggles stock, ALL mounted components update instantly.
+ */
 export function useProducts() {
-  return useQuery({
+  const { data: rawProducts, isLoading, error } = useQuery({
     queryKey: ["bigmart-products"],
     queryFn: fetchAllProducts,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
+  // Subscribe to the override store — triggers re-render on every toggle
+  const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
+
+  // Apply overrides on top of raw Shopify data
+  const data = useMemo(() => {
+    if (!rawProducts) return undefined;
+    if (Object.keys(overrides).length === 0) return rawProducts;
+    return rawProducts.map(p =>
+      overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p
+    );
+  }, [rawProducts, overrides]);
+
+  return { data, isLoading, error };
 }
