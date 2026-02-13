@@ -1,64 +1,68 @@
 
-## Fix: Fetch All 490 Products and Categorize by Tags
 
-### Problem
-Currently fetching only **334 of ~490 products** because:
-1. The code fetches from 12 named collections individually, but some products don't belong to any of them
-2. A duplicate collection `სამზარეულო-1` (111 products) is not in the fetch list
-3. Shopify's `/collections/all` endpoint contains ALL products but isn't being used
+## Out-of-Stock System: Admin Toggle + Beautiful Shop Experience
 
-### Solution
+### What this does
 
-**Change the fetching strategy in `src/hooks/useProducts.ts`:**
+1. **Admin: Toggle products out of stock** -- add a clickable status badge in the product table that toggles `available` on/off (persisted in localStorage so it survives page reloads). Currently the "Active/Draft" badge is display-only.
 
-Instead of fetching 12 collections in parallel and deduplicating, fetch directly from `/collections/all/products.json` (pages 1 + 2) to get all ~490 products in just 2 requests (faster too).
+2. **Shop page: When hero product is out of stock** -- instead of hiding it or showing an ugly error, display it as a premium "discovery" landing with a beautiful "JUST SOLD OUT" badge, greyed-out image overlay, and disabled add-to-cart. The section label changes to "Discover similar products" so it feels like an opportunity, not a dead end.
 
-**Categorize using tags instead of collection handles:**
+3. **Regular grid cards: out-of-stock treatment** -- show a subtle "Sold Out" overlay on the image with disabled buttons, but keep the card visible and tappable (ProductSheet still opens).
 
-Each product has tags like `["სამზარეულო", "სამზარეულოს აქსესუარები", "შესანახი"]`. Build a tag-to-category mapping:
+4. **Ranking engine: prioritize relevant products when hero is OOS** -- currently the engine filters out `available === false` products from related/trending. When the hero is OOS, the related section should STILL use the hero's category/tags to surface the most relevant alternatives first, and the section label should reflect discovery intent.
 
-| Tag keyword match | Category assigned |
-|---|---|
-| `სამზარეულო` | სამზარეულო |
-| `მანქანა`, `ავტო` | ავტომობილი |
-| `სილამაზე`, `თავის მოვლა`, `კანი` | თავის-მოვლა-სილამაზე |
-| `სპორტი`, `ფიტნესი` | სპორტი-აქტიური-ცხოვრება |
-| `ბავშვ` | ბავშვები |
-| `ბაღი`, `ეზო` | ბაღი-ეზო |
-| `აბაზანა`, `სანტექნიკა` | აბაზანა-სანტექნიკა |
-| `განათება`, `ნათურა`, `ლამპა` | განათება |
-| `ელექტრონიკა`, `გაჯეტ` | ელექტრონიკა-გაჯეტები |
-| `ხელსაწყო` | ხელსაწყოები |
-| `აქსესუარ` | აქსესუარები |
-| `სახლი`, `ინტერიერი` | სახლი-ინტერიერი |
-| No match | uncategorized (still shown under "all") |
-
-Priority order matters -- e.g., "სამზარეულოს აქსესუარები" should match "სამზარეულო" before "აქსესუარები".
+---
 
 ### Technical Changes
 
+**File: `src/pages/admin/AdminProducts.tsx`**
+
+- Add localStorage-backed `stockOverrides: Record<string, boolean>` state (key: `bigmart-stock-overrides`)
+- Make the "Active/Draft" badge clickable -- clicking toggles the product's availability in the override map
+- Show a small indicator count in the header: "X products marked out of stock"
+- Add an "Out of Stock" tab filter alongside "All" and "Conflicts"
+
 **File: `src/hooks/useProducts.ts`**
 
-1. Replace `fetchCollectionProducts` + parallel collection fetching with a simpler `fetchAllFromShopify` that paginates through `/collections/all/products.json`
-2. Add a `categorizeByTags(tags: string[], title: string): string` function that maps product tags to category IDs using the priority table above
-3. Also check the product title as fallback if no tag matches
-4. Update `mapShopifyProduct` to accept tags-based category instead of collection handle
-5. Add the `product_type` field from Shopify response to the Product interface (store it even if empty -- useful later)
-6. Store `collections` info if needed by also building a reverse map from the parallel collection fetches (optional, tags alone should cover 95%+)
+- After mapping products, apply stock overrides from localStorage before returning
+- This ensures the entire app sees the correct `available` status without any Shopify writes
 
-**File: `src/lib/constants.ts`**
+**File: `src/components/HeroProductCard.tsx`**
 
-- Add an "uncategorized" category entry so products without tag matches still appear
-- Optionally add `productType` to the Product interface
+- Check `product.available` -- if false:
+  - Add a semi-transparent dark overlay on the image
+  - Show a large, premium "JUST SOLD OUT" badge (white text on dark glass background, slight blur)
+  - Hide the add-to-cart button area
+  - Keep the card tappable (ProductSheet still opens for browsing)
+  - Change border from primary glow to a muted/elegant style
 
-**No other files need changes** -- the rest of the app uses the same `useProducts()` hook and `Product` interface.
+**File: `src/components/ProductCard.tsx`**
 
-### Performance
-- Current: 12+ parallel requests (one per collection, some paginated)
-- New: 2 sequential requests (page 1 + page 2 of "all"), much faster
-- localStorage cache remains the same
+- Check `product.available` -- if false:
+  - Add a subtle dark overlay on the image with small "Sold Out" text
+  - Disable the add-to-cart button (show greyed out "Sold Out" instead)
+  - Keep card tappable for ProductSheet
 
-### Risk
-- Zero risk to cart, pricing, checkout, or backend -- only the product fetch layer changes
-- Category filter chips on the Index page will now show more products per category
-- Products that had no category before will now be categorized by tags
+**File: `src/pages/Shop.tsx`**
+
+- When `heroProduct` exists and `heroProduct.available === false`:
+  - Still show the hero card (HeroProductCard handles the sold-out display)
+  - Change the "related" section label to "აღმოაჩინე მსგავსი" (Discover similar)
+  - Remove the current fallback "product not found" message for OOS heroes (it's not "not found", it's sold out)
+
+**File: `src/lib/rankingEngine.ts`**
+
+- In `getRelated()`: allow the hero itself to be unavailable (don't filter hero from input), but still filter unavailable items from the candidates list
+- In `rankingEngine()`: when hero is present but unavailable, still use it for related scoring -- just don't include unavailable items in the results (except the hero itself in position 0)
+- This ensures users landing on an OOS product link see the most relevant alternatives immediately
+
+---
+
+### What does NOT change
+
+- No Shopify API writes
+- No database writes
+- No changes to cart logic, pricing, or checkout
+- The ranking engine still filters out OOS products from trending/weighted/related results (only the hero position shows an OOS product)
+- Stock overrides are admin-local (localStorage) -- purely for demo/management purposes
