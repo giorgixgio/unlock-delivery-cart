@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { Product, CartItem, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { isProductOOS } from "@/lib/stockOverrideStore";
 
 const CART_STORAGE_KEY = "lb_cart";
 
@@ -47,6 +48,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items]);
 
   const addItem = useCallback((product: Product) => {
+    // Block adding OOS products
+    if (isProductOOS(product.id, product.available)) {
+      console.warn(`Blocked add-to-cart: product ${product.id} is out of stock`);
+      return;
+    }
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
@@ -66,8 +72,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (quantity <= 0) {
       setItems((prev) => prev.filter((i) => i.product.id !== productId));
     } else {
+      // Block quantity increase for OOS products
       setItems((prev) =>
-        prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i))
+        prev.map((i) => {
+          if (i.product.id === productId) {
+            if (quantity > i.quantity && isProductOOS(productId, i.product.available)) {
+              return i; // Block increase
+            }
+            return { ...i, quantity };
+          }
+          return i;
+        })
       );
     }
   }, []);
