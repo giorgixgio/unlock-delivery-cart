@@ -138,6 +138,15 @@ async function fetchAllProducts(): Promise<Product[]> {
   }
 
   saveToLocalCache(allProducts);
+
+  // Apply admin stock overrides from localStorage
+  try {
+    const overrides = JSON.parse(localStorage.getItem("bigmart-stock-overrides") || "{}");
+    if (Object.keys(overrides).length > 0) {
+      return allProducts.map(p => overrides[p.id] !== undefined ? { ...p, available: overrides[p.id] } : p);
+    }
+  } catch {}
+
   return allProducts;
 }
 

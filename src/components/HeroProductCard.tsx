@@ -35,10 +35,16 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
 
+  const isOOS = product.available === false;
+
   return (
     <>
       <div
-        className="relative bg-accent rounded-xl overflow-hidden border-[3px] border-primary cursor-pointer shadow-[0_0_16px_2px_hsl(var(--primary)/0.35)]"
+        className={`relative bg-accent rounded-xl overflow-hidden cursor-pointer ${
+          isOOS
+            ? "border-[2px] border-muted-foreground/20 shadow-lg"
+            : "border-[3px] border-primary shadow-[0_0_16px_2px_hsl(var(--primary)/0.35)]"
+        }`}
         onClick={() => setSheetOpen(true)}
       >
         {showFloat && (
@@ -70,10 +76,21 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           <img
             src={product.image}
             alt={product.title}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${isOOS ? "grayscale-[40%] opacity-80" : ""}`}
             width={400}
             height={400}
           />
+          {isOOS && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="bg-black/50 backdrop-blur-md border border-white/20 rounded-xl px-6 py-3 shadow-2xl">
+                  <p className="text-white text-lg font-extrabold tracking-wide text-center">JUST SOLD OUT</p>
+                  <p className="text-white/70 text-xs text-center mt-0.5">აღმოაჩინე მსგავსი პროდუქტები</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="p-3 space-y-1.5">
@@ -91,24 +108,26 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           <MicroBenefitRotating />
 
           {/* Add to cart */}
-          <div className="flex items-center justify-between pt-1">
-            {quantity === 0 ? (
-              <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
-                <Plus className="w-4 h-4 mr-1" />
-                კალათაში
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2 w-full justify-between">
-                <Button onClick={handleMinus} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
-                  <Minus className="w-4 h-4" />
+          {!isOOS && (
+            <div className="flex items-center justify-between pt-1">
+              {quantity === 0 ? (
+                <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
+                  <Plus className="w-4 h-4 mr-1" />
+                  კალათაში
                 </Button>
-                <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
-                <Button onClick={handleAdd} size="icon" className="h-10 w-10 rounded-lg">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex items-center gap-2 w-full justify-between">
+                  <Button onClick={handleMinus} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
+                  <Button onClick={handleAdd} size="icon" className="h-10 w-10 rounded-lg">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

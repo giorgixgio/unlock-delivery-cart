@@ -27,10 +27,10 @@ function tagOverlap(a: string[], b: string[]): number {
   return a.filter((t) => setB.has(t)).length;
 }
 
-/** Get related products: same category or overlapping tags */
+/** Get related products: same category or overlapping tags. Hero itself can be OOS — we still use it for scoring. */
 export function getRelated(hero: Product, all: Product[], limit = 8): Product[] {
   const candidates = all
-    .filter((p) => p.id !== hero.id && p.available !== false)
+    .filter((p) => p.id !== hero.id && p.available !== false) // candidates must be available
     .map((p) => {
       let score = 0;
       if (p.category === hero.category) score += 10;

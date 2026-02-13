@@ -53,11 +53,14 @@ const Shop = () => {
   const { data: allProducts = [], isLoading } = useProducts();
   const { getQuantity } = useCart();
 
-  // Find hero product — don't pin if already in cart
+  // Find hero product — don't pin if already in cart (unless OOS)
   const heroProduct = useMemo(() => {
     if (!productId || allProducts.length === 0) return null;
     const found = allProducts.find((p) => p.id === productId || p.handle === productId) ?? null;
-    if (found && getQuantity(found.id) > 0) return null; // Already in cart, don't pin
+    if (!found) return null;
+    // If OOS, always show as hero (discovery page)
+    if (found.available === false) return found;
+    if (getQuantity(found.id) > 0) return null; // Already in cart, don't pin
     return found;
   }, [productId, allProducts, getQuantity]);
 
@@ -140,8 +143,9 @@ const Shop = () => {
 
   const renderGrid = () => {
     const elements: React.ReactNode[] = [];
+    const heroIsOOS = heroProduct && heroProduct.available === false;
     const sectionLabels: Record<string, string> = {
-      related: "მსგავსი პროდუქტები",
+      related: heroIsOOS ? "აღმოაჩინე მსგავსი" : "მსგავსი პროდუქტები",
       trending: "ტრენდული",
       weighted: "შენთვის",
     };
@@ -184,8 +188,8 @@ const Shop = () => {
       <HomeHeaderTemuStyle />
 
       <div className="container max-w-2xl mx-auto px-4 pt-4">
-        {/* Fallback message if hero not found */}
-        {productId && !isLoading && !heroProduct && allProducts.length > 0 && (
+        {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
+        {productId && !isLoading && !heroProduct && allProducts.length > 0 && !allProducts.find(p => p.id === productId || p.handle === productId) && (
           <div className="bg-accent/50 border border-border rounded-lg p-3 mb-4 text-center">
             <p className="text-sm text-muted-foreground">
               პროდუქტი ვერ მოიძებნა — გაეცანით ტრენდულ პროდუქტებს
