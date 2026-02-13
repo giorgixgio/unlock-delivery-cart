@@ -38,7 +38,7 @@ interface CartOverlayProps {
  */
 const Cart = ({ isOpen }: CartOverlayProps) => {
   const { items, total, isUnlocked, remaining, updateQuantity, removeItem, clearCart } = useCart();
-  const { closeCart } = useCartOverlay();
+  const { closeCart, dismissCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const { setManualLocation, isTbilisi } = useDelivery();
   const navigate = useNavigate();
@@ -201,7 +201,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       const orderNumber = order.public_order_number;
       clearCustomerInfo();
       clearCart();
-      // Navigate to success page (navigating away closes the cart overlay naturally)
+      dismissCart();
       navigate("/success", { state: { orderNumber, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
