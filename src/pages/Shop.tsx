@@ -3,8 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { rankingEngine, getWeightedRandom } from "@/lib/rankingEngine";
-import { trackGridPositionClicked, trackScrollDepth, trackRandomAddToCart } from "@/lib/gridTracker";
+import { trackScrollDepth } from "@/lib/gridTracker";
 import { Product } from "@/lib/constants";
+import { getStockOverrides } from "@/lib/stockOverrideStore";
 import ProductCard from "@/components/ProductCard";
 import HeroProductCard from "@/components/HeroProductCard";
 import HomeHeaderTemuStyle from "@/components/HomeHeaderTemuStyle";
@@ -143,7 +144,8 @@ const Shop = () => {
 
   const renderGrid = () => {
     const elements: React.ReactNode[] = [];
-    const heroIsOOS = heroProduct && heroProduct.available === false;
+    const overrides = getStockOverrides();
+    const heroIsOOS = heroProduct && (overrides[heroProduct.id] !== undefined ? !overrides[heroProduct.id] : heroProduct.available === false);
     const sectionLabels: Record<string, string> = {
       related: heroIsOOS ? "აღმოაჩინე მსგავსი" : "მსგავსი პროდუქტები",
       trending: "ტრენდული",

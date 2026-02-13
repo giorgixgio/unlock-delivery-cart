@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useSyncExternalStore } from "react";
 import { Plus, Minus } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
@@ -7,7 +7,7 @@ import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoDa
 import ProductSheet from "@/components/ProductSheet";
 import { trackHeroAddToCart } from "@/lib/gridTracker";
 import { MicroBenefitRotating } from "@/components/MicroBenefits";
-import { getStockOverrides } from "@/lib/stockOverrideStore";
+import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface HeroProductCardProps {
   product: Product;
@@ -36,7 +36,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
 
-  const overrides = getStockOverrides();
+  const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
 
   return (
