@@ -1,4 +1,5 @@
 import { Product } from "@/lib/constants";
+import { getStockOverrides } from "@/lib/stockOverrideStore";
 
 /**
  * Heuristic ranking engine.
@@ -29,8 +30,10 @@ function tagOverlap(a: string[], b: string[]): number {
 
 /** Get related products: same category or overlapping tags. Hero itself can be OOS — we still use it for scoring. */
 export function getRelated(hero: Product, all: Product[], limit = 8): Product[] {
+  const overrides = getStockOverrides();
+  const isAvailable = (p: Product) => overrides[p.id] !== undefined ? overrides[p.id] : p.available !== false;
   const candidates = all
-    .filter((p) => p.id !== hero.id && p.available !== false) // candidates must be available
+    .filter((p) => p.id !== hero.id && isAvailable(p))
     .map((p) => {
       let score = 0;
       if (p.category === hero.category) score += 10;
@@ -46,7 +49,9 @@ export function getRelated(hero: Product, all: Product[], limit = 8): Product[] 
 
 /** Trending heuristic: bestseller/hot tags → newest-ish → random */
 export function getTrending(all: Product[], exclude: Set<string>, limit = 16): Product[] {
-  const available = all.filter((p) => !exclude.has(p.id) && p.available !== false);
+  const overrides = getStockOverrides();
+  const isAvailable = (p: Product) => overrides[p.id] !== undefined ? overrides[p.id] : p.available !== false;
+  const available = all.filter((p) => !exclude.has(p.id) && isAvailable(p));
 
   // Tier 1: products with "bestseller" or "hot" tags
   const tagged = available.filter((p) =>
@@ -71,7 +76,9 @@ export function getWeightedRandom(
   exclude: Set<string>,
   batchSize = 12
 ): Product[] {
-  const available = all.filter((p) => !exclude.has(p.id) && p.available !== false);
+  const overrides = getStockOverrides();
+  const isAvailable = (p: Product) => overrides[p.id] !== undefined ? overrides[p.id] : p.available !== false;
+  const available = all.filter((p) => !exclude.has(p.id) && isAvailable(p));
   if (available.length === 0) return [];
 
   const sameCategory = hero
