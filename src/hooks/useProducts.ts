@@ -2,23 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Product } from "@/lib/constants";
 
 const STORE_URL = "https://bigmart.ge";
-const CACHE_KEY = "bigmart-products-cache";
+const CACHE_KEY = "bigmart-products-v2";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-const COLLECTION_HANDLES = [
-  "აბაზანა-სანტექნიკა",
-  "ავტომობილი",
-  "აქსესუარები",
-  "ბავშვები",
-  "ბაღი-ეზო",
-  "განათება",
-  "ელექტრონიკა-გაჯეტები",
-  "თავის-მოვლა-სილამაზე",
-  "სამზარეულო",
-  "სახლი-ინტერიერი",
-  "სპორტი-აქტიური-ცხოვრება",
-  "ხელსაწყოები",
-] as const;
 
 interface ShopifyVariant {
   id: number;
@@ -38,9 +23,38 @@ interface ShopifyProduct {
   handle: string;
   body_html: string;
   vendor: string;
+  product_type: string;
   tags: string[];
   variants: ShopifyVariant[];
   images: ShopifyImage[];
+}
+
+// Priority-ordered tag-to-category mapping
+const TAG_CATEGORY_RULES: Array<{ keywords: string[]; category: string }> = [
+  { keywords: ["სამზარეულო"], category: "სამზარეულო" },
+  { keywords: ["მანქანა", "ავტო"], category: "ავტომობილი" },
+  { keywords: ["სილამაზე", "თავის მოვლა", "კანი"], category: "თავის-მოვლა-სილამაზე" },
+  { keywords: ["სპორტი", "ფიტნესი"], category: "სპორტი-აქტიური-ცხოვრება" },
+  { keywords: ["ბავშვ"], category: "ბავშვები" },
+  { keywords: ["ბაღი", "ეზო"], category: "ბაღი-ეზო" },
+  { keywords: ["აბაზანა", "სანტექნიკა"], category: "აბაზანა-სანტექნიკა" },
+  { keywords: ["განათება", "ნათურა", "ლამპა"], category: "განათება" },
+  { keywords: ["ელექტრონიკა", "გაჯეტ"], category: "ელექტრონიკა-გაჯეტები" },
+  { keywords: ["ხელსაწყო"], category: "ხელსაწყოები" },
+  { keywords: ["აქსესუარ"], category: "აქსესუარები" },
+  { keywords: ["სახლი", "ინტერიერი"], category: "სახლი-ინტერიერი" },
+];
+
+function categorizeByTags(tags: string[], title: string): string {
+  const searchText = [...tags, title].join(" ").toLowerCase();
+  for (const rule of TAG_CATEGORY_RULES) {
+    for (const kw of rule.keywords) {
+      if (searchText.includes(kw.toLowerCase())) {
+        return rule.category;
+      }
+    }
+  }
+  return "uncategorized";
 }
 
 // Shopify CDN supports _WIDTHx on filename for resized images
@@ -49,9 +63,10 @@ export function shopifyThumb(src: string, size = 400): string {
   return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
 }
 
-function mapShopifyProduct(p: ShopifyProduct, category: string): Product {
+function mapShopifyProduct(p: ShopifyProduct): Product {
   const variant = p.variants[0];
   const originalImage = p.images[0]?.src || "/placeholder.svg";
+  const category = categorizeByTags(p.tags || [], p.title);
   return {
     id: String(p.id),
     title: p.title,
@@ -67,25 +82,6 @@ function mapShopifyProduct(p: ShopifyProduct, category: string): Product {
     vendor: p.vendor || "",
     handle: p.handle,
   };
-}
-
-async function fetchCollectionProducts(handle: string): Promise<Product[]> {
-  const products: Product[] = [];
-  let page = 1;
-
-  while (true) {
-    const res = await fetch(
-      `${STORE_URL}/collections/${handle}/products.json?limit=250&page=${page}`
-    );
-    if (!res.ok) break;
-    const data = await res.json();
-    if (!data.products || data.products.length === 0) break;
-    products.push(...data.products.map((p: ShopifyProduct) => mapShopifyProduct(p, handle)));
-    if (data.products.length < 250) break;
-    page++;
-  }
-
-  return products;
 }
 
 function getFromLocalCache(): Product[] | null {
@@ -112,23 +108,32 @@ function saveToLocalCache(products: Product[]) {
 }
 
 async function fetchAllProducts(): Promise<Product[]> {
-  // Check localStorage cache first
   const cached = getFromLocalCache();
   if (cached) return cached;
 
-  const results = await Promise.all(
-    COLLECTION_HANDLES.map((handle) => fetchCollectionProducts(handle))
-  );
+  const allRaw: ShopifyProduct[] = [];
+  let page = 1;
+
+  while (true) {
+    const res = await fetch(
+      `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
+    );
+    if (!res.ok) break;
+    const data = await res.json();
+    if (!data.products || data.products.length === 0) break;
+    allRaw.push(...data.products);
+    if (data.products.length < 250) break;
+    page++;
+  }
 
   const seen = new Set<string>();
   const allProducts: Product[] = [];
 
-  for (const collectionProducts of results) {
-    for (const product of collectionProducts) {
-      if (!seen.has(product.id)) {
-        seen.add(product.id);
-        allProducts.push(product);
-      }
+  for (const raw of allRaw) {
+    const id = String(raw.id);
+    if (!seen.has(id)) {
+      seen.add(id);
+      allProducts.push(mapShopifyProduct(raw));
     }
   }
 
