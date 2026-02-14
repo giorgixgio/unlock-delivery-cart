@@ -9,8 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, DollarSign, ShoppingCart, AlertTriangle, CheckCircle,
-  Clock, TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
+  TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
 } from "lucide-react";
+import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 
 const DELIVERY_FEE = 6.5;
 
@@ -31,6 +32,8 @@ interface Stats {
   onHold: number;
   canceled: number;
   merged: number;
+  tbilisiCount: number;
+  regionCount: number;
 }
 
 const AdminDashboard = () => {
@@ -45,7 +48,7 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, status, is_confirmed, review_required, is_fulfilled, created_at");
+        .select("id, total, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at");
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
@@ -98,6 +101,8 @@ const AdminDashboard = () => {
         onHold: onHold.length,
         canceled: canceled.length,
         merged: merged.length,
+        tbilisiCount: live.filter((o) => o.is_tbilisi).length,
+        regionCount: live.filter((o) => !o.is_tbilisi).length,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -202,13 +207,14 @@ const AdminDashboard = () => {
             <RefreshCw className={`w-4 h-4 mr-2 ${spinning ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          <DeliveryZoneList />
         </div>
       </div>
 
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({stats.totalOrders} orders)</span>
+          Revenue <span className="text-foreground">({stats.totalOrders} orders · {stats.tbilisiCount} Tbilisi · {stats.regionCount} Region)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
