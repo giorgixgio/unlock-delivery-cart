@@ -1,14 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   RefreshCw, DollarSign, ShoppingCart, AlertTriangle, CheckCircle,
-  Clock, TruckIcon, XCircle, Merge, Package, Banknote,
+  Clock, TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
 } from "lucide-react";
 
 const DELIVERY_FEE = 6.5;
+
+type DateMode = "today" | "custom" | "all";
 
 interface Stats {
   totalRevenue: number;
@@ -16,8 +22,6 @@ interface Stats {
   productRevenue: number;
   aov: number;
   totalOrders: number;
-  todayOrders: number;
-  todayRevenue: number;
   needsReview: number;
   confirmed: number;
   fulfilled: number;
@@ -31,24 +35,29 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [spinning, setSpinning] = useState(false);
+  const [dateMode, setDateMode] = useState<DateMode>("today");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const fetchStats = useCallback(async () => {
     setSpinning(true);
     try {
-      const { data: orders, error } = await supabase
+      let query = supabase
         .from("orders")
         .select("id, total, status, is_confirmed, review_required, is_fulfilled, created_at");
 
+      if (dateMode === "today" || dateMode === "custom") {
+        const day = dateMode === "today" ? new Date() : selectedDate;
+        query = query
+          .gte("created_at", startOfDay(day).toISOString())
+          .lte("created_at", endOfDay(day).toISOString());
+      }
+
+      const { data: orders, error } = await query;
       if (error) throw error;
       const all = orders || [];
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Exclude merged from most counts
       const active = all.filter((o) => o.status !== "merged");
 
-      // Needs Review: same logic as AdminOrders review tab
       const needsReview = active.filter(
         (o) =>
           o.status !== "canceled" &&
@@ -63,17 +72,11 @@ const AdminDashboard = () => {
       const merged = all.filter((o) => o.status === "merged");
       const newOrders = active.filter((o) => o.status === "new");
 
-      // Revenue = only confirmed orders (not canceled/merged)
       const revenueOrders = active.filter((o) => o.is_confirmed && o.status !== "canceled" && o.status !== "returned");
       const productRevenue = revenueOrders.reduce((s, o) => s + Number(o.total), 0);
       const deliveryRevenue = revenueOrders.length * DELIVERY_FEE;
       const totalRevenue = productRevenue + deliveryRevenue;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
-
-      const todayAll = active.filter((o) => new Date(o.created_at) >= today);
-      const todayConfirmed = todayAll.filter((o) => o.is_confirmed && o.status !== "canceled");
-      const todayProductRev = todayConfirmed.reduce((s, o) => s + Number(o.total), 0);
-      const todayDeliveryRev = todayConfirmed.length * DELIVERY_FEE;
 
       setStats({
         totalRevenue,
@@ -81,8 +84,6 @@ const AdminDashboard = () => {
         productRevenue,
         aov,
         totalOrders: active.length,
-        todayOrders: todayAll.length,
-        todayRevenue: todayProductRev + todayDeliveryRev,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
         fulfilled: fulfilled.length,
@@ -97,13 +98,21 @@ const AdminDashboard = () => {
       setLoading(false);
       setTimeout(() => setSpinning(false), 500);
     }
-  }, []);
+  }, [dateMode, selectedDate]);
 
   useEffect(() => {
+    setLoading(true);
     fetchStats();
   }, [fetchStats]);
 
   const gel = (n: number) => `₾${n.toFixed(0)}`;
+
+  const dateLabel =
+    dateMode === "today"
+      ? "Today"
+      : dateMode === "custom"
+        ? format(selectedDate, "dd MMM yyyy")
+        : "All Time";
 
   if (loading && !stats) {
     return (
@@ -123,15 +132,70 @@ const AdminDashboard = () => {
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Overview of your store performance</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Showing: <span className="font-semibold text-foreground">{dateLabel}</span>
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchStats}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${spinning ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Date mode buttons */}
+          <div className="flex rounded-lg border border-border overflow-hidden text-sm">
+            <button
+              onClick={() => setDateMode("today")}
+              className={cn(
+                "px-3 py-1.5 font-medium transition-colors",
+                dateMode === "today" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              )}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setDateMode("all")}
+              className={cn(
+                "px-3 py-1.5 font-medium transition-colors border-l border-border",
+                dateMode === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              )}
+            >
+              All Time
+            </button>
+          </div>
+
+          {/* Date picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(dateMode === "custom" && "border-primary text-primary")}
+              >
+                <CalendarIcon className="w-4 h-4 mr-1.5" />
+                {dateMode === "custom" ? format(selectedDate, "dd MMM") : "Pick date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => {
+                  if (d) {
+                    setSelectedDate(d);
+                    setDateMode("custom");
+                  }
+                }}
+                disabled={(d) => d > new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button variant="outline" size="sm" onClick={fetchStats}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${spinning ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Revenue Section */}
@@ -139,12 +203,9 @@ const AdminDashboard = () => {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Revenue</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={DollarSign} label="Today" value={gel(stats.todayRevenue)} accent="text-emerald-400" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(stats.productRevenue)} accent="text-emerald-600" />
           <MetricCard icon={TruckIcon} label={`Delivery (${stats.confirmed + stats.fulfilled + stats.shipped}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
-        </div>
-        <div className="mt-4">
-          <MetricCard icon={ShoppingCart} label="Average Order Value (AOV)" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
+          <MetricCard icon={ShoppingCart} label="AOV" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
         </div>
       </section>
 
@@ -165,12 +226,11 @@ const AdminDashboard = () => {
 
       <Separator />
 
-      {/* Totals */}
+      {/* Volume */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Volume</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <MetricCard icon={ShoppingCart} label="Total Orders" value={stats.totalOrders} accent="text-foreground" size="lg" />
-          <MetricCard icon={Clock} label="Today Orders" value={stats.todayOrders} accent="text-foreground" size="lg" />
           <MetricCard icon={TruckIcon} label="Shipped" value={stats.shipped} accent="text-purple-500" size="lg" />
         </div>
       </section>
