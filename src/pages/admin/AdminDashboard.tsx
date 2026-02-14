@@ -76,8 +76,8 @@ const AdminDashboard = () => {
       const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
       const onHold = live.filter((o) => o.status === "on_hold");
 
-      // Revenue = only confirmed, non-canceled orders
-      const revenueOrders = active.filter((o) => o.is_confirmed && o.status !== "canceled" && o.status !== "returned");
+      // Revenue = all live orders (non-merged, non-canceled) — these are all real sales
+      const revenueOrders = live;
       const productRevenue = revenueOrders.reduce((s, o) => s + Number(o.total), 0);
       const deliveryRevenue = revenueOrders.length * DELIVERY_FEE;
       const totalRevenue = productRevenue + deliveryRevenue;
@@ -205,16 +205,16 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Revenue Section — based on confirmed orders only */}
+      {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({stats.confirmedCount} confirmed orders)</span>
+          Revenue <span className="text-foreground">({stats.totalOrders} orders)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
           <MetricCard icon={ShoppingCart} label="AOV" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(stats.productRevenue)} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label={`Delivery (${stats.confirmedCount}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
+          <MetricCard icon={TruckIcon} label={`Delivery (${stats.totalOrders}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
         </div>
       </section>
 
@@ -223,11 +223,10 @@ const AdminDashboard = () => {
       {/* Order Pipeline */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Order Pipeline <span className="text-foreground">({stats.totalOrders} orders)</span>
+          Order Pipeline
         </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <MetricCard icon={AlertTriangle} label="Needs Review" value={stats.needsReview} accent="text-amber-500" highlight={stats.needsReview > 0} />
-          <MetricCard icon={Clock} label="New" value={stats.newOrders} accent="text-blue-400" />
           <MetricCard icon={AlertTriangle} label="On Hold" value={stats.onHold} accent="text-orange-500" />
           <MetricCard icon={CheckCircle} label="Confirmed" value={stats.confirmed} accent="text-emerald-500" />
           <MetricCard icon={Package} label="Fulfilled" value={stats.fulfilled} accent="text-emerald-600" />
