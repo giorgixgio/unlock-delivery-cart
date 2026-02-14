@@ -22,6 +22,7 @@ import AdminShipping from "./pages/admin/AdminShipping";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminSystemEvents from "./pages/admin/AdminSystemEvents";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import Shop from "./pages/Shop";
 
 const queryClient = new QueryClient();
@@ -89,7 +90,8 @@ const App = () => (
                         </AdminGuard>
                       }
                     >
-                      <Route index element={<Navigate to="/admin/orders" replace />} />
+                      <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                      <Route path="dashboard" element={<AdminDashboard />} />
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="shipping" element={<AdminShipping />} />
