@@ -205,9 +205,11 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Revenue Section */}
+      {/* Revenue Section — based on confirmed orders only */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Revenue</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Revenue <span className="text-foreground">({stats.confirmedCount} confirmed orders)</span>
+        </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
           <MetricCard icon={ShoppingCart} label="AOV" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
@@ -220,7 +222,9 @@ const AdminDashboard = () => {
 
       {/* Order Pipeline */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Order Pipeline</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          Order Pipeline <span className="text-foreground">({stats.totalOrders} orders)</span>
+        </h2>
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
           <MetricCard icon={AlertTriangle} label="Needs Review" value={stats.needsReview} accent="text-amber-500" highlight={stats.needsReview > 0} />
           <MetricCard icon={Clock} label="New" value={stats.newOrders} accent="text-blue-400" />
@@ -234,11 +238,10 @@ const AdminDashboard = () => {
 
       <Separator />
 
-      {/* Volume */}
+      {/* Shipped */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Volume</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Shipping</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard icon={ShoppingCart} label="Total Orders" value={stats.totalOrders} accent="text-foreground" size="lg" />
           <MetricCard icon={TruckIcon} label="Shipped" value={stats.shipped} accent="text-purple-500" size="lg" />
         </div>
       </section>
