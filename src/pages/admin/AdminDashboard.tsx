@@ -28,6 +28,7 @@ interface Stats {
   fulfilled: number;
   shipped: number;
   newOrders: number;
+  onHold: number;
   canceled: number;
   merged: number;
 }
@@ -57,22 +58,25 @@ const AdminDashboard = () => {
       if (error) throw error;
       const all = orders || [];
 
+      // Exclude merged — they're not real orders
       const active = all.filter((o) => o.status !== "merged");
+      // "Live" orders = exclude merged + canceled/returned
+      const live = active.filter((o) => o.status !== "canceled" && o.status !== "returned");
 
-      const needsReview = active.filter(
+      const needsReview = live.filter(
         (o) =>
-          o.status !== "canceled" &&
-          o.status !== "returned" &&
-          (o.status === "new" || o.status === "on_hold" || !o.is_confirmed || o.review_required)
+          o.status === "new" || o.status === "on_hold" || !o.is_confirmed || o.review_required
       );
 
-      const confirmedOrders = active.filter((o) => o.is_confirmed && !o.is_fulfilled && o.status !== "canceled");
-      const fulfilled = active.filter((o) => o.is_fulfilled && o.status !== "canceled" && o.status !== "returned");
+      const confirmedOrders = live.filter((o) => o.is_confirmed && !o.is_fulfilled);
+      const fulfilled = live.filter((o) => o.is_fulfilled);
       const shipped = active.filter((o) => o.status === "shipped");
       const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
       const merged = all.filter((o) => o.status === "merged");
-      const newOrders = active.filter((o) => o.status === "new");
+      const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
+      const onHold = live.filter((o) => o.status === "on_hold");
 
+      // Revenue = only confirmed, non-canceled orders
       const revenueOrders = active.filter((o) => o.is_confirmed && o.status !== "canceled" && o.status !== "returned");
       const productRevenue = revenueOrders.reduce((s, o) => s + Number(o.total), 0);
       const deliveryRevenue = revenueOrders.length * DELIVERY_FEE;
@@ -85,12 +89,13 @@ const AdminDashboard = () => {
         productRevenue,
         aov,
         confirmedCount: revenueOrders.length,
-        totalOrders: active.length,
+        totalOrders: live.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
         fulfilled: fulfilled.length,
         shipped: shipped.length,
         newOrders: newOrders.length,
+        onHold: onHold.length,
         canceled: canceled.length,
         merged: merged.length,
       });
@@ -216,9 +221,10 @@ const AdminDashboard = () => {
       {/* Order Pipeline */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Order Pipeline</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
           <MetricCard icon={AlertTriangle} label="Needs Review" value={stats.needsReview} accent="text-amber-500" highlight={stats.needsReview > 0} />
           <MetricCard icon={Clock} label="New" value={stats.newOrders} accent="text-blue-400" />
+          <MetricCard icon={AlertTriangle} label="On Hold" value={stats.onHold} accent="text-orange-500" />
           <MetricCard icon={CheckCircle} label="Confirmed" value={stats.confirmed} accent="text-emerald-500" />
           <MetricCard icon={Package} label="Fulfilled" value={stats.fulfilled} accent="text-emerald-600" />
           <MetricCard icon={XCircle} label="Canceled" value={stats.canceled} accent="text-red-400" />
