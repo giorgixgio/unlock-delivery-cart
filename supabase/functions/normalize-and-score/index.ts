@@ -367,22 +367,35 @@ async function scoreRisk(supabase: any, order: any, order_id: string, ip_address
       }
     }
 
-    const orderSkus = (order.order_items || []).map((i: any) => i.sku);
-    const orderSkuSet = new Set(orderSkus);
-    for (const past of pastOrders) {
-      const pastSkus = ((past as any).order_items || []).map((i: any) => i.sku);
-      const overlap = pastSkus.some((s: string) => orderSkuSet.has(s));
-      if (overlap) {
-        const pastSkuQty = pastSkus.sort().join(",");
-        const orderSkuQty = orderSkus.sort().join(",");
-        if (pastSkuQty === orderSkuQty) {
-          riskScore += 30;
-          riskReasons.push("exact_sku_match");
-        } else {
-          riskScore += 20;
-          riskReasons.push("sku_overlap");
+    // SKU overlap only matters when there's also an identity match (phone/cookie/IP/address)
+    const hasIdentityMatch = riskReasons.length > 0;
+    if (hasIdentityMatch) {
+      const orderSkus = (order.order_items || []).map((i: any) => i.sku);
+      const orderSkuSet = new Set(orderSkus);
+      // Only check SKU overlap against orders that share an identity signal
+      const identityMatchedIds = new Set<string>();
+      if (order.cookie_id_hash) pastOrders.filter((p: any) => p.cookie_id_hash === order.cookie_id_hash).forEach((p: any) => identityMatchedIds.add(p.id));
+      if (order.customer_phone) pastOrders.filter((p: any) => p.customer_phone === order.customer_phone).forEach((p: any) => identityMatchedIds.add(p.id));
+      const effectiveIp2 = ip_address || order.ip_address;
+      if (effectiveIp2) pastOrders.filter((p: any) => p.ip_address === effectiveIp2).forEach((p: any) => identityMatchedIds.add(p.id));
+      if (normalizedAddress && normalizedAddress.length > 5) pastOrders.filter((p: any) => p.normalized_address === normalizedAddress).forEach((p: any) => identityMatchedIds.add(p.id));
+
+      for (const past of pastOrders) {
+        if (!identityMatchedIds.has(past.id)) continue;
+        const pastSkus = ((past as any).order_items || []).map((i: any) => i.sku);
+        const overlap = pastSkus.some((s: string) => orderSkuSet.has(s));
+        if (overlap) {
+          const pastSkuQty = pastSkus.sort().join(",");
+          const orderSkuQty = orderSkus.sort().join(",");
+          if (pastSkuQty === orderSkuQty) {
+            riskScore += 30;
+            riskReasons.push("exact_sku_match");
+          } else {
+            riskScore += 20;
+            riskReasons.push("sku_overlap");
+          }
+          break;
         }
-        break;
       }
     }
   }
