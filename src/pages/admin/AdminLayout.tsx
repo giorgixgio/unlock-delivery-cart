@@ -1,9 +1,10 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/products", label: "Products", icon: Package },
