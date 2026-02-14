@@ -21,6 +21,7 @@ interface Stats {
   deliveryRevenue: number;
   productRevenue: number;
   aov: number;
+  confirmedCount: number;
   totalOrders: number;
   needsReview: number;
   confirmed: number;
@@ -83,6 +84,7 @@ const AdminDashboard = () => {
         deliveryRevenue,
         productRevenue,
         aov,
+        confirmedCount: revenueOrders.length,
         totalOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
@@ -130,16 +132,16 @@ const AdminDashboard = () => {
   if (!stats) return null;
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Showing: <span className="font-semibold text-foreground">{dateLabel}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Date mode buttons */}
           <div className="flex rounded-lg border border-border overflow-hidden text-sm">
             <button
@@ -201,11 +203,11 @@ const AdminDashboard = () => {
       {/* Revenue Section */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Revenue</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={Banknote} label="Product Revenue" value={gel(stats.productRevenue)} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label={`Delivery (${stats.confirmed + stats.fulfilled + stats.shipped}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
           <MetricCard icon={ShoppingCart} label="AOV" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
+          <MetricCard icon={Banknote} label="Product Revenue" value={gel(stats.productRevenue)} accent="text-emerald-600" />
+          <MetricCard icon={TruckIcon} label={`Delivery (${stats.confirmedCount}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
         </div>
       </section>
 
@@ -214,7 +216,7 @@ const AdminDashboard = () => {
       {/* Order Pipeline */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Order Pipeline</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <MetricCard icon={AlertTriangle} label="Needs Review" value={stats.needsReview} accent="text-amber-500" highlight={stats.needsReview > 0} />
           <MetricCard icon={Clock} label="New" value={stats.newOrders} accent="text-blue-400" />
           <MetricCard icon={CheckCircle} label="Confirmed" value={stats.confirmed} accent="text-emerald-500" />
@@ -229,7 +231,7 @@ const AdminDashboard = () => {
       {/* Volume */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Volume</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={ShoppingCart} label="Total Orders" value={stats.totalOrders} accent="text-foreground" size="lg" />
           <MetricCard icon={TruckIcon} label="Shipped" value={stats.shipped} accent="text-purple-500" size="lg" />
         </div>
@@ -249,12 +251,12 @@ interface MetricCardProps {
 
 const MetricCard = ({ icon: Icon, label, value, accent, size = "sm", highlight }: MetricCardProps) => (
   <Card className={`transition-shadow hover:shadow-md ${highlight ? "ring-2 ring-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10" : ""}`}>
-    <CardContent className="p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${accent}`} />
-        <span className="text-xs font-medium text-muted-foreground truncate">{label}</span>
+    <CardContent className="p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+        <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${accent}`} />
+        <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">{label}</span>
       </div>
-      <p className={`font-bold ${accent} ${size === "lg" ? "text-2xl" : "text-xl"}`}>{value}</p>
+      <p className={`font-bold ${accent} ${size === "lg" ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{value}</p>
     </CardContent>
   </Card>
 );
