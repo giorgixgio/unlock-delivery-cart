@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     for (const order of (orders || [])) {
       const items = order.order_items || [];
-      const quantities = items.map((i: any) => String(i.quantity)).join(",");
+      const totalQuantity = items.reduce((sum: number, i: any) => sum + Number(i.quantity || 1), 0);
       const skus = items.map((i: any) => i.sku).join(",");
 
       const notes: string[] = [];
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         B: order.normalized_address || order.raw_address || order.address_line1 || "",
         C: order.normalized_city || order.raw_city || order.city || "",
         E: order.customer_phone || "",
-        G: quantities,
+        G: String(totalQuantity),
         H: order.public_order_number,
         I: skus,
         K: String(Number(order.total || 0)),
