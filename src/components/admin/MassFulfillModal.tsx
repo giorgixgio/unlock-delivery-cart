@@ -6,9 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   Upload, Loader2, X, CheckCircle,
-  FileSpreadsheet, Download,
+  FileSpreadsheet, Download, Printer, Package,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { openStickerPrintWindow, type StickerOrder } from "./StickerPrintView";
+import { openPackingListWindow } from "./PackingListView";
 
 interface MassFulfillModalProps {
   open: boolean;
@@ -48,6 +50,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
   const [overwriteTracking, setOverwriteTracking] = useState(false);
   const [appliedCount, setAppliedCount] = useState(0);
   const [fileName, setFileName] = useState("");
+  const [fulfilledOrders, setFulfilledOrders] = useState<StickerOrder[]>([]);
 
   const reset = () => {
     setStep("upload");
@@ -56,6 +59,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     setOverwriteTracking(false);
     setAppliedCount(0);
     setFileName("");
+    setFulfilledOrders([]);
   };
 
   const handleClose = () => {
@@ -353,6 +357,29 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       })
       .eq("id", batchId);
 
+    // Fetch full order details for sticker/packing list generation
+    const appliedOrderIds = toApply.filter(r => r.matchedOrderId).map(r => r.matchedOrderId!);
+    if (appliedOrderIds.length > 0) {
+      const { data: fullOrders } = await supabase
+        .from("orders")
+        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, order_items(sku, quantity, title)")
+        .in("id", appliedOrderIds);
+
+      if (fullOrders) {
+        const stickerData: StickerOrder[] = fullOrders.map((o: any) => ({
+          orderId: o.id,
+          publicOrderNumber: o.public_order_number,
+          customerName: o.customer_name || "",
+          address: o.normalized_address || o.raw_address || o.address_line1 || "",
+          city: o.normalized_city || o.raw_city || o.city || "",
+          phone: o.customer_phone || "",
+          tracking: o.tracking_number || "",
+          items: (o.order_items || []).map((i: any) => ({ sku: i.sku, quantity: i.quantity, title: i.title })),
+        }));
+        setFulfilledOrders(stickerData);
+      }
+    }
+
     setStep("done");
     toast({ title: `${applied} orders fulfilled and tracking updated ✓${failCount > 0 ? ` (${failCount} failed)` : ""}` });
     onComplete();
@@ -553,13 +580,27 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
 
           {/* Step: Done */}
           {step === "done" && (
-            <div className="flex flex-col items-center py-12 space-y-4">
+            <div className="flex flex-col items-center py-8 space-y-5">
               <CheckCircle className="w-12 h-12 text-emerald-600" />
               <p className="font-bold text-lg">{appliedCount} orders updated</p>
-              <Button onClick={handleDownloadReport} variant="outline" className="gap-2">
-                <Download className="w-4 h-4" />
-                Download Import Report.xlsx
-              </Button>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Button onClick={handleDownloadReport} variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Import Report
+                </Button>
+                {fulfilledOrders.length > 0 && (
+                  <>
+                    <Button onClick={() => openStickerPrintWindow(fulfilledOrders)} variant="outline" className="gap-2">
+                      <Printer className="w-4 h-4" />
+                      Print Stickers
+                    </Button>
+                    <Button onClick={() => openPackingListWindow(fulfilledOrders)} variant="outline" className="gap-2">
+                      <Package className="w-4 h-4" />
+                      Packing List
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
