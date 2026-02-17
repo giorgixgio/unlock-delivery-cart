@@ -230,26 +230,40 @@ const AdminBatchDetail = () => {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
 
-      if (jsonRows.length === 0) throw new Error("File must have at least 1 data row");
+      // Parse as raw 2D array to find the real header row
+      const rawData = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: "" });
+      if (rawData.length < 2) throw new Error("File must have at least a header row and 1 data row");
 
-      
-      const orderIdKey = Object.keys(jsonRows[0]).find(h => {
-        const lc = h.trim().toLowerCase();
-        return (lc.includes("order") && lc.includes("id")) || lc === "order_id" || lc === "h";
-      });
-      const trackingKey = Object.keys(jsonRows[0]).find(h => {
-        const lc = h.trim().toLowerCase();
-        return lc.includes("tracking") || lc === "tracking_number";
-      });
+      // Find the header row: look for row containing tracking/order keywords
+      // The file may have a merged title row first (e.g. "შეკვეთების ისტორია")
+      const TRACKING_KEYWORDS = ["თრექინგი", "tracking", "tracking_number", "track"];
+      const ORDER_KEYWORDS = ["შეკვეთის ნომერი", "order_id", "order", "h"];
 
-      if (!orderIdKey || !trackingKey) throw new Error("File must contain order_id and tracking_number columns");
+      let headerRowIdx = -1;
+      let trackingColIdx = -1;
+      let orderColIdx = -1;
 
+      for (let r = 0; r < Math.min(10, rawData.length); r++) {
+        const row = rawData[r].map(c => String(c || "").trim().toLowerCase());
+        const tIdx = row.findIndex(cell => TRACKING_KEYWORDS.some(k => cell.includes(k.toLowerCase())));
+        const oIdx = row.findIndex(cell => ORDER_KEYWORDS.some(k => cell === k.toLowerCase() || cell.includes(k.toLowerCase())));
+        if (tIdx !== -1 && oIdx !== -1) {
+          headerRowIdx = r;
+          trackingColIdx = tIdx;
+          orderColIdx = oIdx;
+          break;
+        }
+      }
+
+      if (headerRowIdx === -1) throw new Error("Could not find tracking and order number columns in file. Expected columns: თრექინგი, შეკვეთის ნომერი (or tracking_number, order_id)");
+
+      // Parse data rows (everything after header)
       const rows: { order_id: string; tracking_number: string }[] = [];
-      for (const row of jsonRows) {
-        const orderRef = String(row[orderIdKey] || "").trim();
-        const tracking = String(row[trackingKey] || "").trim();
+      for (let r = headerRowIdx + 1; r < rawData.length; r++) {
+        const row = rawData[r];
+        const tracking = String(row[trackingColIdx] || "").trim();
+        const orderRef = String(row[orderColIdx] || "").trim();
         if (!orderRef || !tracking) continue;
 
         const matchedOrder = orders.find(o => o.public_order_number === orderRef || o.id === orderRef);
