@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Product } from "@/lib/constants";
 import { LandingConfig, BundleOption } from "@/hooks/useLandingConfig";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
-import { Banknote, Truck, Shield } from "lucide-react";
+import { Banknote, Truck, Shield, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BundleSelector from "@/components/landing/BundleSelector";
 import LandingSections from "@/components/landing/LandingSections";
@@ -131,21 +131,42 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             </div>
           )}
 
-          {/* Trust strip — no free shipping */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* COD + Fast Shipping hero banners */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-3.5 bg-success/10 border-2 border-success/30 rounded-xl">
+              <div className="w-11 h-11 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+                <Banknote className="w-6 h-6 text-success" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-foreground">💵 გადახდა მიტანისას</p>
+                <p className="text-xs text-muted-foreground">კურიერს გადაუხდი ადგილზე — წინასწარი გადახდა არ არის საჭირო</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3.5 bg-primary/10 border-2 border-primary/30 rounded-xl">
+              <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Truck className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-foreground">🚚 სწრაფი მიტანა</p>
+                <p className="text-xs text-muted-foreground">შეკვეთა მიიღე 1-3 სამუშაო დღეში პირდაპირ კარამდე</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust strip */}
+          <div className="grid grid-cols-2 gap-2">
             {[
-              { icon: Banknote, text: "გადახდა მიტანისას" },
-              { icon: Truck, text: "სწრაფი კურიერი" },
               { icon: Shield, text: "ხარისხის გარანტია" },
+              { icon: Package, text: "უსაფრთხო შეფუთვა" },
             ].map(({ icon: Icon, text }, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center gap-1.5 py-3 bg-card rounded-xl border border-border shadow-sm"
+                className="flex items-center gap-2 py-2.5 px-3 bg-card rounded-xl border border-border shadow-sm"
               >
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon className="w-4.5 h-4.5 text-primary" />
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{text}</span>
+                <span className="text-[11px] font-semibold text-foreground leading-tight">{text}</span>
               </div>
             ))}
           </div>
