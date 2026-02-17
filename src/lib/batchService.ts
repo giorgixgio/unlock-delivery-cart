@@ -84,7 +84,6 @@ export async function fetchBatchOrders(batchId: string) {
     .eq("batch_id", batchId);
   if (error) throw error;
 
-  // Fetch full order details for each order_id
   const orderIds = (data as BatchOrderRow[]).map((bo) => bo.order_id);
   if (orderIds.length === 0) return [];
 
@@ -116,16 +115,65 @@ export async function fetchBatchEvents(batchId: string) {
   return (data || []) as BatchEvent[];
 }
 
+/* ─── Eligibility ─── */
+
+export async function fetchEligibleOrderCount() {
+  // Eligible: confirmed, not batched, not released, not canceled/merged
+  const { data: eligible, error: eErr } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "confirmed")
+    .eq("is_confirmed", true)
+    .is("batch_id", null)
+    .is("released_at", null);
+  if (eErr) throw eErr;
+
+  // Ineligible reasons
+  const reasons: { reason: string; count: number }[] = [];
+
+  const { count: alreadyBatched } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "confirmed")
+    .eq("is_confirmed", true)
+    .not("batch_id", "is", null);
+  if (alreadyBatched && alreadyBatched > 0)
+    reasons.push({ reason: "Already in a batch", count: alreadyBatched });
+
+  const { count: alreadyReleased } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "confirmed")
+    .eq("is_confirmed", true)
+    .not("released_at", "is", null);
+  if (alreadyReleased && alreadyReleased > 0)
+    reasons.push({ reason: "Already released", count: alreadyReleased });
+
+  const { count: notConfirmed } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("is_confirmed", false)
+    .is("batch_id", null)
+    .is("released_at", null)
+    .not("status", "in", '("canceled","merged")');
+  if (notConfirmed && notConfirmed > 0)
+    reasons.push({ reason: "Not confirmed", count: notConfirmed });
+
+  return {
+    eligible: (eligible as any) ?? 0,
+    ineligible: reasons,
+  };
+}
+
 /* ─── Create Batch ─── */
 
 export async function createBatch(actorEmail: string) {
-  // 1. Get orders that are not batched and not released
+  // 1. Get eligible orders
   const { data: eligible, error: eErr } = await supabase
     .from("orders")
     .select("id")
     .eq("status", "confirmed")
     .eq("is_confirmed", true)
-    .eq("is_fulfilled", false)
     .is("batch_id", null)
     .is("released_at", null)
     .neq("status", "merged")
@@ -193,12 +241,11 @@ export async function createBatch(actorEmail: string) {
   return { batchId, orderCount: orderIds.length };
 }
 
-/* ─── Print Logic ─── */
+/* ─── Print Logic (NO auto-release) ─── */
 
 export async function printPackingList(batchId: string, actorEmail: string) {
   const batch = await fetchBatch(batchId);
 
-  // Increment print count
   const newCount = batch.packing_list_print_count + 1;
   const updates: Record<string, unknown> = {
     packing_list_print_count: newCount,
@@ -206,13 +253,8 @@ export async function printPackingList(batchId: string, actorEmail: string) {
     packing_list_printed_by: actorEmail,
   };
 
-  // Status transitions
+  // Only transition OPEN → LOCKED on first print
   if (batch.status === "OPEN") updates.status = "LOCKED";
-  if (batch.packing_slips_print_count > 0 && batch.status !== "RELEASED") {
-    updates.status = "RELEASED";
-    updates.released_at = new Date().toISOString();
-    updates.released_by = actorEmail;
-  }
 
   const { error } = await supabase
     .from("batches")
@@ -224,18 +266,12 @@ export async function printPackingList(batchId: string, actorEmail: string) {
     print_count: newCount,
   });
 
-  // Insert print job
   await supabase.from("batch_print_jobs").insert({
     batch_id: batchId,
     created_by: actorEmail,
     print_type: "packing_list",
     print_count: newCount,
   });
-
-  // If became RELEASED, stamp orders
-  if (updates.status === "RELEASED") {
-    await releaseOrders(batchId, actorEmail);
-  }
 }
 
 export async function printPackingSlips(batchId: string, actorEmail: string) {
@@ -248,11 +284,8 @@ export async function printPackingSlips(batchId: string, actorEmail: string) {
     packing_slips_printed_by: actorEmail,
   };
 
-  if (batch.packing_list_print_count > 0 && batch.status !== "RELEASED") {
-    updates.status = "RELEASED";
-    updates.released_at = new Date().toISOString();
-    updates.released_by = actorEmail;
-  }
+  // Only transition OPEN → LOCKED on first print
+  if (batch.status === "OPEN") updates.status = "LOCKED";
 
   const { error } = await supabase
     .from("batches")
@@ -270,27 +303,80 @@ export async function printPackingSlips(batchId: string, actorEmail: string) {
     print_type: "packing_slips",
     print_count: newCount,
   });
-
-  if (updates.status === "RELEASED") {
-    await releaseOrders(batchId, actorEmail);
-  }
 }
 
-async function releaseOrders(batchId: string, actorEmail: string) {
-  const batchOrders = await supabase
+/* ─── Bulk Release ─── */
+
+export async function bulkReleaseBatch(batchId: string, actorEmail: string) {
+  const batch = await fetchBatch(batchId);
+  if (batch.status === "RELEASED") throw new Error("Batch is already released.");
+
+  // Ensure batch has orders
+  const { data: batchOrders, error: boErr } = await supabase
+    .from("batch_orders")
+    .select("order_id")
+    .eq("batch_id", batchId);
+  if (boErr) throw boErr;
+  if (!batchOrders || batchOrders.length === 0)
+    throw new Error("Cannot release an empty batch.");
+
+  const now = new Date().toISOString();
+
+  // Update batch status
+  const { error } = await supabase
+    .from("batches")
+    .update({
+      status: "RELEASED",
+      released_at: now,
+      released_by: actorEmail,
+    })
+    .eq("id", batchId);
+  if (error) throw error;
+
+  // Stamp orders.released_at
+  const ids = batchOrders.map((bo) => bo.order_id);
+  await supabase
+    .from("orders")
+    .update({ released_at: now })
+    .in("id", ids);
+
+  await logBatchEvent(batchId, actorEmail, "BULK_RELEASE", {
+    order_count: ids.length,
+  });
+}
+
+/* ─── Undo Release ─── */
+
+export async function undoReleaseBatch(batchId: string, actorEmail: string, reason: string) {
+  const batch = await fetchBatch(batchId);
+  if (batch.status !== "RELEASED") throw new Error("Batch is not released.");
+
+  // Revert batch to LOCKED
+  const { error } = await supabase
+    .from("batches")
+    .update({
+      status: "LOCKED",
+      released_at: null,
+      released_by: null,
+    })
+    .eq("id", batchId);
+  if (error) throw error;
+
+  // Clear orders.released_at
+  const { data: batchOrders } = await supabase
     .from("batch_orders")
     .select("order_id")
     .eq("batch_id", batchId);
 
-  if (batchOrders.data) {
-    const ids = batchOrders.data.map((bo) => bo.order_id);
+  if (batchOrders && batchOrders.length > 0) {
+    const ids = batchOrders.map((bo) => bo.order_id);
     await supabase
       .from("orders")
-      .update({ released_at: new Date().toISOString() })
+      .update({ released_at: null })
       .in("id", ids);
   }
 
-  await logBatchEvent(batchId, actorEmail, "BATCH_RELEASED", {});
+  await logBatchEvent(batchId, actorEmail, "UNDO_RELEASE", { reason });
 }
 
 /* ─── Events ─── */

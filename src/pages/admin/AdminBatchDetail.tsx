@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2, ArrowLeft, Printer, PackageCheck, FileDown, AlertTriangle, Clock } from "lucide-react";
+import { Loader2, ArrowLeft, Printer, PackageCheck, FileDown, AlertTriangle, Clock, Unlock, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import {
   fetchBatch, fetchBatchOrders, fetchSnapshot, fetchBatchEvents,
   printPackingList, printPackingSlips, logShippingLabelsGenerated,
+  bulkReleaseBatch, undoReleaseBatch,
   type BatchRow, type SnapshotItem, type BatchEvent,
 } from "@/lib/batchService";
 import { toast } from "@/hooks/use-toast";
@@ -36,6 +37,15 @@ const AdminBatchDetail = () => {
   const [loading, setLoading] = useState(true);
   const [printing, setPrinting] = useState<string | null>(null);
   const [confirmReprint, setConfirmReprint] = useState<string | null>(null);
+
+  // Bulk release
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+
+  // Undo release
+  const [showUndoModal, setShowUndoModal] = useState(false);
+  const [undoReason, setUndoReason] = useState("");
+  const [undoing, setUndoing] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -97,19 +107,50 @@ const AdminBatchDetail = () => {
     setPrinting(null);
   };
 
-  /* ─── Packing List (HTML popup, grouped by SKU from snapshot) ─── */
+  /* ─── Bulk Release ─── */
+  const handleBulkRelease = async () => {
+    if (!id) return;
+    setReleasing(true);
+    try {
+      await bulkReleaseBatch(id, actor);
+      toast({ title: "Batch released", description: `${orders.length} orders released.` });
+      setShowReleaseConfirm(false);
+      await load();
+    } catch (e: any) {
+      toast({ title: "Release failed", description: e.message, variant: "destructive" });
+    }
+    setReleasing(false);
+  };
+
+  /* ─── Undo Release ─── */
+  const handleUndoRelease = async () => {
+    if (!id || !undoReason.trim()) return;
+    setUndoing(true);
+    try {
+      await undoReleaseBatch(id, actor, undoReason.trim());
+      toast({ title: "Release undone", description: "Batch reverted to LOCKED." });
+      setShowUndoModal(false);
+      setUndoReason("");
+      await load();
+    } catch (e: any) {
+      toast({ title: "Undo failed", description: e.message, variant: "destructive" });
+    }
+    setUndoing(false);
+  };
+
+  /* ─── Packing List (HTML popup) ─── */
   const openPackingListWindow = () => {
-    const skuMap = new Map<string, { orders: { orderNumber: string; qty: number }[]; totalQty: number; name: string }>();
+    const skuMapPrint = new Map<string, { orders: { orderNumber: string; qty: number }[]; totalQty: number; name: string }>();
     for (const item of snapshot) {
       const ord = orders.find((o) => o.id === item.order_id);
       const orderNum = ord?.public_order_number || item.order_id.slice(0, 8);
-      if (!skuMap.has(item.sku)) skuMap.set(item.sku, { orders: [], totalQty: 0, name: item.product_name });
-      const entry = skuMap.get(item.sku)!;
+      if (!skuMapPrint.has(item.sku)) skuMapPrint.set(item.sku, { orders: [], totalQty: 0, name: item.product_name });
+      const entry = skuMapPrint.get(item.sku)!;
       entry.orders.push({ orderNumber: orderNum, qty: item.qty });
       entry.totalQty += item.qty;
     }
 
-    const skuEntries = Array.from(skuMap.entries()).sort((a, b) => (parseInt(a[0]) || 99999) - (parseInt(b[0]) || 99999));
+    const skuPrintEntries = Array.from(skuMapPrint.entries()).sort((a, b) => (parseInt(a[0]) || 99999) - (parseInt(b[0]) || 99999));
     const today = new Date().toLocaleDateString("ka-GE");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Packing List</title>
@@ -126,17 +167,16 @@ td{padding:10px 12px;border-bottom:1px solid #eee;vertical-align:middle}
 </style></head><body>
 <div class="header"><h1>📦 PACKING LIST</h1><div class="meta">${today} | ${orders.length} orders | Batch ${id?.slice(0, 8)}</div></div>
 <table><thead><tr><th style="width:140px">SKU</th><th>Product</th><th>Orders</th><th style="width:60px;text-align:center">Total</th></tr></thead><tbody>
-${skuEntries.map(([sku, e]) => `<tr><td><span class="sku-num">${sku}</span></td><td style="font-size:9pt;color:#666">${e.name}</td><td>${e.orders.map(o => `<span class="order-chip">#${o.orderNumber} ×${o.qty}</span>`).join(" ")}</td><td class="qty-cell">${e.totalQty}</td></tr>`).join("")}
+${skuPrintEntries.map(([sku, e]) => `<tr><td><span class="sku-num">${sku}</span></td><td style="font-size:9pt;color:#666">${e.name}</td><td>${e.orders.map(o => `<span class="order-chip">#${o.orderNumber} ×${o.qty}</span>`).join(" ")}</td><td class="qty-cell">${e.totalQty}</td></tr>`).join("")}
 </tbody></table></body></html>`;
 
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  /* ─── Packing Slips (one per order, from snapshot) ─── */
+  /* ─── Packing Slips (HTML popup) ─── */
   const openPackingSlipsWindow = () => {
     const today = new Date().toLocaleDateString("ka-GE");
-
     const slipsHtml = orders.map((ord, idx) => {
       const items = snapshot.filter((s) => s.order_id === ord.id);
       return `<div class="slip" ${idx > 0 ? 'style="page-break-before:always"' : ''}>
@@ -171,39 +211,24 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
       const pdfDoc = await PDFDocument.create();
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-      // A6: 105mm x 148mm ≈ 297.64 x 419.53 points
       const W = 297.64;
       const H = 419.53;
-
       const sortedOrders = [...orders].sort((a, b) => a.public_order_number.localeCompare(b.public_order_number));
 
       for (const ord of sortedOrders) {
         const page = pdfDoc.addPage([W, H]);
         let y = H - 30;
-
-        // Tracking (large)
         const trackingText = ord.tracking_number || "N/A";
         page.drawText(trackingText, { x: 15, y, font: fontBold, size: 16, color: rgb(0, 0, 0) });
         y -= 25;
-
-        // Order ID
         page.drawText(`Order: #${ord.public_order_number}`, { x: 15, y, font, size: 10, color: rgb(0.3, 0.3, 0.3) });
         y -= 20;
-
-        // Line
         page.drawLine({ start: { x: 15, y }, end: { x: W - 15, y }, thickness: 1, color: rgb(0.7, 0.7, 0.7) });
         y -= 18;
-
-        // Customer name
         page.drawText(ord.customer_name, { x: 15, y, font: fontBold, size: 12, color: rgb(0, 0, 0) });
         y -= 16;
-
-        // Phone
         page.drawText(ord.customer_phone, { x: 15, y, font, size: 10, color: rgb(0.2, 0.2, 0.2) });
         y -= 18;
-
-        // Address (wrap roughly)
         const address = `${ord.address_line1}, ${ord.city}`;
         const words = address.split(" ");
         let line = "";
@@ -217,9 +242,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
             line = test;
           }
         }
-        if (line) {
-          page.drawText(line, { x: 15, y, font, size: 10, color: rgb(0.1, 0.1, 0.1) });
-        }
+        if (line) page.drawText(line, { x: 15, y, font, size: 10, color: rgb(0.1, 0.1, 0.1) });
       }
 
       const pdfBytes = await pdfDoc.save();
@@ -243,16 +266,20 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
   /* ─── Warnings ─── */
   const getWarnings = () => {
     if (!batch) return [];
-    const warnings: string[] = [];
+    const warnings: { text: string; variant: "amber" | "red" }[] = [];
     const age = Date.now() - new Date(batch.created_at).getTime();
     if (batch.status === "OPEN" && age > 2 * 60 * 60 * 1000) {
-      warnings.push("This batch has been OPEN for over 2 hours.");
+      warnings.push({ text: "This batch has been OPEN for over 2 hours.", variant: "amber" });
     }
     if (batch.status === "LOCKED" && batch.packing_list_print_count === 0 && batch.packing_slips_print_count === 0) {
-      warnings.push("Batch is LOCKED but nothing has been printed.");
+      warnings.push({ text: "Batch is LOCKED but nothing has been printed.", variant: "amber" });
     }
     if (batch.status === "RELEASED" && batch.packing_slips_print_count === 0) {
-      warnings.push("Batch is RELEASED but packing slips were not printed.");
+      warnings.push({ text: "Batch is RELEASED but packing slips were not printed.", variant: "amber" });
+    }
+    // Check for UNDO_RELEASE in events
+    if (events.some((e) => e.event_type === "UNDO_RELEASE")) {
+      warnings.push({ text: "⚠️ This batch's release was previously undone. Review carefully before re-releasing.", variant: "red" });
     }
     return warnings;
   };
@@ -268,7 +295,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
   if (!batch) return <p className="p-6 text-center text-muted-foreground">Batch not found.</p>;
 
   const warnings = getWarnings();
-  const _isLocked = batch.status !== "OPEN";
+  const isReleased = batch.status === "RELEASED";
 
   const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -279,7 +306,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
     RELEASED: "bg-emerald-100 text-emerald-800",
   };
 
-  // Group snapshot by SKU for packing list tab
+  // Group snapshot by SKU
   const skuMap = new Map<string, { orders: string[]; totalQty: number; name: string }>();
   for (const item of snapshot) {
     const ord = orders.find((o) => o.id === item.order_id);
@@ -309,9 +336,16 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
 
       {/* Warnings */}
       {warnings.map((w, i) => (
-        <div key={i} className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <div
+          key={i}
+          className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+            w.variant === "red"
+              ? "bg-destructive/10 border border-destructive/30 text-destructive"
+              : "bg-amber-50 border border-amber-200 text-amber-800"
+          }`}
+        >
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {w}
+          {w.text}
         </div>
       ))}
 
@@ -324,6 +358,45 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
             Yes, Reprint
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirmReprint(null)}>Cancel</Button>
+        </div>
+      )}
+
+      {/* Bulk Release Confirmation */}
+      {showReleaseConfirm && (
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+          <Rocket className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-bold">Release {orders.length} orders?</p>
+            <p className="text-xs text-muted-foreground">This will mark all orders as released. They cannot be re-batched.</p>
+          </div>
+          <Button size="sm" onClick={handleBulkRelease} disabled={releasing} className="gap-1">
+            {releasing && <Loader2 className="w-3 h-3 animate-spin" />} Confirm Release
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setShowReleaseConfirm(false)}>Cancel</Button>
+        </div>
+      )}
+
+      {/* Undo Release Modal */}
+      {showUndoModal && (
+        <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg space-y-3">
+          <div className="flex items-center gap-2">
+            <Unlock className="w-5 h-5 text-destructive" />
+            <p className="font-bold text-sm">Undo Release</p>
+          </div>
+          <p className="text-xs text-muted-foreground">This will revert the batch to LOCKED and clear released_at on all orders. A reason is required.</p>
+          <textarea
+            className="w-full border border-border rounded-md p-2 text-sm bg-background"
+            rows={2}
+            placeholder="Reason for undoing release..."
+            value={undoReason}
+            onChange={(e) => setUndoReason(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="destructive" onClick={handleUndoRelease} disabled={undoing || !undoReason.trim()} className="gap-1">
+              {undoing && <Loader2 className="w-3 h-3 animate-spin" />} Confirm Undo
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowUndoModal(false); setUndoReason(""); }}>Cancel</Button>
+          </div>
         </div>
       )}
 
@@ -356,6 +429,22 @@ td{padding:8px 10px;border-bottom:1px solid #eee}
               {printing === "labels" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
               Download Shipping Labels PDF
             </Button>
+
+            {/* Bulk Release */}
+            {!isReleased && (
+              <Button className="w-full gap-2" onClick={() => setShowReleaseConfirm(true)} disabled={releasing}>
+                <Rocket className="w-4 h-4" />
+                Bulk Release Orders
+              </Button>
+            )}
+
+            {/* Undo Release */}
+            {isReleased && (
+              <Button className="w-full gap-2" variant="destructive" onClick={() => setShowUndoModal(true)}>
+                <Unlock className="w-4 h-4" />
+                Undo Release
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Plus, Printer, PackageCheck } from "lucide-react";
+import { Loader2, Plus, Printer, PackageCheck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { fetchBatches, createBatch, type BatchRow } from "@/lib/batchService";
+import { fetchBatches, createBatch, fetchEligibleOrderCount, type BatchRow } from "@/lib/batchService";
 import { toast } from "@/hooks/use-toast";
 
 const STATUS_TABS = [
@@ -27,6 +27,11 @@ const AdminBatches = () => {
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Eligibility modal
+  const [showEligibility, setShowEligibility] = useState(false);
+  const [eligibility, setEligibility] = useState<{ eligible: number; ineligible: { reason: string; count: number }[] } | null>(null);
+  const [loadingEligibility, setLoadingEligibility] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -40,11 +45,25 @@ const AdminBatches = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleOpenCreateModal = async () => {
+    setLoadingEligibility(true);
+    setShowEligibility(true);
+    try {
+      const result = await fetchEligibleOrderCount();
+      setEligibility(result);
+    } catch (e: any) {
+      toast({ title: "Error checking eligibility", description: e.message, variant: "destructive" });
+      setShowEligibility(false);
+    }
+    setLoadingEligibility(false);
+  };
+
   const handleCreate = async () => {
     setCreating(true);
     try {
       const result = await createBatch(user?.email || "admin");
       toast({ title: "Batch created", description: `${result.orderCount} orders batched.` });
+      setShowEligibility(false);
       navigate(`/admin/batches/${result.batchId}`);
     } catch (e: any) {
       toast({ title: "Failed to create batch", description: e.message, variant: "destructive" });
@@ -59,11 +78,51 @@ const AdminBatches = () => {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-foreground">Warehouse Batches</h1>
-        <Button onClick={handleCreate} disabled={creating} className="gap-2">
-          {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+        <Button onClick={handleOpenCreateModal} disabled={creating || loadingEligibility} className="gap-2">
+          {loadingEligibility ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Create Batch
         </Button>
       </div>
+
+      {/* Eligibility modal */}
+      {showEligibility && (
+        <div className="p-4 border border-border rounded-lg bg-card space-y-3">
+          <div className="flex items-center gap-2">
+            <Info className="w-5 h-5 text-primary" />
+            <h3 className="font-bold text-sm">Batch Eligibility Summary</h3>
+          </div>
+          {loadingEligibility ? (
+            <div className="flex items-center gap-2 py-4 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" /> Checking…
+            </div>
+          ) : eligibility ? (
+            <>
+              <div className="text-sm">
+                <span className="font-bold text-emerald-600">{eligibility.eligible}</span> eligible orders ready for batching.
+              </div>
+              {eligibility.ineligible.length > 0 && (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {eligibility.ineligible.map((r, i) => (
+                    <div key={i}>• {r.reason}: <span className="font-medium">{r.count}</span></div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={handleCreate}
+                  disabled={creating || eligibility.eligible === 0}
+                  className="gap-1"
+                >
+                  {creating && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {eligibility.eligible === 0 ? "No Eligible Orders" : `Create Batch (${eligibility.eligible} orders)`}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowEligibility(false)}>Cancel</Button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
 
       {/* Status tabs */}
       <div className="flex gap-2 border-b border-border pb-0">
