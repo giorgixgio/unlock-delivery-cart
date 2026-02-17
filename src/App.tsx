@@ -24,6 +24,8 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminSystemEvents from "./pages/admin/AdminSystemEvents";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminBatches from "./pages/admin/AdminBatches";
+import AdminBatchDetail from "./pages/admin/AdminBatchDetail";
 import Shop from "./pages/Shop";
 import ProductLanding from "./pages/ProductLanding";
 
@@ -111,6 +113,8 @@ const App = () => (
                       <Route path="dashboard" element={<AdminDashboard />} />
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
+                      <Route path="batches" element={<AdminBatches />} />
+                      <Route path="batches/:id" element={<AdminBatchDetail />} />
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
