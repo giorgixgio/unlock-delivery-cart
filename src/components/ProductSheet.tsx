@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X } from "lucide-react";
+import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X, Link2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getSimulatedStock,
   getStockLabel,
@@ -288,7 +289,23 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
           <ImageCarousel images={product.images} title={product.id} productId={product.id} />
 
           <div className="px-4 pt-3 pb-1">
-            <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2">{product.title}</h2>
+            <div className="flex items-start gap-2">
+              <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2 flex-1">{product.title}</h2>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const slug = product.handle || product.id;
+                  const url = `${window.location.origin}/p/${slug}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    toast("ლინკი დაკოპირდა", { duration: 1500 });
+                  });
+                }}
+                className="flex-shrink-0 mt-0.5 p-1.5 rounded-md hover:bg-muted transition-colors"
+                aria-label="Copy product link"
+              >
+                <Link2 className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
             {(() => {
               const oldPrice = getFakeOldPrice(product.id, product.price);
               const discount = getDiscountPercent(product.price, oldPrice);

@@ -29,7 +29,7 @@ const StickyCartHUD = () => {
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
 
-  if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
+  if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin") || location.pathname.startsWith("/p/")) return null;
   if (itemCount === 0) return null;
 
   return (
