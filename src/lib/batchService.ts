@@ -405,7 +405,7 @@ export async function logShippingLabelsGenerated(
   await logBatchEvent(batchId, actorEmail, "SHIPPING_LABELS_GENERATED", {});
 }
 
-/* ─── Courier CSV Export ─── */
+/* ─── Courier XLSX Export ─── */
 
 export async function recordCourierExport(batchId: string, actorEmail: string, orderCount: number) {
   const batch = await fetchBatch(batchId);
@@ -421,7 +421,7 @@ export async function recordCourierExport(batchId: string, actorEmail: string, o
     .eq("id", batchId);
   if (error) throw error;
 
-  await logBatchEvent(batchId, actorEmail, "COURIER_CSV_DOWNLOADED", {
+  await logBatchEvent(batchId, actorEmail, "COURIER_XLSX_DOWNLOADED", {
     order_count: orderCount,
     export_count: newCount,
   });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft, Printer, PackageCheck, FileDown, AlertTriangle, Clock, Unlock, Rocket, Download, Upload, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -177,9 +178,8 @@ const AdminBatchDetail = () => {
       const allCols = new Set([...Object.keys(dynamicMap), ...Object.keys(fixedMap)]);
       const sortedCols = Array.from(allCols).sort();
 
-      const csvRows: string[][] = [];
-      // Header
-      csvRows.push(sortedCols);
+      const xlsxRows: string[][] = [];
+      xlsxRows.push(sortedCols);
 
       for (const ord of orders) {
         const orderItems = snapshot.filter(s => s.order_id === ord.id);
@@ -203,24 +203,17 @@ const AdminBatchDetail = () => {
             default: return "";
           }
         });
-        csvRows.push(row);
+        xlsxRows.push(row);
       }
 
-      // Generate CSV
-      const csvContent = csvRows.map(row =>
-        row.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(",")
-      ).join("\n");
-
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `courier_batch_${id.slice(0, 8)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Generate XLSX
+      const ws = XLSX.utils.aoa_to_sheet(xlsxRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Courier");
+      XLSX.writeFile(wb, `courier_batch_${id.slice(0, 8)}.xlsx`);
 
       await recordCourierExport(id, actor, orders.length);
-      toast({ title: "Courier CSV downloaded" });
+      toast({ title: "Courier XLSX downloaded" });
       await load();
     } catch (e: any) {
       toast({ title: "Export failed", description: e.message, variant: "destructive" });
@@ -544,7 +537,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
               ) : <span className="text-xs text-muted-foreground flex items-center gap-1"><XCircle className="w-3 h-3" /> No</span>}
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Courier CSV</span>
+              <span className="text-muted-foreground">Courier XLSX</span>
               {batch.export_count > 0 ? (
                 <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
                   <CheckCircle2 className="w-3 h-3" /> {batch.export_count}x · {fmtDate(batch.exported_at)} · {batch.exported_by?.split("@")[0]}
@@ -578,7 +571,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
             </Button>
             <Button className="w-full gap-2" variant="outline" onClick={handleCourierCSV} disabled={exporting || batch.status === "OPEN"}>
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Download Courier CSV
+              Download Courier XLSX
             </Button>
             {batch.status === "OPEN" && (
               <p className="text-xs text-muted-foreground">Lock batch before exporting CSV.</p>
