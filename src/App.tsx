@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
 import { CheckoutGateProvider } from "@/contexts/CheckoutGateContext";
 import { CartOverlayProvider, useCartOverlay } from "@/contexts/CartOverlayContext";
+import { LandingPageProvider } from "@/contexts/LandingPageContext";
 import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -24,6 +25,17 @@ import AdminSystemEvents from "./pages/admin/AdminSystemEvents";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Shop from "./pages/Shop";
+import ProductLanding from "./pages/ProductLanding";
+
+/** Landing page wrapper — provides LandingPageContext */
+const LandingPageRoute = () => {
+  const { slug } = useParams();
+  return (
+    <LandingPageProvider slug={slug || ""}>
+      <ProductLanding />
+    </LandingPageProvider>
+  );
+};
 
 const queryClient = new QueryClient();
 
@@ -57,6 +69,9 @@ const LegacyProductRedirect = () => {
 
 const CartOverlayRenderer = () => {
   const { isCartOpen } = useCartOverlay();
+  const loc = useLocation();
+  // Don't render global cart overlay on landing pages — they have their own
+  if (loc.pathname.startsWith("/p/")) return null;
   return <Cart isOpen={isCartOpen} />;
 };
 
@@ -77,6 +92,8 @@ const App = () => (
                     <Route path="/cart" element={<LegacyCartRedirect />} />
                     <Route path="/success" element={<OrderSuccess />} />
                     <Route path="/shop" element={<Shop />} />
+                    {/* Landing page for individual products */}
+                    <Route path="/p/:slug" element={<LandingPageRoute />} />
                     {/* Legacy Shopify product URLs → redirect to shop with handle */}
                     <Route path="/products/:handle" element={<LegacyProductRedirect />} />
 

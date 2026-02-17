@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLandingPage } from "@/contexts/LandingPageContext";
 import { ArrowLeft, Truck, UserCheck, Pencil, CheckCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
@@ -41,10 +42,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const { closeCart, dismissCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const { setManualLocation, isTbilisi } = useDelivery();
+  const { isLandingPage, landingSlug } = useLandingPage();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const canCheckout = total >= DELIVERY_THRESHOLD;
+  // On landing pages, always allow checkout regardless of min-cart
+  const canCheckout = isLandingPage ? items.length > 0 : total >= DELIVERY_THRESHOLD;
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -196,6 +199,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         items,
         subtotal: total,
         total,
+        ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
       const orderTotal = total;
       const orderNumber = order.public_order_number;
@@ -243,15 +247,17 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         </header>
 
         <div className="container max-w-2xl mx-auto px-4 pt-4 space-y-4">
-          {/* Progress bar — single free shipping indicator */}
-          <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-3">
-            <DeliveryProgressBar />
-            {!canCheckout && (
-              <p className="text-sm text-muted-foreground text-center">
-                დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
-              </p>
-            )}
-          </div>
+          {/* Progress bar — hide on landing pages */}
+          {!isLandingPage && (
+            <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-3">
+              <DeliveryProgressBar />
+              {!canCheckout && (
+                <p className="text-sm text-muted-foreground text-center">
+                  დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Temu-style total breakdown with dopamine animation */}
           <div className="bg-card rounded-lg p-4 shadow-card border border-border">
