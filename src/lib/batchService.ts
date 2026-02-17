@@ -432,7 +432,7 @@ export async function recordCourierExport(batchId: string, actorEmail: string, o
 export async function importTrackingForBatch(
   batchId: string,
   actorEmail: string,
-  rows: { order_id: string; tracking_number: string }[]
+  allRows: { order_id: string; tracking_number: string }[]
 ) {
   // Get batch order IDs
   const { data: batchOrders, error: boErr } = await supabase
@@ -443,11 +443,8 @@ export async function importTrackingForBatch(
 
   const batchOrderIds = new Set((batchOrders || []).map((bo) => bo.order_id));
 
-  // Validate all rows belong to this batch
-  const unknownOrders = rows.filter((r) => !batchOrderIds.has(r.order_id));
-  if (unknownOrders.length > 0) {
-    throw new Error(`${unknownOrders.length} order(s) not in this batch: ${unknownOrders.map(u => u.order_id.slice(0, 8)).join(", ")}`);
-  }
+  // Filter to only orders in this batch (ignore extras from courier portal)
+  const rows = allRows.filter((r) => batchOrderIds.has(r.order_id));
 
   // Check for conflicts: order already has a different tracking number
   const orderIds = rows.map((r) => r.order_id);
