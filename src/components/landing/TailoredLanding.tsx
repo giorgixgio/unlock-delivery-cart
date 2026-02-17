@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Product } from "@/lib/constants";
 import { LandingConfig, BundleOption } from "@/hooks/useLandingConfig";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
-import { Banknote, Truck, ShoppingBag, Shield } from "lucide-react";
+import { Banknote, Truck, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BundleSelector from "@/components/landing/BundleSelector";
 import LandingSections from "@/components/landing/LandingSections";
 import CODFormModal from "@/components/landing/CODFormModal";
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import CountdownTimer from "@/components/landing/CountdownTimer";
+import LandingRecommendations from "@/components/landing/LandingRecommendations";
 
 interface TailoredLandingProps {
   product: Product;
@@ -17,9 +18,10 @@ interface TailoredLandingProps {
   landingSlug: string;
   landingVariant: string;
   useCodModal: boolean;
+  allProducts: Product[];
 }
 
-const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodModal }: TailoredLandingProps) => {
+const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodModal, allProducts }: TailoredLandingProps) => {
   const navigate = useNavigate();
 
   const bundleEnabled = config.bundle?.enabled ?? false;
@@ -79,7 +81,7 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
         {/* Header */}
         <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
           <div className="container max-w-lg mx-auto px-4 py-3 text-center">
-            <span className="text-lg font-extrabold text-primary tracking-tight">BIGMART</span>
+            <span className="text-lg font-extrabold text-primary tracking-tight">TETRI.SHOP</span>
           </div>
         </header>
 
@@ -172,6 +174,9 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
           )}
+
+          {/* Recommended products */}
+          <LandingRecommendations currentProduct={product} allProducts={allProducts} maxItems={6} />
         </div>
 
         {/* Sticky CTA */}
