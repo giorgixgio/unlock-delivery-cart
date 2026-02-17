@@ -550,6 +550,39 @@ export type Database = {
         }
         Relationships: []
       }
+      product_landing_config: {
+        Row: {
+          created_at: string
+          id: string
+          landing_bypass_min_cart: boolean
+          landing_config: Json | null
+          landing_use_cod_modal: boolean
+          landing_variant: string
+          product_handle: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          landing_bypass_min_cart?: boolean
+          landing_config?: Json | null
+          landing_use_cod_modal?: boolean
+          landing_variant?: string
+          product_handle: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          landing_bypass_min_cart?: boolean
+          landing_config?: Json | null
+          landing_use_cod_modal?: boolean
+          landing_variant?: string
+          product_handle?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_stats: {
         Row: {
           add_to_cart_count: number

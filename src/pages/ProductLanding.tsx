@@ -1,33 +1,37 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { useLandingPage } from "@/contexts/LandingPageContext";
+import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag } from "lucide-react";
+import { Plus, Minus, Truck, Banknote, ShoppingBag } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import { Skeleton } from "@/components/ui/skeleton";
 import Cart from "@/pages/Cart";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
+import TailoredLanding from "@/components/landing/TailoredLanding";
 
 const ProductLanding = () => {
   const { slug } = useParams();
   const { data: products = [], isLoading } = useProducts();
-  const { addItem, updateQuantity, getQuantity, itemCount } = useCart();
-  const { isLandingPage } = useLandingPage();
+  const { addItem, updateQuantity, getQuantity } = useCart();
+  const { isLandingPage, landingSlug } = useLandingPage();
   const { isCartOpen } = useCartOverlay();
 
   const product = useMemo(() => {
     if (!slug || products.length === 0) return null;
-    return products.find(
-      (p) => p.handle === slug || p.id === slug
-    ) ?? null;
+    return products.find((p) => p.handle === slug || p.id === slug) ?? null;
   }, [slug, products]);
 
-  if (isLoading) {
+  const { data: landingConfig, isLoading: configLoading } = useLandingConfig(
+    product?.handle || slug
+  );
+
+  if (isLoading || configLoading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container max-w-lg mx-auto px-4 pt-8 space-y-4">
@@ -48,6 +52,28 @@ const ProductLanding = () => {
     );
   }
 
+  // If tailored config exists, render TailoredLanding
+  if (landingConfig && landingConfig.landing_variant.startsWith("tailored")) {
+    return (
+      <TailoredLanding
+        product={product}
+        config={landingConfig.landing_config || {}}
+        landingSlug={landingSlug || slug || ""}
+        landingVariant={landingConfig.landing_variant}
+        useCodModal={landingConfig.landing_use_cod_modal}
+      />
+    );
+  }
+
+  // Generic landing (existing behavior)
+  return <GenericLanding product={product} />;
+};
+
+/** Original generic landing page — unchanged behavior */
+const GenericLanding = ({ product }: { product: Product }) => {
+  const { addItem, updateQuantity, getQuantity } = useCart();
+  const { isCartOpen } = useCartOverlay();
+
   const quantity = getQuantity(product.id);
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
@@ -59,7 +85,6 @@ const ProductLanding = () => {
   return (
     <>
       <div className="min-h-screen bg-background pb-32">
-        {/* Minimal header — just branding */}
         <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
           <div className="container max-w-lg mx-auto px-4 py-3 text-center">
             <span className="text-lg font-extrabold text-primary tracking-tight">BIGMART</span>
@@ -67,13 +92,8 @@ const ProductLanding = () => {
         </header>
 
         <div className="container max-w-lg mx-auto px-4 pt-4 space-y-4">
-          {/* Image */}
           <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-            <img
-              src={product.image}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
             {discount > 0 && (
               <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
                 ↓ {discount}% OFF
@@ -90,7 +110,6 @@ const ProductLanding = () => {
             )}
           </div>
 
-          {/* Title + price */}
           <div>
             <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">
@@ -105,7 +124,6 @@ const ProductLanding = () => {
           <MicroBenefitStacked />
           <DeliveryInfoRow />
 
-          {/* Trust strip */}
           <div className="flex items-center justify-around py-3 border-y border-border bg-accent/30 rounded-lg">
             <div className="flex flex-col items-center gap-1">
               <Banknote className="w-5 h-5 text-primary" />
@@ -121,7 +139,6 @@ const ProductLanding = () => {
             </div>
           </div>
 
-          {/* Description */}
           {product.description && (
             <div
               className="text-sm text-muted-foreground leading-relaxed"
@@ -130,7 +147,6 @@ const ProductLanding = () => {
           )}
         </div>
 
-        {/* Sticky bottom CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
           <div className="container max-w-lg mx-auto space-y-2">
             {quantity > 0 ? (
@@ -156,13 +172,11 @@ const ProductLanding = () => {
         </div>
       </div>
 
-      {/* Cart overlay */}
       <Cart isOpen={isCartOpen} />
     </>
   );
 };
 
-/** Landing page checkout button — bypasses min-cart */
 const LandingCheckoutButton = () => {
   const { openCart } = useCartOverlay();
   return (
