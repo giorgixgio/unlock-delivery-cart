@@ -14,6 +14,9 @@ export interface BatchRow {
   packing_slips_print_count: number;
   released_at: string | null;
   released_by: string | null;
+  exported_at: string | null;
+  exported_by: string | null;
+  export_count: number;
   order_count?: number;
   total_qty?: number;
 }
@@ -89,7 +92,7 @@ export async function fetchBatchOrders(batchId: string) {
 
   const { data: orders, error: oErr } = await supabase
     .from("orders")
-    .select("id, public_order_number, customer_name, customer_phone, city, address_line1, tracking_number")
+    .select("id, public_order_number, customer_name, customer_phone, city, address_line1, address_line2, tracking_number, total, notes_customer, normalized_address, normalized_city, released_at")
     .in("id", orderIds);
 
   if (oErr) throw oErr;
@@ -400,4 +403,97 @@ export async function logShippingLabelsGenerated(
   actorEmail: string
 ) {
   await logBatchEvent(batchId, actorEmail, "SHIPPING_LABELS_GENERATED", {});
+}
+
+/* ─── Courier CSV Export ─── */
+
+export async function recordCourierExport(batchId: string, actorEmail: string, orderCount: number) {
+  const batch = await fetchBatch(batchId);
+  const newCount = batch.export_count + 1;
+
+  const { error } = await supabase
+    .from("batches")
+    .update({
+      exported_at: new Date().toISOString(),
+      exported_by: actorEmail,
+      export_count: newCount,
+    })
+    .eq("id", batchId);
+  if (error) throw error;
+
+  await logBatchEvent(batchId, actorEmail, "COURIER_CSV_DOWNLOADED", {
+    order_count: orderCount,
+    export_count: newCount,
+  });
+}
+
+/* ─── Batch-Scoped Tracking Import ─── */
+
+export async function importTrackingForBatch(
+  batchId: string,
+  actorEmail: string,
+  rows: { order_id: string; tracking_number: string }[]
+) {
+  // Get batch order IDs
+  const { data: batchOrders, error: boErr } = await supabase
+    .from("batch_orders")
+    .select("order_id")
+    .eq("batch_id", batchId);
+  if (boErr) throw boErr;
+
+  const batchOrderIds = new Set((batchOrders || []).map((bo) => bo.order_id));
+
+  // Validate all rows belong to this batch
+  const unknownOrders = rows.filter((r) => !batchOrderIds.has(r.order_id));
+  if (unknownOrders.length > 0) {
+    throw new Error(`${unknownOrders.length} order(s) not in this batch: ${unknownOrders.map(u => u.order_id.slice(0, 8)).join(", ")}`);
+  }
+
+  // Check for conflicts: order already has a different tracking number
+  const orderIds = rows.map((r) => r.order_id);
+  const { data: existingOrders, error: oErr } = await supabase
+    .from("orders")
+    .select("id, tracking_number")
+    .in("id", orderIds);
+  if (oErr) throw oErr;
+
+  const conflicts: { order_id: string; existing: string; incoming: string }[] = [];
+  const toUpdate: { order_id: string; tracking_number: string }[] = [];
+
+  for (const row of rows) {
+    const existing = existingOrders?.find((o) => o.id === row.order_id);
+    if (existing?.tracking_number && existing.tracking_number !== row.tracking_number) {
+      conflicts.push({ order_id: row.order_id, existing: existing.tracking_number, incoming: row.tracking_number });
+    } else if (!existing?.tracking_number || existing.tracking_number !== row.tracking_number) {
+      toUpdate.push(row);
+    }
+    // same value → skip
+  }
+
+  if (conflicts.length > 0) {
+    throw new TrackingConflictError(conflicts);
+  }
+
+  // Apply updates
+  for (const row of toUpdate) {
+    await supabase
+      .from("orders")
+      .update({ tracking_number: row.tracking_number })
+      .eq("id", row.order_id);
+  }
+
+  await logBatchEvent(batchId, actorEmail, "TRACKING_IMPORTED", {
+    updated: toUpdate.length,
+    skipped: rows.length - toUpdate.length,
+  });
+
+  return { updated: toUpdate.length, skipped: rows.length - toUpdate.length };
+}
+
+export class TrackingConflictError extends Error {
+  conflicts: { order_id: string; existing: string; incoming: string }[];
+  constructor(conflicts: { order_id: string; existing: string; incoming: string }[]) {
+    super(`${conflicts.length} tracking conflict(s) found`);
+    this.conflicts = conflicts;
+  }
 }

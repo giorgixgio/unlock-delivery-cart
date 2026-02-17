@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, Plus, Printer, PackageCheck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchBatches, createBatch, fetchEligibleOrderCount, type BatchRow } from "@/lib/batchService";
 import { toast } from "@/hooks/use-toast";
 
@@ -32,11 +33,37 @@ const AdminBatches = () => {
   const [eligibility, setEligibility] = useState<{ eligible: number; ineligible: { reason: string; count: number }[] } | null>(null);
   const [loadingEligibility, setLoadingEligibility] = useState(false);
 
+  // Also fetch tracking coverage per batch
+  const [trackingCoverage, setTrackingCoverage] = useState<Record<string, { has: number; total: number }>>({});
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchBatches(statusFilter);
       setBatches(data);
+
+      // Fetch tracking coverage for all batches
+      const coverage: Record<string, { has: number; total: number }> = {};
+      for (const b of data) {
+        const { data: bOrders } = await supabase
+          .from("batch_orders")
+          .select("order_id")
+          .eq("batch_id", b.id);
+        if (bOrders && bOrders.length > 0) {
+          const orderIds = bOrders.map(bo => bo.order_id);
+          const { data: orders } = await supabase
+            .from("orders")
+            .select("id, tracking_number")
+            .in("id", orderIds);
+          coverage[b.id] = {
+            total: orderIds.length,
+            has: orders?.filter(o => o.tracking_number).length || 0,
+          };
+        } else {
+          coverage[b.id] = { total: 0, has: 0 };
+        }
+      }
+      setTrackingCoverage(coverage);
     } catch (e: any) {
       toast({ title: "Error loading batches", description: e.message, variant: "destructive" });
     }
@@ -156,14 +183,18 @@ const AdminBatches = () => {
                 <th className="text-left px-4 py-3 font-bold">Created</th>
                 <th className="text-left px-4 py-3 font-bold">Status</th>
                 <th className="text-left px-4 py-3 font-bold">Orders</th>
-                <th className="text-left px-4 py-3 font-bold">Items Qty</th>
+                <th className="text-left px-4 py-3 font-bold">Items</th>
                 <th className="text-left px-4 py-3 font-bold">Packing List</th>
                 <th className="text-left px-4 py-3 font-bold">Slips</th>
                 <th className="text-left px-4 py-3 font-bold">Released</th>
+                <th className="text-left px-4 py-3 font-bold">Exported</th>
+                <th className="text-left px-4 py-3 font-bold">Tracking</th>
               </tr>
             </thead>
             <tbody>
-              {batches.map((b) => (
+              {batches.map((b) => {
+                const tc = trackingCoverage[b.id];
+                return (
                 <tr
                   key={b.id}
                   onClick={() => navigate(`/admin/batches/${b.id}`)}
@@ -183,28 +214,35 @@ const AdminBatches = () => {
                       <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
                         <Printer className="w-3 h-3" /> Yes ({b.packing_list_print_count}x)
                       </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No</span>
-                    )}
+                    ) : <span className="text-xs text-muted-foreground">No</span>}
                   </td>
                   <td className="px-4 py-3">
                     {b.packing_slips_print_count > 0 ? (
                       <span className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
                         <PackageCheck className="w-3 h-3" /> Yes ({b.packing_slips_print_count}x)
                       </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No</span>
-                    )}
+                    ) : <span className="text-xs text-muted-foreground">No</span>}
                   </td>
                   <td className="px-4 py-3">
                     {b.released_at ? (
-                      <span className="text-xs font-bold text-emerald-600">Yes</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No</span>
-                    )}
+                      <span className="text-xs font-bold text-emerald-600">✅ Yes</span>
+                    ) : <span className="text-xs text-muted-foreground">No</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {b.export_count > 0 ? (
+                      <span className="text-xs font-bold text-emerald-600">✅ {b.export_count}x</span>
+                    ) : <span className="text-xs text-muted-foreground">No</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {tc ? (
+                      <span className={`text-xs font-bold ${tc.has === tc.total ? "text-emerald-600" : "text-amber-600"}`}>
+                        {tc.has}/{tc.total}
+                      </span>
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -173,6 +173,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          export_count: number
+          exported_at: string | null
+          exported_by: string | null
           id: string
           packing_list_print_count: number
           packing_list_printed_at: string | null
@@ -187,6 +190,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          export_count?: number
+          exported_at?: string | null
+          exported_by?: string | null
           id?: string
           packing_list_print_count?: number
           packing_list_printed_at?: string | null
@@ -201,6 +207,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          export_count?: number
+          exported_at?: string | null
+          exported_by?: string | null
           id?: string
           packing_list_print_count?: number
           packing_list_printed_at?: string | null
