@@ -10,7 +10,8 @@ import LandingSections from "@/components/landing/LandingSections";
 import CODFormModal from "@/components/landing/CODFormModal";
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import CountdownTimer from "@/components/landing/CountdownTimer";
-import LandingRecommendations from "@/components/landing/LandingRecommendations";
+import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 
 interface TailoredLandingProps {
   product: Product;
@@ -18,10 +19,9 @@ interface TailoredLandingProps {
   landingSlug: string;
   landingVariant: string;
   useCodModal: boolean;
-  allProducts: Product[];
 }
 
-const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodModal, allProducts }: TailoredLandingProps) => {
+const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodModal }: TailoredLandingProps) => {
   const navigate = useNavigate();
 
   const bundleEnabled = config.bundle?.enabled ?? false;
@@ -99,9 +99,8 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             </div>
           )}
 
-          {/* Product image */}
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted shadow-lg">
-            <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+          {/* Product image slider */}
+          <ProductImageSlider images={product.images || [product.image]} alt={product.title}>
             {discount > 0 && (
               <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-3 py-1.5 rounded-br-xl">
                 ↓ {discount}% OFF
@@ -116,7 +115,7 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
                 ))}
               </div>
             )}
-          </div>
+          </ProductImageSlider>
 
           {/* Title + price (if no hero_title) */}
           {!config.hero_title && (
@@ -175,8 +174,8 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             />
           )}
 
-          {/* Recommended products */}
-          <LandingRecommendations currentProduct={product} allProducts={allProducts} maxItems={6} />
+          {/* Photo gallery of this product */}
+          <ProductPhotoGallery images={product.images || []} alt={product.title} />
         </div>
 
         {/* Sticky CTA */}

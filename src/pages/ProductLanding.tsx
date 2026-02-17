@@ -61,7 +61,6 @@ const ProductLanding = () => {
         landingSlug={landingSlug || slug || ""}
         landingVariant={landingConfig.landing_variant}
         useCodModal={landingConfig.landing_use_cod_modal}
-        allProducts={products}
       />
     );
   }
