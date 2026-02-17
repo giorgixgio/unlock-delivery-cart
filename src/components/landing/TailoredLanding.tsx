@@ -3,14 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Product } from "@/lib/constants";
 import { LandingConfig, BundleOption } from "@/hooks/useLandingConfig";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
-import { MicroBenefitStacked } from "@/components/MicroBenefits";
-import DeliveryInfoRow from "@/components/DeliveryInfoRow";
-import { Banknote, Truck, ShoppingBag } from "lucide-react";
+import { Banknote, Truck, ShoppingBag, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BundleSelector from "@/components/landing/BundleSelector";
 import LandingSections from "@/components/landing/LandingSections";
 import CODFormModal from "@/components/landing/CODFormModal";
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
+import CountdownTimer from "@/components/landing/CountdownTimer";
 
 interface TailoredLandingProps {
   product: Product;
@@ -29,8 +28,6 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
 
   const [selectedQty, setSelectedQty] = useState(defaultQty);
   const [codOpen, setCodOpen] = useState(false);
-
-  // Bump state
   const [bumpOpen, setBumpOpen] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<{ id: string; number: string; total: number } | null>(null);
 
@@ -45,10 +42,12 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
   const bumpConfig = config.bump;
   const bumpEnabled = bumpConfig?.enabled ?? false;
 
+  // Split sections: benefits before bundle, faq after bundle
+  const benefitSections = (config.sections || []).filter((s) => s.type !== "faq");
+  const faqSections = (config.sections || []).filter((s) => s.type === "faq");
+
   const handleCTA = () => {
-    if (useCodModal) {
-      setCodOpen(true);
-    }
+    if (useCodModal) setCodOpen(true);
   };
 
   const handleOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
@@ -76,37 +75,40 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
 
   return (
     <>
-      <div className="min-h-screen bg-background pb-32">
-        {/* Minimal header */}
-        <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
+      <div className="min-h-screen bg-background pb-36">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
           <div className="container max-w-lg mx-auto px-4 py-3 text-center">
             <span className="text-lg font-extrabold text-primary tracking-tight">BIGMART</span>
           </div>
         </header>
 
-        <div className="container max-w-lg mx-auto px-4 pt-4 space-y-4">
-          {/* Hero title override */}
+        <div className="container max-w-lg mx-auto px-4 pt-4 space-y-5">
+          {/* Countdown timer */}
+          <CountdownTimer minutes={19} />
+
+          {/* Hero title */}
           {config.hero_title && (
-            <div className="text-center space-y-1">
-              <h1 className="text-xl font-extrabold text-foreground leading-tight">{config.hero_title}</h1>
+            <div className="text-center space-y-1.5">
+              <h1 className="text-2xl font-extrabold text-foreground leading-tight">{config.hero_title}</h1>
               {config.hero_subtitle && (
                 <p className="text-sm text-muted-foreground">{config.hero_subtitle}</p>
               )}
             </div>
           )}
 
-          {/* Image */}
-          <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+          {/* Product image */}
+          <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted shadow-lg">
             <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
             {discount > 0 && (
-              <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
+              <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-3 py-1.5 rounded-br-xl">
                 ↓ {discount}% OFF
               </div>
             )}
             {badges.length > 0 && (
-              <div className="absolute top-8 left-2 z-10 flex flex-col gap-1">
+              <div className="absolute top-10 left-2.5 z-10 flex flex-col gap-1.5">
                 {badges.map((b) => (
-                  <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                  <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                     {b}
                   </span>
                 ))}
@@ -114,7 +116,7 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             )}
           </div>
 
-          {/* Title + price (if no hero_title override) */}
+          {/* Title + price (if no hero_title) */}
           {!config.hero_title && (
             <div>
               <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
@@ -128,29 +130,27 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             </div>
           )}
 
-          <MicroBenefitStacked />
-          <DeliveryInfoRow />
-
-          {/* Trust strip */}
-          <div className="flex items-center justify-around py-3 border-y border-border bg-accent/30 rounded-lg">
-            <div className="flex flex-col items-center gap-1">
-              <Banknote className="w-5 h-5 text-primary" />
-              <span className="text-[11px] font-semibold text-foreground">გადახდა მიტანისას</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <Truck className="w-5 h-5 text-primary" />
-              <span className="text-[11px] font-semibold text-foreground">კურიერით მიტანა</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <ShoppingBag className="w-5 h-5 text-primary" />
-              <span className="text-[11px] font-semibold text-foreground">მარტივი შეკვეთა</span>
-            </div>
+          {/* Trust strip — no free shipping */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { icon: Banknote, text: "გადახდა მიტანისას" },
+              { icon: Truck, text: "სწრაფი კურიერი" },
+              { icon: Shield, text: "ხარისხის გარანტია" },
+            ].map(({ icon: Icon, text }, i) => (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-1.5 py-3 bg-card rounded-xl border border-border shadow-sm"
+              >
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Icon className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{text}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Config-driven sections */}
-          {config.sections && config.sections.length > 0 && (
-            <LandingSections sections={config.sections} />
-          )}
+          {/* Benefits sections */}
+          {benefitSections.length > 0 && <LandingSections sections={benefitSections} />}
 
           {/* Bundle selector */}
           {bundleEnabled && bundleOptions.length > 1 && (
@@ -162,6 +162,9 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
             />
           )}
 
+          {/* FAQ sections (after bundle) */}
+          {faqSections.length > 0 && <LandingSections sections={faqSections} />}
+
           {/* Description */}
           {product.description && (
             <div
@@ -172,11 +175,11 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
         </div>
 
         {/* Sticky CTA */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           <div className="container max-w-lg mx-auto">
             <Button
               onClick={handleCTA}
-              className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
+              className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
               size="lg"
             >
               შეკვეთა — {totalAfter.toFixed(2)} ₾
@@ -185,7 +188,6 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
         </div>
       </div>
 
-      {/* COD Form Modal */}
       <CODFormModal
         open={codOpen}
         onClose={() => setCodOpen(false)}
@@ -198,7 +200,6 @@ const TailoredLanding = ({ product, config, landingSlug, landingVariant, useCodM
         onOrderCreated={handleOrderCreated}
       />
 
-      {/* Bump Offer Modal */}
       {bumpEnabled && bumpConfig && pendingOrder && (
         <BumpOfferModal
           open={bumpOpen}
