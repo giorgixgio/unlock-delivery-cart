@@ -38,6 +38,182 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_events: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_events_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_order_items_snapshot: {
+        Row: {
+          batch_id: string
+          id: string
+          order_id: string
+          product_name: string
+          qty: number
+          sku: string
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          order_id: string
+          product_name?: string
+          qty?: number
+          sku: string
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          order_id?: string
+          product_name?: string
+          qty?: number
+          sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_order_items_snapshot_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_orders: {
+        Row: {
+          batch_id: string
+          id: string
+          order_id: string
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          order_id: string
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_orders_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_print_jobs: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          print_count: number
+          print_type: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          print_count?: number
+          print_type: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          print_count?: number
+          print_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_print_jobs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          packing_list_print_count: number
+          packing_list_printed_at: string | null
+          packing_list_printed_by: string | null
+          packing_slips_print_count: number
+          packing_slips_printed_at: string | null
+          packing_slips_printed_by: string | null
+          released_at: string | null
+          released_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          packing_list_print_count?: number
+          packing_list_printed_at?: string | null
+          packing_list_printed_by?: string | null
+          packing_slips_print_count?: number
+          packing_slips_printed_at?: string | null
+          packing_slips_printed_by?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          packing_list_print_count?: number
+          packing_list_printed_at?: string | null
+          packing_list_printed_by?: string | null
+          packing_slips_print_count?: number
+          packing_slips_printed_at?: string | null
+          packing_slips_printed_by?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       courier_export_settings: {
         Row: {
           created_at: string
@@ -398,6 +574,7 @@ export type Database = {
           assigned_to: string | null
           auto_confirm_reason: string | null
           auto_confirmed: boolean | null
+          batch_id: string | null
           channel: string
           city: string
           cookie_id_hash: string | null
@@ -427,6 +604,7 @@ export type Database = {
           raw_address: string | null
           raw_city: string | null
           region: string
+          released_at: string | null
           review_required: boolean
           risk_level: string
           risk_reasons: string[]
@@ -450,6 +628,7 @@ export type Database = {
           assigned_to?: string | null
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
+          batch_id?: string | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -479,6 +658,7 @@ export type Database = {
           raw_address?: string | null
           raw_city?: string | null
           region?: string
+          released_at?: string | null
           review_required?: boolean
           risk_level?: string
           risk_reasons?: string[]
@@ -502,6 +682,7 @@ export type Database = {
           assigned_to?: string | null
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
+          batch_id?: string | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -531,6 +712,7 @@ export type Database = {
           raw_address?: string | null
           raw_city?: string | null
           region?: string
+          released_at?: string | null
           review_required?: boolean
           risk_level?: string
           risk_reasons?: string[]
