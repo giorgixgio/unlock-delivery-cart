@@ -227,25 +227,31 @@ const AdminBatchDetail = () => {
     if (!file || !id) return;
     setImporting(true); setImportResult(null);
     try {
-      const text = await file.text();
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-      if (lines.length < 2) throw new Error("File must have header + at least 1 row");
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
 
-      const header = lines[0].split(",").map(h => h.replace(/"/g, "").trim().toLowerCase());
-      const orderIdIdx = header.findIndex(h => h.includes("order") && h.includes("id") || h === "order_id" || h === "h");
-      const trackingIdx = header.findIndex(h => h.includes("tracking") || h === "tracking_number");
+      if (jsonRows.length === 0) throw new Error("File must have at least 1 data row");
 
-      if (orderIdIdx === -1 || trackingIdx === -1) throw new Error("CSV must contain order_id and tracking_number columns");
+      
+      const orderIdKey = Object.keys(jsonRows[0]).find(h => {
+        const lc = h.trim().toLowerCase();
+        return (lc.includes("order") && lc.includes("id")) || lc === "order_id" || lc === "h";
+      });
+      const trackingKey = Object.keys(jsonRows[0]).find(h => {
+        const lc = h.trim().toLowerCase();
+        return lc.includes("tracking") || lc === "tracking_number";
+      });
 
-      // Parse rows - match by public_order_number to get UUID
+      if (!orderIdKey || !trackingKey) throw new Error("File must contain order_id and tracking_number columns");
+
       const rows: { order_id: string; tracking_number: string }[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.replace(/"/g, "").trim());
-        const orderRef = cols[orderIdIdx];
-        const tracking = cols[trackingIdx];
+      for (const row of jsonRows) {
+        const orderRef = String(row[orderIdKey] || "").trim();
+        const tracking = String(row[trackingKey] || "").trim();
         if (!orderRef || !tracking) continue;
 
-        // Find matching order in this batch
         const matchedOrder = orders.find(o => o.public_order_number === orderRef || o.id === orderRef);
         if (matchedOrder) {
           rows.push({ order_id: matchedOrder.id, tracking_number: tracking });
@@ -579,10 +585,10 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
 
             {/* Tracking Import */}
             <div className="pt-1 border-t border-border">
-              <input type="file" ref={fileInputRef} accept=".csv" className="hidden" onChange={handleTrackingFile} />
+              <input type="file" ref={fileInputRef} accept=".xlsx,.xls" className="hidden" onChange={handleTrackingFile} />
               <Button className="w-full gap-2" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
                 {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                Import Tracking CSV
+                Import Tracking XLSX
               </Button>
               {importResult && (
                 <p className="text-xs text-emerald-600 mt-1">✓ {importResult.updated} updated, {importResult.skipped} skipped</p>
