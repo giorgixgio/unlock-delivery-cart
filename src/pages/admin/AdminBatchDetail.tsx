@@ -269,9 +269,8 @@ const AdminBatchDetail = () => {
         const matchedOrder = orders.find(o => o.public_order_number === orderRef || o.id === orderRef);
         if (matchedOrder) {
           rows.push({ order_id: matchedOrder.id, tracking_number: tracking });
-        } else {
-          throw new Error(`Order "${orderRef}" not found in this batch`);
         }
+        // Skip orders not in this batch (e.g. from full courier export)
       }
 
       if (rows.length === 0) throw new Error("No valid rows found");
