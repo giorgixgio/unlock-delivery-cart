@@ -4,7 +4,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const CACHE_KEY = "bigmart-products-v3";
+const CACHE_KEY = "bigmart-products-v4";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping
@@ -38,6 +38,8 @@ function categorizeByTags(tags: string[], title: string): string {
 // Shopify CDN supports _WIDTHx on filename for resized images
 export function shopifyThumb(src: string, size = 400): string {
   if (!src || src === "/placeholder.svg") return "/placeholder.svg";
+  // Skip transform if URL already has a Shopify size suffix (e.g. _400x, _800x)
+  if (/_\d+x(\.|$|\?)/.test(src)) return src;
   return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
 }
 
