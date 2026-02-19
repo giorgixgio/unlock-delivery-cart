@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/admin/batches", label: "Batches", icon: Layers },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/landing-pages", label: "Landing Pages", icon: LayoutTemplate },
   { to: "/admin/system-events", label: "System Events", icon: Activity },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/settings/courier-export", label: "Export Template", icon: FileSpreadsheet },
