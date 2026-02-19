@@ -11,7 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  ExternalLink, Pencil, Globe, Check, Loader2, Plus, Trash2, Eye,
+  ExternalLink, Pencil, Globe, Check, Loader2, Plus, Trash2, Eye, Copy,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -325,6 +325,14 @@ const EditDialog = ({
 
 // ---------- Main page ----------
 const AdminLandingPages = () => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyLink = (handle: string) => {
+    const url = `${window.location.origin}/p/${handle}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(handle);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
   const { data: rows, isLoading } = useQuery({
     queryKey: ["admin-landings"],
     queryFn: fetchLandings,
@@ -414,6 +422,18 @@ const AdminLandingPages = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="Copy ad link"
+                        onClick={() => copyLink(row.product_handle)}
+                      >
+                        {copiedId === row.product_handle
+                          ? <Check className="w-3.5 h-3.5 text-success" />
+                          : <Copy className="w-3.5 h-3.5" />
+                        }
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
