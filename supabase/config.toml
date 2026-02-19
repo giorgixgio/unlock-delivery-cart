@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.export-courier]
 verify_jwt = false
+
+[functions.sync-products]
+verify_jwt = false
