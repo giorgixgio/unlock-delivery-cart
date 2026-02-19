@@ -1,35 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore, useMemo } from "react";
 import { Product } from "@/lib/constants";
-import { getStockOverrides, subscribeOverrides, applyOverrides } from "@/lib/stockOverrideStore";
+import { supabase } from "@/integrations/supabase/client";
+import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const STORE_URL = "https://bigmart-9917.myshopify.com";
-const CACHE_KEY = "bigmart-products-v2";
+const CACHE_KEY = "bigmart-products-v3";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-interface ShopifyVariant {
-  id: number;
-  price: string;
-  compare_at_price: string | null;
-  sku: string;
-  available: boolean;
-}
-
-interface ShopifyImage {
-  src: string;
-}
-
-interface ShopifyProduct {
-  id: number;
-  title: string;
-  handle: string;
-  body_html: string;
-  vendor: string;
-  product_type: string;
-  tags: string[];
-  variants: ShopifyVariant[];
-  images: ShopifyImage[];
-}
 
 // Priority-ordered tag-to-category mapping
 const TAG_CATEGORY_RULES: Array<{ keywords: string[]; category: string }> = [
@@ -65,24 +41,40 @@ export function shopifyThumb(src: string, size = 400): string {
   return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
 }
 
-function mapShopifyProduct(p: ShopifyProduct): Product {
-  const variant = p.variants[0];
-  const originalImage = p.images[0]?.src || "/placeholder.svg";
-  const category = categorizeByTags(p.tags || [], p.title);
+interface DbProduct {
+  id: string;
+  title: string;
+  handle: string;
+  description: string;
+  vendor: string;
+  sku: string;
+  price: number;
+  compare_at_price: number | null;
+  image: string;
+  images: any;
+  category: string;
+  tags: string[];
+  available: boolean;
+}
+
+function mapDbProduct(p: DbProduct): Product {
+  const category = p.category && p.category !== "uncategorized"
+    ? p.category
+    : categorizeByTags(p.tags || [], p.title);
   return {
-    id: String(p.id),
+    id: p.id,
     title: p.title,
-    price: parseFloat(variant?.price || "0"),
-    compareAtPrice: variant?.compare_at_price ? parseFloat(variant.compare_at_price) : null,
-    image: shopifyThumb(originalImage, 400),
-    images: p.images.map((img) => img.src),
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compare_at_price ? Number(p.compare_at_price) : null,
+    image: shopifyThumb(p.image || "/placeholder.svg", 400),
+    images: Array.isArray(p.images) ? p.images : [],
     category,
     tags: p.tags || [],
-    sku: variant?.sku || "",
-    available: variant?.available ?? true,
-    description: p.body_html || "",
+    sku: p.sku || "",
+    available: p.available ?? true,
+    description: p.description || "",
     vendor: p.vendor || "",
-    handle: p.handle,
+    handle: p.handle || "",
   };
 }
 
@@ -111,37 +103,32 @@ function saveToLocalCache(products: Product[]) {
 
 async function fetchAllProducts(): Promise<Product[]> {
   const cached = getFromLocalCache();
-
   if (cached) return cached;
 
-  const allRaw: ShopifyProduct[] = [];
-  let page = 1;
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("title");
 
-  while (true) {
-    const res = await fetch(
-      `${STORE_URL}/collections/all/products.json?limit=250&page=${page}`
-    );
-    if (!res.ok) break;
-    const data = await res.json();
-    if (!data.products || data.products.length === 0) break;
-    allRaw.push(...data.products);
-    if (data.products.length < 250) break;
-    page++;
+  if (error) {
+    console.error("Failed to fetch products from database:", error);
+    return [];
   }
 
-  const seen = new Set<string>();
-  const products: Product[] = [];
+  const products = (data as DbProduct[]).map(mapDbProduct);
 
-  for (const raw of allRaw) {
-    const id = String(raw.id);
-    if (!seen.has(id)) {
-      seen.add(id);
-      products.push(mapShopifyProduct(raw));
+  // Deduplicate by id
+  const seen = new Set<string>();
+  const unique: Product[] = [];
+  for (const p of products) {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      unique.push(p);
     }
   }
 
-  saveToLocalCache(products);
-  return products;
+  saveToLocalCache(unique);
+  return unique;
 }
 
 /**
@@ -159,7 +146,7 @@ export function useProducts() {
   // Subscribe to the override store — triggers re-render on every toggle
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
 
-  // Apply overrides on top of raw Shopify data
+  // Apply overrides on top of DB data
   const data = useMemo(() => {
     if (!rawProducts) return undefined;
     if (Object.keys(overrides).length === 0) return rawProducts;

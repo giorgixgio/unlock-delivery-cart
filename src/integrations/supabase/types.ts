@@ -828,6 +828,60 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          available: boolean
+          category: string
+          compare_at_price: number | null
+          created_at: string
+          description: string
+          handle: string
+          id: string
+          image: string
+          images: Json
+          price: number
+          sku: string
+          synced_at: string
+          tags: string[]
+          title: string
+          vendor: string
+        }
+        Insert: {
+          available?: boolean
+          category?: string
+          compare_at_price?: number | null
+          created_at?: string
+          description?: string
+          handle?: string
+          id: string
+          image?: string
+          images?: Json
+          price?: number
+          sku?: string
+          synced_at?: string
+          tags?: string[]
+          title?: string
+          vendor?: string
+        }
+        Update: {
+          available?: boolean
+          category?: string
+          compare_at_price?: number | null
+          created_at?: string
+          description?: string
+          handle?: string
+          id?: string
+          image?: string
+          images?: Json
+          price?: number
+          sku?: string
+          synced_at?: string
+          tags?: string[]
+          title?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
       system_events: {
         Row: {
           actor_id: string | null

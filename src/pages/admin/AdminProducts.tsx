@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 
 interface VariantRow {
@@ -77,6 +78,38 @@ function loadConflicts(): Record<string, VariantRow["skuConflict"]> {
 function saveConflicts(conflicts: Record<string, VariantRow["skuConflict"]>) {
   localStorage.setItem(CONFLICT_STORAGE_KEY, JSON.stringify(conflicts));
 }
+
+const SyncButton = () => {
+  const [syncing, setSyncing] = useState(false);
+  const { toast } = useToast();
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-products");
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: `Synced ${data.upserted} products from Shopify` });
+        // Clear cache so useProducts refetches
+        localStorage.removeItem("bigmart-products-v3");
+        window.location.reload();
+      } else {
+        toast({ title: "Sync failed", description: data?.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Button onClick={handleSync} disabled={syncing} variant="outline" className="gap-2">
+      <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+      {syncing ? "Syncing..." : "Sync from Shopify"}
+    </Button>
+  );
+};
 
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
@@ -458,10 +491,13 @@ const AdminProducts = () => {
             <Badge variant="destructive" className="text-xs">{oosCount} out of stock</Badge>
           )}
         </div>
-        <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
-          <Upload className="w-4 h-4" />
-          Bulk Update SKUs
-        </Button>
+        <div className="flex gap-2">
+          <SyncButton />
+          <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
+            <Upload className="w-4 h-4" />
+            Bulk Update SKUs
+          </Button>
+        </div>
       </div>
 
       {/* Bulk Upload Panel */}
