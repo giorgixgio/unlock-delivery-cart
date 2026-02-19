@@ -29,6 +29,7 @@ import AdminBatchDetail from "./pages/admin/AdminBatchDetail";
 import Shop from "./pages/Shop";
 import ProductLanding from "./pages/ProductLanding";
 import AdminLandingPages from "./pages/admin/AdminLandingPages";
+import AdminProductsImport from "./pages/admin/AdminProductsImport";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -119,6 +120,7 @@ const App = () => (
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="landing-pages" element={<AdminLandingPages />} />
+                      <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
