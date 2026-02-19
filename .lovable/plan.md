@@ -1,87 +1,86 @@
 
+# Restore Products from Database (No Shopify Dependency)
 
-# Refine and Stabilize Warehouse Batch System
+## Problem
+The site shows zero products because it fetches everything live from Shopify, which is currently down (402 Payment Required). There is no local copy of the full catalog.
 
-## Summary
+## What We Have
+- **89 unique products** stored in the `order_items` table from past orders (title, price, image, SKU, product_id)
+- This is enough to restore the storefront immediately with all previously-ordered products
 
-This plan changes the batch system from "auto-release on print" to an explicit "Bulk Release" flow, adds an "Undo Release" admin action, and tightens eligibility checks and anti-duplicate protections.
+## Plan
 
-## Changes
+### Step 1: Create a `products` table
+A new database table to hold the product catalog locally:
+- id, title, handle, description, vendor, sku, price, compare_at_price
+- image, images (array), category, tags, available
+- synced_at, created_at
+- Public read access (RLS), admin-only write access
 
-### 1. Service Layer (`src/lib/batchService.ts`)
+### Step 2: Seed from existing order data
+Populate the products table using the 89 products already in `order_items`:
+- Extract distinct product_id, title, unit_price, image_url, sku, tags
+- Set all as available by default
+- Auto-categorize using the existing tag-to-category logic
 
-**Print logic -- remove auto-release:**
-- `printPackingList` and `printPackingSlips` will no longer set status to RELEASED or stamp `released_at` on orders.
-- They will only: increment counts, set printed_at/by, transition OPEN to LOCKED on first print, and log the event.
+### Step 3: Update `useProducts` hook
+Change from fetching Shopify API to querying the local database:
+- `SELECT * FROM products` instead of hitting Shopify
+- Keep existing stock override logic unchanged
+- Keep localStorage cache for fast loading
 
-**New function: `bulkReleaseBatch(batchId, actorEmail)`**
-- Validates batch has orders and status is not already RELEASED.
-- Sets `batch.status = "RELEASED"`, `released_at`, `released_by`.
-- Updates `orders.released_at = now()` for all batch orders.
-- Logs `BULK_RELEASE` event with `{ order_count }`.
+### Step 4: Create `sync-products` edge function
+For when Shopify comes back online:
+- Fetches full catalog from Shopify API
+- Upserts all ~490 products into the local table
+- Can be triggered from admin panel
 
-**New function: `undoReleaseBatch(batchId, actorEmail, reason)`**
-- Only allowed when `batch.status === "RELEASED"`.
-- Sets `batch.status = "LOCKED"`, clears `released_at`/`released_by`.
-- Clears `orders.released_at` for all batch orders.
-- Logs `UNDO_RELEASE` event with `{ reason }`.
+### Step 5: Add "Sync from Shopify" button in Admin
+- Button on the Products admin page
+- Calls the sync edge function
+- Shows last sync timestamp and product count
 
-**Tighten `createBatch` eligibility:**
-- Remove `is_fulfilled` filter (not relevant to the new model).
-- Keep: `status = 'confirmed'`, `is_confirmed = true`, `batch_id IS NULL`, `released_at IS NULL`, exclude `merged`/`canceled`.
-
-**New function: `fetchEligibleOrderCount()`**
-- Returns `{ eligible: number, ineligible: { reason: string, count: number }[] }` for display in the Create Batch modal.
-
-### 2. Batch Detail Page (`src/pages/admin/AdminBatchDetail.tsx`)
-
-**Add "Bulk Release Orders" button:**
-- Visible when `batch.status !== "RELEASED"`.
-- Shows confirmation dialog with order count before executing.
-- Calls `bulkReleaseBatch`.
-
-**Add "Undo Release" button:**
-- Visible only when `batch.status === "RELEASED"`.
-- Requires a text reason input in a confirmation modal.
-- Calls `undoReleaseBatch`.
-- Shows a warning banner when batch has been un-released (detected via `UNDO_RELEASE` event in history).
-
-**Disable actions when RELEASED:**
-- All modification actions disabled.
-- Print/PDF buttons remain but show reprint confirmation.
-
-**Warning banners (already partially implemented, will refine):**
-- OPEN for over 2 hours.
-- LOCKED but not yet released.
-- RELEASED but slips not printed.
-- Release was undone (UNDO_RELEASE event exists).
-
-### 3. Batches List Page (`src/pages/admin/AdminBatches.tsx`)
-
-**Create Batch flow improvement:**
-- Before creating, fetch eligible/ineligible counts and show a summary modal.
-- If no eligible orders, disable button with explanation.
-
-### 4. Anti-Duplicate Protection
-
-All protections are already enforced by the eligibility query (`batch_id IS NULL AND released_at IS NULL`). The service functions will be reviewed to ensure:
-- No order can enter two batches.
-- No released order can be re-batched.
-- Batch composition cannot change when status is not OPEN.
-
----
+## Result
+- Site works immediately with 89 products (no Shopify needed)
+- When Shopify subscription is reactivated, one click syncs the full ~490 catalog
+- Shopify is never called at runtime again -- only for background sync
 
 ## Technical Details
 
+### Database schema
+```sql
+CREATE TABLE public.products (
+  id text PRIMARY KEY,
+  title text NOT NULL DEFAULT '',
+  handle text NOT NULL DEFAULT '',
+  description text NOT NULL DEFAULT '',
+  vendor text NOT NULL DEFAULT '',
+  sku text NOT NULL DEFAULT '',
+  price numeric NOT NULL DEFAULT 0,
+  compare_at_price numeric,
+  image text NOT NULL DEFAULT '/placeholder.svg',
+  images jsonb NOT NULL DEFAULT '[]',
+  category text NOT NULL DEFAULT 'uncategorized',
+  tags text[] NOT NULL DEFAULT '{}',
+  available boolean NOT NULL DEFAULT true,
+  synced_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### Seed query (from order_items)
+```sql
+INSERT INTO products (id, title, price, image, sku, tags, available)
+SELECT DISTINCT ON (product_id)
+  product_id, title, unit_price, image_url, sku, tags, true
+FROM order_items
+WHERE product_id != ''
+ON CONFLICT (id) DO NOTHING;
+```
+
 ### Files to modify
+- `src/hooks/useProducts.ts` -- read from database instead of Shopify
+- `src/pages/admin/AdminProducts.tsx` -- add Sync button
 
-| File | Changes |
-|---|---|
-| `src/lib/batchService.ts` | Remove auto-release from print functions; add `bulkReleaseBatch`, `undoReleaseBatch`, `fetchEligibleOrderCount`; tighten `createBatch` |
-| `src/pages/admin/AdminBatchDetail.tsx` | Add Bulk Release button + confirmation; add Undo Release button + reason modal; add undo-release warning banner; disable edits when RELEASED |
-| `src/pages/admin/AdminBatches.tsx` | Add eligibility summary modal before batch creation |
-
-### No database changes needed
-
-All required tables and columns already exist. The logic changes are purely in the application layer.
-
+### Files to create
+- `supabase/functions/sync-products/index.ts` -- Shopify sync edge function
