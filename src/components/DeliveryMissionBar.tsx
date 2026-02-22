@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Truck, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import AnimatedNumber from "@/components/AnimatedNumber";
 
@@ -10,6 +11,7 @@ interface DeliveryMissionBarProps {
 
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
   const { total, isUnlocked, remaining } = useCart();
+  const { t } = useLanguage();
   const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
   const [bounce, setBounce] = useState(false);
   const [microBounce, setMicroBounce] = useState(false);
@@ -17,7 +19,6 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
   const prevUnlocked = useRef(isUnlocked);
   const prevTotal = useRef(total);
 
-  // Bounce truck + glow endpoint when unlocked
   useEffect(() => {
     if (isUnlocked && !prevUnlocked.current) {
       setBounce(true);
@@ -28,7 +29,6 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
 
-  // Micro-bounce truck when total changes (item added/removed)
   useEffect(() => {
     if (total !== prevTotal.current && total > 0 && !isUnlocked) {
       setMicroBounce(true);
@@ -63,29 +63,16 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           className={`absolute top-1/2 -translate-y-1/2 transition-[left] duration-500 ease-out ${truckAnimation}`}
           style={{ left: `calc(${percent}% - ${mini ? 10 : 12}px)` }}
         >
-          <Truck
-            className={`${truckSize} drop-shadow-md ${
-              isUnlocked ? "text-success" : "text-primary"
-            }`}
-          />
+          <Truck className={`${truckSize} drop-shadow-md ${isUnlocked ? "text-success" : "text-primary"}`} />
         </div>
 
-        <div
-          className={`absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-500 ${
-            glow ? "delivery-pin-glow scale-125" : ""
-          }`}
-        >
-          <MapPin
-            className={`${pinSize} ${
-              isUnlocked ? "text-success" : "text-muted-foreground/50"
-            }`}
-          />
+        <div className={`absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-500 ${glow ? "delivery-pin-glow scale-125" : ""}`}>
+          <MapPin className={`${pinSize} ${isUnlocked ? "text-success" : "text-muted-foreground/50"}`} />
         </div>
       </div>
 
       {!mini && (
-        <p
-          className={`text-xs font-semibold text-center transition-all duration-500 ${
+        <p className={`text-xs font-semibold text-center transition-all duration-500 ${
             isUnlocked
               ? "text-success animate-success-reveal"
               : remaining < 5
@@ -94,11 +81,11 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           }`}
         >
           {isUnlocked ? (
-            "🎉 უფასო მიტანა გახსნილია"
+            t("free_delivery_unlocked")
           ) : remaining < 5 ? (
-            <>თითქმის მოხერხდა! კიდევ <AnimatedNumber value={remaining} /> ₾</>
+            <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
           ) : (
-            <>კიდევ <AnimatedNumber value={remaining} /> ₾ — მინ. შეკვეთა {DELIVERY_THRESHOLD} ₾ + უფასო მიტანა</>
+            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {DELIVERY_THRESHOLD} ₾</>
           )}
         </p>
       )}

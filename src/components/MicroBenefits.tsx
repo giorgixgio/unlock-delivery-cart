@@ -1,8 +1,9 @@
 import { useState, useEffect, memo } from "react";
-
-const benefits = ["🚚 უფასო მიტანა", "⚡ 1-დღიანი მიტანა"];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const MicroBenefitRotating = memo(() => {
+  const { t } = useLanguage();
+  const benefits = [t("benefit_free_delivery"), t("benefit_1day_delivery")];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -10,7 +11,7 @@ export const MicroBenefitRotating = memo(() => {
       setIndex((i) => (i + 1) % benefits.length);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [benefits.length]);
 
   return (
     <div className="h-4 overflow-hidden relative mt-1.5">
@@ -29,17 +30,21 @@ export const MicroBenefitRotating = memo(() => {
 });
 MicroBenefitRotating.displayName = "MicroBenefitRotating";
 
-export const MicroBenefitStacked = memo(() => (
-  <div className="flex flex-col gap-1.5 mt-2">
-    {benefits.map((b, i) => (
-      <p
-        key={i}
-        className="text-xs font-semibold text-success flex items-center animate-fade-in"
-        style={{ animationDelay: `${i * 150}ms` }}
-      >
-        {b}
-      </p>
-    ))}
-  </div>
-));
+export const MicroBenefitStacked = memo(() => {
+  const { t } = useLanguage();
+  const benefits = [t("benefit_free_delivery"), t("benefit_1day_delivery")];
+  return (
+    <div className="flex flex-col gap-1.5 mt-2">
+      {benefits.map((b, i) => (
+        <p
+          key={i}
+          className="text-xs font-semibold text-success flex items-center animate-fade-in"
+          style={{ animationDelay: `${i * 150}ms` }}
+        >
+          {b}
+        </p>
+      ))}
+    </div>
+  );
+});
 MicroBenefitStacked.displayName = "MicroBenefitStacked";
