@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
@@ -123,6 +124,11 @@ const AdminProducts = () => {
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
+
+  // SKU reassignment state
+  const [reassignSku, setReassignSku] = useState<{ sku: string; fromProductId: string; fromTitle: string } | null>(null);
+  const [reassignSearch, setReassignSearch] = useState("");
+  const [reassigning, setReassigning] = useState(false);
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
     await setStockOverride(productId, !currentlyAvailable);
@@ -389,6 +395,46 @@ const AdminProducts = () => {
     toast({ title: "All conflicts cleared" });
   };
 
+  // SKU reassignment: remove from source, assign to target (2-phase for unique constraint)
+  const handleReassignSku = async (targetProductId: string) => {
+    if (!reassignSku) return;
+    setReassigning(true);
+    try {
+      const { sku, fromProductId } = reassignSku;
+      // Phase 1: clear SKU from source product
+      const { error: e1 } = await supabase.from("products").update({ sku: "" }).eq("id", fromProductId);
+      if (e1) throw e1;
+      // Phase 2: assign SKU to target product
+      const { error: e2 } = await supabase.from("products").update({ sku }).eq("id", targetProductId);
+      if (e2) {
+        // Rollback phase 1
+        await supabase.from("products").update({ sku }).eq("id", fromProductId);
+        throw e2;
+      }
+      localStorage.removeItem("bigmart-products-v4");
+      toast({ title: `SKU "${sku}" moved successfully` });
+      setReassignSku(null);
+    } catch (err: any) {
+      toast({ title: "Failed to reassign SKU", description: err.message, variant: "destructive" });
+    } finally {
+      setReassigning(false);
+    }
+  };
+
+  const reassignFilteredProducts = useMemo(() => {
+    if (!reassignSku) return [];
+    const q = reassignSearch.trim().toLowerCase();
+    if (!q) return [];
+    return allRows
+      .filter(r => r.productId !== reassignSku.fromProductId)
+      .filter(r =>
+        r.title.toLowerCase().includes(q) ||
+        r.sku.toLowerCase().includes(q) ||
+        r.vendor.toLowerCase().includes(q)
+      )
+      .slice(0, 15);
+  }, [reassignSku, reassignSearch, allRows]);
+
   const handleDownloadReport = () => {
     if (!bulkData) return;
     const reportData = bulkData.map((r) => ({
@@ -493,6 +539,18 @@ const AdminProducts = () => {
                       >
                         <Pencil className="w-3 h-3 text-muted-foreground" />
                       </button>
+                      {row.sku && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-destructive/10 rounded"
+                          title="Move this SKU to another product"
+                          onClick={() => {
+                            setReassignSku({ sku: row.sku, fromProductId: row.productId, fromTitle: row.title });
+                            setReassignSearch("");
+                          }}
+                        >
+                          <ArrowRight className="w-3 h-3 text-destructive" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>
@@ -807,6 +865,73 @@ const AdminProducts = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* SKU Reassignment Dialog */}
+      <Dialog open={!!reassignSku} onOpenChange={(open) => { if (!open) setReassignSku(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Move SKU to another product</DialogTitle>
+          </DialogHeader>
+          {reassignSku && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground">Moving SKU from:</p>
+                <p className="font-medium mt-1">{reassignSku.fromTitle}</p>
+                <Badge variant="outline" className="mt-1 font-mono">{reassignSku.sku}</Badge>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search target product by title, SKU, or vendor..."
+                  value={reassignSearch}
+                  onChange={(e) => setReassignSearch(e.target.value)}
+                  className="pl-9"
+                  autoFocus
+                />
+              </div>
+
+              {reassignSearch.trim().length > 0 && (
+                <div className="max-h-[300px] overflow-y-auto rounded-lg border border-border">
+                  {reassignFilteredProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground p-4 text-center">No products found</p>
+                  ) : (
+                    reassignFilteredProducts.map((row) => (
+                      <button
+                        key={row.productId}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border last:border-b-0"
+                        disabled={reassigning}
+                        onClick={() => handleReassignSku(row.productId)}
+                      >
+                        <div className="w-10 h-10 rounded border border-border overflow-hidden bg-muted/30 flex-shrink-0 flex items-center justify-center">
+                          {row.image && row.image !== "/placeholder.svg" ? (
+                            <img src={row.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{row.title}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {row.sku ? `Current SKU: ${row.sku}` : "No SKU"}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {reassigning && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Reassigning...
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
