@@ -172,7 +172,7 @@ const AdminProducts = () => {
     setEditSkuValue(currentSku);
   };
 
-  const handleSkuSave = () => {
+  const handleSkuSave = async () => {
     const trimmed = editSkuValue.trim();
     if (!trimmed) {
       toast({ title: "SKU cannot be empty", variant: "destructive" });
@@ -183,8 +183,15 @@ const AdminProducts = () => {
       toast({ title: "Duplicate SKU", description: `SKU "${trimmed}" already exists on "${duplicate.title}"`, variant: "destructive" });
       return;
     }
-    toast({ title: "SKU update saved locally", description: "Connect Shopify Admin API to sync changes." });
+    const { error } = await supabase.from("products").update({ sku: trimmed }).eq("id", editingSku!);
+    if (error) {
+      toast({ title: "Failed to update SKU", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "SKU updated" });
     setEditingSku(null);
+    // Clear cache so products refetch
+    localStorage.removeItem("bigmart-products-v4");
   };
 
   // Bulk CSV upload
@@ -288,32 +295,61 @@ const AdminProducts = () => {
   const bulkMatched = bulkApplicable.length;
   const bulkConflictCount = bulkData?.filter((r) => r.status === "conflict").length || 0;
 
-  const handleBulkApply = () => {
-    // Flag conflict products for warehouse
-    if (bulkConflictCount > 0) {
-      const newConflicts = { ...skuConflicts };
-      const conflictItems = bulkData?.filter(r => r.status === "conflict") || [];
-      const timestamp = new Date().toISOString();
-      conflictItems.forEach(item => {
-        if (item.matchedProductId) {
-          newConflicts[item.matchedProductId] = {
-            reason: item.error || `SKU conflict: "${item.newSku}" is already used by another product`,
-            oldSku: item.oldSku,
-            newSku: item.newSku,
-            timestamp,
-          };
-        }
-      });
-      setSkuConflicts(newConflicts);
-      saveConflicts(newConflicts);
-    }
+  const [bulkApplying, setBulkApplying] = useState(false);
 
-    toast({
-      title: `${bulkMatched} SKU updates queued (${bulkConflictCount} flagged as conflicts)`,
-      description: "Connect Shopify Admin API to apply. Conflicts are flagged for warehouse review.",
-    });
-    setBulkOpen(false);
-    setBulkData(null);
+  const handleBulkApply = async () => {
+    setBulkApplying(true);
+    try {
+      // Flag conflict products for warehouse
+      if (bulkConflictCount > 0) {
+        const newConflicts = { ...skuConflicts };
+        const conflictItems = bulkData?.filter(r => r.status === "conflict") || [];
+        const timestamp = new Date().toISOString();
+        conflictItems.forEach(item => {
+          if (item.matchedProductId) {
+            newConflicts[item.matchedProductId] = {
+              reason: item.error || `SKU conflict: "${item.newSku}" is already used by another product`,
+              oldSku: item.oldSku,
+              newSku: item.newSku,
+              timestamp,
+            };
+          }
+        });
+        setSkuConflicts(newConflicts);
+        saveConflicts(newConflicts);
+      }
+
+      // Actually update SKUs in the database
+      let updated = 0;
+      let failed = 0;
+      for (const row of bulkApplicable) {
+        if (!row.matchedProductId) continue;
+        const { error } = await supabase
+          .from("products")
+          .update({ sku: row.newSku })
+          .eq("id", row.matchedProductId);
+        if (error) {
+          console.error(`Failed to update SKU for ${row.matchedProductId}:`, error);
+          failed++;
+        } else {
+          updated++;
+        }
+      }
+
+      // Clear cache
+      localStorage.removeItem("bigmart-products-v4");
+
+      toast({
+        title: `${updated} SKUs updated in database${failed > 0 ? `, ${failed} failed` : ""}`,
+        description: bulkConflictCount > 0 ? `${bulkConflictCount} flagged as conflicts for warehouse review.` : undefined,
+      });
+      setBulkOpen(false);
+      setBulkData(null);
+    } catch (err: any) {
+      toast({ title: "Bulk update failed", description: err.message, variant: "destructive" });
+    } finally {
+      setBulkApplying(false);
+    }
   };
 
   const handleClearConflict = (productId: string) => {
@@ -604,7 +640,7 @@ const AdminProducts = () => {
                 <Button variant="outline" onClick={() => { setBulkOpen(false); setBulkData(null); }}>Cancel</Button>
                 <Button
                   onClick={handleBulkApply}
-                  disabled={bulkMatched === 0}
+                  disabled={bulkMatched === 0 || bulkApplying}
                   className="gap-2"
                 >
                   <Check className="w-4 h-4" />
