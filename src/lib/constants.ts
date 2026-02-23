@@ -1,4 +1,4 @@
-export const DELIVERY_THRESHOLD = 40;
+export const DELIVERY_THRESHOLD = 30;
 
 export const CATEGORIES = [
   { id: "all", label: "ყველა" },
