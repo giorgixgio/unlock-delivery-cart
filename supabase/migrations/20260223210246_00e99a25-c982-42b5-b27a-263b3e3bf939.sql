@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.products_sku_unique_normalized_idx;
