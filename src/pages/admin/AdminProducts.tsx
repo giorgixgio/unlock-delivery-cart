@@ -295,9 +295,9 @@ const AdminProducts = () => {
     setBulkData(parsed);
   }, [allRows, toast]);
 
-  // Now conflicts ARE allowed to be applied — they get flagged
-  const bulkApplicable = bulkData?.filter((r) => r.status === "matched" || r.status === "conflict") || [];
-  const bulkErrors = bulkData?.filter((r) => r.status !== "matched" && r.status !== "conflict") || [];
+  // Only clean matches are applied. Conflicts are blocked and require manual resolution.
+  const bulkApplicable = bulkData?.filter((r) => r.status === "matched") || [];
+  const bulkErrors = bulkData?.filter((r) => r.status !== "matched") || [];
   const bulkMatched = bulkApplicable.length;
   const bulkConflictCount = bulkData?.filter((r) => r.status === "conflict").length || 0;
 
@@ -306,24 +306,6 @@ const AdminProducts = () => {
   const handleBulkApply = async () => {
     setBulkApplying(true);
     try {
-      // Flag conflict products for warehouse
-      if (bulkConflictCount > 0) {
-        const newConflicts = { ...skuConflicts };
-        const conflictItems = bulkData?.filter(r => r.status === "conflict") || [];
-        const timestamp = new Date().toISOString();
-        conflictItems.forEach(item => {
-          if (item.matchedProductId) {
-            newConflicts[item.matchedProductId] = {
-              reason: item.error || `SKU conflict: "${item.newSku}" is already used by another product`,
-              oldSku: item.oldSku,
-              newSku: item.newSku,
-              timestamp,
-            };
-          }
-        });
-        setSkuConflicts(newConflicts);
-        saveConflicts(newConflicts);
-      }
 
       // Apply updates in 2 phases to avoid unique-SKU collision issues (swaps/cycles)
       const rowsToUpdate = bulkApplicable
@@ -370,7 +352,7 @@ const AdminProducts = () => {
 
       toast({
         title: `${updated} SKUs updated in database${failed > 0 ? `, ${failed} failed` : ""}`,
-        description: bulkConflictCount > 0 ? `${bulkConflictCount} flagged as conflicts for warehouse review.` : undefined,
+        description: bulkConflictCount > 0 ? `${bulkConflictCount} conflicting rows were blocked and not applied.` : undefined,
       });
       setBulkOpen(false);
       setBulkData(null);
@@ -623,7 +605,7 @@ const AdminProducts = () => {
           <h3 className="font-bold text-sm">Bulk SKU Update via CSV/XLSX</h3>
           <p className="text-xs text-muted-foreground">
             Upload a file with columns: <code className="font-mono bg-muted px-1 rounded">old_sku</code> and <code className="font-mono bg-muted px-1 rounded">new_sku</code>.
-            <span className="text-orange-600 font-medium ml-1">Conflicts will be applied but flagged for warehouse review.</span>
+            <span className="text-orange-600 font-medium ml-1">Conflicts are blocked and will not be applied.</span>
           </p>
 
           {!bulkData ? (
@@ -661,7 +643,7 @@ const AdminProducts = () => {
                 </div>
                 <div className="bg-orange-50 rounded p-2 text-center border border-orange-200">
                   <p className="text-lg font-bold text-orange-700">{bulkConflictCount}</p>
-                  <p className="text-[10px] text-orange-600">Conflicts (will flag)</p>
+                  <p className="text-[10px] text-orange-600">Conflicts (blocked)</p>
                 </div>
                 <div className="bg-red-50 rounded p-2 text-center">
                   <p className="text-lg font-bold text-red-700">{bulkData.filter(r => r.status === "not_found").length}</p>
@@ -705,7 +687,7 @@ const AdminProducts = () => {
                             <div>
                               <p className="font-medium text-orange-700">{row.matchedTitle}</p>
                               <p className="text-orange-600 text-[10px]">{row.error}</p>
-                              <p className="text-[10px] text-muted-foreground italic">Will apply & flag for warehouse</p>
+                              <p className="text-[10px] text-muted-foreground italic">Blocked — resolve this SKU first</p>
                             </div>
                           ) : (
                             <span className="truncate block">{row.matchedTitle || row.error || "—"}</span>
@@ -728,7 +710,7 @@ const AdminProducts = () => {
                   Apply {bulkMatched} Updates
                   {bulkConflictCount > 0 && (
                     <Badge variant="outline" className="ml-1 bg-orange-100 text-orange-800 border-orange-300 text-[10px]">
-                      {bulkConflictCount} flagged
+                      {bulkConflictCount} blocked
                     </Badge>
                   )}
                 </Button>
@@ -736,7 +718,7 @@ const AdminProducts = () => {
 
               {bulkErrors.length > 0 && (
                 <p className="text-xs text-amber-700">
-                  ⚠ {bulkErrors.length} rows with errors (not_found, duplicate, empty) will be skipped. Conflicts will be applied and flagged.
+                  ⚠ {bulkErrors.length} rows with errors (including conflicts) will be skipped.
                 </p>
               )}
             </div>
