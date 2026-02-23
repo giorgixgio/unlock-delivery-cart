@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { CheckCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { usePulseCTA } from "@/hooks/usePulseCTA";
@@ -70,7 +71,7 @@ const StickyCartHUD = () => {
           {isUnlocked ? t("complete_order_btn") : t("unlock_btn").replace("{amount}", remaining.toFixed(1))}
         </Button>
         {!isUnlocked && (
-          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {40} ₾</p>
+          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {DELIVERY_THRESHOLD} ₾</p>
         )}
       </div>
     </div>

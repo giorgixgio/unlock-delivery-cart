@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from "react";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
-import { Product } from "@/lib/constants";
+import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
@@ -379,7 +379,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     {isUnlocked ? (
                       <><ShoppingCart className="w-5 h-5" /> შეკვეთის დასრულება</>
                     ) : (
-                      "გააგრძელე შოპინგი — მინ. შეკვეთა 40 ₾"
+                      `გააგრძელე შოპინგი — მინ. შეკვეთა ${DELIVERY_THRESHOLD} ₾`
                     )}
                   </button>
                 ) : (
