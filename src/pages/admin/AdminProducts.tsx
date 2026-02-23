@@ -205,7 +205,7 @@ const AdminProducts = () => {
     rowNum: number;
     oldSku: string;
     newSku: string;
-    status: "matched" | "not_found" | "duplicate_old" | "duplicate_new" | "conflict" | "empty";
+    status: "matched" | "already_applied" | "not_found" | "duplicate_old" | "duplicate_new" | "conflict" | "empty";
     matchedProductId?: string;
     matchedTitle?: string;
     error?: string;
@@ -273,10 +273,22 @@ const AdminProducts = () => {
 
       const match = skuMap.get(oldSku.toLowerCase());
       if (!match) {
+        const existingNew = skuMap.get(newSku.toLowerCase());
+        if (existingNew) {
+          return {
+            rowNum: i + 2,
+            oldSku,
+            newSku,
+            status: "already_applied" as const,
+            matchedProductId: existingNew.productId,
+            matchedTitle: existingNew.title,
+            error: "Already applied earlier (new_sku is already assigned)",
+          };
+        }
         return { rowNum: i + 2, oldSku, newSku, status: "not_found" as const, error: "old_sku not found in catalog" };
       }
 
-      // Check conflict — but now we ALLOW it (just flag it)
+      // Conflict means new_sku is already occupied outside this file's swap set → block it
       const conflict = skuMap.get(newSku.toLowerCase());
       if (conflict && conflict.productId !== match.productId) {
         if (!oldSkuSet.has(newSku.toLowerCase())) {
@@ -287,6 +299,18 @@ const AdminProducts = () => {
             error: `new_sku "${newSku}" already used by "${conflict.title}"`
           };
         }
+      }
+
+      if (match.sku.toLowerCase() === newSku.toLowerCase()) {
+        return {
+          rowNum: i + 2,
+          oldSku,
+          newSku,
+          status: "already_applied" as const,
+          matchedProductId: match.productId,
+          matchedTitle: match.title,
+          error: "No change needed (SKU already equals new_sku)",
+        };
       }
 
       return { rowNum: i + 2, oldSku, newSku, status: "matched" as const, matchedProductId: match.productId, matchedTitle: match.title };
@@ -435,6 +459,7 @@ const AdminProducts = () => {
 
   const statusColors: Record<string, string> = {
     matched: "bg-emerald-100 text-emerald-800",
+    already_applied: "bg-blue-100 text-blue-800",
     not_found: "bg-red-100 text-red-800",
     duplicate_old: "bg-amber-100 text-amber-800",
     duplicate_new: "bg-amber-100 text-amber-800",
@@ -632,7 +657,7 @@ const AdminProducts = () => {
               </div>
 
               {/* Summary */}
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                 <div className="bg-muted/50 rounded p-2 text-center">
                   <p className="text-lg font-bold">{bulkData.length}</p>
                   <p className="text-[10px] text-muted-foreground">Total</p>
@@ -644,6 +669,10 @@ const AdminProducts = () => {
                 <div className="bg-orange-50 rounded p-2 text-center border border-orange-200">
                   <p className="text-lg font-bold text-orange-700">{bulkConflictCount}</p>
                   <p className="text-[10px] text-orange-600">Conflicts (blocked)</p>
+                </div>
+                <div className="bg-blue-50 rounded p-2 text-center border border-blue-200">
+                  <p className="text-lg font-bold text-blue-700">{bulkData.filter(r => r.status === "already_applied").length}</p>
+                  <p className="text-[10px] text-blue-600">Already Applied</p>
                 </div>
                 <div className="bg-red-50 rounded p-2 text-center">
                   <p className="text-lg font-bold text-red-700">{bulkData.filter(r => r.status === "not_found").length}</p>
@@ -679,7 +708,11 @@ const AdminProducts = () => {
                         <td className="px-3 py-2 font-mono text-xs">{row.newSku}</td>
                         <td className="px-3 py-2">
                           <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${statusColors[row.status]}`}>
-                            {row.status === "conflict" ? "⚠ conflict" : row.status.replace("_", " ")}
+                            {row.status === "conflict"
+                              ? "⚠ conflict"
+                              : row.status === "already_applied"
+                              ? "already applied"
+                              : row.status.replace("_", " ")}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-xs max-w-[280px]">
@@ -718,7 +751,7 @@ const AdminProducts = () => {
 
               {bulkErrors.length > 0 && (
                 <p className="text-xs text-amber-700">
-                  ⚠ {bulkErrors.length} rows with errors (including conflicts) will be skipped.
+                  ⚠ {bulkErrors.length} rows with errors (including conflicts/already-applied) will be skipped.
                 </p>
               )}
             </div>
