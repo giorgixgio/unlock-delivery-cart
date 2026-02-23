@@ -119,6 +119,10 @@ const AdminProducts = () => {
   const [page, setPage] = useState(0);
   const [editingSku, setEditingSku] = useState<string | null>(null);
   const [editSkuValue, setEditSkuValue] = useState("");
+  const [editingPrice, setEditingPrice] = useState<string | null>(null);
+  const [editPriceValue, setEditPriceValue] = useState("");
+  const [editingCompare, setEditingCompare] = useState<string | null>(null);
+  const [editCompareValue, setEditCompareValue] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
@@ -176,6 +180,39 @@ const AdminProducts = () => {
   const handleSkuEdit = (productId: string, currentSku: string) => {
     setEditingSku(productId);
     setEditSkuValue(currentSku);
+  };
+
+  const handlePriceSave = async () => {
+    const val = parseFloat(editPriceValue);
+    if (isNaN(val) || val < 0) {
+      toast({ title: "Invalid price", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("products").update({ price: val }).eq("id", editingPrice!);
+    if (error) {
+      toast({ title: "Failed to update price", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Price updated" });
+    setEditingPrice(null);
+    localStorage.removeItem("bigmart-products-v4");
+  };
+
+  const handleCompareSave = async () => {
+    const trimmed = editCompareValue.trim();
+    const val = trimmed === "" ? null : parseFloat(trimmed);
+    if (val !== null && (isNaN(val) || val < 0)) {
+      toast({ title: "Invalid compare price", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("products").update({ compare_at_price: val }).eq("id", editingCompare!);
+    if (error) {
+      toast({ title: "Failed to update compare price", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Compare price updated" });
+    setEditingCompare(null);
+    localStorage.removeItem("bigmart-products-v4");
   };
 
   const handleSkuSave = async () => {
@@ -561,13 +598,74 @@ const AdminProducts = () => {
                     </div>
                   )}
                 </td>
-                <td className="px-3 py-2 font-medium">{row.price.toFixed(1)} ₾</td>
+                <td className="px-3 py-2 font-medium">
+                  {editingPrice === row.productId ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editPriceValue}
+                        onChange={(e) => setEditPriceValue(e.target.value)}
+                        className="h-7 w-20 text-xs font-mono"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") handlePriceSave(); if (e.key === "Escape") setEditingPrice(null); }}
+                      />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600" onClick={handlePriceSave}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingPrice(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 group">
+                      <span>{row.price.toFixed(1)} ₾</span>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                        onClick={() => { setEditingPrice(row.productId); setEditPriceValue(String(row.price)); }}
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
+                  )}
+                </td>
                 <td className="px-3 py-2">
-                  <span className={hasRealCompare ? "text-muted-foreground" : "text-muted-foreground/60 italic"}>
-                    {displayCompare ? `${displayCompare.toFixed(1)} ₾` : "—"}
-                  </span>
-                  {!hasRealCompare && displayCompare && (
-                    <span className="text-[9px] text-muted-foreground/40 ml-1">gen</span>
+                  {editingCompare === row.productId ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editCompareValue}
+                        onChange={(e) => setEditCompareValue(e.target.value)}
+                        className="h-7 w-20 text-xs font-mono"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="empty = none"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") handleCompareSave(); if (e.key === "Escape") setEditingCompare(null); }}
+                      />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600" onClick={handleCompareSave}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingCompare(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 group">
+                      <span className={hasRealCompare ? "text-muted-foreground" : "text-muted-foreground/60 italic"}>
+                        {displayCompare ? `${displayCompare.toFixed(1)} ₾` : "—"}
+                      </span>
+                      {!hasRealCompare && displayCompare && (
+                        <span className="text-[9px] text-muted-foreground/40 ml-1">gen</span>
+                      )}
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                        onClick={() => { setEditingCompare(row.productId); setEditCompareValue(row.compareAtPrice ? String(row.compareAtPrice) : ""); }}
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
                   )}
                 </td>
                 <td className="px-3 py-2">
