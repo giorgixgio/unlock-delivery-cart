@@ -319,22 +319,45 @@ const AdminProducts = () => {
         saveConflicts(newConflicts);
       }
 
-      // Actually update SKUs in the database
+      // Apply updates in 2 phases to avoid unique-SKU collision issues (swaps/cycles)
+      const rowsToUpdate = bulkApplicable
+        .filter((r): r is BulkRow & { matchedProductId: string } => !!r.matchedProductId)
+        .map((r, idx) => ({
+          productId: r.matchedProductId,
+          newSku: r.newSku,
+          tempSku: `__tmp_sku_${Date.now()}_${idx}`,
+        }));
+
       let updated = 0;
       let failed = 0;
-      for (const row of bulkApplicable) {
-        if (!row.matchedProductId) continue;
-        const { error } = await supabase
-          .from("products")
-          .update({ sku: row.newSku })
-          .eq("id", row.matchedProductId);
-        if (error) {
-          console.error(`Failed to update SKU for ${row.matchedProductId}:`, error);
-          failed++;
-        } else {
-          updated++;
-        }
-      }
+
+      // Phase 1: move all target rows to temporary SKUs
+      const phase1Results = await Promise.all(
+        rowsToUpdate.map(async (row) => {
+          const { error } = await supabase
+            .from("products")
+            .update({ sku: row.tempSku })
+            .eq("id", row.productId);
+          return { row, error };
+        })
+      );
+
+      const phase1Success = phase1Results.filter((r) => !r.error).map((r) => r.row);
+      failed += phase1Results.filter((r) => !!r.error).length;
+
+      // Phase 2: assign final SKUs
+      const phase2Results = await Promise.all(
+        phase1Success.map(async (row) => {
+          const { error } = await supabase
+            .from("products")
+            .update({ sku: row.newSku })
+            .eq("id", row.productId);
+          return { row, error };
+        })
+      );
+
+      updated += phase2Results.filter((r) => !r.error).length;
+      failed += phase2Results.filter((r) => !!r.error).length;
 
       // Clear cache
       localStorage.removeItem("bigmart-products-v4");
