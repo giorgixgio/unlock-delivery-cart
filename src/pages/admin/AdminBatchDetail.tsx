@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft, Printer, PackageCheck, FileDown, AlertTriangle, Clock, Unlock, Rocket, Download, Upload, CheckCircle2, XCircle } from "lucide-react";
+import { openPackingListWindow as openPackingListGrouped } from "@/components/admin/PackingListView";
+import type { StickerOrder } from "@/components/admin/StickerPrintView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -294,34 +296,22 @@ const AdminBatchDetail = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /* ─── Packing List (HTML popup) ─── */
+  /* ─── Packing List (grouped by 20, using shared component) ─── */
   const openPackingListWindow = () => {
-    const skuMapPrint = new Map<string, { orders: { orderNumber: string; qty: number }[]; totalQty: number; name: string }>();
-    for (const item of snapshot) {
-      const ord = orders.find((o) => o.id === item.order_id);
-      const orderNum = ord?.public_order_number || item.order_id.slice(0, 8);
-      if (!skuMapPrint.has(item.sku)) skuMapPrint.set(item.sku, { orders: [], totalQty: 0, name: item.product_name });
-      const entry = skuMapPrint.get(item.sku)!;
-      entry.orders.push({ orderNumber: orderNum, qty: item.qty });
-      entry.totalQty += item.qty;
-    }
-    const skuPrintEntries = Array.from(skuMapPrint.entries()).sort((a, b) => (parseInt(a[0]) || 99999) - (parseInt(b[0]) || 99999));
-    const today = new Date().toLocaleDateString("ka-GE");
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Packing List</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;font-size:11pt}
-.header{text-align:center;margin-bottom:20px;padding-bottom:10px;border-bottom:3px solid #000}
-.header h1{font-size:18pt}.header .meta{font-size:9pt;color:#666;margin-top:4px}
-table{width:100%;border-collapse:collapse;border:1px solid #ddd}
-th{background:#f0f0f0;text-align:left;padding:8px 12px;font-size:10pt;border-bottom:2px solid #ccc}
-td{padding:10px 12px;border-bottom:1px solid #eee;vertical-align:middle}
-.sku-num{font-size:16pt;font-weight:900}.order-chip{display:inline-block;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:3px;padding:2px 6px;margin:2px 3px;font-size:9pt;font-weight:600}
-.qty-cell{text-align:center;font-weight:bold;font-size:13pt}@media print{body{padding:10px}}</style></head><body>
-<div class="header"><h1>📦 PACKING LIST</h1><div class="meta">${today} | ${orders.length} orders | Batch ${id?.slice(0, 8)}</div></div>
-<table><thead><tr><th style="width:140px">SKU</th><th>Product</th><th>Orders</th><th style="width:60px;text-align:center">Total</th></tr></thead><tbody>
-${skuPrintEntries.map(([sku, e]) => `<tr><td><span class="sku-num">${sku}</span></td><td style="font-size:9pt;color:#666">${e.name}</td><td>${e.orders.map(o => `<span class="order-chip">#${o.orderNumber} ×${o.qty}</span>`).join(" ")}</td><td class="qty-cell">${e.totalQty}</td></tr>`).join("")}
-</tbody></table></body></html>`;
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(html); w.document.close(); }
+    const stickerOrders: StickerOrder[] = orders.map(ord => {
+      const items = snapshot.filter(s => s.order_id === ord.id);
+      return {
+        orderId: ord.id,
+        publicOrderNumber: ord.public_order_number,
+        customerName: ord.customer_name || "",
+        address: ord.normalized_address || ord.address_line1 || "",
+        city: ord.normalized_city || ord.city || "",
+        phone: ord.customer_phone || "",
+        tracking: ord.tracking_number || "",
+        items: items.map(i => ({ sku: i.sku, quantity: i.qty, title: i.product_name })),
+      };
+    });
+    openPackingListGrouped(stickerOrders);
   };
 
   /* ─── Packing Slips (HTML popup) ─── */
