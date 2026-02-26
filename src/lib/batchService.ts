@@ -244,6 +244,61 @@ export async function createBatch(actorEmail: string) {
   return { batchId, orderCount: orderIds.length };
 }
 
+/* ─── Create Batch from specific order IDs (auto-generated after mass fulfill) ─── */
+
+export async function createBatchFromOrderIds(orderIds: string[], actorEmail: string) {
+  if (orderIds.length === 0) throw new Error("No order IDs provided.");
+
+  // Create batch
+  const { data: batch, error: bErr } = await supabase
+    .from("batches")
+    .insert({ created_by: actorEmail })
+    .select()
+    .single();
+  if (bErr) throw bErr;
+
+  const batchId = batch.id;
+
+  // Insert batch_orders
+  const batchOrders = orderIds.map((oid) => ({ batch_id: batchId, order_id: oid }));
+  const { error: boErr } = await supabase.from("batch_orders").insert(batchOrders);
+  if (boErr) throw boErr;
+
+  // Create snapshot from order_items
+  const { data: items, error: iErr } = await supabase
+    .from("order_items")
+    .select("order_id, sku, title, quantity")
+    .in("order_id", orderIds);
+  if (iErr) throw iErr;
+
+  if (items && items.length > 0) {
+    const snapRows = items.map((i) => ({
+      batch_id: batchId,
+      order_id: i.order_id,
+      sku: i.sku,
+      product_name: i.title,
+      qty: i.quantity,
+    }));
+    const { error: sErr } = await supabase.from("batch_order_items_snapshot").insert(snapRows);
+    if (sErr) throw sErr;
+  }
+
+  // Update orders.batch_id
+  const { error: uErr } = await supabase
+    .from("orders")
+    .update({ batch_id: batchId })
+    .in("id", orderIds);
+  if (uErr) throw uErr;
+
+  // Log event
+  await logBatchEvent(batchId, actorEmail, "BATCH_CREATED", {
+    order_count: orderIds.length,
+    source: "mass_fulfill",
+  });
+
+  return { batchId, orderCount: orderIds.length };
+}
+
 /* ─── Print Logic (NO auto-release) ─── */
 
 export async function printPackingList(batchId: string, actorEmail: string) {
