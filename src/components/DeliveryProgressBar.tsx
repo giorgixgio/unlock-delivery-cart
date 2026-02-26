@@ -5,7 +5,7 @@ import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import AnimatedNumber from "@/components/AnimatedNumber";
 
 const DeliveryProgressBar = () => {
-  const { total, isUnlocked, remaining } = useCart();
+  const { total, isUnlocked, remaining, isFreeDelivery } = useCart();
   const { t } = useLanguage();
   const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
 
@@ -20,7 +20,9 @@ const DeliveryProgressBar = () => {
           )}
           <span className="text-sm font-semibold text-foreground">
             {isUnlocked ? (
-              <span className="animate-success-reveal inline-block">{t("free_delivery_unlocked")}</span>
+              <span className="animate-success-reveal inline-block">
+                {isFreeDelivery ? "✅ მიტანა უფასო!" : "✅ შეკვეთა მზადაა — მიტანა 5 ₾"}
+              </span>
             ) : (
               <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ {t("min_order_threshold")}</>
             )}
@@ -32,6 +34,11 @@ const DeliveryProgressBar = () => {
           </span>
         )}
       </div>
+      {!isUnlocked && !isFreeDelivery && (
+        <p className="text-[11px] text-success font-semibold mb-1.5">
+          💡 დაამატე კიდევ 1 პროდუქტი — მიტანა უფასო!
+        </p>
+      )}
       <div className="relative h-4 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${

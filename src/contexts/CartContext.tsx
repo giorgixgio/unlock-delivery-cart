@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
-import { Product, CartItem, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product, CartItem, DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/constants";
 import { isProductOOS } from "@/lib/stockOverrideStore";
 import { trackAddToCart } from "@/lib/metaPixel";
 
@@ -36,6 +36,14 @@ interface CartContextType {
   remaining: number;
   isUnlocked: boolean;
   getQuantity: (productId: string) => number;
+  /** Number of unique products in cart */
+  uniqueItemCount: number;
+  /** Free delivery if 2+ unique items */
+  isFreeDelivery: boolean;
+  /** 0 if free delivery, else DELIVERY_FEE */
+  shippingFee: number;
+  /** total + shippingFee */
+  orderTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -93,8 +101,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const total = useMemo(() => items.reduce((sum, i) => sum + i.product.price * i.quantity, 0), [items]);
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
+  const uniqueItemCount = items.length;
   const remaining = Math.max(0, DELIVERY_THRESHOLD - total);
   const isUnlocked = total >= DELIVERY_THRESHOLD;
+  const isFreeDelivery = uniqueItemCount >= 2;
+  const shippingFee = isFreeDelivery ? 0 : DELIVERY_FEE;
+  const orderTotal = total + shippingFee;
 
   const getQuantity = useCallback(
     (productId: string) => items.find((i) => i.product.id === productId)?.quantity ?? 0,
@@ -103,7 +115,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount, remaining, isUnlocked, getQuantity }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount, remaining, isUnlocked, getQuantity, uniqueItemCount, isFreeDelivery, shippingFee, orderTotal }}
     >
       {children}
     </CartContext.Provider>

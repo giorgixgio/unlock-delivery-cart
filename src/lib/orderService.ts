@@ -12,6 +12,7 @@ interface OrderInput {
   isTbilisi: boolean;
   items: CartItem[];
   subtotal: number;
+  shippingFee?: number;
   total: number;
   source?: string;
   landingSlug?: string;
@@ -72,6 +73,7 @@ export async function createOrder(input: OrderInput) {
         cookie_id_hash: cookieIdHash,
         user_agent: userAgent,
         source: orderSource,
+        shipping_fee: input.shippingFee ?? 0,
         ...(input.landingSlug ? { tags: [`landing:${input.landingSlug}`] } : {}),
       } as any)
       .select("id, public_order_number")

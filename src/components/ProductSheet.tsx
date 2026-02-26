@@ -379,7 +379,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     {isUnlocked ? (
                       <><ShoppingCart className="w-5 h-5" /> შეკვეთის დასრულება</>
                     ) : (
-                      `გააგრძელე შოპინგი — მინ. შეკვეთა ${DELIVERY_THRESHOLD} ₾`
+                      `გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`
                     )}
                   </button>
                 ) : (

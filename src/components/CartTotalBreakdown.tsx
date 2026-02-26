@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+import { DELIVERY_FEE } from "@/lib/constants";
 import AnimatedNumber from "@/components/AnimatedNumber";
 
 interface CartTotalBreakdownProps {
@@ -9,7 +9,7 @@ interface CartTotalBreakdownProps {
 }
 
 const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps) => {
-  const { items, total, isUnlocked } = useCart();
+  const { items, total, isFreeDelivery, shippingFee, orderTotal } = useCart();
   const { t } = useLanguage();
 
   const { oldSubtotal, hasDiscount, savings, savingsPercent } = useMemo(() => {
@@ -27,8 +27,6 @@ const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps)
     const pct = hasAny && old > 0 ? Math.round((sav / old) * 100) : 0;
     return { oldSubtotal: hasAny ? old : null, hasDiscount: hasAny && sav > 0, savings: sav, savingsPercent: pct };
   }, [items, total]);
-
-  const shippingCost = isUnlocked ? 0 : 5;
 
   const [phase, setPhase] = useState<"idle" | "counting" | "strike" | "reveal" | "done">(
     animateOnMount ? "idle" : "done"
@@ -61,7 +59,7 @@ const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps)
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">{t("total")}</span>
           <span className="text-xl font-extrabold text-foreground animate-scale-in">
-            <AnimatedNumber value={total} duration={800} /> ₾
+            <AnimatedNumber value={orderTotal} duration={800} /> ₾
           </span>
         </div>
       )}
@@ -87,15 +85,21 @@ const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps)
           {showFinal && (
             <div className="flex items-center justify-between animate-fade-in">
               <span className="text-sm text-muted-foreground">{t("delivery_fee")}</span>
-              {isUnlocked ? (
+              {isFreeDelivery ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-muted-foreground line-through">5 ₾</span>
+                  <span className="text-sm text-muted-foreground line-through">{DELIVERY_FEE} ₾</span>
                   <span className="text-sm font-bold text-success">{t("free")}</span>
                 </div>
               ) : (
-                <span className="text-sm font-semibold text-foreground">{shippingCost} ₾</span>
+                <span className="text-sm font-semibold text-foreground">{shippingFee} ₾</span>
               )}
             </div>
+          )}
+
+          {showFinal && !isFreeDelivery && (
+            <p className="text-[11px] text-success font-semibold">
+              💡 დაამატე კიდევ 1 პროდუქტი — მიტანა უფასო!
+            </p>
           )}
 
           {showFinal && <div className="border-t border-border" />}
@@ -104,7 +108,7 @@ const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps)
             <div className={`flex items-center justify-between ${phase === "reveal" ? "animate-sale-highlight" : ""}`}>
               <span className="text-base font-bold text-foreground">{t("to_pay")}</span>
               <span className="text-2xl font-extrabold text-primary">
-                {total.toFixed(1)} ₾
+                {orderTotal.toFixed(1)} ₾
               </span>
             </div>
           )}

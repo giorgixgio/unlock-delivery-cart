@@ -38,7 +38,7 @@ interface CartOverlayProps {
  * Regression test: Open /shop?product_id=X → open cart → back → should still be on /shop?product_id=X
  */
 const Cart = ({ isOpen }: CartOverlayProps) => {
-  const { items, total, isUnlocked, remaining, updateQuantity, removeItem, clearCart } = useCart();
+  const { items, total, remaining, updateQuantity, removeItem, clearCart, shippingFee, orderTotal } = useCart();
   const { closeCart, dismissCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const { setManualLocation, isTbilisi } = useDelivery();
@@ -198,10 +198,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         isTbilisi,
         items,
         subtotal: total,
-        total,
+        shippingFee,
+        total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      const orderTotal = total;
       const orderNumber = order.public_order_number;
       clearCustomerInfo();
       clearCart();

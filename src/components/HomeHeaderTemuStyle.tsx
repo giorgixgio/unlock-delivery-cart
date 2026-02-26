@@ -4,7 +4,7 @@ import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRig
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+// Language switcher removed — Georgian only
 import {
   Sheet,
   SheetContent,
@@ -157,7 +157,6 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0">
-              <LanguageSwitcher />
               <CategoryDrawer>
                 <button className="p-1.5 rounded-full hover:bg-background/10 transition-colors" aria-label={t("menu")}>
                   <Menu className="w-5 h-5" />
