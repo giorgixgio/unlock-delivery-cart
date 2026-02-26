@@ -7,8 +7,7 @@ import { Truck, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
-import { getCookieIdHash, getUserAgent } from "@/lib/identitySignals";
-import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
+import { createOrder } from "@/lib/orderService";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -117,106 +116,38 @@ const CODFormModal = ({
       saveCustomerInfo(form);
 
       const isTbilisi = form.region.trim().toLowerCase() === "თბილისი" || form.region.trim().toLowerCase() === "tbilisi";
-      const status = bumpEnabled ? "pending_bump" : "new";
 
-      // Create order directly
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          customer_name: form.name,
-          customer_phone: form.phone,
-          city: form.region,
-          region: form.region,
-          address_line1: form.address,
-          is_tbilisi: isTbilisi,
-          subtotal: totalAfter,
-          total: totalAfter,
-          status,
-          payment_method: "COD",
-          public_order_number: "",
-          raw_city: form.region,
-          raw_address: form.address,
-          cookie_id_hash: getCookieIdHash(),
-          user_agent: getUserAgent(),
-          source: "landing_cod",
-          notes_customer: form.comment || null,
-          tags: [`landing:${landingSlug}`, `variant:${landingVariant}`],
-        } as any)
-        .select("id, public_order_number")
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Insert order item
-      await supabase.from("order_items").insert({
-        order_id: order.id,
-        product_id: product.id,
-        sku: product.sku || product.id,
-        title: product.title,
-        quantity,
-        unit_price: unitPrice,
-        line_total: totalAfter,
-        image_url: product.image || "",
+      // Use shared createOrder() for stock checks, logging, and consistency
+      const order = await createOrder({
+        customerName: form.name,
+        customerPhone: form.phone,
+        city: form.region,
+        region: form.region,
+        addressLine1: form.address,
+        isTbilisi,
+        items: [{ product, quantity }],
+        subtotal: totalAfter,
+        total: totalAfter,
+        source: "landing_cod",
+        landingSlug,
       });
 
-      // Create initial event
-      await supabase.from("order_events").insert({
-        order_id: order.id,
-        actor: "system",
-        event_type: "status_change",
-        payload: {
-          from: null,
-          to: status,
-          source: "landing_cod",
-          bundle_qty: quantity,
-          bundle_discount_pct: discountPct,
-          unit_price_snapshot: unitPrice,
-          total_price_snapshot: totalAfter,
-          landing_slug: landingSlug,
-          landing_variant: landingVariant,
-        },
-      });
-
-      await logSystemEvent({
-        entityType: "order",
-        entityId: order.id,
-        eventType: "ORDER_CREATE",
-        actorId: "landing_cod",
-        payload: {
-          public_order_number: order.public_order_number,
-          total: totalAfter,
-          landing_slug: landingSlug,
-          bundle_qty: quantity,
-        },
-      });
-
-      // Fire-and-forget normalize
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        fetch(`${supabaseUrl}/functions/v1/normalize-and-score`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        });
-      } catch {}
+      // If bump is enabled, update status to pending_bump after creation
+      if (bumpEnabled) {
+        await supabase
+          .from("orders")
+          .update({ status: "pending_bump" } as any)
+          .eq("id", order.id);
+      }
 
       onOrderCreated(order.id, order.public_order_number, totalAfter);
     } catch (err: any) {
       console.error("COD order failed:", err);
-      setErrors({ _form: "შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან." });
-      await logSystemEventFailed({
-        entityType: "order",
-        entityId: "unknown",
-        eventType: "ORDER_CREATE",
-        actorId: "landing_cod",
-        errorMessage: err?.message || String(err),
-        payload: { customer_phone: form.phone, total: totalAfter },
-      });
+      if (err?.message?.startsWith("OUT_OF_STOCK")) {
+        setErrors({ _form: "პროდუქტი ამჟამად არ არის ხელმისაწვდომი." });
+      } else {
+        setErrors({ _form: "შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან." });
+      }
     } finally {
       setSubmitting(false);
     }

@@ -68,7 +68,7 @@ const AdminDashboard = () => {
 
       const needsReview = live.filter(
         (o) =>
-          o.status === "new" || o.status === "on_hold" || !o.is_confirmed || o.review_required
+          o.status === "new" || o.status === "on_hold" || o.status === "pending_bump" || !o.is_confirmed || o.review_required
       );
 
       const confirmedOrders = live.filter((o) => o.is_confirmed && !o.is_fulfilled);
