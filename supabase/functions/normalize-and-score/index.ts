@@ -319,15 +319,15 @@ Common Georgian cities: თბილისი, ბათუმი, ქუთა�
 async function scoreRisk(supabase: any, order: any, order_id: string, ip_address: string | undefined, normalizedAddress: string, confidence: number) {
   const riskReasons: string[] = [];
   let riskScore = 0;
-  const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Query ALL past orders (including canceled) from 30 days, exclude only merged to avoid double-counting
   const { data: pastOrders } = await supabase
     .from("orders")
-    .select("id, customer_phone, normalized_address, ip_address, cookie_id_hash, user_agent, created_at, order_items(sku, quantity)")
+    .select("id, customer_phone, normalized_address, ip_address, cookie_id_hash, user_agent, created_at, status, order_items(sku, quantity)")
     .neq("id", order_id)
     .neq("status", "merged")
-    .gte("created_at", tenDaysAgo)
-    .or("is_confirmed.eq.true,is_fulfilled.eq.true,status.eq.new,status.eq.on_hold");
+    .gte("created_at", thirtyDaysAgo);
 
   if (pastOrders && pastOrders.length > 0) {
     if (order.cookie_id_hash) {
@@ -348,6 +348,13 @@ async function scoreRisk(supabase: any, order: any, order_id: string, ip_address
     if (phoneMatches.length > 0) {
       riskScore += 35;
       riskReasons.push(`same_phone (${phoneMatches.length} prior)`);
+
+      // Extra signal: many canceled orders from same phone = suspicious pattern
+      const canceledFromPhone = phoneMatches.filter((p: any) => p.status === "canceled");
+      if (canceledFromPhone.length >= 3) {
+        riskScore += 20;
+        riskReasons.push(`many_canceled (${canceledFromPhone.length} canceled from same phone)`);
+      }
     }
 
     if (normalizedAddress && normalizedAddress.length > 5) {
