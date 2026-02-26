@@ -1,60 +1,58 @@
 
+## Fix: Admin Orders Visibility Gaps and Checkout Consistency
 
-## Fix: Auto-Confirmation Bypassed Due to Narrow Risk Lookback
+### Investigation Results
 
-### Root Cause
+After checking the full database:
+- All 161 orders exist and are accounted for
+- Order sequence is at 100283 -- no orders were created or lost after that
+- No failed ORDER_CREATE events today
+- The Meta Pixel "sale" is most likely order 100283 itself (confirmed, visible in "Ready" tab, not "Needs Review")
+- The dashboard shows 20 live orders today (1 confirmed + 19 shipped), not 2 -- the "2" you saw might be from a specific card like "Needs Review" or "New"
 
-The `normalize-and-score` edge function's risk scoring has two blind spots:
+### Real Bugs Found (would cause invisible orders)
 
-1. **Canceled/merged orders are excluded** from the past-order query. A phone number with 12 prior orders (many canceled) looks "clean" because those orders are invisible to the scorer.
-2. **10-day lookback window** is too short for phone-based signals. Phone numbers are a strong identity signal and should have a longer memory.
+**Bug 1: `pending_bump` orders are invisible in admin**
+The CODFormModal (landing page checkout) creates orders with `status: "pending_bump"` when bump offers are enabled. The admin Orders page has 5 tabs: Review, Ready, Fulfilled, Merged, Canceled -- NONE of them match `pending_bump`. If a customer abandons the bump modal, that order becomes a ghost: it exists in the DB, the Pixel fires, but you'll never see it in admin.
 
-### Solution
+**Bug 2: CODFormModal bypasses stock checks**
+The landing page COD form creates orders with a raw Supabase insert, completely skipping the `createOrder()` function and its server-side OOS (out-of-stock) check. A customer could order an out-of-stock product from a landing page.
 
-Modify the `scoreRisk` function in `supabase/functions/normalize-and-score/index.ts`:
+**Bug 3: No "All Orders" view**
+There's no way to see every order regardless of status. If any order has an unexpected status, it vanishes from the UI.
 
-1. **Expand the status filter** to include `canceled` and `merged` orders in the lookback query. These still represent real activity from that identity.
-2. **Use a 30-day window for phone matching** while keeping the 10-day window for weaker signals (cookie, IP). Phone numbers are persistent identifiers; cookies and IPs rotate.
-3. **Weight canceled orders differently** -- a phone with many canceled orders is arguably *more* suspicious than one with confirmed orders (pattern of placing and canceling).
+### Changes
 
-### Technical Changes
+**1. Add `pending_bump` to the Review tab filter** (`src/pages/admin/AdminOrders.tsx`)
+- Include `pending_bump` in the review tab's OR filter so these orders appear in "Needs Review"
+- Include `pending_bump` in the review count query
+- This ensures bump-abandoned orders are always visible
 
-**File: `supabase/functions/normalize-and-score/index.ts`**
+**2. Add an "All" tab** (`src/pages/admin/AdminOrders.tsx`)
+- Add a 6th tab "All" that shows every order (except merged) sorted by date
+- This acts as a safety net -- no order can ever be invisible again
 
-In the `scoreRisk` function (lines ~322-401):
+**3. Refactor CODFormModal to use shared `createOrder()`** (`src/components/landing/CODFormModal.tsx`)
+- Replace the inline Supabase insert with a call to `createOrder()` from `orderService.ts`
+- This adds stock checks, consistent error logging, and the same code path as the main checkout
+- Handle `pending_bump` status by setting it after order creation if bump is enabled
 
-- Change the past-orders query to remove the status filter restriction, querying all non-current orders from the last 30 days (excluding only `merged` status to avoid double-counting merged children)
-- Add a new risk signal: `many_canceled` -- if 3+ canceled orders exist from the same phone in 30 days, add +20 risk
-- Keep existing signal weights unchanged to avoid over-sensitivity
+**4. Fix dashboard "Needs Review" to match Orders page logic** (`src/pages/admin/AdminDashboard.tsx`)
+- Include `pending_bump` in the needs-review filter
+- This keeps dashboard counts consistent with the orders page
 
+### Technical Details
+
+Review tab filter change (AdminOrders.tsx):
 ```text
-Current query filter:
-  .neq("status", "merged")
-  .gte("created_at", tenDaysAgo)
-  .or("is_confirmed.eq.true,is_fulfilled.eq.true,status.eq.new,status.eq.on_hold")
-
-New query filter:
-  .gte("created_at", thirtyDaysAgo)
-  (no status filter -- include canceled orders in lookback)
+Current: .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true")
+New:     .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true")
 ```
 
-For phone matching specifically:
-- Still match against all statuses (including canceled)
-- Add a sub-signal: if 3+ of those phone matches are canceled, add `many_canceled` (+20 points)
+New "All" tab query:
+```text
+.neq("status", "merged")
+.order("created_at", { ascending: false })
+```
 
-For cookie/IP matching:
-- Continue using the full result set (which now includes canceled orders)
-- No additional weight changes needed
-
-### What This Fixes
-
-- Order 100283 would have found order 100212 (canceled, same phone, Feb 23) plus all Feb 10-13 orders within 30 days
-- Phone match alone = +35, which puts it at `medium` risk and blocks auto-confirm
-- The canceled order pattern would add another +20, pushing it further into review
-
-### What This Does NOT Change
-
-- Auto-confirm threshold stays at risk_score = 0 (no relaxation)
-- SKU overlap logic stays identity-gated (no false positives on popular items)
-- High-risk threshold stays at 50
-- Address, cookie, and IP signal weights stay the same
+CODFormModal refactor: import and call `createOrder()` instead of raw insert, then update status to `pending_bump` if bump is enabled.
