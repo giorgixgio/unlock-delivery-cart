@@ -11,6 +11,7 @@ import {
 import * as XLSX from "xlsx";
 import { openStickerPrintWindow, type StickerOrder } from "./StickerPrintView";
 import { openPackingListWindow } from "./PackingListView";
+import { createBatchFromOrderIds } from "@/lib/batchService";
 
 interface MassFulfillModalProps {
   open: boolean;
@@ -380,8 +381,20 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       }
     }
 
+    // Auto-create warehouse batch from fulfilled orders
+    if (appliedOrderIds.length > 0) {
+      try {
+        const batchResult = await createBatchFromOrderIds(appliedOrderIds, "admin");
+        toast({ title: `${applied} orders fulfilled ✓ — Batch created (${batchResult.orderCount} orders)${failCount > 0 ? ` · ${failCount} failed` : ""}` });
+      } catch (batchErr: any) {
+        console.error("Auto-batch creation failed:", batchErr);
+        toast({ title: `${applied} orders fulfilled ✓ but batch creation failed`, description: batchErr.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: `${applied} orders fulfilled and tracking updated ✓${failCount > 0 ? ` (${failCount} failed)` : ""}` });
+    }
+
     setStep("done");
-    toast({ title: `${applied} orders fulfilled and tracking updated ✓${failCount > 0 ? ` (${failCount} failed)` : ""}` });
     onComplete();
   };
 
