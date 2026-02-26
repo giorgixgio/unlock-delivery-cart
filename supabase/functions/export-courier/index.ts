@@ -130,10 +130,10 @@ Deno.serve(async (req) => {
           "",                                                            // 20 ამანათის დასურათება
           "",                                                            // 21 მსხვრევადი
           notes.join(" | "),                                             // 22 კომენტარი
-          fixedMap["trackings_return_method"] || "კურიერი",             // 23 უკან დაბრუნება
+          fixedMap["trackings_return_method"] || "გამგზავნის მისამართი", // 23 უკან დაბრუნება
           "",                                                            // 24 გაცემის პუნქტი (return)
           fixedMap["trackings_payer"] || "გამგზავნი",                   // 25 გადამხდელი
-          fixedMap["trackings_payment_type"] || "ინვოისი",              // 26 ანგარიშწორების ტიპი
+          fixedMap["trackings_payment_type"] || "ქეში",                 // 26 ანგარიშწორების ტიპი
           order.public_order_number,                                     // 27 შეკვეთის ნომერი
           String(Number(order.total || 0)),                              // 28 პროდუქციის ფასი
           `${titles} [${skus}]`,                                         // 29 პროდუქციის აღწერა
