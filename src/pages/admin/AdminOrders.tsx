@@ -11,7 +11,7 @@ import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 
-type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled";
+type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled" | "all";
 
 const DATE_FILTERS = [
   { label: "All", value: "all" },
@@ -30,6 +30,7 @@ const statusColor: Record<string, string> = {
   returned: "bg-gray-100 text-gray-800",
   on_hold: "bg-orange-100 text-orange-800",
   merged: "bg-slate-100 text-slate-500",
+  pending_bump: "bg-yellow-100 text-yellow-800",
 };
 
 function getDateRange(filter: string) {
@@ -97,7 +98,7 @@ const AdminOrders = () => {
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
-        .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true"),
+        .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true"),
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
@@ -133,7 +134,7 @@ const AdminOrders = () => {
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
-        .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true")
+        .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true")
         .order("risk_score", { ascending: false })
         .order("created_at", { ascending: false });
     } else if (activeTab === "ready") {
@@ -156,6 +157,10 @@ const AdminOrders = () => {
     } else if (activeTab === "canceled") {
       query = query
         .in("status", ["canceled", "returned"])
+        .order("created_at", { ascending: false });
+    } else if (activeTab === "all") {
+      query = query
+        .neq("status", "merged")
         .order("created_at", { ascending: false });
     }
 
@@ -288,6 +293,16 @@ const AdminOrders = () => {
           }`}
         >
           Canceled/Returned
+        </button>
+        <button
+          onClick={() => switchTab("all")}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all ${
+            activeTab === "all"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
         </button>
       </div>
 
