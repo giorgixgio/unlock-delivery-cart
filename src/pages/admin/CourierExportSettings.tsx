@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const FIXED_COLUMN_LABELS: Record<string, string> = {
+const ONWAY_FIXED_LABELS: Record<string, string> = {
   D: "დამატებით ლოკაცია (Additional Location)",
   F: "წონა (Weight)",
   J: "დამატებიტი სერვისი (Additional Service)",
@@ -20,6 +20,19 @@ const FIXED_COLUMN_LABELS: Record<string, string> = {
   T: "გამგზავნი კომპანია (Sender Company)",
   U: "მომსახურების დონე (Service Level)",
   V: "თიფი (Type)",
+};
+
+const TRACKINGS_FIXED_LABELS: Record<string, string> = {
+  trackings_shipping_method: "გაგზავნის მეთოდი (Shipping Method)",
+  trackings_sender_city: "გამგზავნის ქალაქი (Sender City)",
+  trackings_sender_address: "გამგზავნის მისამართი (Sender Address)",
+  trackings_sender_phone: "გამგზავნის ტელეფონი (Sender Phone)",
+  trackings_delivery_method: "მიწოდების მეთოდი (Delivery Method)",
+  trackings_weight: "წონა (Weight)",
+  trackings_cod_commission_payer: "COD საკომისიო გადამხდელი (COD Commission Payer)",
+  trackings_return_method: "უკან დაბრუნება (Return Method)",
+  trackings_payer: "გადამხდელი (Payer)",
+  trackings_payment_type: "ანგარიშწორების ტიპი (Payment Type)",
 };
 
 interface TemplateSettings {
@@ -116,14 +129,14 @@ const CourierExportSettings = () => {
         </div>
       </div>
 
+      {/* ONWAY Fixed Columns */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-4">
-        <h3 className="font-bold text-sm">Fixed Column Values</h3>
+        <h3 className="font-bold text-sm">🚚 ONWAY — Fixed Column Values</h3>
         <p className="text-xs text-muted-foreground">
-          These values are the same for every row in the export. Dynamic columns (A, B, C, E, G, H, I, K, O) are auto-filled from order data.
+          These values are the same for every ONWAY export row. Dynamic columns (A, B, C, E, G, H, I, K, O) are auto-filled from order data.
         </p>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {Object.entries(FIXED_COLUMN_LABELS).map(([col, label]) => (
+          {Object.entries(ONWAY_FIXED_LABELS).map(([col, label]) => (
             <div key={col}>
               <Label className="text-xs">
                 <span className="font-bold text-primary">Col {col}</span> — {label}
@@ -138,18 +151,25 @@ const CourierExportSettings = () => {
         </div>
       </div>
 
-      <div className="bg-muted/50 rounded-lg p-4 border border-border">
-        <h3 className="font-bold text-sm mb-2">Dynamic Columns (auto-filled)</h3>
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p><span className="font-bold">A</span> — Customer Name</p>
-          <p><span className="font-bold">B</span> — Address (normalized)</p>
-          <p><span className="font-bold">C</span> — City (normalized)</p>
-          <p><span className="font-bold">E</span> — Phone</p>
-          <p><span className="font-bold">G</span> — Item quantities (comma-separated)</p>
-          <p><span className="font-bold">H</span> — Order ID (internal UUID)</p>
-          <p><span className="font-bold">I</span> — SKUs (comma-separated)</p>
-          <p><span className="font-bold">K</span> — Total price</p>
-          <p><span className="font-bold">O</span> — Notes (customer + risk flags)</p>
+      {/* TRACKINGS.GE Fixed Columns */}
+      <div className="bg-card rounded-lg p-4 border border-border space-y-4">
+        <h3 className="font-bold text-sm">📦 TRACKINGS.GE — Fixed Column Values</h3>
+        <p className="text-xs text-muted-foreground">
+          These values are the same for every TRACKINGS.GE export row. Dynamic columns (recipient name, phone, city, address, qty, COD, notes, order#, price, description) are auto-filled.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.entries(TRACKINGS_FIXED_LABELS).map(([col, label]) => (
+            <div key={col}>
+              <Label className="text-xs">
+                <span className="font-bold text-primary">{col.replace("trackings_", "").replace(/_/g, " ")}</span> — {label}
+              </Label>
+              <Input
+                value={settings.fixed_columns_map[col] || ""}
+                onChange={(e) => updateFixed(col, e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          ))}
         </div>
       </div>
 
