@@ -109,10 +109,10 @@ Deno.serve(async (req) => {
         // TRACKINGS.GE format — 29 columns
         const row = [
           fixedMap["trackings_shipping_method"] || "კურიერი",           // 1 გაგზავნის მეთოდი
-          fixedMap["trackings_sender_city"] || "",                       // 2 გამგზავნის ქალაქი
-          fixedMap["trackings_sender_address"] || "",                    // 3 გამგზავნის მისამართი
+          fixedMap["trackings_sender_city"] || "თბილისი",               // 2 გამგზავნის ქალაქი
+          fixedMap["trackings_sender_address"] || "იუმაშევის 11",       // 3 გამგზავნის მისამართი
           "",                                                            // 4 გამგზავნი გაცემის პუნქტი
-          fixedMap["trackings_sender_phone"] || "",                      // 5 გამგზავნის ტელეფონი
+          fixedMap["trackings_sender_phone"] || "555555555",             // 5 გამგზავნის ტელეფონი
           order.customer_name || "",                                     // 6 მიმღების სახელი
           "",                                                            // 7 კომპანიის სახელი
           "",                                                            // 8 საიდენტიფიკაციო ნომერი
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
           fixedMap["trackings_payment_type"] || "ინვოისი",              // 26 ანგარიშწორების ტიპი
           order.public_order_number,                                     // 27 შეკვეთის ნომერი
           String(Number(order.total || 0)),                              // 28 პროდუქციის ფასი
-          titles,                                                        // 29 პროდუქციის აღწერა
+          `${titles} [${skus}]`,                                         // 29 პროდუქციის აღწერა
         ];
         rows.push(row);
       } else {
