@@ -12,7 +12,9 @@ export type SystemEventType =
   | "ORDER_CREATE"
   | "SKU_UPDATE"
   | "COURIER_EXPORT_CREATE"
-  | "COURIER_IMPORT_APPLY";
+  | "COURIER_IMPORT_APPLY"
+  | "BULK_DELETE"
+  | "MANUAL_MERGE";
 
 interface LogSystemEventInput {
   entityType: SystemEntityType;

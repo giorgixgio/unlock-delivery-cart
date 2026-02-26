@@ -8,6 +8,8 @@ import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
 import MassFulfillModal from "@/components/admin/MassFulfillModal";
+import BulkActionsBar from "@/components/admin/BulkActionsBar";
+import ManualMergeModal from "@/components/admin/ManualMergeModal";
 
 type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled";
 
@@ -84,6 +86,8 @@ const AdminOrders = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [fulfillOpen, setFulfillOpen] = useState(false);
   const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mergeOpen, setMergeOpen] = useState(false);
 
   const fetchCounts = useCallback(async () => {
     const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }] = await Promise.all([
@@ -180,10 +184,23 @@ const AdminOrders = () => {
   const switchTab = (tab: Tab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
+    setSelectedIds([]);
   };
 
   const goToOrder = (orderId: string) => {
     navigate(`/admin/orders/${orderId}?from=${activeTab}`);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === orders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(orders.map(o => o.id));
+    }
   };
 
   const isReviewTab = activeTab === "review";
@@ -274,6 +291,17 @@ const AdminOrders = () => {
         </button>
       </div>
 
+      {/* Bulk Actions */}
+      {selectedIds.length > 0 && (
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          orders={orders.map(o => ({ id: o.id, status: o.status, is_confirmed: o.is_confirmed, version: 0 }))}
+          onComplete={() => { fetchOrders(); fetchCounts(); }}
+          onClearSelection={() => setSelectedIds([])}
+          onMergeRequest={() => setMergeOpen(true)}
+        />
+      )}
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -316,6 +344,14 @@ const AdminOrders = () => {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={orders.length > 0 && selectedIds.length === orders.length}
+                    onChange={toggleSelectAll}
+                    className="accent-primary"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-bold">Order</th>
                 <th className="text-left px-4 py-3 font-bold">Date</th>
                 <th className="text-left px-4 py-3 font-bold">Customer</th>
@@ -331,8 +367,16 @@ const AdminOrders = () => {
                 <tr
                   key={order.id}
                   onClick={() => goToOrder(order.id)}
-                  className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
+                  className={`border-t border-border hover:bg-muted/30 cursor-pointer transition-colors ${selectedIds.includes(order.id) ? "bg-primary/5" : ""}`}
                 >
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(order.id)}
+                      onChange={() => toggleSelect(order.id)}
+                      className="accent-primary"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-bold text-primary">{order.public_order_number}</span>
                     {order.tags?.includes("auto_merged") && (
@@ -405,6 +449,12 @@ const AdminOrders = () => {
         open={fulfillOpen}
         onClose={() => setFulfillOpen(false)}
         onComplete={() => { fetchOrders(); fetchCounts(); }}
+      />
+      <ManualMergeModal
+        open={mergeOpen}
+        orderIds={selectedIds}
+        onClose={() => setMergeOpen(false)}
+        onComplete={() => { setSelectedIds([]); fetchOrders(); fetchCounts(); }}
       />
     </div>
   );
