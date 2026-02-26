@@ -1,6 +1,6 @@
 import type { StickerOrder } from "./StickerPrintView";
 
-const BATCH_SIZE = 15;
+const BATCH_SIZE = 20;
 
 interface SkuEntry {
   sku: string;
