@@ -127,7 +127,7 @@ const SkeletonGrid = () => (
 
 // ── Main Component ──
 const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutSheetProps) => {
-  const { total, isUnlocked, remaining, itemCount, items } = useCart();
+  const { total, isUnlocked, remaining, itemCount, items, isFreeDelivery } = useCart();
   const { data: products = [], isLoading } = useProducts();
   const prevUnlocked = useRef(isUnlocked);
   const { openCart } = useCartOverlay();
@@ -330,7 +330,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           {isUnlocked && (
             <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
               <div className="text-center space-y-2 animate-success-reveal">
-                <p className="text-2xl font-extrabold text-success">🎉 მიტანა გახსნილია</p>
+                <p className="text-2xl font-extrabold text-success">🎉 {isFreeDelivery ? "შეკვეთა მზადაა — მიტანა უფასო!" : "შეკვეთა მზადაა!"}</p>
                 <p className="text-sm text-muted-foreground">გადამისამართება...</p>
               </div>
             </div>

@@ -10,7 +10,7 @@ interface DeliveryMissionBarProps {
 }
 
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
-  const { total, isUnlocked, remaining } = useCart();
+  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount } = useCart();
   const { t } = useLanguage();
   const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
   const [bounce, setBounce] = useState(false);
@@ -81,7 +81,7 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           }`}
         >
           {isUnlocked ? (
-            t("free_delivery_unlocked")
+            isFreeDelivery ? "✅ შეკვეთა მზადაა — მიტანა უფასო!" : "✅ შეკვეთა მზადაა — მიტანა 5 ₾"
           ) : remaining < 5 ? (
             <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
           ) : (
