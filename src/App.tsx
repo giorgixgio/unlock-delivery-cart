@@ -103,6 +103,7 @@ const App = () => (
                     <Route path="/products/:handle" element={<LegacyProductRedirect />} />
 
                     {/* Admin */}
+                    <Route path="/admin/packing-list" element={<AdminGuard><AdminPackingList /></AdminGuard>} />
                     <Route path="/admin/login" element={<AdminLoginGuard />} />
                     <Route
                       path="/admin"
@@ -123,7 +124,7 @@ const App = () => (
                       <Route path="landing-pages" element={<AdminLandingPages />} />
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
-                      <Route path="packing-list" element={<AdminPackingList />} />
+                      
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
                     </Route>

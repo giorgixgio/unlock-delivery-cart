@@ -314,7 +314,7 @@ const AdminBatchDetail = () => {
         items: items.map(i => ({ sku: i.sku, quantity: i.qty, title: i.product_name })),
       };
     });
-    openPackingListGrouped(stickerOrders);
+    openPackingListGrouped(stickerOrders, navigate);
   };
 
   /* ─── Packing Slips (HTML popup) ─── */
