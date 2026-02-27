@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, ArrowLeft, Printer, PackageCheck, FileDown, AlertTriangle, Clock, Unlock, Rocket, Download, Upload, CheckCircle2, XCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { openPackingListWindow as openPackingListGrouped } from "@/components/admin/PackingListView";
 import type { StickerOrder } from "@/components/admin/StickerPrintView";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ const AdminBatchDetail = () => {
   // Tracking import
   const [importResult, setImportResult] = useState<{ updated: number; skipped: number } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [singleQtyMode, setSingleQtyMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -197,9 +199,9 @@ const AdminBatchDetail = () => {
             case "normalized_address": return ord.normalized_address || ord.address_line1 || "";
             case "normalized_city": return ord.normalized_city || ord.city || "";
             case "customer_phone": return ord.customer_phone || "";
-            case "item_quantities": return String(totalQty);
+            case "item_quantities": return singleQtyMode ? "1" : String(totalQty);
             case "order_id": return ord.public_order_number || "";
-            case "item_skus": return skus;
+            case "item_skus": return singleQtyMode ? `${skus} / ${ord.public_order_number}` : skus;
             case "total": return String(ord.total || 0);
             case "notes": return ord.notes_customer || "";
             default: return "";
@@ -582,6 +584,10 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Download Courier XLSX
             </Button>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={singleQtyMode} onCheckedChange={(v) => setSingleQtyMode(v === true)} />
+              <span className="text-xs text-muted-foreground">Qty=1, SKU / OrderID format</span>
+            </label>
             {batch.status === "OPEN" && (
               <p className="text-xs text-muted-foreground">Lock batch before exporting CSV.</p>
             )}
