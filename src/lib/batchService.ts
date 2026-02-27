@@ -501,29 +501,31 @@ export async function importTrackingForBatch(
   // Filter to only orders in this batch (ignore extras from courier portal)
   const rows = allRows.filter((r) => batchOrderIds.has(r.order_id));
 
-  // Check for conflicts: order already has a different tracking number
-  const orderIds = rows.map((r) => r.order_id);
+  // Deduplicate: if the same order appears multiple times (old + new tracking),
+  // keep the LAST entry (courier dashboards append new trackings at the bottom)
+  const deduped = new Map<string, string>();
+  for (const row of rows) {
+    deduped.set(row.order_id, row.tracking_number);
+  }
+
+  // Always overwrite existing tracking numbers with the latest value
+  const toUpdate: { order_id: string; tracking_number: string }[] = [];
+  const overwritten: { order_id: string; old_tracking: string; new_tracking: string }[] = [];
+
+  const orderIds = Array.from(deduped.keys());
   const { data: existingOrders, error: oErr } = await supabase
     .from("orders")
     .select("id, tracking_number")
     .in("id", orderIds);
   if (oErr) throw oErr;
 
-  const conflicts: { order_id: string; existing: string; incoming: string }[] = [];
-  const toUpdate: { order_id: string; tracking_number: string }[] = [];
-
-  for (const row of rows) {
-    const existing = existingOrders?.find((o) => o.id === row.order_id);
-    if (existing?.tracking_number && existing.tracking_number !== row.tracking_number) {
-      conflicts.push({ order_id: row.order_id, existing: existing.tracking_number, incoming: row.tracking_number });
-    } else if (!existing?.tracking_number || existing.tracking_number !== row.tracking_number) {
-      toUpdate.push(row);
+  for (const [orderId, newTracking] of deduped) {
+    const existing = existingOrders?.find((o) => o.id === orderId);
+    if (existing?.tracking_number === newTracking) continue; // same value → skip
+    if (existing?.tracking_number && existing.tracking_number !== newTracking) {
+      overwritten.push({ order_id: orderId, old_tracking: existing.tracking_number, new_tracking: newTracking });
     }
-    // same value → skip
-  }
-
-  if (conflicts.length > 0) {
-    throw new TrackingConflictError(conflicts);
+    toUpdate.push({ order_id: orderId, tracking_number: newTracking });
   }
 
   // Apply updates
@@ -536,10 +538,12 @@ export async function importTrackingForBatch(
 
   await logBatchEvent(batchId, actorEmail, "TRACKING_IMPORTED", {
     updated: toUpdate.length,
-    skipped: rows.length - toUpdate.length,
+    skipped: deduped.size - toUpdate.length,
+    overwritten: overwritten.length,
+    overwritten_details: overwritten,
   });
 
-  return { updated: toUpdate.length, skipped: rows.length - toUpdate.length };
+  return { updated: toUpdate.length, skipped: deduped.size - toUpdate.length, overwritten: overwritten.length };
 }
 
 export class TrackingConflictError extends Error {

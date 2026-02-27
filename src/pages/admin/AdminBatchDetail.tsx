@@ -65,7 +65,7 @@ const AdminBatchDetail = () => {
   const [exporting, setExporting] = useState(false);
 
   // Tracking import
-  const [importResult, setImportResult] = useState<{ updated: number; skipped: number } | null>(null);
+  const [importResult, setImportResult] = useState<{ updated: number; skipped: number; overwritten?: number } | null>(null);
   const [importing, setImporting] = useState(false);
   const [singleQtyMode, setSingleQtyMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,7 +281,8 @@ const AdminBatchDetail = () => {
 
       const result = await importTrackingForBatch(id, actor, rows);
       setImportResult(result);
-      toast({ title: "Tracking imported", description: `${result.updated} updated, ${result.skipped} skipped` });
+      const overwriteMsg = result.overwritten ? `, ${result.overwritten} overwritten` : "";
+      toast({ title: "Tracking imported", description: `${result.updated} updated, ${result.skipped} skipped${overwriteMsg}` });
       await load();
     } catch (err: any) {
       if (err instanceof TrackingConflictError) {
@@ -600,7 +601,10 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
                 Import Tracking XLSX
               </Button>
               {importResult && (
-                <p className="text-xs text-emerald-600 mt-1">✓ {importResult.updated} updated, {importResult.skipped} skipped</p>
+                <p className="text-xs text-emerald-600 mt-1">
+                  ✓ {importResult.updated} updated, {importResult.skipped} skipped
+                  {importResult.overwritten ? `, ${importResult.overwritten} overwritten` : ""}
+                </p>
               )}
             </div>
 
