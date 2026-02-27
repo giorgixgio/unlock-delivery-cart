@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ViewModifier {
@@ -24,8 +24,6 @@ export function useViewModifier() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) { setLoaded(true); return; }
 
-        // This query will return nothing for users without a modifier row
-        // (RLS restricts to super admin only, but we query silently)
         const { data } = await supabase
           .from("dashboard_view_modifiers" as any)
           .select("revenue_multiplier, order_count_multiplier")
@@ -46,9 +44,18 @@ export function useViewModifier() {
     fetch();
   }, []);
 
-  const applyToRevenue = (val: number) => val * modifier.revenueMultiplier;
-  const applyToCount = (val: number) => Math.round(val * modifier.orderCountMultiplier);
-  const hasModifier = modifier.revenueMultiplier !== 1 || modifier.orderCountMultiplier !== 1;
+  const applyToRevenue = useCallback(
+    (val: number) => val * modifier.revenueMultiplier,
+    [modifier.revenueMultiplier]
+  );
+  const applyToCount = useCallback(
+    (val: number) => Math.round(val * modifier.orderCountMultiplier),
+    [modifier.orderCountMultiplier]
+  );
+  const hasModifier = useMemo(
+    () => modifier.revenueMultiplier !== 1 || modifier.orderCountMultiplier !== 1,
+    [modifier.revenueMultiplier, modifier.orderCountMultiplier]
+  );
 
   return { modifier, loaded, applyToRevenue, applyToCount, hasModifier };
 }
