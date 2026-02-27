@@ -30,20 +30,8 @@ const AdminLogin = () => {
     setSuccess("");
     setLoading(true);
 
-    // Check if email is in admin_users table first
-    const { data: adminRow } = await supabase
-      .from("admin_users")
-      .select("is_active")
-      .eq("email", email.trim().toLowerCase())
-      .maybeSingle();
-
-    if (!adminRow) {
-      setError("This email is not authorized for admin access.");
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
+    const trimmedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signUp({ email: trimmedEmail, password });
     if (error) {
       setError(error.message);
     } else {
