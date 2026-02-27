@@ -259,6 +259,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_view_modifiers: {
+        Row: {
+          created_at: string
+          id: string
+          order_count_multiplier: number
+          revenue_multiplier: number
+          target_email: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_count_multiplier?: number
+          revenue_multiplier?: number
+          target_email: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_count_multiplier?: number
+          revenue_multiplier?: number
+          target_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       export_batches: {
         Row: {
           created_at: string
