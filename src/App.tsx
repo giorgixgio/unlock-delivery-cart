@@ -30,6 +30,7 @@ import Shop from "./pages/Shop";
 import ProductLanding from "./pages/ProductLanding";
 import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
+import AdminPackingList from "./pages/admin/AdminPackingList";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -122,6 +123,7 @@ const App = () => (
                       <Route path="landing-pages" element={<AdminLandingPages />} />
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
+                      <Route path="packing-list" element={<AdminPackingList />} />
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
                     </Route>
