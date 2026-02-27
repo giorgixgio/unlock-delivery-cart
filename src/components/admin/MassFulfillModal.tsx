@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [step, setStep] = useState<"upload" | "preview" | "applying" | "done">("upload");
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -607,7 +609,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
                       <Printer className="w-4 h-4" />
                       Print Stickers
                     </Button>
-                    <Button onClick={() => openPackingListWindow(fulfilledOrders)} variant="outline" className="gap-2">
+                    <Button onClick={() => openPackingListWindow(fulfilledOrders, navigate)} variant="outline" className="gap-2">
                       <Package className="w-4 h-4" />
                       Packing List
                     </Button>
