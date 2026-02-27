@@ -68,6 +68,7 @@ const AdminBatchDetail = () => {
   const [importResult, setImportResult] = useState<{ updated: number; skipped: number; overwritten?: number } | null>(null);
   const [importing, setImporting] = useState(false);
   const [singleQtyMode, setSingleQtyMode] = useState(false);
+  const [packedMap, setPackedMap] = useState<Record<string, boolean>>({}); // key: `${orderId}::${sku}`
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -420,17 +421,35 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
     RELEASED: "bg-emerald-100 text-emerald-800",
   };
 
-  // Group snapshot by SKU
-  const skuMap = new Map<string, { orders: string[]; totalQty: number; name: string }>();
+  // Group snapshot by SKU — include per-order detail
+  const skuMap = new Map<string, { orderDetails: { orderId: string; orderNum: string; qty: number }[]; totalQty: number; name: string }>();
   for (const item of snapshot) {
     const ord = orders.find((o) => o.id === item.order_id);
     const num = ord?.public_order_number || item.order_id.slice(0, 8);
-    if (!skuMap.has(item.sku)) skuMap.set(item.sku, { orders: [], totalQty: 0, name: item.product_name });
+    if (!skuMap.has(item.sku)) skuMap.set(item.sku, { orderDetails: [], totalQty: 0, name: item.product_name });
     const e = skuMap.get(item.sku)!;
-    e.orders.push(`#${num} ×${item.qty}`);
+    e.orderDetails.push({ orderId: item.order_id, orderNum: num, qty: item.qty });
     e.totalQty += item.qty;
   }
   const skuEntries = Array.from(skuMap.entries()).sort((a, b) => (parseInt(a[0]) || 99999) - (parseInt(b[0]) || 99999));
+
+  // Compute which orders are fully packed (all their SKUs checked)
+  const allSkusForOrder = new Map<string, string[]>();
+  for (const item of snapshot) {
+    if (!allSkusForOrder.has(item.order_id)) allSkusForOrder.set(item.order_id, []);
+    allSkusForOrder.get(item.order_id)!.push(item.sku);
+  }
+  const isOrderFullyPacked = (orderId: string) => {
+    const skus = allSkusForOrder.get(orderId) || [];
+    return skus.length > 0 && skus.every(sku => packedMap[`${orderId}::${sku}`]);
+  };
+
+  const togglePacked = (orderId: string, sku: string) => {
+    const key = `${orderId}::${sku}`;
+    setPackedMap(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const packedOrderCount = orders.filter(o => isOrderFullyPacked(o.id)).length;
 
   return (
     <div className="p-6 space-y-4">
@@ -680,8 +699,13 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
           </div>
         </TabsContent>
 
-        {/* Packing List Tab */}
         <TabsContent value="packing-list">
+          {packedOrderCount > 0 && (
+            <div className="mb-3 flex items-center gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="font-bold">{packedOrderCount}/{orders.length}</span> orders fully packed
+            </div>
+          )}
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
@@ -694,10 +718,34 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
               </thead>
               <tbody>
                 {skuEntries.map(([sku, entry]) => (
-                  <tr key={sku} className="border-t border-border">
+                  <tr key={sku} className="border-t border-border align-top">
                     <td className="px-4 py-3 font-extrabold text-lg">{sku}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{entry.name}</td>
-                    <td className="px-4 py-3 text-xs">{entry.orders.join(", ")}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {entry.orderDetails.map((od) => {
+                          const key = `${od.orderId}::${sku}`;
+                          const checked = !!packedMap[key];
+                          const fullyPacked = isOrderFullyPacked(od.orderId);
+                          return (
+                            <button
+                              key={od.orderId}
+                              onClick={() => togglePacked(od.orderId, sku)}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all ${
+                                fullyPacked
+                                  ? "bg-emerald-100 border-emerald-300 text-emerald-800 line-through opacity-60"
+                                  : checked
+                                  ? "bg-primary/10 border-primary/30 text-primary"
+                                  : "bg-muted/50 border-border text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {(checked || fullyPacked) && <CheckCircle2 className="w-3 h-3" />}
+                              #{od.orderNum} ×{od.qty}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-bold text-center text-lg">{entry.totalQty}</td>
                   </tr>
                 ))}
