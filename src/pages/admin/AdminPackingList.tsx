@@ -89,9 +89,10 @@ export default function AdminPackingList() {
         {batches.map((batch, bIdx) => {
           // Group by SKU within batch
           const skuMap = new Map<string, { orderNumber: string; qty: number }[]>();
+          const skuOrder: string[] = []; // track insertion order
           for (const order of batch) {
             for (const item of order.items) {
-              if (!skuMap.has(item.sku)) skuMap.set(item.sku, []);
+              if (!skuMap.has(item.sku)) { skuMap.set(item.sku, []); skuOrder.push(item.sku); }
               skuMap.get(item.sku)!.push({
                 orderNumber: order.publicOrderNumber,
                 qty: item.quantity,
@@ -106,6 +107,21 @@ export default function AdminPackingList() {
               totalQty: ords.reduce((s, o) => s + o.qty, 0),
             }))
             .sort((a, b) => (parseInt(a.sku) || 99999) - (parseInt(b.sku) || 99999));
+
+          const sortedSkuList = skuEntries.map(e => e.sku);
+
+          // For each order, find its LAST SKU in sorted order — that's where it completes
+          const orderCompletionSku = new Map<string, string>();
+          for (const order of batch) {
+            const orderSkus = order.items.map(i => i.sku);
+            let lastIdx = -1;
+            let lastSku = "";
+            for (const sku of orderSkus) {
+              const idx = sortedSkuList.indexOf(sku);
+              if (idx > lastIdx) { lastIdx = idx; lastSku = sku; }
+            }
+            if (lastSku) orderCompletionSku.set(order.publicOrderNumber, lastSku);
+          }
 
           return (
             <div key={bIdx} className={`mb-8 ${bIdx > 0 ? "break-before-page" : ""}`}>
@@ -130,24 +146,48 @@ export default function AdminPackingList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {skuEntries.map(entry => (
-                    <tr key={entry.sku} className="hover:bg-gray-50 border-b border-gray-200">
-                      <td className="px-3 py-2.5 align-middle">
-                        <span className="block text-lg sm:text-xl font-black text-gray-900">{entry.sku}</span>
-                        <span className="block text-[10px] text-gray-400">ყუთი {entry.sku}</span>
-                      </td>
-                      <td className="px-3 py-2.5 align-middle">
-                        <div className="flex flex-wrap gap-1">
-                          {entry.orders.map((o, i) => (
-                            <span key={i} className="inline-block bg-green-50 border border-green-200 rounded px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
-                              #{o.orderNumber} ×{o.qty}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-center font-bold text-base sm:text-lg align-middle">{entry.totalQty}</td>
-                    </tr>
-                  ))}
+                  {skuEntries.map(entry => {
+                    // Find orders that COMPLETE at this SKU
+                    const completingOrders = new Set<string>();
+                    for (const [orderNum, completeSku] of orderCompletionSku) {
+                      if (completeSku === entry.sku) completingOrders.add(orderNum);
+                    }
+
+                    return (
+                      <tr key={entry.sku} className="hover:bg-gray-50 border-b border-gray-200">
+                        <td className="px-3 py-2.5 align-middle">
+                          <span className="block text-lg sm:text-xl font-black text-gray-900">{entry.sku}</span>
+                          <span className="block text-[10px] text-gray-400">ყუთი {entry.sku}</span>
+                        </td>
+                        <td className="px-3 py-2.5 align-middle">
+                          <div className="flex flex-wrap gap-1">
+                            {entry.orders.map((o, i) => {
+                              const isComplete = completingOrders.has(o.orderNumber);
+                              return (
+                                <span
+                                  key={i}
+                                  className={`inline-block rounded px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold border ${
+                                    isComplete
+                                      ? "bg-yellow-100 border-yellow-400 text-yellow-900"
+                                      : "bg-green-50 border-green-200"
+                                  }`}
+                                  style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
+                                >
+                                  #{o.orderNumber} ×{o.qty}{isComplete && " ✅"}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          {completingOrders.size > 0 && (
+                            <div className="mt-1 text-[9px] sm:text-[10px] text-yellow-800 font-bold" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
+                              ⬆ გადაყარე: {Array.from(completingOrders).map(n => `#${n}`).join(", ")}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-bold text-base sm:text-lg align-middle">{entry.totalQty}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
