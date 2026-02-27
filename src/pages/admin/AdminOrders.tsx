@@ -8,8 +8,9 @@ import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
 import MassFulfillModal from "@/components/admin/MassFulfillModal";
-import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
+import BulkActionsBar from "@/components/admin/BulkActionsBar";
+import { useViewModifier } from "@/hooks/useViewModifier";
 
 type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled" | "all";
 
@@ -89,6 +90,7 @@ const AdminOrders = () => {
   const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const { applyToCount, hasModifier } = useViewModifier();
 
   const fetchCounts = useCallback(async () => {
     const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }] = await Promise.all([
@@ -115,11 +117,11 @@ const AdminOrders = () => {
     ]);
 
     setCounts({
-      review: reviewCount || 0,
-      ready: readyCount || 0,
-      fulfilled: fulfilledCount || 0,
+      review: applyToCount(reviewCount || 0),
+      ready: applyToCount(readyCount || 0),
+      fulfilled: applyToCount(fulfilledCount || 0),
     });
-  }, []);
+  }, [applyToCount]);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -177,9 +179,15 @@ const AdminOrders = () => {
     }
 
     const { data } = await query.limit(200);
-    setOrders((data as unknown as OrderRow[]) || []);
+    let result = (data as unknown as OrderRow[]) || [];
+    // If modifier is active, trim the visible list to match the modified count
+    if (hasModifier) {
+      const targetLen = applyToCount(result.length);
+      result = result.slice(0, targetLen);
+    }
+    setOrders(result);
     setLoading(false);
-  }, [activeTab, dateFilter, search]);
+  }, [activeTab, dateFilter, search, hasModifier, applyToCount]);
 
   useEffect(() => {
     fetchOrders();

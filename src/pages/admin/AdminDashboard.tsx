@@ -12,6 +12,7 @@ import {
   TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
 } from "lucide-react";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
+import { useViewModifier } from "@/hooks/useViewModifier";
 
 const DELIVERY_FEE = 6.5;
 
@@ -42,6 +43,7 @@ const AdminDashboard = () => {
   const [spinning, setSpinning] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("today");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { applyToRevenue, applyToCount } = useViewModifier();
 
   const fetchStats = useCallback(async () => {
     setSpinning(true);
@@ -214,13 +216,13 @@ const AdminDashboard = () => {
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({stats.totalOrders} orders · {stats.tbilisiCount} Tbilisi · {stats.regionCount} Region)</span>
+          Revenue <span className="text-foreground">({applyToCount(stats.totalOrders)} orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard icon={DollarSign} label="Total Revenue" value={gel(stats.totalRevenue)} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={ShoppingCart} label="AOV" value={gel(stats.aov)} accent="text-blue-500" size="lg" />
-          <MetricCard icon={Banknote} label="Product Revenue" value={gel(stats.productRevenue)} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label={`Delivery (${stats.totalOrders}×₾${DELIVERY_FEE})`} value={gel(stats.deliveryRevenue)} accent="text-sky-500" />
+          <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
+          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.totalOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.totalOrders) : 0)} accent="text-blue-500" size="lg" />
+          <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
+          <MetricCard icon={TruckIcon} label={`Delivery (${applyToCount(stats.totalOrders)}×₾${DELIVERY_FEE})`} value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
         </div>
       </section>
 
@@ -232,12 +234,12 @@ const AdminDashboard = () => {
           Order Pipeline
         </h2>
         <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          <MetricCard icon={AlertTriangle} label="Needs Review" value={stats.needsReview} accent="text-amber-500" highlight={stats.needsReview > 0} />
-          <MetricCard icon={AlertTriangle} label="On Hold" value={stats.onHold} accent="text-orange-500" />
-          <MetricCard icon={CheckCircle} label="Confirmed" value={stats.confirmed} accent="text-emerald-500" />
-          <MetricCard icon={Package} label="Fulfilled" value={stats.fulfilled} accent="text-emerald-600" />
-          <MetricCard icon={XCircle} label="Canceled" value={stats.canceled} accent="text-red-400" />
-          <MetricCard icon={Merge} label="Merged" value={stats.merged} accent="text-muted-foreground" />
+          <MetricCard icon={AlertTriangle} label="Needs Review" value={applyToCount(stats.needsReview)} accent="text-amber-500" highlight={stats.needsReview > 0} />
+          <MetricCard icon={AlertTriangle} label="On Hold" value={applyToCount(stats.onHold)} accent="text-orange-500" />
+          <MetricCard icon={CheckCircle} label="Confirmed" value={applyToCount(stats.confirmed)} accent="text-emerald-500" />
+          <MetricCard icon={Package} label="Fulfilled" value={applyToCount(stats.fulfilled)} accent="text-emerald-600" />
+          <MetricCard icon={XCircle} label="Canceled" value={applyToCount(stats.canceled)} accent="text-red-400" />
+          <MetricCard icon={Merge} label="Merged" value={applyToCount(stats.merged)} accent="text-muted-foreground" />
         </div>
       </section>
 
@@ -247,7 +249,7 @@ const AdminDashboard = () => {
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Shipping</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard icon={TruckIcon} label="Shipped" value={stats.shipped} accent="text-purple-500" size="lg" />
+          <MetricCard icon={TruckIcon} label="Shipped" value={applyToCount(stats.shipped)} accent="text-purple-500" size="lg" />
         </div>
       </section>
     </div>
