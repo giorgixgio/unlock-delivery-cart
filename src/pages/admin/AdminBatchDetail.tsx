@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 import QRCode from "qrcode";
 import notoRegularUrl from "@/assets/fonts/NotoSansGeorgian-Regular.ttf";
 import notoBoldUrl from "@/assets/fonts/NotoSansGeorgian-Bold.ttf";
@@ -351,14 +352,22 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
     setPrinting("labels");
     try {
       const pdfDoc = await PDFDocument.create();
+      pdfDoc.registerFontkit(fontkit);
 
-      // Load Georgian fonts
-      const [regBytes, boldBytes] = await Promise.all([
-        fetch(notoRegularUrl).then(r => r.arrayBuffer()),
-        fetch(notoBoldUrl).then(r => r.arrayBuffer()),
-      ]);
-      const font = await pdfDoc.embedFont(regBytes);
-      const fontBold = await pdfDoc.embedFont(boldBytes);
+      // Load Georgian fonts (with fallback to standard fonts)
+      let font, fontBold;
+      try {
+        const [regBytes, boldBytes] = await Promise.all([
+          fetch(notoRegularUrl).then(r => r.arrayBuffer()),
+          fetch(notoBoldUrl).then(r => r.arrayBuffer()),
+        ]);
+        font = await pdfDoc.embedFont(regBytes, { subset: true });
+        fontBold = await pdfDoc.embedFont(boldBytes, { subset: true });
+      } catch (fontErr) {
+        console.warn("Georgian font embedding failed, falling back to Helvetica:", fontErr);
+        font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      }
       const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
       const fontMonoBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
 
