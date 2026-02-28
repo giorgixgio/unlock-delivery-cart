@@ -62,6 +62,7 @@ export default {
           DEFAULT: "hsl(var(--deal))",
           foreground: "hsl(var(--deal-foreground))",
         },
+        "dark-surface": "hsl(var(--dark-surface))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
