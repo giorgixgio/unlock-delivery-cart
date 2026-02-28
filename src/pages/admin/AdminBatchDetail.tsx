@@ -493,6 +493,89 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
     setPrinting(null);
   };
 
+  /* ─── Picking Stickers PDF (4×3 inch, one per unit, sorted by SKU) ─── */
+  const handlePickingStickers = async () => {
+    if (!id) return;
+    setPrinting("picking");
+    try {
+      const pdfDoc = await PDFDocument.create();
+      pdfDoc.registerFontkit(fontkit);
+
+      let font, fontBold;
+      try {
+        const [regBytes, boldBytes] = await Promise.all([
+          fetch(notoRegularUrl).then(r => r.arrayBuffer()),
+          fetch(notoBoldUrl).then(r => r.arrayBuffer()),
+        ]);
+        font = await pdfDoc.embedFont(regBytes, { subset: true });
+        fontBold = await pdfDoc.embedFont(boldBytes, { subset: true });
+      } catch {
+        font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      }
+
+      const W = 4 * 72; // 288pt
+      const H = 3 * 72; // 216pt
+      const M = 12;
+
+      // Build sticker entries: one per unit, sorted by SKU
+      const entries: { sku: string; orderNum: string; customerName: string }[] = [];
+      for (const item of snapshot) {
+        const ord = orders.find(o => o.id === item.order_id);
+        if (!ord) continue;
+        for (let u = 0; u < item.qty; u++) {
+          entries.push({
+            sku: item.sku,
+            orderNum: ord.public_order_number,
+            customerName: ord.customer_name,
+          });
+        }
+      }
+      entries.sort((a, b) => (parseInt(a.sku) || 99999) - (parseInt(b.sku) || 99999));
+
+      const total = entries.length;
+
+      for (let i = 0; i < entries.length; i++) {
+        const e = entries[i];
+        const page = pdfDoc.addPage([W, H]);
+
+        // ── Top line: seq / total ──
+        const seqText = `${i + 1} / ${total}`;
+        page.drawText(seqText, { x: W - M - font.widthOfTextAtSize(seqText, 8), y: H - M - 8, font, size: 8, color: rgb(0.5, 0.5, 0.5) });
+
+        // ── SKU — huge, centered, top area ──
+        const skuSize = 56;
+        const skuW = fontBold.widthOfTextAtSize(e.sku, skuSize);
+        page.drawText(e.sku, { x: (W - skuW) / 2, y: H - 80, font: fontBold, size: skuSize, color: rgb(0, 0, 0) });
+
+        // ── Divider ──
+        const divY = H - 95;
+        page.drawLine({ start: { x: M, y: divY }, end: { x: W - M, y: divY }, thickness: 2, color: rgb(0, 0, 0) });
+
+        // ── Order number — large ──
+        const orderText = `#${e.orderNum}`;
+        const orderSize = 36;
+        const orderW = fontBold.widthOfTextAtSize(orderText, orderSize);
+        page.drawText(orderText, { x: (W - orderW) / 2, y: divY - 45, font: fontBold, size: orderSize, color: rgb(0, 0, 0) });
+
+        // ── Customer name — medium ──
+        const nameSize = 16;
+        const nameW = font.widthOfTextAtSize(e.customerName, nameSize);
+        const nameX = Math.max(M, (W - nameW) / 2);
+        page.drawText(e.customerName, { x: nameX, y: M + 10, font, size: nameSize, color: rgb(0.2, 0.2, 0.2) });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `picking_stickers_${id.slice(0, 8)}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Picking stickers downloaded", description: `${total} sticker(s) generated` });
+    } catch (e: any) { toast({ title: "Error generating PDF", description: e.message, variant: "destructive" }); }
+    setPrinting(null);
+  };
+
   /* ─── Warnings ─── */
   const getWarnings = () => {
     if (!batch) return [];
@@ -703,6 +786,10 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
             <Button className="w-full gap-2" variant="outline" onClick={handleDownloadLabels} disabled={printing === "labels"}>
               {printing === "labels" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
               Download Shipping Labels PDF
+            </Button>
+            <Button className="w-full gap-2" variant="outline" onClick={handlePickingStickers} disabled={printing === "picking"}>
+              {printing === "picking" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              Download Picking Stickers PDF
             </Button>
             <Button className="w-full gap-2" variant="outline" onClick={handleCourierCSV} disabled={exporting || batch.status === "OPEN"}>
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
