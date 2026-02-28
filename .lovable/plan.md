@@ -1,58 +1,47 @@
 
-## Fix: Admin Orders Visibility Gaps and Checkout Consistency
 
-### Investigation Results
+## Create "OTHER" Batch for 14 R1 Orders
 
-After checking the full database:
-- All 161 orders exist and are accounted for
-- Order sequence is at 100283 -- no orders were created or lost after that
-- No failed ORDER_CREATE events today
-- The Meta Pixel "sale" is most likely order 100283 itself (confirmed, visible in "Ready" tab, not "Needs Review")
-- The dashboard shows 20 live orders today (1 confirmed + 19 shipped), not 2 -- the "2" you saw might be from a specific card like "Needs Review" or "New"
+### Step 1: Add `name` column to `batches` table
 
-### Real Bugs Found (would cause invisible orders)
+Run a migration to add an optional `name` text column to the `batches` table so batches can be labeled (e.g., "OTHER").
 
-**Bug 1: `pending_bump` orders are invisible in admin**
-The CODFormModal (landing page checkout) creates orders with `status: "pending_bump"` when bump offers are enabled. The admin Orders page has 5 tabs: Review, Ready, Fulfilled, Merged, Canceled -- NONE of them match `pending_bump`. If a customer abandons the bump modal, that order becomes a ghost: it exists in the DB, the Pixel fires, but you'll never see it in admin.
+```sql
+ALTER TABLE public.batches ADD COLUMN name text;
+```
 
-**Bug 2: CODFormModal bypasses stock checks**
-The landing page COD form creates orders with a raw Supabase insert, completely skipping the `createOrder()` function and its server-side OOS (out-of-stock) check. A customer could order an out-of-stock product from a landing page.
+### Step 2: Create the batch with all 14 orders
 
-**Bug 3: No "All Orders" view**
-There's no way to see every order regardless of status. If any order has an unexpected status, it vanishes from the UI.
+Insert a new batch record with `name = 'OTHER'`, then link all 14 orders via `batch_orders`, create the item snapshot from `order_items`, and update `orders.batch_id`.
 
-### Changes
+The 14 orders (all R1 re-shipments, currently `shipped`):
 
-**1. Add `pending_bump` to the Review tab filter** (`src/pages/admin/AdminOrders.tsx`)
-- Include `pending_bump` in the review tab's OR filter so these orders appear in "Needs Review"
-- Include `pending_bump` in the review count query
-- This ensures bump-abandoned orders are always visible
+| Order | Customer | Tracking |
+|-------|----------|----------|
+| 100216-R1 | ბაბუში | 105312303 |
+| 100220-R1 | იოანე | 105312306 |
+| 100221-R1 | უჩა | 105312288 |
+| 100238-R1 | Niko | 105312323 |
+| 100239-R1 | თამარ იმნაიშვილი | 105312314 |
+| 100242-R1 | რეზო ჯინჭარაძე | 105312304 |
+| 100243-R1 | Dimitri | 105312324 |
+| 100245-R1 | ხატია | 105312305 |
+| 100251-R1 | Giga | 105312328 |
+| 100270-R1 | ლაშა | 105312340 |
+| 100271-R1 | გალუსტ | 105312338 |
+| 100275-R1 | Aleksandre | 105312330 |
+| 100276-R1 | Aleksandre | 105312312 |
+| 100279-R1 | მიხეილ ქვარიანი | 105312321 |
 
-**2. Add an "All" tab** (`src/pages/admin/AdminOrders.tsx`)
-- Add a 6th tab "All" that shows every order (except merged) sorted by date
-- This acts as a safety net -- no order can ever be invisible again
+### Step 3: Update UI to display batch name
 
-**3. Refactor CODFormModal to use shared `createOrder()`** (`src/components/landing/CODFormModal.tsx`)
-- Replace the inline Supabase insert with a call to `createOrder()` from `orderService.ts`
-- This adds stock checks, consistent error logging, and the same code path as the main checkout
-- Handle `pending_bump` status by setting it after order creation if bump is enabled
-
-**4. Fix dashboard "Needs Review" to match Orders page logic** (`src/pages/admin/AdminDashboard.tsx`)
-- Include `pending_bump` in the needs-review filter
-- This keeps dashboard counts consistent with the orders page
+- **AdminBatches.tsx**: Show the `name` column in the batch list table (next to batch ID)
+- **AdminBatchDetail.tsx**: Show the batch name in the header
+- **batchService.ts**: Update `createBatchFromOrderIds` to accept an optional `name` parameter
 
 ### Technical Details
 
-Review tab filter change (AdminOrders.tsx):
-```text
-Current: .or("status.in.(new,on_hold),is_confirmed.eq.false,review_required.eq.true")
-New:     .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true")
-```
+- Migration adds nullable `name` column (no breaking change)
+- Batch will be created via direct SQL insert + the existing `createBatchFromOrderIds` pattern
+- The batch name will display as a bold label in the list, falling back to the truncated UUID if no name is set
 
-New "All" tab query:
-```text
-.neq("status", "merged")
-.order("created_at", { ascending: false })
-```
-
-CODFormModal refactor: import and call `createOrder()` instead of raw insert, then update status to `pending_bump` if bump is enabled.
