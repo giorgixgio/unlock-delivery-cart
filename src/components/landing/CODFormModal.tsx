@@ -228,15 +228,6 @@ const CODFormModal = ({
               />
             </div>
           </div>
-          <div>
-            <Label className="text-sm font-bold text-foreground">კომენტარი (არასავალდებულო)</Label>
-            <Input
-              placeholder="დამატებითი ინფორმაცია..."
-              value={form.comment}
-              onChange={(e) => handleChange("comment", e.target.value)}
-              className="mt-1 h-12 text-base rounded-lg"
-            />
-          </div>
         </div>
 
         {errors._form && (
