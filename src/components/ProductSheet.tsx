@@ -384,7 +384,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                   </button>
                 ) : (
                   <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
-                    {showThresholdUI ? "კალათაში — გადახდა მიტანისას" : "დამატება კალათაში"}
+                    შეუკვეთე 1 კლიკით
                   </Button>
                 )}
               </div>
