@@ -24,6 +24,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
     addItem(product);
     trackHeroAddToCart(product.id);
     setShowFloat(true);
+    setSheetOpen(true);
     setTimeout(() => setShowFloat(false), 600);
   };
 
@@ -115,7 +116,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
               {quantity === 0 ? (
                 <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
                   <Plus className="w-4 h-4 mr-1" />
-                  კალათაში
+                  შეკვეთა
                 </Button>
               ) : (
                 <div className="flex items-center gap-2 w-full justify-between">
