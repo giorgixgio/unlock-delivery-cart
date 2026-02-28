@@ -1,47 +1,38 @@
 
 
-## Create "OTHER" Batch for 14 R1 Orders
+## Create Batch for Last 15 Confirmed Orders
 
-### Step 1: Add `name` column to `batches` table
+### What will happen
 
-Run a migration to add an optional `name` text column to the `batches` table so batches can be labeled (e.g., "OTHER").
+Create a new batch containing these 15 confirmed orders (newest first):
 
-```sql
-ALTER TABLE public.batches ADD COLUMN name text;
-```
+| # | Order | Customer |
+|---|-------|----------|
+| 1 | 100364 | Nona |
+| 2 | 100363 | როენა |
+| 3 | 100362 | nino |
+| 4 | 100361 | როენა |
+| 5 | 100360 | გიორგი |
+| 6 | 100359 | გულნარა შენგელია |
+| 7 | 100358 | Vano |
+| 8 | 100357 | ინგა |
+| 9 | 100356 | ნანიკო |
+| 10 | 100355 | ივანე |
+| 11 | 100354 | თამთა ხარაბაძე |
+| 12 | 100353 | ლედი |
+| 13 | 100352 | Ხარება |
+| 14 | 100351 | მედეა |
+| 15 | 100350 | რომანი |
 
-### Step 2: Create the batch with all 14 orders
+All are `confirmed`, `is_confirmed = true`, no batch assigned, no tracking yet.
 
-Insert a new batch record with `name = 'OTHER'`, then link all 14 orders via `batch_orders`, create the item snapshot from `order_items`, and update `orders.batch_id`.
+### Technical Steps
 
-The 14 orders (all R1 re-shipments, currently `shipped`):
+1. Insert a new row in `batches` table (status: OPEN)
+2. Insert 15 rows in `batch_orders` linking each order to the batch
+3. Snapshot all order items into `batch_order_items_snapshot`
+4. Update `orders.batch_id` for all 15 orders
+5. Log a `BATCH_CREATED` event in `batch_events`
 
-| Order | Customer | Tracking |
-|-------|----------|----------|
-| 100216-R1 | ბაბუში | 105312303 |
-| 100220-R1 | იოანე | 105312306 |
-| 100221-R1 | უჩა | 105312288 |
-| 100238-R1 | Niko | 105312323 |
-| 100239-R1 | თამარ იმნაიშვილი | 105312314 |
-| 100242-R1 | რეზო ჯინჭარაძე | 105312304 |
-| 100243-R1 | Dimitri | 105312324 |
-| 100245-R1 | ხატია | 105312305 |
-| 100251-R1 | Giga | 105312328 |
-| 100270-R1 | ლაშა | 105312340 |
-| 100271-R1 | გალუსტ | 105312338 |
-| 100275-R1 | Aleksandre | 105312330 |
-| 100276-R1 | Aleksandre | 105312312 |
-| 100279-R1 | მიხეილ ქვარიანი | 105312321 |
-
-### Step 3: Update UI to display batch name
-
-- **AdminBatches.tsx**: Show the `name` column in the batch list table (next to batch ID)
-- **AdminBatchDetail.tsx**: Show the batch name in the header
-- **batchService.ts**: Update `createBatchFromOrderIds` to accept an optional `name` parameter
-
-### Technical Details
-
-- Migration adds nullable `name` column (no breaking change)
-- Batch will be created via direct SQL insert + the existing `createBatchFromOrderIds` pattern
-- The batch name will display as a bold label in the list, falling back to the truncated UUID if no name is set
+All done via direct SQL inserts (no code changes needed).
 
