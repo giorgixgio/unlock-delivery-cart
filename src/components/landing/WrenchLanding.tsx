@@ -117,7 +117,7 @@ const WrenchLanding = ({ product, config, landingSlug, landingVariant }: WrenchL
         {/* ── Header ── */}
         <header className="sticky top-0 z-40 bg-dark-surface border-b border-border/30 shadow-md">
           <div className="container max-w-2xl mx-auto px-4 py-3 text-center">
-            <span className="text-lg font-extrabold text-white tracking-widest">TETRI.SHOP</span>
+            <span className="text-lg font-extrabold text-white tracking-widest">BIGMART</span>
           </div>
         </header>
 
