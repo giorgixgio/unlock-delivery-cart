@@ -517,8 +517,9 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
         fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       }
 
-      const W = 4 * 72; // 288pt
-      const H = 3 * 72; // 216pt
+      // 3 × 4 inches in points (portrait — matches physical label orientation)
+      const W = 3 * 72; // 216pt
+      const H = 4 * 72; // 288pt
       const M = 12;
 
       // Build sticker entries: one per unit, sorted by SKU
@@ -546,26 +547,26 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
         const seqText = `${i + 1} / ${total}`;
         page.drawText(seqText, { x: W - M - font.widthOfTextAtSize(seqText, 8), y: H - M - 8, font, size: 8, color: rgb(0.5, 0.5, 0.5) });
 
-        // ── SKU — huge, centered, top area ──
-        const skuSize = 56;
+        // ── SKU — huge, centered, upper area ──
+        const skuSize = 52;
         const skuW = fontBold.widthOfTextAtSize(e.sku, skuSize);
-        page.drawText(e.sku, { x: (W - skuW) / 2, y: H - 80, font: fontBold, size: skuSize, color: rgb(0, 0, 0) });
+        page.drawText(e.sku, { x: (W - skuW) / 2, y: H - 90, font: fontBold, size: skuSize, color: rgb(0, 0, 0) });
 
         // ── Divider ──
-        const divY = H - 95;
+        const divY = H - 110;
         page.drawLine({ start: { x: M, y: divY }, end: { x: W - M, y: divY }, thickness: 2, color: rgb(0, 0, 0) });
 
-        // ── Order number — large ──
+        // ── Order number — large, centered ──
         const orderText = `#${e.orderNum}`;
         const orderSize = 36;
         const orderW = fontBold.widthOfTextAtSize(orderText, orderSize);
-        page.drawText(orderText, { x: (W - orderW) / 2, y: divY - 45, font: fontBold, size: orderSize, color: rgb(0, 0, 0) });
+        page.drawText(orderText, { x: (W - orderW) / 2, y: divY - 60, font: fontBold, size: orderSize, color: rgb(0, 0, 0) });
 
-        // ── Customer name — medium ──
-        const nameSize = 16;
+        // ── Customer name — medium, centered at bottom ──
+        const nameSize = 14;
         const nameW = font.widthOfTextAtSize(e.customerName, nameSize);
         const nameX = Math.max(M, (W - nameW) / 2);
-        page.drawText(e.customerName, { x: nameX, y: M + 10, font, size: nameSize, color: rgb(0.2, 0.2, 0.2) });
+        page.drawText(e.customerName, { x: nameX, y: M + 14, font, size: nameSize, color: rgb(0.2, 0.2, 0.2) });
       }
 
       const pdfBytes = await pdfDoc.save();
