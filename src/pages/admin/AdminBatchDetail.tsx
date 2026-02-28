@@ -342,7 +342,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  /* ─── Shipping Labels PDF ─── */
+  /* ─── Shipping Labels PDF (4×3 inch, one sticker per SKU line) ─── */
   const handleDownloadLabels = async () => {
     if (!id) return;
     setPrinting("labels");
@@ -350,32 +350,101 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
       const pdfDoc = await PDFDocument.create();
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const W = 297.64; const H = 419.53;
+      const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
+      const fontMonoBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
+
+      // 4 × 3 inches in points (1 inch = 72 pt)
+      const W = 4 * 72; // 288
+      const H = 3 * 72; // 216
+      const M = 10; // margin
+
+      // Build one sticker per SKU line item (same logic as HTML stickers)
+      const stickers: { seq: number; ord: OrderInfo; sku: string; productName: string }[] = [];
+      let seq = 1;
       const sortedOrders = [...orders].sort((a, b) => a.public_order_number.localeCompare(b.public_order_number));
       for (const ord of sortedOrders) {
-        const page = pdfDoc.addPage([W, H]);
-        let y = H - 30;
-        page.drawText(ord.tracking_number || "N/A", { x: 15, y, font: fontBold, size: 16, color: rgb(0, 0, 0) });
-        y -= 25;
-        page.drawText(`Order: #${ord.public_order_number}`, { x: 15, y, font, size: 10, color: rgb(0.3, 0.3, 0.3) });
-        y -= 20;
-        page.drawLine({ start: { x: 15, y }, end: { x: W - 15, y }, thickness: 1, color: rgb(0.7, 0.7, 0.7) });
-        y -= 18;
-        page.drawText(ord.customer_name, { x: 15, y, font: fontBold, size: 12, color: rgb(0, 0, 0) });
-        y -= 16;
-        page.drawText(ord.customer_phone, { x: 15, y, font, size: 10, color: rgb(0.2, 0.2, 0.2) });
-        y -= 18;
-        const address = `${ord.address_line1}, ${ord.city}`;
-        const words = address.split(" ");
+        const items = snapshot.filter(s => s.order_id === ord.id);
+        for (const item of items) {
+          stickers.push({ seq: seq++, ord, sku: item.sku, productName: item.product_name });
+        }
+      }
+
+      const totalPages = stickers.length;
+      const today = new Date().toLocaleDateString("ka-GE");
+
+      // Helper: draw text with word-wrap, returns new y
+      const drawWrapped = (page: any, text: string, x: number, y: number, maxW: number, f: any, size: number, color = rgb(0, 0, 0)): number => {
+        const safeText = text.replace(/[^\x20-\x7E]/g, "?"); // fallback non-latin
+        const words = safeText.split(" ");
         let line = "";
         for (const word of words) {
           const test = line ? line + " " + word : word;
-          if (font.widthOfTextAtSize(test, 10) > W - 30) {
-            page.drawText(line, { x: 15, y, font, size: 10, color: rgb(0.1, 0.1, 0.1) }); y -= 14; line = word;
+          if (f.widthOfTextAtSize(test, size) > maxW) {
+            if (line) { page.drawText(line, { x, y, font: f, size, color }); y -= size + 2; }
+            line = word;
           } else { line = test; }
         }
-        if (line) page.drawText(line, { x: 15, y, font, size: 10, color: rgb(0.1, 0.1, 0.1) });
+        if (line) { page.drawText(line, { x, y, font: f, size, color }); y -= size + 2; }
+        return y;
+      };
+
+      for (const s of stickers) {
+        const page = pdfDoc.addPage([W, H]);
+        let y = H - M - 8;
+
+        // Top line: seq / total + date
+        page.drawText(`#${s.seq} / ${totalPages}`, { x: M, y, font, size: 7, color: rgb(0.4, 0.4, 0.4) });
+        const dateW = font.widthOfTextAtSize(today, 7);
+        page.drawText(today, { x: W - M - dateW, y, font, size: 7, color: rgb(0.4, 0.4, 0.4) });
+        y -= 10;
+        page.drawLine({ start: { x: M, y: y + 2 }, end: { x: W - M, y: y + 2 }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+
+        // Sender
+        y -= 2;
+        page.drawText("Sender: BIGMART", { x: M, y, font: fontBold, size: 8, color: rgb(0.2, 0.2, 0.2) });
+        y -= 12;
+
+        // Recipient
+        const recipName = s.ord.customer_name.replace(/[^\x20-\x7E]/g, "?");
+        page.drawText(recipName, { x: M, y, font: fontBold, size: 10, color: rgb(0, 0, 0) });
+        y -= 13;
+
+        const addr = (s.ord.normalized_address || s.ord.address_line1 || "").replace(/[^\x20-\x7E]/g, "?");
+        y = drawWrapped(page, addr, M, y, W - 2 * M, font, 8, rgb(0.1, 0.1, 0.1));
+
+        const city = (s.ord.normalized_city || s.ord.city || "").replace(/[^\x20-\x7E]/g, "?");
+        page.drawText(city, { x: M, y, font, size: 8, color: rgb(0.1, 0.1, 0.1) });
+        y -= 11;
+
+        page.drawText(s.ord.customer_phone, { x: M, y, font, size: 8, color: rgb(0.1, 0.1, 0.1) });
+        y -= 14;
+
+        // Divider
+        page.drawLine({ start: { x: M, y: y + 4 }, end: { x: W - M, y: y + 4 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
+
+        // Tracking section
+        page.drawText("TRACKING", { x: M, y, font, size: 6, color: rgb(0.6, 0.6, 0.6) });
+        y -= 14;
+        const trackText = s.ord.tracking_number || "N/A";
+        page.drawText(trackText, { x: M, y, font: fontMonoBold, size: 12, color: rgb(0, 0, 0) });
+        y -= 14;
+        page.drawText("Qty: 1", { x: M, y, font, size: 7, color: rgb(0.35, 0.35, 0.35) });
+        y -= 4;
+
+        // Order number (right-aligned near tracking)
+        const ordText = `#${s.ord.public_order_number}`;
+        const ordW = fontMono.widthOfTextAtSize(ordText, 8);
+        page.drawText(ordText, { x: W - M - ordW, y: y + 18, font: fontMono, size: 8, color: rgb(0.3, 0.3, 0.3) });
+
+        // SKU at bottom — large, bold, centered
+        const skuSize = 20;
+        const skuW = fontBold.widthOfTextAtSize(s.sku, skuSize);
+        const skuX = (W - skuW) / 2;
+        const skuY = M + 6;
+        page.drawLine({ start: { x: M, y: skuY + skuSize + 4 }, end: { x: W - M, y: skuY + skuSize + 4 }, thickness: 2, color: rgb(0, 0, 0) });
+        page.drawText(s.sku, { x: skuX, y: skuY, font: fontBold, size: skuSize, color: rgb(0, 0, 0) });
       }
+
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
@@ -383,7 +452,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
       a.href = url; a.download = `labels_${id.slice(0, 8)}.pdf`; a.click();
       URL.revokeObjectURL(url);
       await logShippingLabelsGenerated(id, actor);
-      toast({ title: "Shipping labels downloaded" });
+      toast({ title: "Shipping labels downloaded", description: `${totalPages} sticker(s) generated` });
       await load();
     } catch (e: any) { toast({ title: "Error generating PDF", description: e.message, variant: "destructive" }); }
     setPrinting(null);
