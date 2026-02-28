@@ -177,6 +177,7 @@ export type Database = {
           exported_at: string | null
           exported_by: string | null
           id: string
+          name: string | null
           packing_list_print_count: number
           packing_list_printed_at: string | null
           packing_list_printed_by: string | null
@@ -194,6 +195,7 @@ export type Database = {
           exported_at?: string | null
           exported_by?: string | null
           id?: string
+          name?: string | null
           packing_list_print_count?: number
           packing_list_printed_at?: string | null
           packing_list_printed_by?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           exported_at?: string | null
           exported_by?: string | null
           id?: string
+          name?: string | null
           packing_list_print_count?: number
           packing_list_printed_at?: string | null
           packing_list_printed_by?: string | null
