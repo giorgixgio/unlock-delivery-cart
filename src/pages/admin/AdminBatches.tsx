@@ -121,7 +121,9 @@ const AdminBatches = () => {
                   onClick={() => navigate(`/admin/batches/${b.id}`)}
                   className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-bold text-primary">{b.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-bold text-primary">
+                    {(b as any).name ? <>{(b as any).name} <span className="text-muted-foreground font-normal text-xs">({b.id.slice(0, 8)})</span></> : b.id.slice(0, 8)}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(b.created_at)}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusColor[b.status] || "bg-muted"}`}>

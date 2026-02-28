@@ -650,7 +650,9 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-xl font-extrabold text-foreground">Batch {batch.id.slice(0, 8)}</h1>
+          <h1 className="text-xl font-extrabold text-foreground">
+            {(batch as any).name ? <>{(batch as any).name} <span className="text-muted-foreground font-normal text-base">({batch.id.slice(0, 8)})</span></> : <>Batch {batch.id.slice(0, 8)}</>}
+          </h1>
           <p className="text-xs text-muted-foreground">Created {fmtDate(batch.created_at)} by {batch.created_by}</p>
         </div>
         <span className={`ml-auto px-3 py-1.5 rounded-full text-xs font-bold ${statusColor[batch.status] || "bg-muted"}`}>

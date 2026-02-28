@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 /* ─── Types ─── */
 export interface BatchRow {
   id: string;
+  name?: string | null;
   created_at: string;
   created_by: string | null;
   status: string;
@@ -246,13 +247,15 @@ export async function createBatch(actorEmail: string) {
 
 /* ─── Create Batch from specific order IDs (auto-generated after mass fulfill) ─── */
 
-export async function createBatchFromOrderIds(orderIds: string[], actorEmail: string) {
+export async function createBatchFromOrderIds(orderIds: string[], actorEmail: string, name?: string) {
   if (orderIds.length === 0) throw new Error("No order IDs provided.");
 
   // Create batch
+  const insertPayload: Record<string, unknown> = { created_by: actorEmail };
+  if (name) insertPayload.name = name;
   const { data: batch, error: bErr } = await supabase
     .from("batches")
-    .insert({ created_by: actorEmail })
+    .insert(insertPayload)
     .select()
     .single();
   if (bErr) throw bErr;
