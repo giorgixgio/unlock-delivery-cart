@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Cart from "@/pages/Cart";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import TailoredLanding from "@/components/landing/TailoredLanding";
+import WrenchLanding from "@/components/landing/WrenchLanding";
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -49,6 +50,19 @@ const ProductLanding = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-lg text-muted-foreground">პროდუქტი ვერ მოიძებნა</p>
       </div>
+    );
+  }
+
+  // Custom wrench landing
+  if (landingConfig && landingConfig.landing_variant === "custom-wrench") {
+    return (
+      <WrenchLanding
+        product={product}
+        config={landingConfig.landing_config || {}}
+        landingSlug={landingSlug || slug || ""}
+        landingVariant={landingConfig.landing_variant}
+        useCodModal={landingConfig.landing_use_cod_modal}
+      />
     );
   }
 
