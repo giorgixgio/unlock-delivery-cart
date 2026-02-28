@@ -20,6 +20,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import QRCode from "qrcode";
+import notoRegularUrl from "@/assets/fonts/NotoSansGeorgian-Regular.ttf";
+import notoBoldUrl from "@/assets/fonts/NotoSansGeorgian-Bold.ttf";
 
 interface OrderInfo {
   id: string;
@@ -342,14 +345,20 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  /* ─── Shipping Labels PDF (4×3 inch, one sticker per SKU line) ─── */
+  /* ─── Shipping Labels PDF (4×3 inch, one sticker per SKU line, Georgian + QR) ─── */
   const handleDownloadLabels = async () => {
     if (!id) return;
     setPrinting("labels");
     try {
       const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      // Load Georgian fonts
+      const [regBytes, boldBytes] = await Promise.all([
+        fetch(notoRegularUrl).then(r => r.arrayBuffer()),
+        fetch(notoBoldUrl).then(r => r.arrayBuffer()),
+      ]);
+      const font = await pdfDoc.embedFont(regBytes);
+      const fontBold = await pdfDoc.embedFont(boldBytes);
       const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
       const fontMonoBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
 
@@ -358,7 +367,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
       const H = 3 * 72; // 216
       const M = 10; // margin
 
-      // Build one sticker per SKU line item (same logic as HTML stickers)
+      // Build one sticker per SKU line item
       const stickers: { seq: number; ord: OrderInfo; sku: string; productName: string }[] = [];
       let seq = 1;
       const sortedOrders = [...orders].sort((a, b) => a.public_order_number.localeCompare(b.public_order_number));
@@ -374,8 +383,7 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
 
       // Helper: draw text with word-wrap, returns new y
       const drawWrapped = (page: any, text: string, x: number, y: number, maxW: number, f: any, size: number, color = rgb(0, 0, 0)): number => {
-        const safeText = text.replace(/[^\x20-\x7E]/g, "?"); // fallback non-latin
-        const words = safeText.split(" ");
+        const words = text.split(" ");
         let line = "";
         for (const word of words) {
           const test = line ? line + " " + word : word;
@@ -401,18 +409,17 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
 
         // Sender
         y -= 2;
-        page.drawText("Sender: BIGMART", { x: M, y, font: fontBold, size: 8, color: rgb(0.2, 0.2, 0.2) });
+        page.drawText("გამგზ: BIGMART", { x: M, y, font: fontBold, size: 8, color: rgb(0.2, 0.2, 0.2) });
         y -= 12;
 
         // Recipient
-        const recipName = s.ord.customer_name.replace(/[^\x20-\x7E]/g, "?");
-        page.drawText(recipName, { x: M, y, font: fontBold, size: 10, color: rgb(0, 0, 0) });
+        page.drawText(s.ord.customer_name, { x: M, y, font: fontBold, size: 10, color: rgb(0, 0, 0) });
         y -= 13;
 
-        const addr = (s.ord.normalized_address || s.ord.address_line1 || "").replace(/[^\x20-\x7E]/g, "?");
+        const addr = s.ord.normalized_address || s.ord.address_line1 || "";
         y = drawWrapped(page, addr, M, y, W - 2 * M, font, 8, rgb(0.1, 0.1, 0.1));
 
-        const city = (s.ord.normalized_city || s.ord.city || "").replace(/[^\x20-\x7E]/g, "?");
+        const city = s.ord.normalized_city || s.ord.city || "";
         page.drawText(city, { x: M, y, font, size: 8, color: rgb(0.1, 0.1, 0.1) });
         y -= 11;
 
@@ -422,19 +429,38 @@ td{padding:8px 10px;border-bottom:1px solid #eee}@media print{.slip{border:none;
         // Divider
         page.drawLine({ start: { x: M, y: y + 4 }, end: { x: W - M, y: y + 4 }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
 
-        // Tracking section
-        page.drawText("TRACKING", { x: M, y, font, size: 6, color: rgb(0.6, 0.6, 0.6) });
+        // ── QR Code + Tracking side by side ──
+        const qrData = [
+          "TRACK:" + (s.ord.tracking_number || ""),
+          "SKU:" + s.sku,
+          "ORD:" + s.ord.public_order_number,
+          "ADDR:" + addr + ", " + city,
+          "NAME:" + s.ord.customer_name,
+          "SENDER:BIGMART",
+          "QTY:1",
+        ].join("|");
+
+        const qrSize = 70; // points
+        try {
+          const qrDataUrl = await QRCode.toDataURL(qrData, { width: 200, margin: 0, errorCorrectionLevel: "L" });
+          const qrImageBytes = Uint8Array.from(atob(qrDataUrl.split(",")[1]), c => c.charCodeAt(0));
+          const qrImage = await pdfDoc.embedPng(qrImageBytes);
+          page.drawImage(qrImage, { x: M, y: y - qrSize + 4, width: qrSize, height: qrSize });
+        } catch { /* QR generation failed, skip */ }
+
+        // Tracking info (right of QR)
+        const txStart = M + qrSize + 8;
+        page.drawText("თრექინგი", { x: txStart, y, font, size: 6, color: rgb(0.6, 0.6, 0.6) });
         y -= 14;
         const trackText = s.ord.tracking_number || "N/A";
-        page.drawText(trackText, { x: M, y, font: fontMonoBold, size: 12, color: rgb(0, 0, 0) });
-        y -= 14;
-        page.drawText("Qty: 1", { x: M, y, font, size: 7, color: rgb(0.35, 0.35, 0.35) });
-        y -= 4;
+        page.drawText(trackText, { x: txStart, y, font: fontMonoBold, size: 11, color: rgb(0, 0, 0) });
+        y -= 12;
+        page.drawText("რაოდენობა: 1", { x: txStart, y, font, size: 7, color: rgb(0.35, 0.35, 0.35) });
 
-        // Order number (right-aligned near tracking)
+        // Order number
         const ordText = `#${s.ord.public_order_number}`;
         const ordW = fontMono.widthOfTextAtSize(ordText, 8);
-        page.drawText(ordText, { x: W - M - ordW, y: y + 18, font: fontMono, size: 8, color: rgb(0.3, 0.3, 0.3) });
+        page.drawText(ordText, { x: W - M - ordW, y, font: fontMono, size: 8, color: rgb(0.3, 0.3, 0.3) });
 
         // SKU at bottom — large, bold, centered
         const skuSize = 20;
