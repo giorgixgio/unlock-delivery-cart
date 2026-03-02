@@ -2,15 +2,19 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
+import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { toast } from "sonner";
 
 interface CheckoutGateContextType {
   handleCheckoutIntent: (source: string) => void;
+  /** Add product to cart and immediately open threshold sheet if below minimum */
+  addAndGate: (product: Product, source: string) => void;
 }
 
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked } = useCart();
+  const { isUnlocked, addItem, total } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -31,8 +35,25 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [isUnlocked, openCart]
   );
 
+  const addAndGate = useCallback(
+    (product: Product, src: string) => {
+      addItem(product);
+      // Compute post-add total
+      const postTotal = total + product.price;
+      if (postTotal >= DELIVERY_THRESHOLD) {
+        toast("დამატებულია ✅", { duration: 1200 });
+        openCart();
+      } else {
+        toast("დამატებულია ✅", { duration: 1200 });
+        setSource(src);
+        setSheetOpen(true);
+      }
+    },
+    [addItem, total, openCart]
+  );
+
   return (
-    <CheckoutGateContext.Provider value={{ handleCheckoutIntent }}>
+    <CheckoutGateContext.Provider value={{ handleCheckoutIntent, addAndGate }}>
       {children}
       <SoftCheckoutSheet
         open={sheetOpen}

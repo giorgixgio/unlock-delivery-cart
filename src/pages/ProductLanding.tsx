@@ -88,7 +88,7 @@ const ProductLanding = () => {
 const GenericLanding = ({ product }: { product: Product }) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked, remaining, itemCount } = useCart();
   const { openCart } = useCartOverlay();
-  const { handleCheckoutIntent } = useCheckoutGate();
+  const { addAndGate } = useCheckoutGate();
 
   const quantity = getQuantity(product.id);
   const oldPrice = getFakeOldPrice(product.id, product.price);
@@ -100,6 +100,8 @@ const GenericLanding = ({ product }: { product: Product }) => {
     trackViewContent(product);
   }, [product.id]);
 
+  /** First tap: add to cart + open threshold sheet in one step */
+  const handleFirstAdd = () => addAndGate(product, "landing_cta");
   const handleAdd = () => addItem(product);
   const handleMinus = () => updateQuantity(product.id, quantity - 1);
 
@@ -107,7 +109,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
     if (isUnlocked) {
       openCart();
     } else {
-      handleCheckoutIntent("landing_cta");
+      addAndGate(product, "landing_cta");
     }
   };
 
@@ -212,7 +214,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
               </div>
             </>
           ) : (
-            <Button onClick={handleAdd} className="w-full h-14 text-lg font-bold rounded-xl" size="lg">
+            <Button onClick={handleFirstAdd} className="w-full h-14 text-lg font-bold rounded-xl" size="lg">
               <span className="flex flex-col items-center leading-tight">
                 <span className="flex items-center gap-2"><Plus className="w-5 h-5" /> სწრაფი შეკვეთა</span>
                 <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
