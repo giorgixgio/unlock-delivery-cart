@@ -334,6 +334,9 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
         {/* Action zone — sticky */}
         <div className="border-t border-border p-4 bg-card space-y-3">
+          {showThresholdUI && !isUnlocked && !isOOS && (
+            <DeliveryMissionBar mini />
+          )}
           {isOOS ? (
             <div className="w-full h-14 rounded-xl bg-muted flex items-center justify-center">
               <span className="text-muted-foreground font-bold text-base">ამოიწურა — Sold Out</span>
