@@ -8,6 +8,7 @@ import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X, Link2 } from "lucide-react";
+import AttentionButton from "@/components/AttentionButton";
 import { toast } from "sonner";
 import {
   getSimulatedStock,
@@ -362,9 +363,10 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     </span>
                   </div>
                 ) : actionState === "finalize" ? (
-                  <button
+                  <AttentionButton
+                    isBelowThreshold={!isUnlocked}
                     onClick={handleFinalize}
-                    className={`w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
+                    className={`h-full text-base transition-all duration-300 ${
                       isUnlocked
                         ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
                         : "bg-accent text-foreground animate-slide-reveal"
@@ -375,17 +377,21 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     ) : (
                       `გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`
                     )}
-                  </button>
+                  </AttentionButton>
                 ) : quantity > 0 && !isUnlocked ? (
-                  <button
+                  <AttentionButton
+                    isBelowThreshold={true}
                     onClick={handleFinalize}
-                    className="w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 bg-accent text-foreground"
+                    className="h-full text-base transition-all duration-300 bg-accent text-foreground"
                   >
                     🔓 დაამატე {remaining.toFixed(1)} ₾ — გახსენი შეკვეთა
-                  </button>
+                  </AttentionButton>
                 ) : (
                   <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
-                    შეუკვეთე 1 კლიკით
+                    <span className="flex flex-col items-center leading-tight">
+                      <span>სწრაფი შეკვეთა</span>
+                      <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
+                    </span>
                   </Button>
                 )}
               </div>

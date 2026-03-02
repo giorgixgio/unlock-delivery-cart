@@ -250,3 +250,28 @@
 .animate-pop-in {
   animation: pop-in 0.4s ease-out forwards;
 }
+
+/* AttentionButton: bounce + pulse × 3 */
+@keyframes attention-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-3px) scale(1.04); }
+  50% { transform: translateY(0) scale(1); }
+  75% { transform: translateY(-2px) scale(1.02); }
+}
+
+.attention-bounce {
+  animation: attention-bounce 1.2s ease-in-out 3;
+}
+
+@keyframes attention-cursor-bounce {
+  0%, 100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+  25% { transform: translateY(calc(-50% - 4px)) translateX(1px); }
+  50% { transform: translateY(-50%) translateX(0); }
+  75% { transform: translateY(calc(-50% - 2px)) translateX(1px); }
+}
+
+.attention-cursor {
+  animation: attention-cursor-bounce 1.2s ease-in-out 3;
+  animation-delay: 200ms;
+  animation-fill-mode: both;
+}
