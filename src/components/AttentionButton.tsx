@@ -9,57 +9,75 @@ interface AttentionButtonProps {
 }
 
 /**
- * Temu-style bounce + pulse CTA button.
- * Animates 3× when isBelowThreshold flips true or on click while below.
- * Includes a small cursor-pointer SVG that bounces with 200ms delay.
- * GPU-accelerated (transform-only), respects prefers-reduced-motion.
+ * Temu-style bounce + pulse CTA with a tapping cursor icon.
+ * - Animates on mount when below threshold
+ * - Re-animates on every click while below threshold
+ * - Cursor SVG taps the button with a delayed bounce
+ * - 3 repetitions, then stops. Re-triggers on click.
+ * - Respects prefers-reduced-motion
  */
 const AttentionButton = ({ isBelowThreshold, onClick, children, className }: AttentionButtonProps) => {
-  const [animating, setAnimating] = useState(false);
-  const prevBelow = useRef(isBelowThreshold);
+  const [animKey, setAnimKey] = useState(0);
+  const [showCursor, setShowCursor] = useState(false);
   const reducedMotion = useRef(false);
+  const mountedBelow = useRef(false);
 
   useEffect(() => {
     reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
 
-  const triggerAnimation = useCallback(() => {
-    if (reducedMotion.current || animating) return;
-    setAnimating(true);
-  }, [animating]);
-
-  // Trigger when isBelowThreshold becomes true
+  // Auto-trigger on mount / when becoming below threshold
   useEffect(() => {
-    if (isBelowThreshold && !prevBelow.current) {
-      triggerAnimation();
+    if (isBelowThreshold && !reducedMotion.current) {
+      if (!mountedBelow.current) {
+        mountedBelow.current = true;
+        // Small delay so the element is visible first
+        const t = setTimeout(() => {
+          setAnimKey((k) => k + 1);
+          setShowCursor(true);
+        }, 400);
+        return () => clearTimeout(t);
+      }
+    } else {
+      mountedBelow.current = false;
+      setShowCursor(false);
     }
-    prevBelow.current = isBelowThreshold;
-  }, [isBelowThreshold, triggerAnimation]);
+  }, [isBelowThreshold]);
 
   const handleClick = () => {
     onClick();
-    if (isBelowThreshold) {
-      // Re-trigger on click if still below threshold
-      setAnimating(false);
-      requestAnimationFrame(() => triggerAnimation());
+    if (isBelowThreshold && !reducedMotion.current) {
+      // Re-trigger animation
+      setAnimKey((k) => k + 1);
+      setShowCursor(true);
     }
   };
+
+  const handleAnimEnd = (e: React.AnimationEvent) => {
+    // Only respond to the bounce animation ending (not cursor)
+    if (e.animationName === "attention-bounce") {
+      setShowCursor(false);
+    }
+  };
+
+  const isAnimating = animKey > 0 && isBelowThreshold;
 
   return (
     <button
       onClick={handleClick}
       className={cn(
         "relative w-full font-bold rounded-xl flex items-center justify-center gap-2 transition-colors duration-200 will-change-transform",
-        animating && "attention-bounce",
+        isAnimating && "attention-bounce",
         className,
       )}
-      onAnimationEnd={() => setAnimating(false)}
+      key={`attn-${animKey}`}
+      onAnimationEnd={handleAnimEnd}
     >
       {children}
-      {animating && isBelowThreshold && (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 attention-cursor pointer-events-none">
-          <svg width="18" height="22" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5.5 0L5.5 14L8.5 11.5L11.5 18L14 17L11 10.5L15 10L5.5 0Z" fill="white" stroke="hsl(var(--foreground))" strokeWidth="1" strokeLinejoin="round"/>
+      {showCursor && (
+        <span className="absolute right-4 bottom-1 attention-cursor pointer-events-none z-10">
+          <svg width="20" height="24" viewBox="0 0 20 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 1L6 15L9.5 12L13 19.5L15.5 18.5L12 11.5L16.5 11L6 1Z" fill="white" stroke="hsl(var(--foreground))" strokeWidth="1.2" strokeLinejoin="round"/>
           </svg>
         </span>
       )}
