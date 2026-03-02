@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
-import { ArrowLeft, Truck, UserCheck, Pencil, CheckCircle } from "lucide-react";
+import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
-import DeliveryProgressBar from "@/components/DeliveryProgressBar";
 import DeliveryInfoBox from "@/components/DeliveryInfoBox";
-import CartTotalBreakdown from "@/components/CartTotalBreakdown";
-import CartItemRow from "@/components/CartItemRow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,36 +30,33 @@ interface CartOverlayProps {
   isOpen: boolean;
 }
 
-/**
- * Cart rendered as a full-screen overlay (not a route).
- * Regression test: Open /shop?product_id=X → open cart → back → should still be on /shop?product_id=X
- */
 const Cart = ({ isOpen }: CartOverlayProps) => {
-  const { items, total, remaining, updateQuantity, removeItem, clearCart, shippingFee, orderTotal } = useCart();
+  const { items, total, remaining, updateQuantity, removeItem, clearCart, shippingFee, orderTotal, itemCount } = useCart();
   const { closeCart, dismissCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const { setManualLocation, isTbilisi } = useDelivery();
   const { isLandingPage, landingSlug } = useLandingPage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  // On landing pages, always allow checkout regardless of min-cart
   const canCheckout = isLandingPage ? items.length > 0 : total >= DELIVERY_THRESHOLD;
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const buttonAnchorRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
-  const [isButtonInView, setIsButtonInView] = useState(false);
 
   const [isRecognized, setIsRecognized] = useState(false);
-  const [historicalCities, setHistoricalCities] = useState<string[]>([]);
-  const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch historical cities/addresses for prediction
+  // Collapsible cart summary
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+
+  const [historicalCities, setHistoricalCities] = useState<string[]>([]);
+  const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
+
+  // Fetch historical cities/addresses
   useEffect(() => {
     if (!isOpen) return;
     const fetchHistorical = async () => {
@@ -75,7 +69,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           .neq("status", "merged")
           .order("created_at", { ascending: false })
           .limit(200);
-        
         const { data: addresses } = await supabase
           .from("orders")
           .select("normalized_address")
@@ -84,23 +77,18 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           .neq("status", "merged")
           .order("created_at", { ascending: false })
           .limit(200);
-        
         if (cities) {
-          const unique = [...new Set(cities.map(c => c.normalized_city).filter(Boolean) as string[])];
-          setHistoricalCities(unique);
+          setHistoricalCities([...new Set(cities.map(c => c.normalized_city).filter(Boolean) as string[])]);
         }
         if (addresses) {
-          const unique = [...new Set(addresses.map(a => a.normalized_address).filter(Boolean) as string[])];
-          setHistoricalAddresses(unique);
+          setHistoricalAddresses([...new Set(addresses.map(a => a.normalized_address).filter(Boolean) as string[])]);
         }
-      } catch {
-        // Silently fail
-      }
+      } catch {}
     };
     fetchHistorical();
   }, [isOpen]);
 
-  // Load saved customer on mount
+  // Load saved customer
   useEffect(() => {
     if (!isOpen) return;
     const saved = loadCustomerInfo();
@@ -119,16 +107,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [isOpen, setManualLocation]);
 
+  // Autofocus name field
   useEffect(() => {
-    const el = buttonAnchorRef.current;
-    if (!el || !isOpen) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsButtonInView(entry.isIntersecting),
-      { threshold: 0.5 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [items.length, isOpen]);
+    if (isOpen && !isRecognized) {
+      setTimeout(() => nameRef.current?.focus(), 350);
+    }
+  }, [isOpen, isRecognized]);
 
   const formRef2 = useRef(form);
   formRef2.current = form;
@@ -163,27 +147,25 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     setTouched({ name: true, phone: true, region: true, address: true });
   };
 
+  // Form validity for CTA disable state
+  const isFormValid = useMemo(() => {
+    const result = orderSchema.safeParse(form);
+    return result.success;
+  }, [form]);
+
   const handleSubmit = async () => {
     const hasAnyTouched = Object.values(touched).some(Boolean);
-    if (!hasAnyTouched && !isRecognized) {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    if (!hasAnyTouched && !isRecognized) return;
 
     const result = orderSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((e) => {
-        if (e.path[0]) {
-          fieldErrors[e.path[0] as string] = e.message;
-        }
+        if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
       });
-      const allFields = ["name", "phone", "region", "address"];
-      allFields.forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
+      ["name", "phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
-      if (isRecognized && !isEditing) {
-        setIsEditing(true);
-      }
+      if (isRecognized && !isEditing) setIsEditing(true);
       return;
     }
 
@@ -202,11 +184,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      const orderNumber = order.public_order_number;
       clearCustomerInfo();
       clearCart();
       dismissCart();
-      navigate("/success", { state: { orderNumber, orderTotal }, replace: true });
+      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
       toast({ title: "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.", variant: "destructive", duration: 4000 });
@@ -238,61 +219,97 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       <div className="pb-24">
         {/* Header */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
-          <div className="container max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
             <button onClick={closeCart} className="p-1">
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-extrabold tracking-tight">კალათა</h1>
+            <h1 className="text-lg font-extrabold tracking-tight">შეკვეთის გაფორმება</h1>
           </div>
         </header>
 
-        <div className="container max-w-2xl mx-auto px-4 pt-4 space-y-4">
-          {/* Progress bar — hide on landing pages */}
-          {!isLandingPage && (
-            <div className="bg-card rounded-lg p-4 shadow-card border border-border space-y-3">
-              <DeliveryProgressBar />
-              {!canCheckout && (
-                <p className="text-sm text-muted-foreground text-center">
-                  დაამატე კიდევ {remaining.toFixed(1)} ₾ შეკვეთის გასაფორმებლად
-                </p>
+        <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-3">
+
+          {/* ══════ SECTION 1: Collapsible Order Summary Bar ══════ */}
+          <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+            <button
+              onClick={() => setSummaryExpanded(!summaryExpanded)}
+              className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-foreground">
+                    {itemCount} პროდუქტი — {orderTotal.toFixed(1)}₾
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    თქვენს კალათაში {itemCount} პროდუქტი — სულ {orderTotal.toFixed(1)}₾
+                  </p>
+                </div>
+              </div>
+              {summaryExpanded ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground flex-shrink-0" />
               )}
+            </button>
+
+            {/* Expandable cart items */}
+            <div
+              className="transition-[max-height] duration-300 ease-in-out overflow-hidden"
+              style={{ maxHeight: summaryExpanded ? `${items.length * 88 + 16}px` : "0px" }}
+            >
+              <div className="px-4 pb-3 space-y-2 border-t border-border/50">
+                {items.map(({ product, quantity }) => (
+                  <div key={product.id} className="flex items-center gap-3 py-2">
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className="w-14 h-14 rounded-md object-cover flex-shrink-0 border border-border"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground line-clamp-1">{product.title}</p>
+                      <p className="text-sm font-bold text-primary">{(product.price * quantity).toFixed(1)} ₾</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        onClick={() => updateQuantity(product.id, quantity - 1)}
+                        variant="outline" size="icon"
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="text-sm font-bold w-5 text-center">{quantity}</span>
+                      <Button
+                        onClick={() => updateQuantity(product.id, quantity + 1)}
+                        size="icon"
+                        className="h-7 w-7 rounded-md"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        onClick={() => removeItem(product.id)}
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 text-destructive"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* Temu-style total breakdown with dopamine animation */}
-          <div className="bg-card rounded-lg p-4 shadow-card border border-border">
-            <CartTotalBreakdown animateOnMount />
-          </div>
-
-          {/* Items */}
-          <div className="space-y-3">
-            {items.map(({ product, quantity }) => (
-              <CartItemRow
-                key={product.id}
-                product={product}
-                quantity={quantity}
-                onUpdateQuantity={updateQuantity}
-                onRemove={removeItem}
-              />
-            ))}
-          </div>
-
-          {/* Delivery estimate */}
-          <DeliveryInfoBox />
-
-          {/* COD info block */}
-          <div className="bg-accent rounded-lg p-4 border border-primary/20 flex items-start gap-3">
-            <Truck className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-foreground text-sm">გადახდა მიტანისას</p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                თანხას გადაიხდით კურიერთან. ბარათი არ გჭირდებათ.
-              </p>
+            {/* Summary row: subtotal + shipping */}
+            <div className="px-4 py-2.5 bg-muted/30 border-t border-border/50 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">მიტანა</span>
+              <span className="text-xs font-bold text-success">უფასო</span>
             </div>
           </div>
 
-          {/* Order form */}
-          <div ref={formRef} className="bg-card rounded-lg shadow-card border border-border overflow-hidden">
+          {/* ══════ SECTION 2: Order Form (Above the fold) ══════ */}
+          <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
             {showRecognizedCard ? (
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -303,8 +320,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                     <h2 className="text-base font-bold text-foreground">შენი მონაცემები</h2>
                   </div>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant="ghost" size="sm"
                     onClick={handleStartEditing}
                     className="text-sm text-primary font-semibold h-8 px-3 gap-1.5"
                   >
@@ -313,44 +329,37 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   </Button>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">სახელი</span>
-                    <span className="text-sm font-semibold text-foreground">{form.name || "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">ტელეფონი</span>
-                    <span className="text-sm font-semibold text-foreground">{form.phone || "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">ქალაქი</span>
-                    <span className="text-sm font-semibold text-foreground">{form.region || "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">მისამართი</span>
-                    <span className="text-sm font-semibold text-foreground text-right max-w-[60%]">{form.address || "—"}</span>
-                  </div>
+                  {[
+                    { label: "სახელი", value: form.name },
+                    { label: "ტელეფონი", value: form.phone },
+                    { label: "ქალაქი", value: form.region },
+                    { label: "მისამართი", value: form.address },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{row.label}</span>
+                      <span className="text-sm font-semibold text-foreground text-right max-w-[60%]">{row.value || "—"}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-foreground">შეკვეთის მონაცემები</h2>
+                  <h2 className="text-base font-bold text-foreground">შეკვეთის მონაცემები</h2>
                   {isRecognized && isEditing && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditing(false)}
-                      className="text-sm text-muted-foreground font-medium h-8 px-3"
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}
+                      className="text-sm text-muted-foreground font-medium h-8 px-3">
                       გაუქმება
                     </Button>
                   )}
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div>
                     <Label className="text-sm font-bold text-foreground">სახელი</Label>
                     <Input
+                      ref={nameRef}
                       type="text"
+                      autoComplete="name"
                       placeholder="თქვენი სახელი"
                       value={form.name}
                       onChange={(e) => handleChange("name", e.target.value)}
@@ -362,6 +371,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                     <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
                     <Input
                       type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       placeholder="5XX XXX XXX"
                       value={form.phone}
                       onChange={(e) => handleChange("phone", e.target.value)}
@@ -370,7 +381,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                     {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone}</p>}
                   </div>
                   <div>
-                    <Label className="text-sm font-bold text-foreground">რეგიონი / ქალაქი</Label>
+                    <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
                     <div className="mt-1">
                       <PredictiveInput
                         value={form.region}
@@ -400,50 +411,42 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             )}
           </div>
 
-          {/* Submit — inline anchor */}
-          <div ref={buttonAnchorRef}>
-            <Button
-              onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
-              disabled={submitting}
-              className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
-                canCheckout
-                  ? "bg-success hover:bg-success/90 text-success-foreground"
-                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
-              } ${isButtonInView ? "" : "invisible"}`}
-              size="lg"
-            >
-              {submitting
-                ? "იგზავნება..."
-                : canCheckout
-                ? "შეკვეთა — გადახდა მიტანისას"
-                : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
-            </Button>
+          {/* ══════ SECTION 3: Subtle delivery info ══════ */}
+          <div className="opacity-80">
+            <DeliveryInfoBox />
           </div>
-        </div>
 
-        {/* Sticky bottom button */}
-        {!isButtonInView && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
-            <div className="container max-w-2xl mx-auto">
-              <Button
-                onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
-                disabled={submitting}
-                className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
-                  canCheckout
-                    ? "bg-success hover:bg-success/90 text-success-foreground"
-                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                }`}
-                size="lg"
-              >
-                {submitting
-                  ? "იგზავნება..."
-                  : canCheckout
-                  ? "შეკვეთა — გადახდა მიტანისას"
-                  : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
-              </Button>
+          {/* COD trust block — compact */}
+          <div className="bg-accent/30 rounded-lg px-3 py-2.5 border border-border/50 flex items-center gap-2.5">
+            <Truck className="w-5 h-5 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-bold text-foreground text-xs">გადახდა მიტანისას</p>
+              <p className="text-[11px] text-muted-foreground">თანხას გადაიხდით კურიერთან</p>
             </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* ══════ STICKY CTA ══════ */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-3 shadow-lg">
+        <div className="container max-w-2xl mx-auto">
+          <Button
+            onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
+            disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
+            className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
+              canCheckout
+                ? "bg-success hover:bg-success/90 text-success-foreground"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            }`}
+            size="lg"
+          >
+            {submitting
+              ? "იგზავნება..."
+              : canCheckout
+              ? "შეკვეთა — გადახდა მიწოდებისას"
+              : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
+          </Button>
+        </div>
       </div>
     </div>
   );
