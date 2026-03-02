@@ -1,5 +1,5 @@
-export const DELIVERY_THRESHOLD = 19;
-export const DELIVERY_FEE = 5;
+export const DELIVERY_THRESHOLD = 25;
+export const DELIVERY_FEE = 0;
 
 export const CATEGORIES = [
   { id: "all", label: "ყველა" },

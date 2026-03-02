@@ -10,7 +10,7 @@ import { Plus, Minus, Truck, Banknote, ShoppingBag, ShoppingCart, ArrowLeft } fr
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
@@ -111,7 +111,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-screen bg-background pb-48">
       <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -169,11 +169,6 @@ const GenericLanding = ({ product }: { product: Product }) => {
             <span className="text-[11px] font-semibold text-foreground">მარტივი შეკვეთა</span>
           </div>
         </div>
-
-        {/* Delivery progress bar */}
-        {itemCount > 0 && (
-          <DeliveryMissionBar />
-        )}
 
         {product.description && (
           <div

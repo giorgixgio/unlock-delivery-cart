@@ -104,9 +104,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const uniqueItemCount = items.length;
   const remaining = Math.max(0, DELIVERY_THRESHOLD - total);
   const isUnlocked = total >= DELIVERY_THRESHOLD;
-  const isFreeDelivery = uniqueItemCount >= 2;
-  const shippingFee = isFreeDelivery ? 0 : DELIVERY_FEE;
-  const orderTotal = total + shippingFee;
+  const isFreeDelivery = true;
+  const shippingFee = 0;
+  const orderTotal = total;
 
   const getQuantity = useCallback(
     (productId: string) => items.find((i) => i.product.id === productId)?.quantity ?? 0,

@@ -58,9 +58,7 @@ const StickyCartHUD = () => {
         {isUnlocked ? (
           <div className="flex items-center justify-center gap-1.5 py-0.5 animate-success-reveal">
             <CheckCircle className="w-3.5 h-3.5 text-success" />
-            <span className="text-xs font-bold text-success">
-              {isFreeDelivery ? "მიტანა უფასო!" : "მიტანა 5 ₾ · დაამატე 1 პროდუქტი უფასო მიტანისთვის"}
-            </span>
+            <span className="text-xs font-bold text-success">მიტანა უფასო!</span>
           </div>
         ) : (
           <DeliveryInfoMini />

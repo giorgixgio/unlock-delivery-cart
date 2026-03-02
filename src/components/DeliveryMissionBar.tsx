@@ -80,8 +80,8 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
               : "text-muted-foreground"
           }`}
         >
-          {isUnlocked ? (
-            isFreeDelivery ? "✅ შეკვეთა მზადაა — მიტანა უფასო!" : "✅ შეკვეთა მზადაა — მიტანა 5 ₾"
+        {isUnlocked ? (
+            "✅ შეკვეთა მზადაა — მიტანა უფასო!"
           ) : remaining < 5 ? (
             <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
           ) : (

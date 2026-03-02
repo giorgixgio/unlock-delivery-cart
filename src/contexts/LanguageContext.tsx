@@ -28,8 +28,8 @@ const ge: Record<string, string> = {
   "secure_payment": "უსაფრთხო გადახდა",
 
   // Trust modal content
-  "free_delivery_desc_1": "მიტანა უფასოა როცა 2 ან მეტ პროდუქტს შეიძენთ.",
-  "free_delivery_desc_2": "1 პროდუქტის შეკვეთისას მიტანის საფასური 5₾-ია.",
+  "free_delivery_desc_1": "მიტანა ყოველთვის უფასოა.",
+  "free_delivery_desc_2": "მინიმალური შეკვეთა 25₾.",
   "price_guarantee_desc": "თუ პროდუქტის ფასი შემცირდა შეძენიდან 30 დღეში, ჩვენ ავანაზღაურებთ სხვაობას.",
   "why_us_desc_1": "ხარისხიანი პროდუქტები საუკეთესო ფასად.",
   "why_us_desc_2": "სწრაფი მიტანა და მომხმარებლის მხარდაჭერა.",
@@ -85,12 +85,12 @@ const ge: Record<string, string> = {
   "price_saved_for_you": "ფასი შენთვის დაცულია",
   "items_left": "ცალი დარჩა მარაგში",
   "complete_order": "შეკვეთის დასრულება",
-  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. შეკვეთა 19 ₾",
+  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. შეკვეთა 25 ₾",
   "cart_add_cod": "კალათაში — გადახდა მიტანისას",
   "add_to_cart_btn": "დამატება კალათაში",
 
   // Micro benefits
-  "benefit_free_delivery": "🚚 უფასო მიტანა 2+ პროდუქტზე",
+  "benefit_free_delivery": "🚚 უფასო მიტანა",
   "benefit_1day_delivery": "⚡ სწრაფი მიტანა",
 
   // Delivery info
@@ -245,8 +245,8 @@ const ru: Record<string, string> = {
   "secure_payment": "Безопасная оплата",
 
   // Trust modal content
-  "free_delivery_desc_1": "Доставка бесплатна при заказе 2+ товаров.",
-  "free_delivery_desc_2": "При заказе 1 товара стоимость доставки — 5₾.",
+  "free_delivery_desc_1": "Доставка всегда бесплатна.",
+  "free_delivery_desc_2": "Минимальный заказ 25₾.",
   "price_guarantee_desc": "Если цена снизится в течение 30 дней после покупки, мы компенсируем разницу.",
   "why_us_desc_1": "Качественные товары по лучшим ценам.",
   "why_us_desc_2": "Быстрая доставка и поддержка клиентов.",
@@ -302,13 +302,13 @@ const ru: Record<string, string> = {
   "price_saved_for_you": "Цена сохранена для вас",
   "items_left": "шт. осталось на складе",
   "complete_order": "Завершить заказ",
-  "continue_shopping_min": "Продолжить покупки — мин. заказ 19 ₾",
+  "continue_shopping_min": "Продолжить покупки — мин. заказ 25 ₾",
   "cart_add_cod": "В корзину — оплата при доставке",
   "add_to_cart_btn": "Добавить в корзину",
 
   // Micro benefits
   "benefit_free_delivery": "🚚 Бесплатная доставка",
-  "benefit_1day_delivery": "⚡ Доставка за 1 день",
+  "benefit_1day_delivery": "⚡ Быстрая доставка",
 
   // Delivery info
   "tbilisi": "Тбилиси",
