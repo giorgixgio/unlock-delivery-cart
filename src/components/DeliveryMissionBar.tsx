@@ -12,7 +12,9 @@ interface DeliveryMissionBarProps {
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
   const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount } = useCart();
   const { t } = useLanguage();
-  const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const targetPercent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const [percent, setPercent] = useState(0);
+  const hasAnimated = useRef(false);
   const [bounce, setBounce] = useState(false);
   const [microBounce, setMicroBounce] = useState(false);
   const [glow, setGlow] = useState(false);
@@ -36,6 +38,18 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
     }
     prevTotal.current = total;
   }, [total, isUnlocked]);
+
+  // Animate from 0 on first render, then track changes instantly
+  useEffect(() => {
+    if (!hasAnimated.current) {
+      hasAnimated.current = true;
+      // Start from 0 and animate to current value
+      const timer = setTimeout(() => setPercent(targetPercent), 50);
+      return () => clearTimeout(timer);
+    } else {
+      setPercent(targetPercent);
+    }
+  }, [targetPercent]);
 
   const barHeight = mini ? "h-2" : "h-2.5";
   const truckSize = mini ? "w-5 h-5" : "w-6 h-6";
