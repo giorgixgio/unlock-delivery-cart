@@ -7,6 +7,7 @@ import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Truck, Banknote, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react";
+import AttentionButton from "@/components/AttentionButton";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
@@ -193,27 +194,29 @@ const GenericLanding = ({ product }: { product: Product }) => {
                     <Plus className="w-5 h-5" />
                   </Button>
                 </div>
-                <Button
+                <AttentionButton
+                  isBelowThreshold={!isUnlocked}
                   onClick={handleCTA}
-                  className={`flex-1 h-12 text-base font-bold rounded-xl ${
+                  className={`flex-1 h-12 text-base ${
                     isUnlocked
                       ? "bg-success hover:bg-success/90 text-success-foreground"
                       : "bg-accent text-foreground"
                   }`}
-                  size="lg"
                 >
                   {isUnlocked ? (
                     <><ShoppingCart className="w-5 h-5 mr-1" /> შეკვეთა</>
                   ) : (
                     `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`
                   )}
-                </Button>
+                </AttentionButton>
               </div>
             </>
           ) : (
             <Button onClick={handleAdd} className="w-full h-14 text-lg font-bold rounded-xl" size="lg">
-              <Plus className="w-5 h-5 mr-2" />
-              კალათაში დამატება
+              <span className="flex flex-col items-center leading-tight">
+                <span className="flex items-center gap-2"><Plus className="w-5 h-5" /> სწრაფი შეკვეთა</span>
+                <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
+              </span>
             </Button>
           )}
         </div>
