@@ -227,7 +227,7 @@ const DescriptionSection = ({ description }: { description: string }) => {
 };
 
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
-  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount } = useCart();
+  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining } = useCart();
   const { handleCheckoutIntent } = useCheckoutGate();
   const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
   const prevUnlocked = useRef(isUnlocked);
@@ -387,7 +387,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                     onClick={handleFinalize}
                     className="w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 bg-accent text-foreground"
                   >
-                    {`გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`}
+                    🔓 დაამატე {remaining.toFixed(1)} ₾ — გახსენი შეკვეთა
                   </button>
                 ) : (
                   <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
