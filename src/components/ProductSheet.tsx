@@ -382,6 +382,13 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                       `გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`
                     )}
                   </button>
+                ) : quantity > 0 && !isUnlocked ? (
+                  <button
+                    onClick={handleFinalize}
+                    className="w-full h-full font-bold text-base rounded-xl flex items-center justify-center gap-2 transition-all duration-300 bg-accent text-foreground"
+                  >
+                    {`გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`}
+                  </button>
                 ) : (
                   <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
                     შეუკვეთე 1 კლიკით
