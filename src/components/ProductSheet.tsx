@@ -339,12 +339,6 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             </div>
           ) : (
             <>
-              {/* Delivery progress — only when cart has items */}
-              {showThresholdUI && (
-                <div className={`rounded-lg transition-all duration-500 ${justUnlocked ? "animate-glow-pulse" : ""}`}>
-                  <DeliveryMissionBar />
-                </div>
-              )}
 
               {/* Quantity selector */}
               {quantity > 0 && actionState !== "added" && (

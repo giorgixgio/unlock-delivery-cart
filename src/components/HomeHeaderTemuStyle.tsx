@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight } from "lucide-react";
+import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useProducts } from "@/hooks/useProducts";
+import ProductSheet from "@/components/ProductSheet";
+import { Product } from "@/lib/constants";
 // Language switcher removed — Georgian only
 import {
   Sheet,
@@ -79,12 +82,84 @@ const CategoryDrawer = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+/* ─── Search Overlay ─── */
+const SearchOverlay = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  const { data: products = [] } = useProducts();
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [open]);
+
+  const results = useMemo(() => {
+    if (!query || query.length < 2) return [];
+    const q = query.toLowerCase();
+    return products
+      .filter((p) => p.available && (p.title.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q))))
+      .slice(0, 12);
+  }, [query, products]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
+          <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ძიება..."
+            className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground"
+            autoComplete="off"
+          />
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted">
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          {query.length < 2 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">ჩაწერე მინიმუმ 2 ასო</p>
+          ) : results.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">არაფერი მოიძებნა</p>
+          ) : (
+            <div className="space-y-1">
+              {results.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSheetProduct(p)}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors text-left"
+                >
+                  <img src={p.image} alt={p.title} className="w-12 h-12 rounded-md object-cover flex-shrink-0 bg-muted" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground line-clamp-1">{p.title}</p>
+                    <p className="text-sm font-bold text-primary">{p.price} ₾</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <ProductSheet product={sheetProduct} open={!!sheetProduct} onClose={() => setSheetProduct(null)} />
+    </>
+  );
+};
+
 /* ─── Main component ─── */
 const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => {
   const { itemCount } = useCart();
   const { openCart } = useCartOverlay();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const [internalVisible, setInternalVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -146,15 +221,13 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
               BigMart
             </button>
 
-            <div className="flex-1 flex items-center gap-2 bg-background/10 rounded-full px-3 h-9 border border-background/20">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex-1 flex items-center gap-2 bg-background/10 rounded-full px-3 h-9 border border-background/20 cursor-text"
+            >
               <Search className="w-4 h-4 opacity-70 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder={t("search")}
-                className="bg-transparent text-background placeholder:text-background/50 text-sm w-full outline-none"
-                readOnly
-              />
-            </div>
+              <span className="text-background/50 text-sm">{t("search")}</span>
+            </button>
 
             <div className="flex items-center gap-1 flex-shrink-0">
               <CategoryDrawer>
@@ -223,6 +296,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
           </TrustModal>
         </div>
       </div>
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 };

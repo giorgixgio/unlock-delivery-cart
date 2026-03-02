@@ -3,7 +3,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export const MicroBenefitRotating = memo(() => {
   const { t } = useLanguage();
-  const benefits = [t("benefit_free_delivery"), t("benefit_1day_delivery")];
+  const benefits = [t("benefit_free_delivery")];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ MicroBenefitRotating.displayName = "MicroBenefitRotating";
 
 export const MicroBenefitStacked = memo(() => {
   const { t } = useLanguage();
-  const benefits = [t("benefit_free_delivery"), t("benefit_1day_delivery")];
+  const benefits = [t("benefit_free_delivery")];
   return (
     <div className="flex flex-col gap-1.5 mt-2">
       {benefits.map((b, i) => (

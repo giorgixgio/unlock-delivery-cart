@@ -184,31 +184,65 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   // Section 1: "Perfect to unlock" — 6 items sorted by price proximity to remaining gap
   const gapFillers = useMemo(() => {
     if (products.length === 0 || remaining <= 0) return [];
+    const cartTags = new Set(items.flatMap((i) => i.product.tags || []));
+    const cartCategories = new Set(items.map((i) => i.product.category));
     return products
       .filter((p) => !cartIds.has(p.id) && p.available && p.price > 0 && p.price <= remaining * 1.5)
-      .sort((a, b) => Math.abs(a.price - remaining) - Math.abs(b.price - remaining))
-      .slice(0, 6);
+      .map((p) => {
+        let score = 0;
+        // Tag relevance
+        if (p.tags) {
+          for (const tag of p.tags) {
+            if (cartTags.has(tag)) { score += 10; break; }
+          }
+        }
+        // Category relevance
+        if (cartCategories.has(p.category)) score += 5;
+        // Price proximity to gap
+        const ratio = p.price / remaining;
+        if (ratio >= 0.8 && ratio <= 1.2) score += 8;
+        else if (ratio >= 0.4) score += 4;
+        return { product: p, score };
+      })
+      .sort((a, b) => b.score - a.score || Math.abs(a.product.price - remaining) - Math.abs(b.product.price - remaining))
+      .slice(0, 12)
+      .map((s) => s.product);
   }, [products, remaining, cartIds]);
 
   const gapFillerIds = useMemo(() => new Set(gapFillers.map((p) => p.id)), [gapFillers]);
 
-  // Section 2: "Recommended for you" — 12-18 items, diversified categories
+  // Section 2: "Recommended for you" — up to 50 items, tag-relevant, diversified
   const recommended = useMemo(() => {
     if (products.length === 0) return [];
     const cartTags = new Set(items.flatMap((i) => i.product.tags || []));
+    const cartCategories = new Set(items.map((i) => i.product.category));
+    const cartTitles = items.map((i) => i.product.title.toLowerCase().split(/\s+/)).flat().filter((w) => w.length > 3);
+    const titleWords = new Set(cartTitles);
     const excluded = new Set([...cartIds, ...gapFillerIds]);
 
     const scored = products
       .filter((p) => !excluded.has(p.id) && p.available && p.price > 0)
       .map((p) => {
         let score = 0;
+        // Tag overlap scoring (strongest signal)
         if (p.tags) {
+          let tagMatches = 0;
           for (const tag of p.tags) {
-            if (cartTags.has(tag)) { score += 8; break; }
+            if (cartTags.has(tag)) tagMatches++;
           }
+          score += tagMatches * 8;
         }
-        if (p.price <= 10) score += 5;
-        score += Math.random() * 3;
+        // Category match
+        if (cartCategories.has(p.category)) score += 5;
+        // Title word overlap
+        const pWords = p.title.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+        for (const w of pWords) {
+          if (titleWords.has(w)) { score += 3; break; }
+        }
+        // Price preference (cheap impulse items get a boost)
+        if (p.price <= 10) score += 3;
+        // Small randomization for variety
+        score += Math.random() * 2;
         return { product: p, score };
       })
       .sort((a, b) => b.score - a.score);
@@ -217,18 +251,19 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     const catCount: Record<string, number> = {};
     for (const { product } of scored) {
       const cat = product.category || "__none__";
-      if ((catCount[cat] || 0) < 4) {
+      if ((catCount[cat] || 0) < 8) {
         result.push(product);
         catCount[cat] = (catCount[cat] || 0) + 1;
-        if (result.length >= 18) break;
+        if (result.length >= 50) break;
       }
     }
-    if (result.length < 12) {
+    // Fill remaining if needed
+    if (result.length < 50) {
       const picked = new Set(result.map((r) => r.id));
       for (const { product } of scored) {
         if (!picked.has(product.id)) {
           result.push(product);
-          if (result.length >= 18) break;
+          if (result.length >= 50) break;
         }
       }
     }
@@ -330,7 +365,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           {isUnlocked && (
             <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
               <div className="text-center space-y-2 animate-success-reveal">
-                <p className="text-2xl font-extrabold text-success">🎉 {isFreeDelivery ? "შეკვეთა მზადაა — მიტანა უფასო!" : "შეკვეთა მზადაა!"}</p>
+                <p className="text-2xl font-extrabold text-success">🎉 შეკვეთა მზადაა — მიტანა უფასო!</p>
                 <p className="text-sm text-muted-foreground">გადამისამართება...</p>
               </div>
             </div>

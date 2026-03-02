@@ -85,21 +85,8 @@ const CartTotalBreakdown = ({ animateOnMount = false }: CartTotalBreakdownProps)
           {showFinal && (
             <div className="flex items-center justify-between animate-fade-in">
               <span className="text-sm text-muted-foreground">{t("delivery_fee")}</span>
-              {isFreeDelivery ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-muted-foreground line-through">{DELIVERY_FEE} ₾</span>
-                  <span className="text-sm font-bold text-success">{t("free")}</span>
-                </div>
-              ) : (
-                <span className="text-sm font-semibold text-foreground">{shippingFee} ₾</span>
-              )}
+              <span className="text-sm font-bold text-success">{t("free")}</span>
             </div>
-          )}
-
-          {showFinal && !isFreeDelivery && (
-            <p className="text-[11px] text-success font-semibold">
-              💡 დაამატე კიდევ 1 პროდუქტი — მიტანა უფასო!
-            </p>
           )}
 
           {showFinal && <div className="border-t border-border" />}
