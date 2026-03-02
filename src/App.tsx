@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -74,9 +74,6 @@ const LegacyProductRedirect = () => {
 
 const CartOverlayRenderer = () => {
   const { isCartOpen } = useCartOverlay();
-  const loc = useLocation();
-  // Don't render global cart overlay on landing pages — they have their own
-  if (loc.pathname.startsWith("/p/")) return null;
   return <Cart isOpen={isCartOpen} />;
 };
 
