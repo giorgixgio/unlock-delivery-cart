@@ -102,8 +102,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const total = useMemo(() => Math.round(items.reduce((sum, i) => sum + i.product.price * i.quantity, 0) * 100) / 100, [items]);
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
   const uniqueItemCount = items.length;
-  const remaining = Math.max(0, Math.round((DELIVERY_THRESHOLD - total) * 100) / 100);
-  const isUnlocked = total >= DELIVERY_THRESHOLD;
+  // Round to 1 decimal for threshold check — matches what user sees in UI
+  const remaining = Math.max(0, Math.round((DELIVERY_THRESHOLD - total) * 10) / 10);
+  const isUnlocked = remaining <= 0;
   const isFreeDelivery = true;
   const shippingFee = 0;
   const orderTotal = total;

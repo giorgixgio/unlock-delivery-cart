@@ -41,7 +41,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (product: Product, src: string) => {
       addItem(product);
       // Compute post-add total with rounding to avoid floating-point issues
-      const postTotal = Math.round((total + product.price) * 100) / 100;
+      const postTotal = Math.round((total + product.price) * 10) / 10;
       toast("დამატებულია ✅", { duration: 1200 });
       if (postTotal >= DELIVERY_THRESHOLD) {
         openCart();
