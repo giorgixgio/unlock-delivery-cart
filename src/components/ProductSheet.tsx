@@ -263,11 +263,27 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   // Show threshold UI only if cart has items (either before opening or after adding)
   const showThresholdUI = itemCount > 0;
 
+  const { addAndGate } = useCheckoutGate();
+
   const handleAdd = () => {
     if (isOOS) return;
     addItem(product);
     setActionState("added");
-    setTimeout(() => setActionState("finalize"), 1000);
+    // After brief confirmation, auto-trigger checkout gate (opens recommendation sheet if below threshold)
+    setTimeout(() => {
+      onClose();
+      handleCheckoutIntent("pdp_sheet");
+    }, 800);
+  };
+
+  /** First-time Quick Order: add + gate in one action */
+  const handleQuickOrder = () => {
+    if (isOOS) return;
+    setActionState("added");
+    setTimeout(() => {
+      onClose();
+      addAndGate(product, "pdp_quick_order");
+    }, 600);
   };
 
   const handleFinalize = () => {
@@ -357,7 +373,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 </div>
               )}
 
-              {/* Morphing button */}
+              {/* Morphing button — no dead "unlock" state */}
               <div className="relative w-full h-14 rounded-xl overflow-hidden">
                 {actionState === "added" ? (
                   <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
@@ -365,32 +381,27 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                       <Check className="w-5 h-5" /> დამატებულია
                     </span>
                   </div>
-                ) : actionState === "finalize" ? (
-                  <AttentionButton
-                    isBelowThreshold={!isUnlocked}
+                ) : quantity > 0 && isUnlocked ? (
+                  /* Already in cart + threshold met → go to checkout */
+                  <Button
                     onClick={handleFinalize}
-                    className={`h-full text-base transition-all duration-300 ${
-                      isUnlocked
-                        ? "bg-success text-success-foreground glow-unlock animate-slide-reveal"
-                        : "bg-accent text-foreground animate-slide-reveal"
-                    }`}
+                    className="w-full h-full text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
+                    size="lg"
                   >
-                    {isUnlocked ? (
-                      <><ShoppingCart className="w-5 h-5" /> შეკვეთის დასრულება</>
-                    ) : (
-                      `გააგრძელე შოპინგი — მინ. ${DELIVERY_THRESHOLD} ₾`
-                    )}
-                  </AttentionButton>
+                    <ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება
+                  </Button>
                 ) : quantity > 0 && !isUnlocked ? (
+                  /* Already in cart + below threshold → open recommendation sheet directly */
                   <AttentionButton
                     isBelowThreshold={true}
                     onClick={handleFinalize}
-                    className="h-full text-base transition-all duration-300 bg-accent text-foreground"
+                    className="h-full text-base transition-all duration-300 bg-primary text-primary-foreground"
                   >
-                    🔓 დაამატე {remaining.toFixed(1)} ₾ — გახსენი შეკვეთა
+                    დაამატე კიდევ — აკლია {remaining.toFixed(1)} ₾
                   </AttentionButton>
                 ) : (
-                  <Button onClick={handleAdd} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
+                  /* Not in cart yet → Quick Order (add + auto-gate) */
+                  <Button onClick={handleQuickOrder} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
                     <span className="flex flex-col items-center leading-tight">
                       <span>სწრაფი შეკვეთა</span>
                       <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
