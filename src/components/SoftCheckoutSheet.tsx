@@ -205,7 +205,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         return { product: p, score };
       })
       .sort((a, b) => b.score - a.score || Math.abs(a.product.price - remaining) - Math.abs(b.product.price - remaining))
-      .slice(0, 12)
+      .slice(0, 8)
       .map((s) => s.product);
   }, [products, remaining, cartIds]);
 
@@ -307,11 +307,13 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
 
             <div className="px-4 pb-2 space-y-2">
               <div className="text-center space-y-0.5">
-                <h2 className={`text-lg font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
-                  {almostThere ? "თითქმის მოხერხდა! 🔥" : `კიდევ ${gap.toFixed(1)} ₾ დარჩა 🎉`}
+                <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
+                  {almostThere
+                    ? "თითქმის მოხერხდა! 🔥"
+                    : `მინ. შეკვეთა ${DELIVERY_THRESHOLD}₾ — აკლია ${gap.toFixed(1)}₾`}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({DELIVERY_THRESHOLD} ₾)
+                  დაამატე 1–2 პროდუქტი შეკვეთის გასააქტიურებლად
                 </p>
               </div>
               <DeliveryMissionBar />
