@@ -23,6 +23,8 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     openCart();
   }, [openCart]);
 
+  const handleCloseSheet = useCallback(() => setSheetOpen(false), []);
+
   const handleCheckoutIntent = useCallback(
     (src: string) => {
       if (isUnlocked) {
@@ -38,13 +40,12 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const addAndGate = useCallback(
     (product: Product, src: string) => {
       addItem(product);
-      // Compute post-add total
-      const postTotal = total + product.price;
+      // Compute post-add total with rounding to avoid floating-point issues
+      const postTotal = Math.round((total + product.price) * 100) / 100;
+      toast("დამატებულია ✅", { duration: 1200 });
       if (postTotal >= DELIVERY_THRESHOLD) {
-        toast("დამატებულია ✅", { duration: 1200 });
         openCart();
       } else {
-        toast("დამატებულია ✅", { duration: 1200 });
         setSource(src);
         setSheetOpen(true);
       }
@@ -57,7 +58,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {children}
       <SoftCheckoutSheet
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={handleCloseSheet}
         onProceed={proceedToCheckout}
         source={source}
       />

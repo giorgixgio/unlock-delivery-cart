@@ -143,25 +143,25 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     setSheetProduct(product);
   }, []);
 
+  // Reset state when sheet opens
+  useEffect(() => {
+    if (open) {
+      prevUnlocked.current = false;
+      setHeaderCollapsed(false);
+      lastScrollTop.current = 0;
+    }
+  }, [open]);
+
   // Auto-close and proceed when threshold is reached
   useEffect(() => {
-    if (open && isUnlocked && !prevUnlocked.current) {
+    if (open && isUnlocked) {
       const timer = setTimeout(() => {
         onClose();
         onProceed();
       }, 600);
       return () => clearTimeout(timer);
     }
-    prevUnlocked.current = isUnlocked;
   }, [isUnlocked, open, onClose, onProceed]);
-
-  // Reset collapse when sheet opens
-  useEffect(() => {
-    if (open) {
-      setHeaderCollapsed(false);
-      lastScrollTop.current = 0;
-    }
-  }, [open]);
 
   // Scroll direction detection
   const handleScroll = useCallback(() => {
