@@ -5,13 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { useProducts } from "@/hooks/useProducts";
 import { DELIVERY_THRESHOLD, Product } from "@/lib/constants";
-import { Plus, Check, Sparkles, ShoppingCart, X, Target } from "lucide-react";
+import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
+
+const PAGE_SIZE = 10;
 
 interface SoftCheckoutSheetProps {
   open: boolean;
@@ -137,12 +139,30 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const lastScrollTop = useRef(0);
 
-  // ProductSheet state for viewing product details
+  // ProductSheet state
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
+
+  // ── Cached ranked list (computed once on open, stable during session) ──
+  const [cachedRanking, setCachedRanking] = useState<{ gapFillers: Product[]; recommended: Product[] } | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const handleTapProduct = useCallback((product: Product) => {
     setSheetProduct(product);
   }, []);
+
+  // Compute and cache ranking when sheet opens
+  useEffect(() => {
+    if (open && products.length > 0 && remaining > 0) {
+      const result = getRecommendedProducts(null, items, remaining, products);
+      setCachedRanking(result);
+      setVisibleCount(PAGE_SIZE);
+    } else if (!open) {
+      setCachedRanking(null);
+      setVisibleCount(PAGE_SIZE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, products]);
 
   // Reset state when sheet opens
   useEffect(() => {
@@ -179,18 +199,40 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const gap = remaining;
   const almostThere = gap > 0 && gap < 5;
 
-  // ── Product selection via recommendation engine ──
-  const { gapFillers, recommended } = useMemo(() => {
-    if (products.length === 0 || remaining <= 0) return { gapFillers: [], recommended: [] };
-    return getRecommendedProducts(null, items, remaining, products);
-  }, [products, remaining, items]);
+  // ── Filter out cart items from cached ranking on render ──
+  const cartIds = useMemo(() => new Set(items.map((i) => i.product.id)), [items]);
+
+  const gapFillers = useMemo(() => {
+    if (!cachedRanking) return [];
+    return cachedRanking.gapFillers.filter((p) => !cartIds.has(p.id));
+  }, [cachedRanking, cartIds]);
+
+  const allRecommended = useMemo(() => {
+    if (!cachedRanking) return [];
+    return cachedRanking.recommended.filter((p) => !cartIds.has(p.id));
+  }, [cachedRanking, cartIds]);
+
+  const visibleRecommended = useMemo(
+    () => allRecommended.slice(0, visibleCount),
+    [allRecommended, visibleCount]
+  );
+
+  const hasMoreRecommended = visibleCount < allRecommended.length;
+
+  const handleLoadMore = useCallback(() => {
+    setLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + PAGE_SIZE);
+      setLoadingMore(false);
+    }, 300);
+  }, []);
 
   const handleViewCart = () => {
     onClose();
     openCart();
   };
 
-  const hasContent = gapFillers.length > 0 || recommended.length > 0;
+  const hasContent = gapFillers.length > 0 || allRecommended.length > 0;
   const showEmpty = !isLoading && !hasContent;
 
   return (
@@ -260,17 +302,41 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                   </div>
                 )}
 
-                {/* Section 2: Recommended for you */}
-                {recommended.length > 0 && (
+                {/* Section 2: Recommended for you (paginated) */}
+                {visibleRecommended.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="w-4 h-4 text-primary" />
                       <span className="text-sm font-bold text-foreground">რეკომენდაცია შენთვის</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {recommended.map((product) => (
+                      {visibleRecommended.map((product) => (
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
+                    </div>
+
+                    {/* Load more / exhausted */}
+                    <div className="flex justify-center mt-4 mb-2">
+                      {hasMoreRecommended ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
+                          className="gap-2 text-xs font-bold"
+                        >
+                          {loadingMore ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              იტვირთება...
+                            </>
+                          ) : (
+                            "მეტის ჩატვირთვა"
+                          )}
+                        </Button>
+                      ) : allRecommended.length > PAGE_SIZE ? (
+                        <span className="text-xs text-muted-foreground">მეტი აღარ არის</span>
+                      ) : null}
                     </div>
                   </div>
                 )}
