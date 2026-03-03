@@ -1,4 +1,4 @@
-export const DELIVERY_THRESHOLD = 25;
+export const DELIVERY_THRESHOLD = 24;
 export const DELIVERY_FEE = 0;
 
 export const CATEGORIES = [
