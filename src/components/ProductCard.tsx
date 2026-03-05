@@ -127,7 +127,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
 
         <div className="p-3">
-          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
+      <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem] md:text-base md:min-h-[3rem]">
             {product.title}
           </p>
           {/* Temu-style pricing */}
