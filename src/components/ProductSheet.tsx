@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from "react";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,6 @@ interface ProductSheetProps {
   onClose: () => void;
 }
 
-// ── Swipe Carousel with touch support + preloading ──
 const ImageCarousel = ({ images, title, productId }: { images: string[]; title: string; productId: string }) => {
   const [current, setCurrent] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -37,13 +38,11 @@ const ImageCarousel = ({ images, title, productId }: { images: string[]; title: 
   const startXRef = useRef(0);
   const imgs = images.length > 0 ? images : ["/placeholder.svg"];
 
-  // Reset on product change
   useEffect(() => {
     setCurrent(0);
     setOffset(0);
   }, [productId]);
 
-  // Preload all images
   useEffect(() => {
     imgs.forEach((src) => {
       const img = new Image();
@@ -229,14 +228,14 @@ const DescriptionSection = ({ description }: { description: string }) => {
 
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining } = useCart();
+  const isMobile = useIsMobile();
   const { handleCheckoutIntent } = useCheckoutGate();
   const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
   const prevUnlocked = useRef(isUnlocked);
-  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [_justUnlocked, setJustUnlocked] = useState(false);
   const initialItemCount = useRef(0);
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
 
-  // Track initial item count when sheet opens
   useEffect(() => {
     if (open && product) {
       setActionState("idle");
@@ -258,25 +257,11 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   if (!product) return null;
 
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
-
   const quantity = getQuantity(product.id);
-  // Show threshold UI only if cart has items (either before opening or after adding)
   const showThresholdUI = itemCount > 0;
 
   const { addAndGate } = useCheckoutGate();
 
-  const handleAdd = () => {
-    if (isOOS) return;
-    addItem(product);
-    setActionState("added");
-    // After brief confirmation, auto-trigger checkout gate (opens recommendation sheet if below threshold)
-    setTimeout(() => {
-      onClose();
-      handleCheckoutIntent("pdp_sheet");
-    }, 800);
-  };
-
-  /** First-time Quick Order: add + gate in one action */
   const handleQuickOrder = () => {
     if (isOOS) return;
     setActionState("added");
@@ -291,23 +276,81 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
     handleCheckoutIntent("pdp_sheet");
   };
 
-  return (
-    <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-      <DrawerContent className="max-h-[92vh] focus:outline-none">
-        <DrawerTitle className="sr-only">{product.title}</DrawerTitle>
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-30 w-11 h-11 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md"
-          aria-label="დახურვა"
-        >
-          <X className="w-5 h-5 text-foreground" />
-        </button>
-        <div className="overflow-y-auto max-h-[calc(92vh-180px)]">
-          <ImageCarousel images={product.images} title={product.id} productId={product.id} />
+  const renderActionZone = () => {
+    if (isOOS) {
+      return (
+        <div className="w-full h-14 rounded-xl bg-muted flex items-center justify-center">
+          <span className="text-muted-foreground font-bold text-base">ამოიწურა — Sold Out</span>
+        </div>
+      );
+    }
+    return (
+      <>
+        {quantity > 0 && actionState !== "added" && (
+          <div className="flex items-center justify-center gap-4">
+            <Button onClick={() => updateQuantity(product.id, quantity - 1)} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
+              <Minus className="w-5 h-5" />
+            </Button>
+            <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
+            <Button onClick={() => addItem(product)} size="icon" className="h-12 w-12 rounded-lg">
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
+        )}
+        <div className="relative w-full h-14 rounded-xl overflow-hidden md:max-w-md md:mx-auto">
+          {actionState === "added" ? (
+            <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
+              <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
+                <Check className="w-5 h-5" /> დამატებულია
+              </span>
+            </div>
+          ) : quantity > 0 && isUnlocked ? (
+            <Button
+              onClick={handleFinalize}
+              className="w-full h-full text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
+              size="lg"
+            >
+              <ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება
+            </Button>
+          ) : quantity > 0 && !isUnlocked ? (
+            <AttentionButton
+              isBelowThreshold={true}
+              onClick={handleFinalize}
+              className="h-full text-base transition-all duration-300 bg-primary text-primary-foreground"
+            >
+              დაამატე კიდევ — აკლია {remaining.toFixed(1)} ₾
+            </AttentionButton>
+          ) : (
+            <Button onClick={handleQuickOrder} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
+              <span className="flex flex-col items-center leading-tight">
+                <span>სწრაფი შეკვეთა</span>
+                <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
+              </span>
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  };
 
-          <div className="px-4 pt-3 pb-1">
+  const sheetContent = (
+    <>
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 z-30 w-11 h-11 flex items-center justify-center rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-md"
+        aria-label="დახურვა"
+      >
+        <X className="w-5 h-5 text-foreground" />
+      </button>
+      <div className={`overflow-y-auto ${isMobile ? 'max-h-[calc(92vh-180px)]' : 'flex gap-0 max-h-[80vh]'}`}>
+        <div className={isMobile ? '' : 'w-[420px] flex-shrink-0'}>
+          <ImageCarousel images={product.images} title={product.id} productId={product.id} />
+        </div>
+
+        <div className={isMobile ? '' : 'flex-1 overflow-y-auto max-h-[80vh]'}>
+          <div className="px-4 pt-3 pb-1 md:px-6 md:pt-5">
             <div className="flex items-start gap-2">
-              <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2 flex-1">{product.title}</h2>
+              <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2 flex-1 md:text-xl">{product.title}</h2>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -328,13 +371,12 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
               const discount = getDiscountPercent(product.price, oldPrice);
               return (
                 <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
-                  <span className="text-2xl font-extrabold text-primary">{product.price} ₾</span>
+                  <span className="text-2xl font-extrabold text-primary md:text-3xl">{product.price} ₾</span>
                   <span className="text-base text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
                   <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{discount}%</span>
                 </div>
               );
             })()}
-            {/* Micro-benefits */}
             <MicroBenefitStacked />
           </div>
           <div className="my-3">
@@ -346,74 +388,43 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
           </div>
           <DemoTimer productId={product.id} />
           <DescriptionSection description={product.description} />
-        </div>
 
-        {/* Action zone — sticky */}
-        <div className="border-t border-border p-4 bg-card space-y-3">
-          {showThresholdUI && !isUnlocked && !isOOS && (
-            <DeliveryMissionBar mini />
-          )}
-          {isOOS ? (
-            <div className="w-full h-14 rounded-xl bg-muted flex items-center justify-center">
-              <span className="text-muted-foreground font-bold text-base">ამოიწურა — Sold Out</span>
+          {!isMobile && (
+            <div className="border-t border-border p-6 bg-card space-y-3">
+              {showThresholdUI && !isUnlocked && !isOOS && <DeliveryMissionBar mini />}
+              {renderActionZone()}
             </div>
-          ) : (
-            <>
-
-              {/* Quantity selector */}
-              {quantity > 0 && actionState !== "added" && (
-                <div className="flex items-center justify-center gap-4">
-                  <Button onClick={() => updateQuantity(product.id, quantity - 1)} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
-                    <Minus className="w-5 h-5" />
-                  </Button>
-                  <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
-                  <Button onClick={() => addItem(product)} size="icon" className="h-12 w-12 rounded-lg">
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Morphing button — no dead "unlock" state */}
-              <div className="relative w-full h-14 rounded-xl overflow-hidden">
-                {actionState === "added" ? (
-                  <div className="w-full h-full bg-success flex items-center justify-center transition-all duration-300">
-                    <span className="flex items-center gap-2 text-success-foreground font-bold text-base animate-pop-in">
-                      <Check className="w-5 h-5" /> დამატებულია
-                    </span>
-                  </div>
-                ) : quantity > 0 && isUnlocked ? (
-                  /* Already in cart + threshold met → go to checkout */
-                  <Button
-                    onClick={handleFinalize}
-                    className="w-full h-full text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
-                    size="lg"
-                  >
-                    <ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება
-                  </Button>
-                ) : quantity > 0 && !isUnlocked ? (
-                  /* Already in cart + below threshold → open recommendation sheet directly */
-                  <AttentionButton
-                    isBelowThreshold={true}
-                    onClick={handleFinalize}
-                    className="h-full text-base transition-all duration-300 bg-primary text-primary-foreground"
-                  >
-                    დაამატე კიდევ — აკლია {remaining.toFixed(1)} ₾
-                  </AttentionButton>
-                ) : (
-                  /* Not in cart yet → Quick Order (add + auto-gate) */
-                  <Button onClick={handleQuickOrder} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
-                    <span className="flex flex-col items-center leading-tight">
-                      <span>სწრაფი შეკვეთა</span>
-                      <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
-                    </span>
-                  </Button>
-                )}
-              </div>
-            </>
           )}
         </div>
-      </DrawerContent>
-    </Drawer>
+      </div>
+
+      {isMobile && (
+        <div className="border-t border-border p-4 bg-card space-y-3">
+          {showThresholdUI && !isUnlocked && !isOOS && <DeliveryMissionBar mini />}
+          {renderActionZone()}
+        </div>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
+        <DrawerContent className="max-h-[92vh] focus:outline-none">
+          <DrawerTitle className="sr-only">{product.title}</DrawerTitle>
+          {sheetContent}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-[960px] w-[95vw] p-0 overflow-hidden rounded-2xl gap-0">
+        <DialogTitle className="sr-only">{product.title}</DialogTitle>
+        {sheetContent}
+      </DialogContent>
+    </Dialog>
   );
 };
 

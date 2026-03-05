@@ -65,12 +65,12 @@ const Index = () => {
       <HomeHeaderTemuStyle />
       <div className="bg-background border-b border-border">
         <ScrollArea className="w-full">
-          <div className="flex gap-2 px-4 py-3">
+          <div className="flex gap-2 px-4 py-3 md:gap-3 md:px-0 md:max-w-[1280px] md:mx-auto md:px-8">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all duration-150 border-2 ${
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all duration-150 border-2 md:px-5 md:py-2.5 md:text-base ${
                   activeCategory === cat.id
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-card text-foreground border-border hover:border-primary/50"
@@ -84,7 +84,7 @@ const Index = () => {
         </ScrollArea>
       </div>
 
-      <div className="container max-w-2xl mx-auto px-4 pt-4">
+      <div className="container max-w-2xl mx-auto px-4 pt-4 md:max-w-[1280px] md:px-8 md:pt-6">
         <BoosterRow products={products} />
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -93,7 +93,7 @@ const Index = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">{renderFeed()}</div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5">{renderFeed()}</div>
             {hasMore && (
               <div ref={loaderRef} className="flex justify-center py-6">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

@@ -213,7 +213,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
     <>
       <div className="sticky top-0 z-40" style={slideStyle}>
         <header className="bg-card text-foreground shadow-sm border-b border-border">
-          <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14">
+          <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14 md:max-w-[1280px] md:px-8 md:h-16">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex-shrink-0 font-extrabold tracking-tight text-xl text-primary"
@@ -257,7 +257,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
 
       {/* ── Trust badges (NOT sticky) ── */}
       <div className="bg-background border-b border-border">
-        <div className="container max-w-2xl mx-auto px-3 py-2 flex gap-2">
+        <div className="container max-w-2xl mx-auto px-3 py-2 flex gap-2 md:max-w-[1280px] md:px-8">
           <TrustModal title={t("free_delivery")} contentKey="delivery">
             <button className="flex-1 flex items-center gap-2 bg-card rounded-xl px-3 py-2 border border-border shadow-sm hover:shadow-md transition-shadow text-left">
               <Check className="w-4 h-4 text-success flex-shrink-0" />
@@ -281,7 +281,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
 
       {/* ── Green bar (NOT sticky) ── */}
       <div className="bg-success">
-        <div className="container max-w-2xl mx-auto px-3 py-2 flex items-center">
+        <div className="container max-w-2xl mx-auto px-3 py-2 flex items-center md:max-w-[1280px] md:px-8">
           <TrustModal title={t("why_us")} contentKey="why">
             <button className="flex-1 flex items-center gap-1.5 text-success-foreground text-left">
               <Shield className="w-4 h-4 flex-shrink-0" />
