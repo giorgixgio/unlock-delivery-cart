@@ -15,17 +15,17 @@ interface HeroProductCardProps {
 }
 
 const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
-  const { addItem, updateQuantity, getQuantity } = useCart();
+  const { updateQuantity, getQuantity } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const quantity = getQuantity(product.id);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showFloat, setShowFloat] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem(product);
+    addAndGate(product, "hero_card");
     trackHeroAddToCart(product.id);
     setShowFloat(true);
-    setSheetOpen(true);
     setTimeout(() => setShowFloat(false), 600);
   };
 
