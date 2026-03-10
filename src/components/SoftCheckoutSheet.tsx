@@ -328,7 +328,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-bold text-foreground">რეკომენდაცია შენთვის</span>
+                      <span className="text-sm font-bold text-foreground">ხშირად ამატებენ ასევე</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {visibleRecommended.map((product) => (
