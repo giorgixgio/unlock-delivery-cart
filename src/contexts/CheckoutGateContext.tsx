@@ -20,6 +20,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
+  const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
 
   const proceedToCheckout = useCallback(() => {
     openCart();
