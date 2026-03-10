@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
-import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag, Lock, RotateCcw, Phone, MapPin, Wrench, Clock, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag, Lock, RotateCcw, Phone, Clock, Check, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
