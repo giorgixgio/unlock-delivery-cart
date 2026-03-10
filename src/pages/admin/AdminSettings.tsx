@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
 
 interface AdminUser {
   id: string;
@@ -20,13 +21,50 @@ const AdminSettings = () => {
   const [newRole, setNewRole] = useState("operator");
   const [adding, setAdding] = useState(false);
 
+  // Threshold setting
+  const [threshold, setThreshold] = useState("");
+  const [thresholdLoading, setThresholdLoading] = useState(true);
+  const [thresholdSaving, setThresholdSaving] = useState(false);
+
   const fetchUsers = async () => {
     const { data } = await supabase.from("admin_users").select("*").order("created_at");
     setUsers((data as unknown as AdminUser[]) || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const fetchThreshold = async () => {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "minimum_order_threshold")
+      .maybeSingle();
+    if (data?.value) setThreshold(data.value);
+    setThresholdLoading(false);
+  };
+
+  useEffect(() => {
+    fetchUsers();
+    fetchThreshold();
+  }, []);
+
+  const saveThreshold = async () => {
+    const val = parseFloat(threshold);
+    if (isNaN(val) || val <= 0) {
+      toast.error("შეიყვანეთ სწორი რიცხვი");
+      return;
+    }
+    setThresholdSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .update({ value: String(val), updated_at: new Date().toISOString() })
+      .eq("key", "minimum_order_threshold");
+    if (error) {
+      toast.error("შენახვა ვერ მოხერხდა");
+    } else {
+      toast.success(`მინიმალური შეკვეთა შეიცვალა: ${val}₾`);
+    }
+    setThresholdSaving(false);
+  };
 
   const addUser = async () => {
     if (!newEmail.trim()) return;
@@ -49,7 +87,36 @@ const AdminSettings = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-extrabold text-foreground">Settings — Admin Users</h1>
+      <h1 className="text-2xl font-extrabold text-foreground">Settings</h1>
+
+      {/* Minimum order threshold */}
+      <div className="bg-card rounded-lg p-4 border border-border space-y-3">
+        <h3 className="font-bold text-sm">მინიმალური შეკვეთის თანხა (₾)</h3>
+        <p className="text-xs text-muted-foreground">
+          ეს მნიშვნელობა გამოიყენება მთელ საიტზე — კალათაში, პროგრეს ბარში, რეკომენდაციებში.
+        </p>
+        {thresholdLoading ? (
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+        ) : (
+          <div className="flex gap-3 items-end">
+            <div className="w-32">
+              <Label className="text-xs">თანხა (₾)</Label>
+              <Input
+                type="number"
+                min="1"
+                step="0.1"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <Button onClick={saveThreshold} disabled={thresholdSaving} className="h-10">
+              {thresholdSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+              შენახვა
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Add user */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
