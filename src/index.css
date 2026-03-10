@@ -296,3 +296,67 @@
   animation-delay: 300ms;
   animation-fill-mode: both;
 }
+
+/* ═══ Checkout page styles ═══ */
+
+.checkout-card {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  margin-bottom: 0;
+}
+
+/* Phone prefix unified look */
+.phone-prefix-group:focus-within .phone-prefix-panel {
+  border-color: hsl(var(--primary));
+  background: #fff;
+}
+.phone-prefix-group:focus-within .checkout-input {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.10);
+}
+
+.checkout-input:focus {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.10);
+}
+
+/* CTA gradient states */
+.cta-orange-gradient {
+  background: linear-gradient(135deg, #E8420D, #c73a0a);
+  box-shadow: 0 6px 22px rgba(232,66,13,0.38);
+}
+.cta-orange-gradient:hover {
+  background: linear-gradient(135deg, #c73a0a, #E8420D);
+}
+
+.cta-green-gradient {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  box-shadow: 0 6px 22px rgba(22,163,74,0.38);
+}
+.cta-green-gradient:hover {
+  background: linear-gradient(135deg, #15803d, #16a34a);
+}
+
+/* Timer badge pulse */
+@keyframes timer-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.cta-timer-pulse {
+  animation: timer-pulse 2s ease-in-out infinite;
+}
+
+/* Social proof pulse */
+@keyframes social-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+.social-proof-pulse {
+  animation: social-pulse 1.5s ease-in-out infinite;
+}
+
+/* Fade-up for checkbox */
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
