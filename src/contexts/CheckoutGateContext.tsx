@@ -9,6 +9,8 @@ interface CheckoutGateContextType {
   handleCheckoutIntent: (source: string) => void;
   /** Add product to cart and immediately open threshold sheet if below minimum */
   addAndGate: (product: Product, source: string) => void;
+  /** The last product added via addAndGate, for confirmation display */
+  lastAddedProduct: Product | null;
 }
 
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
+  const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
 
   const proceedToCheckout = useCallback(() => {
     openCart();
@@ -40,6 +43,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const addAndGate = useCallback(
     (product: Product, src: string) => {
       addItem(product);
+      setLastAddedProduct(product);
       // Compute post-add total with rounding to avoid floating-point issues
       const postTotal = Math.round((total + product.price) * 10) / 10;
       toast("დამატებულია ✅", { duration: 1200 });
@@ -50,11 +54,11 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSheetOpen(true);
       }
     },
-    [addItem, total, openCart]
+    [addItem, total, openCart, threshold]
   );
 
   return (
-    <CheckoutGateContext.Provider value={{ handleCheckoutIntent, addAndGate }}>
+    <CheckoutGateContext.Provider value={{ handleCheckoutIntent, addAndGate, lastAddedProduct }}>
       {children}
       <SoftCheckoutSheet
         open={sheetOpen}
