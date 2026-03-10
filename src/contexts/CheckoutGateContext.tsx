@@ -58,7 +58,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 
   return (
-    <CheckoutGateContext.Provider value={{ handleCheckoutIntent, addAndGate }}>
+    <CheckoutGateContext.Provider value={{ handleCheckoutIntent, addAndGate, lastAddedProduct }}>
       {children}
       <SoftCheckoutSheet
         open={sheetOpen}

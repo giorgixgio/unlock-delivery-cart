@@ -74,7 +74,8 @@ const CardBadges = ({ productId }: { productId: string }) => {
 const ProductCard = memo(({ product }: ProductCardProps) => {
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
-  const { addItem, updateQuantity, getQuantity } = useCart();
+  const { updateQuantity, getQuantity } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const quantity = getQuantity(product.id);
   const [showFloat, setShowFloat] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -82,9 +83,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem(product);
+    addAndGate(product, "grid_card");
     setShowFloat(true);
-    setSheetOpen(true);
     setTimeout(() => setShowFloat(false), 600);
   };
 
