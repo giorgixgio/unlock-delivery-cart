@@ -195,7 +195,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     lastScrollTop.current = st;
   }, []);
 
-  const progress = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const progress = Math.min(100, (total / threshold) * 100);
   const gap = remaining;
   const almostThere = gap > 0 && gap < 5;
 
