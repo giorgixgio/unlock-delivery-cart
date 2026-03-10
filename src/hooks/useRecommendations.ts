@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 
 // Bucket remaining into groups for caching

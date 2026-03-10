@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { CheckCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { usePulseCTA } from "@/hooks/usePulseCTA";
@@ -14,7 +14,7 @@ import SaleTotalDisplay from "./SaleTotalDisplay";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
-  const { items, total, itemCount, isUnlocked, remaining, isFreeDelivery, shippingFee } = useCart();
+  const { items, total, itemCount, isUnlocked, remaining, isFreeDelivery, shippingFee, threshold } = useCart();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
@@ -71,7 +71,7 @@ const StickyCartHUD = () => {
           {isUnlocked ? t("complete_order_btn") : t("unlock_btn").replace("{amount}", remaining.toFixed(1))}
         </Button>
         {!isUnlocked && (
-          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {DELIVERY_THRESHOLD} ₾</p>
+          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {threshold} ₾</p>
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { toast } from "sonner";
 
 interface CheckoutGateContextType {
@@ -14,7 +14,7 @@ interface CheckoutGateContextType {
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked, addItem, total } = useCart();
+  const { isUnlocked, addItem, total, threshold } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -43,7 +43,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Compute post-add total with rounding to avoid floating-point issues
       const postTotal = Math.round((total + product.price) * 10) / 10;
       toast("დამატებულია ✅", { duration: 1200 });
-      if (postTotal >= DELIVERY_THRESHOLD) {
+      if (postTotal >= threshold) {
         openCart();
       } else {
         setSource(src);

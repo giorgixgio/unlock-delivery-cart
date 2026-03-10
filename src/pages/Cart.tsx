@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
 import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
@@ -40,7 +40,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const { toast } = useToast();
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const canCheckout = isLandingPage ? items.length > 0 : total >= DELIVERY_THRESHOLD;
+  const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});

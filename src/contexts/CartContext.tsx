@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
-import { Product, CartItem, DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/constants";
+import { Product, CartItem, DELIVERY_FEE } from "@/lib/constants";
 import { isProductOOS } from "@/lib/stockOverrideStore";
 import { trackAddToCart } from "@/lib/metaPixel";
+import { useThreshold } from "@/contexts/ThresholdContext";
 
 const CART_STORAGE_KEY = "lb_cart";
 
@@ -36,28 +37,24 @@ interface CartContextType {
   remaining: number;
   isUnlocked: boolean;
   getQuantity: (productId: string) => number;
-  /** Number of unique products in cart */
   uniqueItemCount: number;
-  /** Free delivery if 2+ unique items */
   isFreeDelivery: boolean;
-  /** 0 if free delivery, else DELIVERY_FEE */
   shippingFee: number;
-  /** total + shippingFee */
   orderTotal: number;
+  threshold: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>(loadCart);
+  const threshold = useThreshold();
 
-  // Persist to localStorage on every change
   useEffect(() => {
     saveCart(items);
   }, [items]);
 
   const addItem = useCallback((product: Product) => {
-    // Block adding OOS products
     if (isProductOOS(product.id, product.available)) {
       console.warn(`Blocked add-to-cart: product ${product.id} is out of stock`);
       return;
@@ -82,12 +79,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (quantity <= 0) {
       setItems((prev) => prev.filter((i) => i.product.id !== productId));
     } else {
-      // Block quantity increase for OOS products
       setItems((prev) =>
         prev.map((i) => {
           if (i.product.id === productId) {
             if (quantity > i.quantity && isProductOOS(productId, i.product.available)) {
-              return i; // Block increase
+              return i;
             }
             return { ...i, quantity };
           }
@@ -103,7 +99,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
   const uniqueItemCount = items.length;
   // Round to 1 decimal for threshold check — matches what user sees in UI
-  const remaining = Math.max(0, Math.round((DELIVERY_THRESHOLD - total) * 10) / 10);
+  const remaining = Math.max(0, Math.round((threshold - total) * 10) / 10);
   const isUnlocked = remaining <= 0;
   const isFreeDelivery = true;
   const shippingFee = 0;
@@ -116,7 +112,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount, remaining, isUnlocked, getQuantity, uniqueItemCount, isFreeDelivery, shippingFee, orderTotal }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount, remaining, isUnlocked, getQuantity, uniqueItemCount, isFreeDelivery, shippingFee, orderTotal, threshold }}
     >
       {children}
     </CartContext.Provider>

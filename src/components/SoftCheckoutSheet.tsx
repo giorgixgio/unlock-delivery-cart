@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { useProducts } from "@/hooks/useProducts";
-import { DELIVERY_THRESHOLD, Product } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -130,7 +130,7 @@ const SkeletonGrid = () => (
 
 // ── Main Component ──
 const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutSheetProps) => {
-  const { total, isUnlocked, remaining, itemCount, items, isFreeDelivery } = useCart();
+  const { total, isUnlocked, remaining, itemCount, items, isFreeDelivery, threshold } = useCart();
   const { data: products = [], isLoading } = useProducts();
   const prevUnlocked = useRef(isUnlocked);
   const { openCart } = useCartOverlay();
@@ -195,7 +195,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     lastScrollTop.current = st;
   }, []);
 
-  const progress = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const progress = Math.min(100, (total / threshold) * 100);
   const gap = remaining;
   const almostThere = gap > 0 && gap < 5;
 
@@ -248,7 +248,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
               <span className="text-xs font-bold text-muted-foreground">
-                <AnimatedNumber value={total} /> / {DELIVERY_THRESHOLD} ₾
+                <AnimatedNumber value={total} /> / {threshold} ₾
               </span>
               <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
                 <div ref={cartIconRef}>
@@ -267,7 +267,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
                   {almostThere
                     ? "თითქმის მოხერხდა! 🔥"
-                    : `მინ. შეკვეთა ${DELIVERY_THRESHOLD}₾ — აკლია ${gap.toFixed(1)}₾`}
+                    : `მინ. შეკვეთა ${threshold}₾ — აკლია ${gap.toFixed(1)}₾`}
                 </h2>
                 <p className="text-xs text-muted-foreground">
                   დაამატე 1–2 პროდუქტი შეკვეთის გასააქტიურებლად

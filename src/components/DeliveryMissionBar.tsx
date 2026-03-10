@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Truck, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+
 import AnimatedNumber from "@/components/AnimatedNumber";
 
 interface DeliveryMissionBarProps {
@@ -10,9 +10,9 @@ interface DeliveryMissionBarProps {
 }
 
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
-  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount } = useCart();
+  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount, threshold } = useCart();
   const { t } = useLanguage();
-  const targetPercent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const targetPercent = Math.min(100, (total / threshold) * 100);
   const [percent, setPercent] = useState(0);
   const hasAnimated = useRef(false);
   const [bounce, setBounce] = useState(false);
@@ -99,7 +99,7 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           ) : remaining < 5 ? (
             <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
           ) : (
-            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {DELIVERY_THRESHOLD} ₾</>
+            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {threshold} ₾</>
           )}
         </p>
       )}
