@@ -10,9 +10,9 @@ interface DeliveryMissionBarProps {
 }
 
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
-  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount } = useCart();
+  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount, threshold } = useCart();
   const { t } = useLanguage();
-  const targetPercent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const targetPercent = Math.min(100, (total / threshold) * 100);
   const [percent, setPercent] = useState(0);
   const hasAnimated = useRef(false);
   const [bounce, setBounce] = useState(false);
