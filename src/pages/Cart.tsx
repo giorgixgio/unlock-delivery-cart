@@ -603,26 +603,74 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         </div>
       </div>
 
-      {/* ══════ STICKY CTA ══════ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-3 shadow-lg">
-        <div className="container max-w-2xl mx-auto relative">
-          {/* Timer badge */}
-          <div className="absolute -top-[11px] right-[14px] bg-[#dc2626] text-white rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
-            <Clock className="w-[11px] h-[11px]" />
-            <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+      {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, #f3f4f6 80%, transparent)", padding: "0 13px 22px" }}>
+        <div className="flex flex-col gap-2">
+          {/* Ticker card */}
+          <div className="bg-card rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
+            {/* Sweep bar */}
+            <div className="h-[3px] bg-muted relative">
+              <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
+            </div>
+            {/* Content row */}
+            <div className="flex items-center gap-2 px-3.5 py-[11px]" style={{ minHeight: 42 }}>
+              {/* Icon slot */}
+              <div className="w-[18px] flex items-center justify-center flex-shrink-0">
+                {tickerMsg.icon === "dot" ? (
+                  <span className="w-2 h-2 rounded-full bg-[#22c55e] block animate-live-pulse" />
+                ) : (
+                  <span className="text-sm leading-none">{tickerMsg.icon}</span>
+                )}
+              </div>
+              {/* Text */}
+              <div className="flex-1 overflow-hidden relative h-5">
+                <div
+                  className="absolute text-xs font-semibold text-foreground whitespace-nowrap leading-5 transition-all"
+                  style={{
+                    transitionDuration: `${TRANS_MS}ms`,
+                    transitionTimingFunction: "ease",
+                    opacity: tickerPhase === "hold" ? 1 : 0,
+                    transform: tickerPhase === "out" ? "translateY(-10px)" : tickerPhase === "in" ? "translateY(10px)" : "translateY(0)",
+                  }}
+                >
+                  {tickerMsg.text}
+                </div>
+              </div>
+              {/* Badge pill */}
+              <div
+                className="flex-shrink-0 rounded-[20px] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap transition-opacity"
+                style={{
+                  background: "hsl(var(--accent))",
+                  color: "hsl(var(--primary))",
+                  transitionDuration: `${TRANS_MS}ms`,
+                  opacity: tickerVisible ? 1 : 0,
+                }}
+              >
+                {tickerMsg.badge}
+              </div>
+            </div>
           </div>
-          <Button
-            onClick={handleCTAClick}
-            disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-            className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
-            size="lg"
-          >
-            {submitting
-              ? "იგზავნება..."
-              : canCheckout
-              ? "შეკვეთა — გადახდა მიწოდებისას"
-              : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
-          </Button>
+
+          {/* CTA button */}
+          <div className="relative">
+            {/* Timer badge */}
+            <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
+              <Clock className="w-[11px] h-[11px]" />
+              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+            </div>
+            <Button
+              onClick={handleCTAClick}
+              disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
+              className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+              size="lg"
+            >
+              {submitting
+                ? "იგზავნება..."
+                : canCheckout
+                ? (isFormValid || showRecognizedCard ? "✓ შეკვეთა — გადახდა მიწოდებისას" : "შეკვეთა — გადახდა მიწოდებისას")
+                : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
+            </Button>
+          </div>
         </div>
       </div>
 
