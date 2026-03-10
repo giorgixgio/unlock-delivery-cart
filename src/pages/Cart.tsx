@@ -282,32 +282,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast]);
 
-  if (!isOpen) return null;
-
-  if (items.length === 0) {
-    return (
-      <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-        <div className="min-h-screen flex flex-col items-center justify-center px-4">
-          <p className="text-xl font-bold text-foreground mb-4">კალათა ცარიელია</p>
-          <Button onClick={closeCart} variant="outline" size="lg">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            უკან დაბრუნება
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const showRecognizedCard = isRecognized && !isEditing;
-
-  // CTA color logic: no checkbox dependency, just form validity + canCheckout
-  const ctaColorClass = !canCheckout
-    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-    : isFormValid
-    ? "cta-green-gradient text-white"
-    : "cta-orange-gradient text-white";
-
-  // ── Urgency ticker state ──
+  // ── Urgency ticker state (before early returns for hooks rules) ──
   const URGENCY_MSGS = useMemo(() => [
     { icon: "dot",  badge: "👁 7",     text: "7 ადამიანი ახლა ამ გვერდზეა" },
     { icon: "⚡",   badge: "📦 3",     text: "ბოლო 3 შეკვეთა — სტოქი მცირდება" },
@@ -342,6 +317,31 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const tickerMsg = URGENCY_MSGS[tickerIdx];
   const tickerVisible = tickerPhase === "hold";
+
+  if (!isOpen) return null;
+
+  if (items.length === 0) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+        <div className="min-h-screen flex flex-col items-center justify-center px-4">
+          <p className="text-xl font-bold text-foreground mb-4">კალათა ცარიელია</p>
+          <Button onClick={closeCart} variant="outline" size="lg">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            უკან დაბრუნება
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const showRecognizedCard = isRecognized && !isEditing;
+
+  // CTA color logic
+  const ctaColorClass = !canCheckout
+    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+    : isFormValid
+    ? "cta-green-gradient text-white"
+    : "cta-orange-gradient text-white";
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
