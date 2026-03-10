@@ -307,9 +307,45 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     ? "cta-green-gradient text-white"
     : "cta-orange-gradient text-white";
 
+  // ── Urgency ticker state ──
+  const URGENCY_MSGS = useMemo(() => [
+    { icon: "dot",  badge: "👁 7",     text: "7 ადამიანი ახლა ამ გვერდზეა" },
+    { icon: "⚡",   badge: "📦 3",     text: "ბოლო 3 შეკვეთა — სტოქი მცირდება" },
+    { icon: "dot",  badge: "🚚 ხვალ",  text: "მიტანა ხვალ — თუ ახლა შეუკვეთავ" },
+    { icon: "🔒",   badge: "⏱ 6წთ",   text: "კალათა 6 წუთით დარეზერვებულია" },
+  ], []);
+
+  const HOLD_MS  = 2600;
+  const TRANS_MS = 380;
+  const [tickerIdx,   setTickerIdx]   = useState(0);
+  const [tickerPhase, setTickerPhase] = useState<"hold"|"out"|"in">("hold");
+
+  useEffect(() => {
+    let h: number, o: number, ni: number, nk: number;
+    const cycle = () => {
+      setTickerPhase("hold");
+      h = window.setTimeout(() => {
+        setTickerPhase("out");
+        o = window.setTimeout(() => {
+          setTickerIdx(i => (i + 1) % URGENCY_MSGS.length);
+          setTickerPhase("in");
+          ni = window.setTimeout(() => {
+            setTickerPhase("hold");
+            nk = window.setTimeout(cycle, HOLD_MS);
+          }, TRANS_MS);
+        }, TRANS_MS);
+      }, HOLD_MS);
+    };
+    const kick = window.setTimeout(cycle, HOLD_MS);
+    return () => [kick, h, o, ni, nk].forEach(clearTimeout);
+  }, [URGENCY_MSGS]);
+
+  const tickerMsg = URGENCY_MSGS[tickerIdx];
+  const tickerVisible = tickerPhase === "hold";
+
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-      <div className="pb-24">
+      <div className="pb-[160px]">
         {/* Header */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
           <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
