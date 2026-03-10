@@ -269,13 +269,32 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
                   {almostThere
                     ? "თითქმის მოხერხდა! 🔥"
-                    : `მინ. შეკვეთა ${threshold}₾ — აკლია ${gap.toFixed(1)}₾`}
+                    : `კალათაში უკვე არის ${total.toFixed(1)}₾`}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  დაამატე 1–2 პროდუქტი შეკვეთის გასააქტიურებლად
+                  {almostThere
+                    ? `დაამატეთ კიდევ ${gap.toFixed(1)}₾ შეკვეთის დასასრულებლად`
+                    : `დაამატეთ კიდევ ${gap.toFixed(1)}₾ შეკვეთის დასასრულებლად`}
                 </p>
               </div>
               <DeliveryMissionBar />
+
+              {/* Confirmation block: show last added product */}
+              {lastAddedProduct && (
+                <div className="flex items-center gap-3 bg-accent/40 border border-border rounded-xl p-2.5 mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                  <img
+                    src={lastAddedProduct.image}
+                    alt={lastAddedProduct.title}
+                    className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-success">დამატებულია კალათაში</p>
+                    <p className="text-xs font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
+                  </div>
+                  <span className="text-sm font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
+                </div>
+              )}
             </div>
           </div>
 
