@@ -1,13 +1,12 @@
 import { CheckCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
 import AnimatedNumber from "@/components/AnimatedNumber";
 
 const DeliveryProgressBar = () => {
-  const { total, isUnlocked, remaining, isFreeDelivery } = useCart();
+  const { total, isUnlocked, remaining, isFreeDelivery, threshold } = useCart();
   const { t } = useLanguage();
-  const percent = Math.min(100, (total / DELIVERY_THRESHOLD) * 100);
+  const percent = Math.min(100, (total / threshold) * 100);
 
   return (
     <div className="w-full">
