@@ -18,9 +18,10 @@ import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/cus
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { supabase } from "@/integrations/supabase/client";
+import ConfirmOrderModal from "@/components/ConfirmOrderModal";
 
+// Validation: name is NOT required from user
 const orderSchema = z.object({
-  name: z.string().trim().min(1, "სახელი აუცილებელია").max(100),
   phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
   region: z.string().trim().min(1, "რეგიონი/ქალაქი აუცილებელია").max(100),
   address: z.string().trim().min(1, "მისამართი აუცილებელია").max(300),
@@ -32,18 +33,13 @@ const GeorgianFlag = () => (
     <rect width="22" height="15" fill="white" />
     <rect x="9.5" y="0" width="3" height="15" fill="#FF0000" />
     <rect x="0" y="6" width="22" height="3" fill="#FF0000" />
-    {/* Bolnisi crosses in 4 quadrants */}
     <g fill="#FF0000">
-      {/* Top-left */}
       <rect x="4" y="2" width="1.5" height="3" />
       <rect x="3.25" y="2.75" width="3" height="1.5" />
-      {/* Top-right */}
       <rect x="16" y="2" width="1.5" height="3" />
       <rect x="15.25" y="2.75" width="3" height="1.5" />
-      {/* Bottom-left */}
       <rect x="4" y="10" width="1.5" height="3" />
       <rect x="3.25" y="10.75" width="3" height="1.5" />
-      {/* Bottom-right */}
       <rect x="16" y="10" width="1.5" height="3" />
       <rect x="15.25" y="10.75" width="3" height="1.5" />
     </g>
@@ -53,8 +49,13 @@ const GeorgianFlag = () => (
 // Check if phone is a valid Georgian number
 const isValidGeorgianPhone = (phone: string): boolean => {
   const digits = phone.replace(/\D/g, "");
-  // 5XXXXXXXX (9 digits) or 9955XXXXXXXX (12 digits)
   return /^5\d{8}$/.test(digits) || /^9955\d{8}$/.test(digits);
+};
+
+// Generate placeholder name for order payload
+const generatePlaceholderName = (): string => {
+  const suffix = Math.floor(1000 + Math.random() * 9000);
+  return `Customer-${suffix}`;
 };
 
 // Countdown timer hook — purely decorative
@@ -83,12 +84,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const { isLandingPage, landingSlug } = useLandingPage();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const nameRef = useRef<HTMLInputElement>(null);
   const cityRef = useRef<HTMLDivElement>(null);
 
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
-  const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
+  const [form, setForm] = useState({ phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -99,11 +99,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   // Collapsible cart summary
   const [summaryExpanded, setSummaryExpanded] = useState(false);
 
-  // CHANGE 1: Phone-first progressive disclosure
+  // Phone-first progressive disclosure
   const [phoneRevealed, setPhoneRevealed] = useState(false);
 
-  // CHANGE 8: Confirmation checkbox
-  const [confirmChecked, setConfirmChecked] = useState(false);
+  // Confirmation modal state
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const [historicalCities, setHistoricalCities] = useState<string[]>([]);
   const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
@@ -114,7 +114,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   useEffect(() => {
     if (isValidGeorgianPhone(form.phone) && !phoneRevealed) {
       setPhoneRevealed(true);
-      // Auto-focus city after animation
       setTimeout(() => {
         cityRef.current?.querySelector("input")?.focus();
       }, 280);
@@ -162,9 +161,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   useEffect(() => {
     if (!isOpen) return;
     const saved = loadCustomerInfo();
-    if (saved && (saved.name || saved.phone)) {
+    if (saved && (saved.phone || saved.name)) {
       setForm({
-        name: saved.name || "",
         phone: saved.phone || "",
         region: saved.region || "",
         address: saved.address || "",
@@ -177,7 +175,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [isOpen, setManualLocation]);
 
-  // Autofocus phone field (changed from name)
+  // Autofocus phone field
   useEffect(() => {
     if (isOpen && !isRecognized) {
       setTimeout(() => {
@@ -190,14 +188,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   formRef2.current = form;
 
   const persistForm = useCallback((data: typeof form) => {
-    saveCustomerInfo(data);
+    saveCustomerInfo({ ...data, name: "" });
   }, []);
 
   useEffect(() => {
     return () => {
       const current = formRef2.current;
-      if (current.name || current.phone || current.region || current.address) {
-        saveCustomerInfo(current);
+      if (current.phone || current.region || current.address) {
+        saveCustomerInfo({ ...current, name: "" });
       }
     };
   }, []);
@@ -216,7 +214,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const handleStartEditing = () => {
     setIsEditing(true);
-    setTouched({ name: true, phone: true, region: true, address: true });
+    setTouched({ phone: true, region: true, address: true });
   };
 
   // Form validity for CTA disable state
@@ -225,7 +223,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     return result.success;
   }, [form]);
 
-  const handleSubmit = async () => {
+  // CTA click: open confirmation modal instead of submitting directly
+  const handleCTAClick = useCallback(() => {
+    if (!canCheckout) {
+      closeCart();
+      handleCheckoutIntent("cart_page");
+      return;
+    }
+
     const hasAnyTouched = Object.values(touched).some(Boolean);
     if (!hasAnyTouched && !isRecognized) return;
 
@@ -235,16 +240,23 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       result.error.errors.forEach((e) => {
         if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
       });
-      ["name", "phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
+      ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
       if (isRecognized && !isEditing) setIsEditing(true);
       return;
     }
 
+    // Validation passed — open confirmation modal
+    setConfirmModalOpen(true);
+  }, [canCheckout, closeCart, handleCheckoutIntent, touched, isRecognized, form, isEditing]);
+
+  // Actual order submission (called from modal confirm or auto-confirm)
+  const handleSubmitOrder = useCallback(async () => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const order = await createOrder({
-        customerName: form.name,
+        customerName: generatePlaceholderName(),
         customerPhone: form.phone,
         city: form.region,
         region: form.region,
@@ -259,14 +271,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCustomerInfo();
       clearCart();
       dismissCart();
+      setConfirmModalOpen(false);
       navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
+      setConfirmModalOpen(false);
       toast({ title: "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.", variant: "destructive", duration: 4000 });
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast]);
 
   if (!isOpen) return null;
 
@@ -286,11 +300,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const showRecognizedCard = isRecognized && !isEditing;
 
-  // CHANGE 7: CTA color logic
-  const allFieldsValid = isFormValid && confirmChecked;
+  // CTA color logic: no checkbox dependency, just form validity + canCheckout
   const ctaColorClass = !canCheckout
     ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-    : allFieldsValid
+    : isFormValid
     ? "cta-green-gradient text-white"
     : "cta-orange-gradient text-white";
 
@@ -390,7 +403,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
-          {/* ══════ CHANGE 5: Trust Icon Row ══════ */}
+          {/* ══════ Trust Icon Row ══════ */}
           <div className="checkout-card px-4 py-2.5">
             <div className="flex items-center justify-between">
               {[
@@ -429,7 +442,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 </div>
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                   {[
-                    { label: "სახელი", value: form.name },
                     { label: "ტელეფონი", value: form.phone },
                     { label: "ქალაქი", value: form.region },
                     { label: "მისამართი", value: form.address },
@@ -453,22 +465,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   )}
                 </div>
                 <div className="space-y-2.5">
-                  {/* CHANGE 1: Name field hidden (display:none, stays in DOM) */}
-                  <div style={{ display: "none" }}>
-                    <Label className="text-sm font-bold text-foreground">სახელი</Label>
-                    <Input
-                      ref={nameRef}
-                      type="text"
-                      autoComplete="name"
-                      placeholder="თქვენი სახელი"
-                      value={form.name}
-                      onChange={(e) => handleChange("name", e.target.value)}
-                      className="mt-1 h-12 text-base rounded-xl"
-                    />
-                    {errors.name && <p className="text-sm text-destructive mt-1">{errors.name}</p>}
-                  </div>
-
-                  {/* CHANGE 2: Phone input with flag prefix */}
+                  {/* Phone input with flag prefix */}
                   <div>
                     <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
                     <div className="mt-1 phone-prefix-group flex">
@@ -485,7 +482,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                         placeholder="5XX XXX XXX"
                         value={form.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
-                        className="h-12 text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
+                        className="h-12 !text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
                       />
                     </div>
                     {errors.phone && (
@@ -495,13 +492,13 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                     )}
                   </div>
 
-                  {/* CHANGE 4: Microcopy below phone */}
+                  {/* Microcopy below phone */}
                   <div className="flex items-center gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-[9px] px-[11px] py-2">
                     <Phone className="w-3.5 h-3.5 text-[#166534] flex-shrink-0" />
                     <span className="text-[11px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ შეკვეთის დასადასტურებლად</span>
                   </div>
 
-                  {/* CHANGE 1: City and address — progressive reveal */}
+                  {/* City and address — progressive reveal */}
                   <div
                     className="transition-all duration-[280ms] ease-out overflow-hidden"
                     style={{
@@ -562,30 +559,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             <DeliveryInfoBox />
           </div>
 
-          {/* ══════ CHANGE 8: Confirmation checkbox ══════ */}
-          {phoneRevealed && canCheckout && (
-            <div
-              className="flex items-start gap-3 px-1 transition-all duration-[250ms] ease-out"
-              style={{ animation: "fade-up 250ms ease-out" }}
-            >
-              <button
-                type="button"
-                onClick={() => setConfirmChecked(!confirmChecked)}
-                className={`w-[19px] h-[19px] rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                  confirmChecked
-                    ? "bg-primary border-primary"
-                    : "border-[#d1d5db] bg-white"
-                }`}
-              >
-                {confirmChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-              </button>
-              <span className="text-[11px] text-muted-foreground leading-relaxed">
-                ვადასტურებ, რომ მიტანისას გადავიხდი {orderTotal.toFixed(1)}₾ კურიერთან.
-              </span>
-            </div>
-          )}
-
-          {/* ══════ CHANGE 10: Social proof line ══════ */}
+          {/* ══════ Social proof line ══════ */}
           <div className="flex items-center justify-center gap-1.5 py-1">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] social-proof-pulse" />
             <span className="text-[11px] text-muted-foreground">7 ადამიანი ახლა ამ გვერდზეა</span>
@@ -596,15 +570,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       {/* ══════ STICKY CTA ══════ */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-3 shadow-lg">
         <div className="container max-w-2xl mx-auto relative">
-          {/* CHANGE 6: Timer badge */}
+          {/* Timer badge */}
           <div className="absolute -top-[11px] right-[14px] bg-[#dc2626] text-white rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
             <Clock className="w-[11px] h-[11px]" />
             <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
           </div>
           <Button
-            onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
+            onClick={handleCTAClick}
             disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-            className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+            className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
             size="lg"
           >
             {submitting
@@ -615,6 +589,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           </Button>
         </div>
       </div>
+
+      {/* ══════ Confirmation Modal ══════ */}
+      <ConfirmOrderModal
+        open={confirmModalOpen}
+        amount={orderTotal}
+        onConfirm={handleSubmitOrder}
+        onCancel={() => setConfirmModalOpen(false)}
+        submitting={submitting}
+      />
     </div>
   );
 };
