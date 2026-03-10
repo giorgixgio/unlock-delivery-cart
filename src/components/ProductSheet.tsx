@@ -355,7 +355,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
                 onClick={(e) => {
                   e.stopPropagation();
                   const slug = product.handle || product.id;
-                  const url = `${window.location.origin}/p/${slug}`;
+                  const url = `${window.location.origin}/shop?product_id=${slug}`;
                   navigator.clipboard.writeText(url).then(() => {
                     toast("ლინკი დაკოპირდა", { duration: 1500 });
                   });
