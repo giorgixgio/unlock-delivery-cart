@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { CheckCircle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { usePulseCTA } from "@/hooks/usePulseCTA";
