@@ -29,7 +29,7 @@ const DeliveryProgressBar = () => {
         </div>
         {!isUnlocked && (
           <span className="text-sm font-bold text-muted-foreground">
-            <AnimatedNumber value={total} /> / {DELIVERY_THRESHOLD} ₾
+            <AnimatedNumber value={total} /> / {threshold} ₾
           </span>
         )}
       </div>

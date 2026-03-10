@@ -71,7 +71,7 @@ const StickyCartHUD = () => {
           {isUnlocked ? t("complete_order_btn") : t("unlock_btn").replace("{amount}", remaining.toFixed(1))}
         </Button>
         {!isUnlocked && (
-          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {DELIVERY_THRESHOLD} ₾</p>
+          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {threshold} ₾</p>
         )}
       </div>
     </div>

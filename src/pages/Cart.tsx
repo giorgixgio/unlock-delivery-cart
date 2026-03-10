@@ -40,7 +40,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const { toast } = useToast();
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const canCheckout = isLandingPage ? items.length > 0 : total >= DELIVERY_THRESHOLD;
+  const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
   const [form, setForm] = useState({ name: "", phone: "", region: "", address: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});

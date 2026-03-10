@@ -1,6 +1,6 @@
 import { Zap } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 

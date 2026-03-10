@@ -99,7 +99,7 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
           ) : remaining < 5 ? (
             <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
           ) : (
-            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {DELIVERY_THRESHOLD} ₾</>
+            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {threshold} ₾</>
           )}
         </p>
       )}

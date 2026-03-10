@@ -267,7 +267,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
                   {almostThere
                     ? "თითქმის მოხერხდა! 🔥"
-                    : `მინ. შეკვეთა ${DELIVERY_THRESHOLD}₾ — აკლია ${gap.toFixed(1)}₾`}
+                    : `მინ. შეკვეთა ${threshold}₾ — აკლია ${gap.toFixed(1)}₾`}
                 </h2>
                 <p className="text-xs text-muted-foreground">
                   დაამატე 1–2 პროდუქტი შეკვეთის გასააქტიურებლად
