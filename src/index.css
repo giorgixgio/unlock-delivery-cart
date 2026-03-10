@@ -369,4 +369,23 @@
   animation: social-pulse 1.5s ease-in-out infinite;
 }
 
+/* Urgency ticker animations */
+@keyframes barSweep {
+  0%   { width: 5%; }
+  42%  { width: 100%; }
+  58%  { width: 100%; }
+  100% { width: 5%; }
+}
+.animate-bar-sweep {
+  animation: barSweep 5960ms ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(1.7); }
+}
+.animate-live-pulse {
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
 /* Confirm modal animation helpers */

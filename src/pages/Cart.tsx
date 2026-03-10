@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
-import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag, Lock, RotateCcw, Phone, MapPin, Wrench, Clock, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag, Lock, RotateCcw, Phone, Clock, Check, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -282,6 +282,42 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast]);
 
+  // ── Urgency ticker state (before early returns for hooks rules) ──
+  const URGENCY_MSGS = useMemo(() => [
+    { icon: "dot",  badge: "👁 7",     text: "7 ადამიანი ახლა ამ გვერდზეა" },
+    { icon: "⚡",   badge: "📦 3",     text: "ბოლო 3 შეკვეთა — სტოქი მცირდება" },
+    { icon: "dot",  badge: "🚚 ხვალ",  text: "მიტანა ხვალ — თუ ახლა შეუკვეთავ" },
+    { icon: "🔒",   badge: "⏱ 6წთ",   text: "კალათა 6 წუთით დარეზერვებულია" },
+  ], []);
+
+  const HOLD_MS  = 2600;
+  const TRANS_MS = 380;
+  const [tickerIdx,   setTickerIdx]   = useState(0);
+  const [tickerPhase, setTickerPhase] = useState<"hold"|"out"|"in">("hold");
+
+  useEffect(() => {
+    let h: number, o: number, ni: number, nk: number;
+    const cycle = () => {
+      setTickerPhase("hold");
+      h = window.setTimeout(() => {
+        setTickerPhase("out");
+        o = window.setTimeout(() => {
+          setTickerIdx(i => (i + 1) % URGENCY_MSGS.length);
+          setTickerPhase("in");
+          ni = window.setTimeout(() => {
+            setTickerPhase("hold");
+            nk = window.setTimeout(cycle, HOLD_MS);
+          }, TRANS_MS);
+        }, TRANS_MS);
+      }, HOLD_MS);
+    };
+    const kick = window.setTimeout(cycle, HOLD_MS);
+    return () => [kick, h, o, ni, nk].forEach(clearTimeout);
+  }, [URGENCY_MSGS]);
+
+  const tickerMsg = URGENCY_MSGS[tickerIdx];
+  const tickerVisible = tickerPhase === "hold";
+
   if (!isOpen) return null;
 
   if (items.length === 0) {
@@ -300,7 +336,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const showRecognizedCard = isRecognized && !isEditing;
 
-  // CTA color logic: no checkbox dependency, just form validity + canCheckout
+  // CTA color logic
   const ctaColorClass = !canCheckout
     ? "bg-primary hover:bg-primary/90 text-primary-foreground"
     : isFormValid
@@ -309,7 +345,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-      <div className="pb-24">
+      <div className="pb-[160px]">
         {/* Header */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
           <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -559,34 +595,77 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             <DeliveryInfoBox />
           </div>
 
-          {/* ══════ Social proof line ══════ */}
-          <div className="flex items-center justify-center gap-1.5 py-1">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] social-proof-pulse" />
-            <span className="text-[11px] text-muted-foreground">7 ადამიანი ახლა ამ გვერდზეა</span>
-          </div>
         </div>
       </div>
 
-      {/* ══════ STICKY CTA ══════ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-3 shadow-lg">
-        <div className="container max-w-2xl mx-auto relative">
-          {/* Timer badge */}
-          <div className="absolute -top-[11px] right-[14px] bg-[#dc2626] text-white rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
-            <Clock className="w-[11px] h-[11px]" />
-            <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+      {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, #f3f4f6 80%, transparent)", padding: "0 13px 22px" }}>
+        <div className="flex flex-col gap-2">
+          {/* Ticker card */}
+          <div className="bg-card rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
+            {/* Sweep bar */}
+            <div className="h-[3px] bg-muted relative">
+              <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
+            </div>
+            {/* Content row */}
+            <div className="flex items-center gap-2 px-3.5 py-[11px]" style={{ minHeight: 42 }}>
+              {/* Icon slot */}
+              <div className="w-[18px] flex items-center justify-center flex-shrink-0">
+                {tickerMsg.icon === "dot" ? (
+                  <span className="w-2 h-2 rounded-full bg-[#22c55e] block animate-live-pulse" />
+                ) : (
+                  <span className="text-sm leading-none">{tickerMsg.icon}</span>
+                )}
+              </div>
+              {/* Text */}
+              <div className="flex-1 overflow-hidden relative h-5">
+                <div
+                  className="absolute text-xs font-semibold text-foreground whitespace-nowrap leading-5 transition-all"
+                  style={{
+                    transitionDuration: `${TRANS_MS}ms`,
+                    transitionTimingFunction: "ease",
+                    opacity: tickerPhase === "hold" ? 1 : 0,
+                    transform: tickerPhase === "out" ? "translateY(-10px)" : tickerPhase === "in" ? "translateY(10px)" : "translateY(0)",
+                  }}
+                >
+                  {tickerMsg.text}
+                </div>
+              </div>
+              {/* Badge pill */}
+              <div
+                className="flex-shrink-0 rounded-[20px] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap transition-opacity"
+                style={{
+                  background: "hsl(var(--accent))",
+                  color: "hsl(var(--primary))",
+                  transitionDuration: `${TRANS_MS}ms`,
+                  opacity: tickerVisible ? 1 : 0,
+                }}
+              >
+                {tickerMsg.badge}
+              </div>
+            </div>
           </div>
-          <Button
-            onClick={handleCTAClick}
-            disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-            className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
-            size="lg"
-          >
-            {submitting
-              ? "იგზავნება..."
-              : canCheckout
-              ? "შეკვეთა — გადახდა მიწოდებისას"
-              : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
-          </Button>
+
+          {/* CTA button */}
+          <div className="relative">
+            {/* Timer badge */}
+            <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
+              <Clock className="w-[11px] h-[11px]" />
+              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+            </div>
+            <Button
+              onClick={handleCTAClick}
+              disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
+              className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+              size="lg"
+            >
+              {submitting
+                ? "იგზავნება..."
+                : canCheckout
+                ? (isFormValid || showRecognizedCard ? "✓ შეკვეთა — გადახდა მიწოდებისას" : "შეკვეთა — გადახდა მიწოდებისას")
+                : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
+            </Button>
+          </div>
         </div>
       </div>
 
