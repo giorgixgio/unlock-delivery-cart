@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { toast } from "sonner";
 
 interface CheckoutGateContextType {
