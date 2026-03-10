@@ -320,6 +320,20 @@
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.10);
 }
 
+/* Prevent iOS zoom on input focus — minimum 16px */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Also ensure PredictiveInput fields don't zoom */
+.checkout-card input,
+.checkout-card select,
+.checkout-card textarea {
+  font-size: max(16px, 1rem);
+}
+
 /* CTA gradient states */
 .cta-orange-gradient {
   background: linear-gradient(135deg, #E8420D, #c73a0a);
