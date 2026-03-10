@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { useProducts } from "@/hooks/useProducts";
-import { DELIVERY_THRESHOLD, Product } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
