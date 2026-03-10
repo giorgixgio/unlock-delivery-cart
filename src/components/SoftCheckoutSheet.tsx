@@ -132,6 +132,7 @@ const SkeletonGrid = () => (
 // ── Main Component ──
 const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutSheetProps) => {
   const { total, isUnlocked, remaining, itemCount, items, isFreeDelivery, threshold } = useCart();
+  const { lastAddedProduct } = useCheckoutGate();
   const { data: products = [], isLoading } = useProducts();
   const prevUnlocked = useRef(isUnlocked);
   const { openCart } = useCartOverlay();
