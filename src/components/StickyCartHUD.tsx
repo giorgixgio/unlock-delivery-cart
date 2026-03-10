@@ -14,7 +14,7 @@ import SaleTotalDisplay from "./SaleTotalDisplay";
 import { Button } from "@/components/ui/button";
 
 const StickyCartHUD = () => {
-  const { items, total, itemCount, isUnlocked, remaining, isFreeDelivery, shippingFee } = useCart();
+  const { items, total, itemCount, isUnlocked, remaining, isFreeDelivery, shippingFee, threshold } = useCart();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
