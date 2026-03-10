@@ -9,6 +9,8 @@ interface CheckoutGateContextType {
   handleCheckoutIntent: (source: string) => void;
   /** Add product to cart and immediately open threshold sheet if below minimum */
   addAndGate: (product: Product, source: string) => void;
+  /** The last product added via addAndGate, for confirmation display */
+  lastAddedProduct: Product | null;
 }
 
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
