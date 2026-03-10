@@ -14,7 +14,7 @@ interface CheckoutGateContextType {
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked, addItem, total } = useCart();
+  const { isUnlocked, addItem, total, threshold } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
