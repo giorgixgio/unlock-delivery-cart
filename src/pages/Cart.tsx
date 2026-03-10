@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
-import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Truck, UserCheck, Pencil, ChevronDown, ChevronUp, Minus, Plus, Trash2, ShoppingBag, Lock, RotateCcw, Phone, MapPin, Wrench, Clock, Check, AlertCircle } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -26,6 +26,51 @@ const orderSchema = z.object({
   address: z.string().trim().min(1, "მისამართი აუცილებელია").max(300),
 });
 
+// Georgian flag inline SVG component
+const GeorgianFlag = () => (
+  <svg width="22" height="15" viewBox="0 0 22 15" fill="none" style={{ borderRadius: 2, flexShrink: 0 }}>
+    <rect width="22" height="15" fill="white" />
+    <rect x="9.5" y="0" width="3" height="15" fill="#FF0000" />
+    <rect x="0" y="6" width="22" height="3" fill="#FF0000" />
+    {/* Bolnisi crosses in 4 quadrants */}
+    <g fill="#FF0000">
+      {/* Top-left */}
+      <rect x="4" y="2" width="1.5" height="3" />
+      <rect x="3.25" y="2.75" width="3" height="1.5" />
+      {/* Top-right */}
+      <rect x="16" y="2" width="1.5" height="3" />
+      <rect x="15.25" y="2.75" width="3" height="1.5" />
+      {/* Bottom-left */}
+      <rect x="4" y="10" width="1.5" height="3" />
+      <rect x="3.25" y="10.75" width="3" height="1.5" />
+      {/* Bottom-right */}
+      <rect x="16" y="10" width="1.5" height="3" />
+      <rect x="15.25" y="10.75" width="3" height="1.5" />
+    </g>
+  </svg>
+);
+
+// Check if phone is a valid Georgian number
+const isValidGeorgianPhone = (phone: string): boolean => {
+  const digits = phone.replace(/\D/g, "");
+  // 5XXXXXXXX (9 digits) or 9955XXXXXXXX (12 digits)
+  return /^5\d{8}$/.test(digits) || /^9955\d{8}$/.test(digits);
+};
+
+// Countdown timer hook — purely decorative
+const useCountdown = (startMinutes: number) => {
+  const [seconds, setSeconds] = useState(startMinutes * 60);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSeconds((s) => (s <= 1 ? startMinutes * 60 : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [startMinutes]);
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
+
 interface CartOverlayProps {
   isOpen: boolean;
 }
@@ -39,6 +84,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const nameRef = useRef<HTMLInputElement>(null);
+  const cityRef = useRef<HTMLDivElement>(null);
 
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
@@ -53,8 +99,32 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   // Collapsible cart summary
   const [summaryExpanded, setSummaryExpanded] = useState(false);
 
+  // CHANGE 1: Phone-first progressive disclosure
+  const [phoneRevealed, setPhoneRevealed] = useState(false);
+
+  // CHANGE 8: Confirmation checkbox
+  const [confirmChecked, setConfirmChecked] = useState(false);
+
   const [historicalCities, setHistoricalCities] = useState<string[]>([]);
   const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
+
+  const countdown = useCountdown(6);
+
+  // Phone validity check for reveal
+  useEffect(() => {
+    if (isValidGeorgianPhone(form.phone) && !phoneRevealed) {
+      setPhoneRevealed(true);
+      // Auto-focus city after animation
+      setTimeout(() => {
+        cityRef.current?.querySelector("input")?.focus();
+      }, 280);
+    }
+  }, [form.phone, phoneRevealed]);
+
+  // If recognized user, fields should be revealed
+  useEffect(() => {
+    if (isRecognized) setPhoneRevealed(true);
+  }, [isRecognized]);
 
   // Fetch historical cities/addresses
   useEffect(() => {
@@ -107,10 +177,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [isOpen, setManualLocation]);
 
-  // Autofocus name field
+  // Autofocus phone field (changed from name)
   useEffect(() => {
     if (isOpen && !isRecognized) {
-      setTimeout(() => nameRef.current?.focus(), 350);
+      setTimeout(() => {
+        document.getElementById("checkout-phone-input")?.focus();
+      }, 350);
     }
   }, [isOpen, isRecognized]);
 
@@ -214,6 +286,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const showRecognizedCard = isRecognized && !isEditing;
 
+  // CHANGE 7: CTA color logic
+  const allFieldsValid = isFormValid && confirmChecked;
+  const ctaColorClass = !canCheckout
+    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+    : allFieldsValid
+    ? "cta-green-gradient text-white"
+    : "cta-orange-gradient text-white";
+
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
       <div className="pb-24">
@@ -227,10 +307,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           </div>
         </header>
 
-        <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-3">
+        <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-2.5">
 
           {/* ══════ SECTION 1: Collapsible Order Summary Bar ══════ */}
-          <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+          <div className="checkout-card overflow-hidden">
             <button
               onClick={() => setSummaryExpanded(!summaryExpanded)}
               className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/50 transition-colors"
@@ -244,7 +324,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                     {itemCount} პროდუქტი — {orderTotal.toFixed(1)}₾
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    თქვენს კალათაში {itemCount} პროდუქტი — სულ {orderTotal.toFixed(1)}₾
+                    სულ {orderTotal.toFixed(1)}₾ · მიტანა უფასო
                   </p>
                 </div>
               </div>
@@ -304,12 +384,31 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             {/* Summary row: subtotal + shipping */}
             <div className="px-4 py-2.5 bg-muted/30 border-t border-border/50 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">მიტანა</span>
-              <span className="text-xs font-bold text-success">უფასო</span>
+              <span className="text-xs font-bold text-success flex items-center gap-1">
+                <Check className="w-3 h-3" /> უფასო ✓
+              </span>
             </div>
           </div>
 
-          {/* ══════ SECTION 2: Order Form (Above the fold) ══════ */}
-          <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+          {/* ══════ CHANGE 5: Trust Icon Row ══════ */}
+          <div className="checkout-card px-4 py-2.5">
+            <div className="flex items-center justify-between">
+              {[
+                { icon: <Lock className="w-4 h-4 text-muted-foreground" />, label: "უსაფრთხო" },
+                { icon: <RotateCcw className="w-4 h-4 text-muted-foreground" />, label: "დაბრუნება" },
+                { icon: <Truck className="w-4 h-4 text-muted-foreground" />, label: "სწრაფი" },
+                { icon: <Phone className="w-4 h-4 text-muted-foreground" />, label: "მხარდაჭერა" },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col items-center gap-1">
+                  {item.icon}
+                  <span className="text-[10px] font-semibold text-muted-foreground">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ══════ SECTION 2: Order Form ══════ */}
+          <div className="checkout-card overflow-hidden">
             {showRecognizedCard ? (
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -354,7 +453,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   )}
                 </div>
                 <div className="space-y-2.5">
-                  <div>
+                  {/* CHANGE 1: Name field hidden (display:none, stays in DOM) */}
+                  <div style={{ display: "none" }}>
                     <Label className="text-sm font-bold text-foreground">სახელი</Label>
                     <Input
                       ref={nameRef}
@@ -363,47 +463,80 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                       placeholder="თქვენი სახელი"
                       value={form.name}
                       onChange={(e) => handleChange("name", e.target.value)}
-                      className="mt-1 h-12 text-base rounded-lg"
+                      className="mt-1 h-12 text-base rounded-xl"
                     />
                     {errors.name && <p className="text-sm text-destructive mt-1">{errors.name}</p>}
                   </div>
+
+                  {/* CHANGE 2: Phone input with flag prefix */}
                   <div>
                     <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
-                    <Input
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      placeholder="5XX XXX XXX"
-                      value={form.phone}
-                      onChange={(e) => handleChange("phone", e.target.value)}
-                      className="mt-1 h-12 text-base rounded-lg"
-                    />
-                    {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone}</p>}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
-                    <div className="mt-1">
-                      <PredictiveInput
-                        value={form.region}
-                        onChange={(val) => handleChange("region", val)}
-                        onSelect={(s) => handleChange("region", s.text)}
-                        getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
-                        placeholder="მაგ: თბილისი"
-                        error={errors.region}
+                    <div className="mt-1 phone-prefix-group flex">
+                      <div className="phone-prefix-panel flex items-center gap-[5px] px-2.5 bg-[#f3f4f6] border-[1.5px] border-[#e5e7eb] border-r-0 rounded-l-xl">
+                        <GeorgianFlag />
+                        <span className="text-[13px] font-bold text-foreground/80">+995</span>
+                        <div className="w-px h-5 bg-[#e5e7eb] ml-1" />
+                      </div>
+                      <Input
+                        id="checkout-phone-input"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        placeholder="5XX XXX XXX"
+                        value={form.phone}
+                        onChange={(e) => handleChange("phone", e.target.value)}
+                        className="h-12 text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
                       />
                     </div>
+                    {errors.phone && (
+                      <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" /> {errors.phone}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <Label className="text-sm font-bold text-foreground">მისამართი</Label>
-                    <div className="mt-1">
-                      <PredictiveInput
-                        value={form.address}
-                        onChange={(val) => handleChange("address", val)}
-                        onSelect={(s) => handleChange("address", s.text)}
-                        getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
-                        placeholder="ქუჩა, სახლი, ბინა"
-                        error={errors.address}
-                      />
+
+                  {/* CHANGE 4: Microcopy below phone */}
+                  <div className="flex items-center gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-[9px] px-[11px] py-2">
+                    <Phone className="w-3.5 h-3.5 text-[#166534] flex-shrink-0" />
+                    <span className="text-[11px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ შეკვეთის დასადასტურებლად</span>
+                  </div>
+
+                  {/* CHANGE 1: City and address — progressive reveal */}
+                  <div
+                    className="transition-all duration-[280ms] ease-out overflow-hidden"
+                    style={{
+                      maxHeight: phoneRevealed ? "400px" : "0px",
+                      opacity: phoneRevealed ? 1 : 0,
+                      transform: phoneRevealed ? "translateY(0)" : "translateY(8px)",
+                    }}
+                  >
+                    <div className="space-y-2.5" ref={cityRef}>
+                      <div>
+                        <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
+                        <div className="mt-1">
+                          <PredictiveInput
+                            value={form.region}
+                            onChange={(val) => handleChange("region", val)}
+                            onSelect={(s) => handleChange("region", s.text)}
+                            getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
+                            placeholder="მაგ: თბილისი"
+                            error={errors.region}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-bold text-foreground">მისამართი</Label>
+                        <div className="mt-1">
+                          <PredictiveInput
+                            value={form.address}
+                            onChange={(val) => handleChange("address", val)}
+                            onSelect={(s) => handleChange("address", s.text)}
+                            getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
+                            placeholder="ქუჩა, სახლი, ბინა"
+                            error={errors.address}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -411,33 +544,67 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             )}
           </div>
 
-          {/* ══════ SECTION 3: Subtle delivery info ══════ */}
+          {/* ══════ SECTION 3: COD trust block ══════ */}
+          <div className="checkout-card px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+              <Truck className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                <span>გადახდა მიტანისას</span>
+              </p>
+              <p className="text-[11px] text-muted-foreground">ბარათით ან ნაღდით — კურიერს</p>
+            </div>
+          </div>
+
+          {/* ══════ SECTION 4: Delivery info ══════ */}
           <div className="opacity-80">
             <DeliveryInfoBox />
           </div>
 
-          {/* COD trust block — compact */}
-          <div className="bg-accent/30 rounded-lg px-3 py-2.5 border border-border/50 flex items-center gap-2.5">
-            <Truck className="w-5 h-5 text-primary flex-shrink-0" />
-            <div>
-              <p className="font-bold text-foreground text-xs">გადახდა მიტანისას</p>
-              <p className="text-[11px] text-muted-foreground">თანხას გადაიხდით კურიერთან</p>
+          {/* ══════ CHANGE 8: Confirmation checkbox ══════ */}
+          {phoneRevealed && canCheckout && (
+            <div
+              className="flex items-start gap-3 px-1 transition-all duration-[250ms] ease-out"
+              style={{ animation: "fade-up 250ms ease-out" }}
+            >
+              <button
+                type="button"
+                onClick={() => setConfirmChecked(!confirmChecked)}
+                className={`w-[19px] h-[19px] rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                  confirmChecked
+                    ? "bg-primary border-primary"
+                    : "border-[#d1d5db] bg-white"
+                }`}
+              >
+                {confirmChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+              </button>
+              <span className="text-[11px] text-muted-foreground leading-relaxed">
+                ვადასტურებ, რომ მიტანისას გადავიხდი {orderTotal.toFixed(1)}₾ კურიერთან.
+              </span>
             </div>
+          )}
+
+          {/* ══════ CHANGE 10: Social proof line ══════ */}
+          <div className="flex items-center justify-center gap-1.5 py-1">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e] social-proof-pulse" />
+            <span className="text-[11px] text-muted-foreground">7 ადამიანი ახლა ამ გვერდზეა</span>
           </div>
         </div>
       </div>
 
       {/* ══════ STICKY CTA ══════ */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-3 shadow-lg">
-        <div className="container max-w-2xl mx-auto">
+        <div className="container max-w-2xl mx-auto relative">
+          {/* CHANGE 6: Timer badge */}
+          <div className="absolute -top-[11px] right-[14px] bg-[#dc2626] text-white rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
+            <Clock className="w-[11px] h-[11px]" />
+            <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+          </div>
           <Button
             onClick={canCheckout ? handleSubmit : () => { closeCart(); handleCheckoutIntent("cart_page"); }}
             disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-            className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-200 ${
-              canCheckout
-                ? "bg-success hover:bg-success/90 text-success-foreground"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
-            }`}
+            className={`w-full h-14 text-lg font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
             size="lg"
           >
             {submitting
