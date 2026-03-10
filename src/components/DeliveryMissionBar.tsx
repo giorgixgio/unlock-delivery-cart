@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Truck, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DELIVERY_THRESHOLD } from "@/lib/constants";
+
 import AnimatedNumber from "@/components/AnimatedNumber";
 
 interface DeliveryMissionBarProps {
