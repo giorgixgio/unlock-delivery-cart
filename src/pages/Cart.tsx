@@ -595,11 +595,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             <DeliveryInfoBox />
           </div>
 
-          {/* ══════ Social proof line ══════ */}
-          <div className="flex items-center justify-center gap-1.5 py-1">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] social-proof-pulse" />
-            <span className="text-[11px] text-muted-foreground">7 ადამიანი ახლა ამ გვერდზეა</span>
-          </div>
         </div>
       </div>
 
