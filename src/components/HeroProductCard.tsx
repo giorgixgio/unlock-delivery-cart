@@ -2,6 +2,7 @@ import { useState, memo, useSyncExternalStore } from "react";
 import { Plus, Minus } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
@@ -14,17 +15,17 @@ interface HeroProductCardProps {
 }
 
 const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
-  const { addItem, updateQuantity, getQuantity } = useCart();
+  const { updateQuantity, getQuantity } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const quantity = getQuantity(product.id);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showFloat, setShowFloat] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem(product);
+    addAndGate(product, "hero_card");
     trackHeroAddToCart(product.id);
     setShowFloat(true);
-    setSheetOpen(true);
     setTimeout(() => setShowFloat(false), 600);
   };
 
