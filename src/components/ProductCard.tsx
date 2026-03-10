@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo, useSyncExternalStore } from "react";
 import { Plus, Minus } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
