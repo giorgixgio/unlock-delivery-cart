@@ -248,7 +248,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
               <span className="text-xs font-bold text-muted-foreground">
-                <AnimatedNumber value={total} /> / {DELIVERY_THRESHOLD} ₾
+                <AnimatedNumber value={total} /> / {threshold} ₾
               </span>
               <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
                 <div ref={cartIconRef}>
