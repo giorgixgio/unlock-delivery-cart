@@ -369,8 +369,4 @@
   animation: social-pulse 1.5s ease-in-out infinite;
 }
 
-/* Fade-up for checkbox */
-@keyframes fade-up {
-  0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
+/* Confirm modal animation helpers */
