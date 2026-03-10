@@ -43,6 +43,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const addAndGate = useCallback(
     (product: Product, src: string) => {
       addItem(product);
+      setLastAddedProduct(product);
       // Compute post-add total with rounding to avoid floating-point issues
       const postTotal = Math.round((total + product.price) * 10) / 10;
       toast("დამატებულია ✅", { duration: 1200 });
@@ -53,7 +54,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSheetOpen(true);
       }
     },
-    [addItem, total, openCart]
+    [addItem, total, openCart, threshold]
   );
 
   return (
