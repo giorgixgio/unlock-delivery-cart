@@ -64,6 +64,7 @@ interface OrderRow {
   assigned_to: string | null;
   tracking_number: string | null;
   is_confirmed: boolean;
+  is_tbilisi: boolean;
   is_fulfilled: boolean;
   risk_score: number;
   risk_level: string;
@@ -84,6 +85,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState<"all" | "tbilisi" | "region">("all");
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportOpen, setExportOpen] = useState(false);
   const [fulfillOpen, setFulfillOpen] = useState(false);
@@ -128,7 +130,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
@@ -171,6 +173,10 @@ const AdminOrders = () => {
     if (dateRange.from) query = query.gte("created_at", dateRange.from);
     if ((dateRange as any).to) query = query.lt("created_at", (dateRange as any).to);
 
+    // Location filter
+    if (locationFilter === "tbilisi") query = query.eq("is_tbilisi", true);
+    if (locationFilter === "region") query = query.eq("is_tbilisi", false);
+
     // Search
     if (search.trim()) {
       query = query.or(
@@ -187,7 +193,7 @@ const AdminOrders = () => {
     }
     setOrders(result);
     setLoading(false);
-  }, [activeTab, dateFilter, search, hasModifier, applyToCount]);
+  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount]);
 
   useEffect(() => {
     fetchOrders();
@@ -348,6 +354,25 @@ const AdminOrders = () => {
               }`}
             >
               {d.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1.5">
+          {([
+            { label: "All", value: "all" as const },
+            { label: "თბილისი", value: "tbilisi" as const },
+            { label: "რეგიონი", value: "region" as const },
+          ]).map((loc) => (
+            <button
+              key={loc.value}
+              onClick={() => setLocationFilter(loc.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                locationFilter === loc.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-foreground border-border"
+              }`}
+            >
+              {loc.label}
             </button>
           ))}
         </div>
