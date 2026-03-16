@@ -64,6 +64,7 @@ interface OrderRow {
   assigned_to: string | null;
   tracking_number: string | null;
   is_confirmed: boolean;
+  is_tbilisi: boolean;
   is_fulfilled: boolean;
   risk_score: number;
   risk_level: string;
