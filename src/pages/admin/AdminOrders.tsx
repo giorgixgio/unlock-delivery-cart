@@ -356,6 +356,25 @@ const AdminOrders = () => {
             </button>
           ))}
         </div>
+        <div className="flex gap-1.5">
+          {([
+            { label: "All", value: "all" as const },
+            { label: "თბილისი", value: "tbilisi" as const },
+            { label: "რეგიონი", value: "region" as const },
+          ]).map((loc) => (
+            <button
+              key={loc.value}
+              onClick={() => setLocationFilter(loc.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                locationFilter === loc.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-foreground border-border"
+              }`}
+            >
+              {loc.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
