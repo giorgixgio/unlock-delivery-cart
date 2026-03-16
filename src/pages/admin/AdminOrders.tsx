@@ -192,7 +192,7 @@ const AdminOrders = () => {
     }
     setOrders(result);
     setLoading(false);
-  }, [activeTab, dateFilter, search, hasModifier, applyToCount]);
+  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount]);
 
   useEffect(() => {
     fetchOrders();
