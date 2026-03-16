@@ -172,6 +172,10 @@ const AdminOrders = () => {
     if (dateRange.from) query = query.gte("created_at", dateRange.from);
     if ((dateRange as any).to) query = query.lt("created_at", (dateRange as any).to);
 
+    // Location filter
+    if (locationFilter === "tbilisi") query = query.eq("is_tbilisi", true);
+    if (locationFilter === "region") query = query.eq("is_tbilisi", false);
+
     // Search
     if (search.trim()) {
       query = query.or(
