@@ -84,6 +84,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState<"all" | "tbilisi" | "region">("all");
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportOpen, setExportOpen] = useState(false);
   const [fulfillOpen, setFulfillOpen] = useState(false);
