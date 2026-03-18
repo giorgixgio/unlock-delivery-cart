@@ -13,7 +13,6 @@ import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredicto
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 
 const formSchema = z.object({
-  name: z.string().trim().min(1, "სახელი აუცილებელია").max(100),
   phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
   region: z.string().trim().min(1, "ქალაქი აუცილებელია").max(100),
   address: z.string().trim().min(1, "მისამართი აუცილებელია").max(300),
