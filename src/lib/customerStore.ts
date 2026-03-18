@@ -4,7 +4,7 @@ const STORAGE_KEY = "lb_customer";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 400; // 400 days
 
 export interface SavedCustomer {
-  name: string;
+  name?: string;
   phone: string;
   region: string;
   address: string;
