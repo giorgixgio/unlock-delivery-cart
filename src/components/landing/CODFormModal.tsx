@@ -117,7 +117,7 @@ const CODFormModal = ({
 
       // Use shared createOrder() for stock checks, logging, and consistency
       const order = await createOrder({
-        customerName: form.name,
+        customerName: form.phone,
         customerPhone: form.phone,
         city: form.region,
         region: form.region,
