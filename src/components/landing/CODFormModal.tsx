@@ -41,7 +41,7 @@ const CODFormModal = ({
   bumpEnabled,
   onOrderCreated,
 }: CODFormModalProps) => {
-  const [form, setForm] = useState({ name: "", phone: "", region: "", address: "", comment: "" });
+  const [form, setForm] = useState({ phone: "", region: "", address: "", comment: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [historicalCities, setHistoricalCities] = useState<string[]>([]);
