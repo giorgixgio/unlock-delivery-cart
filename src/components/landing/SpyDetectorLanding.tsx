@@ -64,8 +64,8 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
-const SpyDetectorLanding = ({ product, config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
-  const { addItem, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
+  const { addItem } = useCart();
   const { openCart } = useCartOverlay();
   const navigate = useNavigate();
 
@@ -75,9 +75,6 @@ const SpyDetectorLanding = ({ product, config, landingSlug, landingVariant, useC
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
   const [codOpen, setCodOpen] = useState(false);
-
-  const quantity = getQuantity(product.id);
-  const totalPrice = UNIT_PRICE * selectedQty;
 
   const bundleOptions = [
     { qty: 1, label: "1 ცალი", discount_pct: 0 },
