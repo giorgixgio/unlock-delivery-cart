@@ -58,7 +58,6 @@ const CODFormModal = ({
     if (saved) {
       setForm((f) => ({
         ...f,
-        name: saved.name || f.name,
         phone: saved.phone || f.phone,
         region: saved.region || f.region,
         address: saved.address || f.address,
