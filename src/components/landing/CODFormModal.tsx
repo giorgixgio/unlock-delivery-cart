@@ -180,24 +180,20 @@ const CODFormModal = ({
         {/* Form */}
         <div className="space-y-3">
           <div>
-            <Label className="text-sm font-bold text-foreground">სახელი</Label>
-            <Input
-              placeholder="თქვენი სახელი"
-              value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              className="mt-1 h-12 text-base rounded-lg"
-            />
-            {errors.name && <p className="text-sm text-destructive mt-1">{errors.name}</p>}
-          </div>
-          <div>
             <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
-            <Input
-              type="tel"
-              placeholder="5XX XXX XXX"
-              value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              className="mt-1 h-12 text-base rounded-lg"
-            />
+            <div className="mt-1 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 h-12 px-3 bg-muted rounded-lg border border-border text-sm font-semibold text-foreground select-none flex-shrink-0">
+                <span className="text-base">🇬🇪</span>
+                <span>+995</span>
+              </div>
+              <Input
+                type="tel"
+                placeholder="5XX XXX XXX"
+                value={form.phone}
+                onChange={(e) => handleChange("phone", e.target.value)}
+                className="h-12 text-base rounded-lg flex-1"
+              />
+            </div>
             {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone}</p>}
           </div>
           <div>
