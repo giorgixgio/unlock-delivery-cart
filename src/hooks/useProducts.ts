@@ -38,6 +38,8 @@ function categorizeByTags(tags: string[], title: string): string {
 // Shopify CDN supports _WIDTHx on filename for resized images
 export function shopifyThumb(src: string, size = 400): string {
   if (!src || src === "/placeholder.svg") return "/placeholder.svg";
+  // Only transform Shopify CDN URLs
+  if (!src.includes("cdn.shopify.com")) return src;
   // Skip transform if URL already has a Shopify size suffix (e.g. _400x, _800x)
   if (/_\d+x(\.|$|\?)/.test(src)) return src;
   return src.replace(/\.([a-z]+)(\?|$)/, `_${size}x.$1$2`);
