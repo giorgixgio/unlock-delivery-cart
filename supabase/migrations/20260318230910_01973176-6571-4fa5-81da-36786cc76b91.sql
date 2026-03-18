@@ -1,0 +1,1 @@
+UPDATE products SET image = '/images/spy-detector-hero.webp', images = '["/images/spy-detector-hero.webp", "https://cdn.shopify.com/s/files/1/0970/2227/9975/files/Screenshot2025-02-04001235.jpg?v=1768610663", "https://cdn.shopify.com/s/files/1/0970/2227/9975/files/Screenshot2025-02-04001308.jpg?v=1768610663"]'::jsonb WHERE id = '10068779794727'
