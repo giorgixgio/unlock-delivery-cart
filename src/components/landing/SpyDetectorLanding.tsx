@@ -394,10 +394,13 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           </div>
           <Button
             onClick={handleCTA}
-            className="flex-1 h-14 text-lg font-extrabold rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 animate-cta-pulse-success"
+            className="flex-1 h-16 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 animate-[pulse_3s_ease-in-out_infinite] flex flex-col items-center justify-center gap-0.5 px-4"
             size="lg"
           >
-            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთეთ ახლავე
+            <span className="flex items-center gap-2 text-lg font-extrabold leading-tight">
+              <ShoppingCart className="w-5 h-5" /> შეუკვეთე 1 კლიკით
+            </span>
+            <span className="text-[11px] font-medium text-white/70 leading-tight">გადახდა კურიერთან</span>
           </Button>
         </div>
       </div>
