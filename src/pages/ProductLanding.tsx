@@ -54,6 +54,22 @@ const ProductLanding = () => {
     );
   }
 
+  // Custom spy detector landing
+  if (landingConfig && landingConfig.landing_variant === "custom-spy-detector") {
+    const SpyDetectorLanding = lazy(() => import("@/components/landing/SpyDetectorLanding"));
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+        <SpyDetectorLanding
+          product={product}
+          config={landingConfig.landing_config || {}}
+          landingSlug={landingSlug || slug || ""}
+          landingVariant={landingConfig.landing_variant}
+          useCodModal={landingConfig.landing_use_cod_modal}
+        />
+      </Suspense>
+    );
+  }
+
   // Custom wrench landing
   if (landingConfig && landingConfig.landing_variant === "custom-wrench") {
     return (
