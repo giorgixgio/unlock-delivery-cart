@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
@@ -51,6 +51,22 @@ const ProductLanding = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-lg text-muted-foreground">პროდუქტი ვერ მოიძებნა</p>
       </div>
+    );
+  }
+
+  // Custom spy detector landing
+  if (landingConfig && landingConfig.landing_variant === "custom-spy-detector") {
+    const SpyDetectorLanding = lazy(() => import("@/components/landing/SpyDetectorLanding"));
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+        <SpyDetectorLanding
+          product={product}
+          config={landingConfig.landing_config || {}}
+          landingSlug={landingSlug || slug || ""}
+          landingVariant={landingConfig.landing_variant}
+          useCodModal={landingConfig.landing_use_cod_modal}
+        />
+      </Suspense>
     );
   }
 
