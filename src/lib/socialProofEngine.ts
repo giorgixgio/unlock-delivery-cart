@@ -174,7 +174,7 @@ export function generateProductProof(
 
   const seed = product.id;
   const tier = getPriceTier(product.price);
-  const priority = overrides?.priorityWeight ?? seededRange(seed + "_priority", 20, 80);
+  const _priority = overrides?.priorityWeight ?? seededRange(seed + "_priority", 20, 80);
   const gridKey = `grid_${Math.floor(gridIndex / 8)}`;
 
   // ── Badges ──
