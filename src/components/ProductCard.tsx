@@ -131,8 +131,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
             );
           })()}
 
-          {/* Micro-benefits */}
-          <MicroBenefitRotating />
+          {/* Micro proof */}
+          <ProductMicroProof product={product} />
 
           <div className="flex items-center justify-between mt-2">
             {isOOS ? (
