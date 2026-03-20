@@ -4,10 +4,10 @@ import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
-import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
-import { trackHeroAddToCart } from "@/lib/gridTracker";
-import { MicroBenefitRotating } from "@/components/MicroBenefits";
+import ProductMicroProof from "@/components/ProductMicroProof";
+import ProductBadgeStack from "@/components/ProductBadgeStack";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface HeroProductCardProps {
