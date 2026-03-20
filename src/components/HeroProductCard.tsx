@@ -100,8 +100,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
             <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
           </div>
 
-          {/* Micro-benefits */}
-          <MicroBenefitRotating />
+          {/* Micro proof */}
+          <ProductMicroProof product={product} />
 
           {/* Add to cart */}
           {!isOOS && (
