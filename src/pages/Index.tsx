@@ -86,6 +86,7 @@ const Index = () => {
       </div>
 
       <div className="container max-w-2xl mx-auto px-4 pt-4 md:max-w-[1280px] md:px-8 md:pt-6">
+        <LiveActivityTicker />
         <BoosterRow products={products} />
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
