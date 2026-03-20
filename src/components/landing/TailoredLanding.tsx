@@ -3,6 +3,7 @@ import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { generateProductProof } from "@/lib/socialProofEngine";
+import ProductMicroProof from "@/components/ProductMicroProof";
 import { Banknote, Truck, Shield, Package, ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BundleSelector from "@/components/landing/BundleSelector";
