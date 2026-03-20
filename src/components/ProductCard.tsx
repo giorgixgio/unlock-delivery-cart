@@ -55,22 +55,6 @@ const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
   );
 };
 
-const CardBadges = ({ productId }: { productId: string }) => {
-  const badges = getDemoBadges(productId);
-  if (badges.length === 0) return null;
-  return (
-    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-      {badges.map((b) => (
-        <span
-          key={b}
-          className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm"
-        >
-          {b}
-        </span>
-      ))}
-    </div>
-  );
-};
 
 const ProductCard = memo(({ product }: ProductCardProps) => {
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
