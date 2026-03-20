@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
 import RecommendationBlock from "@/components/RecommendationBlock";
 import HomeHeaderTemuStyle from "@/components/HomeHeaderTemuStyle";
+import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
 
