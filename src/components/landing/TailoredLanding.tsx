@@ -178,6 +178,21 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
           ))}
         </div>
 
+        {/* Live social proof */}
+        <div className="space-y-2">
+          {proof.urgencyLine && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <span className="text-xs font-bold text-destructive">{proof.urgencyLine}</span>
+            </div>
+          )}
+          <ProductMicroProof product={product} className="px-1" />
+          {proof.trustChip && (
+            <span className="inline-block text-[11px] font-bold text-success bg-success/10 px-3 py-1 rounded-full">
+              {proof.trustChip}
+            </span>
+          )}
+        </div>
+
         {/* Benefits sections */}
         {benefitSections.length > 0 && <LandingSections sections={benefitSections} />}
 
