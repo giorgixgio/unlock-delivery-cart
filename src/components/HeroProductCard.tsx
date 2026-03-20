@@ -8,6 +8,7 @@ import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
 import ProductMicroProof from "@/components/ProductMicroProof";
 import ProductBadgeStack from "@/components/ProductBadgeStack";
+import { trackHeroAddToCart } from "@/lib/gridTracker";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface HeroProductCardProps {
