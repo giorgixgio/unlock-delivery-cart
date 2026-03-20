@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
-import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { generateProductProof } from "@/lib/socialProofEngine";
+import ProductMicroProof from "@/components/ProductMicroProof";
 import { Banknote, Truck, Shield, Package, ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BundleSelector from "@/components/landing/BundleSelector";
@@ -36,7 +38,7 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
-  const badges = getDemoBadges(product.id);
+  const proof = useMemo(() => generateProductProof(product, 0, undefined, "landing"), [product.id]);
 
   const quantity = getQuantity(product.id);
 
@@ -105,11 +107,17 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
               ↓ {discount}% OFF
             </div>
           )}
-          {badges.length > 0 && (
+          {proof.badges.length > 0 && (
             <div className="absolute top-10 left-2.5 z-10 flex flex-col gap-1.5">
-              {badges.map((b) => (
-                <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                  {b}
+              {proof.badges.map((b, i) => (
+                <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${
+                  b.color === "red" ? "bg-destructive text-destructive-foreground" :
+                  b.color === "green" ? "bg-success text-success-foreground" :
+                  b.color === "dark" ? "bg-foreground text-background" :
+                  b.color === "yellow" ? "bg-[hsl(45,90%,48%)] text-foreground" :
+                  "bg-secondary text-secondary-foreground"
+                }`}>
+                  {b.text}
                 </span>
               ))}
             </div>
@@ -168,6 +176,21 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
               <span className="text-[11px] font-semibold text-foreground leading-tight">{text}</span>
             </div>
           ))}
+        </div>
+
+        {/* Live social proof */}
+        <div className="space-y-2">
+          {proof.urgencyLine && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <span className="text-xs font-bold text-destructive">{proof.urgencyLine}</span>
+            </div>
+          )}
+          <ProductMicroProof product={product} className="px-1" />
+          {proof.trustChip && (
+            <span className="inline-block text-[11px] font-bold text-success bg-success/10 px-3 py-1 rounded-full">
+              {proof.trustChip}
+            </span>
+          )}
         </div>
 
         {/* Benefits sections */}

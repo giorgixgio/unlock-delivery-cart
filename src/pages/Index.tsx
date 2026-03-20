@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import BoosterRow from "@/components/BoosterRow";
 import RecommendationBlock from "@/components/RecommendationBlock";
 import HomeHeaderTemuStyle from "@/components/HomeHeaderTemuStyle";
+import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
 
@@ -85,6 +86,7 @@ const Index = () => {
       </div>
 
       <div className="container max-w-2xl mx-auto px-4 pt-4 md:max-w-[1280px] md:px-8 md:pt-6">
+        <LiveActivityTicker />
         <BoosterRow products={products} />
         {isLoading ? (
           <div className="flex items-center justify-center py-20">

@@ -4,10 +4,11 @@ import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
-import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
+import ProductMicroProof from "@/components/ProductMicroProof";
+import ProductBadgeStack from "@/components/ProductBadgeStack";
 import { trackHeroAddToCart } from "@/lib/gridTracker";
-import { MicroBenefitRotating } from "@/components/MicroBenefits";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface HeroProductCardProps {
@@ -34,7 +35,6 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
     updateQuantity(product.id, quantity - 1);
   };
 
-  const badges = getDemoBadges(product.id);
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
 
@@ -64,16 +64,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           </div>
         )}
 
-        {/* Badge overlays */}
-        {badges.length > 0 && (
-          <div className="absolute top-8 left-2 z-10 flex flex-col gap-1">
-            {badges.map((b) => (
-              <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                {b}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Social proof badges */}
+        <ProductBadgeStack product={product} context="hero" />
 
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
@@ -108,8 +100,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
             <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
           </div>
 
-          {/* Micro-benefits */}
-          <MicroBenefitRotating />
+          {/* Micro proof */}
+          <ProductMicroProof product={product} />
 
           {/* Add to cart */}
           {!isOOS && (
