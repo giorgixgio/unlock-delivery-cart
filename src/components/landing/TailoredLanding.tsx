@@ -38,7 +38,7 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
-  const badges = getDemoBadges(product.id);
+  const proof = useMemo(() => generateProductProof(product, 0, undefined, "landing"), [product.id]);
 
   const quantity = getQuantity(product.id);
 
