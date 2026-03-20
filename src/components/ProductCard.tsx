@@ -99,7 +99,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           </div>
         )}
 
-        <CardBadges productId={product.id} />
+        <ProductBadgeStack product={product} context="grid" />
 
         <div className="relative">
           <LazyImage src={product.image} alt={product.title} />
