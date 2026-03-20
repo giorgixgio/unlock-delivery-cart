@@ -107,11 +107,17 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
               ↓ {discount}% OFF
             </div>
           )}
-          {badges.length > 0 && (
+          {proof.badges.length > 0 && (
             <div className="absolute top-10 left-2.5 z-10 flex flex-col gap-1.5">
-              {badges.map((b) => (
-                <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                  {b}
+              {proof.badges.map((b, i) => (
+                <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${
+                  b.color === "red" ? "bg-destructive text-destructive-foreground" :
+                  b.color === "green" ? "bg-success text-success-foreground" :
+                  b.color === "dark" ? "bg-foreground text-background" :
+                  b.color === "yellow" ? "bg-[hsl(45,90%,48%)] text-foreground" :
+                  "bg-secondary text-secondary-foreground"
+                }`}>
+                  {b.text}
                 </span>
               ))}
             </div>
