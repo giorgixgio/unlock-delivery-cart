@@ -35,7 +35,6 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
     updateQuantity(product.id, quantity - 1);
   };
 
-  const badges = getDemoBadges(product.id);
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
 
