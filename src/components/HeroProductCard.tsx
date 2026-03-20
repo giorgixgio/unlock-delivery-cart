@@ -64,16 +64,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           </div>
         )}
 
-        {/* Badge overlays */}
-        {badges.length > 0 && (
-          <div className="absolute top-8 left-2 z-10 flex flex-col gap-1">
-            {badges.map((b) => (
-              <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                {b}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Social proof badges */}
+        <ProductBadgeStack product={product} context="hero" />
 
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
