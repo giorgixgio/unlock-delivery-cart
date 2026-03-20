@@ -221,7 +221,7 @@ export function generateProductProof(
   if (badges.length < 2) {
     const showSecondary = context === "landing" || seededRandom(seed + "_sec") > 0.7;
     if (showSecondary && !overrides?.forceSecondaryBadge) {
-      const secPool = seededRandom(seed + "_secpool") > 0.5 ? TRUST_BADGES : VALUE_BADGES;
+      const secPool: { text: string; color: ProofBadge["color"] }[] = seededRandom(seed + "_secpool") > 0.5 ? TRUST_BADGES : VALUE_BADGES;
       const secPick = pickOne(secPool, seed + "_sp");
       if (secPick.text !== badges[0]?.text) {
         badges.push({ text: secPick.text, color: secPick.color, position: "top-right" });
