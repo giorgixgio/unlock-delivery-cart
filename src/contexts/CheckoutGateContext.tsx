@@ -63,6 +63,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const postValue = total + product.price;
 
       // ── Always fire product_added ──
+      console.log("[product_added] FIRING — product:", product.id, "source:", src, "ts:", Date.now(), "component: CheckoutGateContext");
       trackEvent("product_added", {
         product_id: product.id,
         product_name: product.title,
