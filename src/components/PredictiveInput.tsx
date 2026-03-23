@@ -19,11 +19,13 @@ const PredictiveInput = ({
   value,
   onChange,
   onSelect,
+  onConfirm,
   getSuggestions,
   placeholder,
   type = "text",
   className = "",
   error,
+  inputRef: externalRef,
 }: PredictiveInputProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
