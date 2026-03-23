@@ -1,38 +1,40 @@
 
 
-## Create Batch for Last 15 Confirmed Orders
+# Fix: Popup Add Tracking Consistency
 
-### What will happen
+## Problem
+The SoftCheckoutSheet (popup) has two add paths:
+1. **Direct "დამატება" button** on `SheetProductCard` → calls `addAndGate(product, "popup")` → fires both `product_added` and `popup_item_added` ✅
+2. **Tap product card → opens nested `ProductSheet`** → adds use `"pdp_quick_order"` or `"pdp_sheet"` → fires only `product_added`, misses `popup_item_added` ❌
 
-Create a new batch containing these 15 confirmed orders (newest first):
+## Root Cause
+`SoftCheckoutSheet` renders a nested `<ProductSheet>` (line 293). When a user taps a card to preview, then adds from the sheet, the `ProductSheet` component has no awareness it was opened from the popup context. It passes its own source strings to `addAndGate`.
 
-| # | Order | Customer |
-|---|-------|----------|
-| 1 | 100364 | Nona |
-| 2 | 100363 | როენა |
-| 3 | 100362 | nino |
-| 4 | 100361 | როენა |
-| 5 | 100360 | გიორგი |
-| 6 | 100359 | გულნარა შენგელია |
-| 7 | 100358 | Vano |
-| 8 | 100357 | ინგა |
-| 9 | 100356 | ნანიკო |
-| 10 | 100355 | ივანე |
-| 11 | 100354 | თამთა ხარაბაძე |
-| 12 | 100353 | ლედი |
-| 13 | 100352 | Ხარება |
-| 14 | 100351 | მედეა |
-| 15 | 100350 | რომანი |
+## Fix
+Pass a callback or context flag from `SoftCheckoutSheet` to the nested `ProductSheet` so adds from that sheet also use `source: "popup"`.
 
-All are `confirmed`, `is_confirmed = true`, no batch assigned, no tracking yet.
+Concretely:
+1. **Add an `onAdd` callback prop to `ProductSheet`** that `SoftCheckoutSheet` provides
+2. When `ProductSheet` is opened from the popup, the `onAdd` callback will call `addAndGate(product, "popup")` instead of the default sources
+3. Alternatively (simpler): add an optional `sourceOverride` prop to `ProductSheet`. When set, all add actions inside use that source instead of their defaults.
 
-### Technical Steps
+### Approach: `sourceOverride` prop on ProductSheet
 
-1. Insert a new row in `batches` table (status: OPEN)
-2. Insert 15 rows in `batch_orders` linking each order to the batch
-3. Snapshot all order items into `batch_order_items_snapshot`
-4. Update `orders.batch_id` for all 15 orders
-5. Log a `BATCH_CREATED` event in `batch_events`
+**`src/components/ProductSheet.tsx`**
+- Add optional `sourceOverride?: string` prop
+- In `handleQuickOrder`: use `sourceOverride ?? "pdp_quick_order"` as source
+- In quantity `+` button: use `sourceOverride ?? "pdp_sheet"` as source
 
-All done via direct SQL inserts (no code changes needed).
+**`src/components/SoftCheckoutSheet.tsx`**
+- Pass `sourceOverride="popup"` to the nested `<ProductSheet>` (line 293)
+- Update `addedDuringSession` tracking: the nested sheet's adds should also increment this counter — add an `onAdd` callback that increments `addedDuringSession.current`
+
+### Files Changed
+- `src/components/ProductSheet.tsx` — add `sourceOverride` prop, apply to both add handlers
+- `src/components/SoftCheckoutSheet.tsx` — pass `sourceOverride="popup"` and `onAdd` to nested ProductSheet
+
+### What stays unchanged
+- Grid card adds (`"grid"`)
+- Direct popup button adds (`"popup"`) — already correct
+- `addAndGate` logic in `CheckoutGateContext` — no changes needed, it already checks `src === "popup"`
 
