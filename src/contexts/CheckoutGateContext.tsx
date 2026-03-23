@@ -7,13 +7,23 @@ import { toast } from "sonner";
 
 interface CheckoutGateContextType {
   handleCheckoutIntent: (source: string) => void;
-  /** Add product to cart and immediately open threshold sheet if below minimum */
   addAndGate: (product: Product, source: string) => void;
-  /** The last product added via addAndGate, for confirmation display */
   lastAddedProduct: Product | null;
 }
 
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
+
+/**
+ * Compute a rough "savings" value for post-threshold items.
+ * Uses the compare_at_price vs price delta when available,
+ * otherwise estimates ~15% of the product price as perceived savings.
+ */
+function estimateSavings(product: Product): number {
+  if (product.compareAtPrice && product.compareAtPrice > product.price) {
+    return Math.round(product.compareAtPrice - product.price);
+  }
+  return Math.round(product.price * 0.15);
+}
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isUnlocked, addItem, itemCount, threshold } = useCart();
@@ -46,9 +56,24 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       addItem(product);
       setLastAddedProduct(product);
       addCountRef.current += 1;
+
       const postCount = itemCount + 1;
-      toast("დამატებულია ✅", { duration: 1200 });
-      // Open upsell sheet whenever still below threshold; skip after threshold reached
+      const postRemaining = Math.max(0, threshold - postCount);
+
+      // ── Reward toast logic ──
+      if (postCount < threshold) {
+        // Pre-threshold: show remaining count
+        toast(`⚡ კიდევ ${postRemaining} პროდუქტი დარჩა`, { duration: 1500 });
+      } else if (postCount === threshold) {
+        // Exact threshold: unlock celebration
+        toast("🎉 უფასო მიწოდება გააქტიურდა!", { duration: 2500 });
+      } else {
+        // Post-threshold: show savings
+        const saved = estimateSavings(product);
+        toast(`💰 დამატებითი დაზოგვა +${saved}₾`, { duration: 1800 });
+      }
+
+      // Open upsell sheet whenever still below threshold
       if (postCount < threshold) {
         setSource(src);
         setSheetOpen(true);
