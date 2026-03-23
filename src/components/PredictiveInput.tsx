@@ -78,6 +78,18 @@ const PredictiveInput = ({
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isOpen && activeIndex >= 0 && suggestions.length > 0) {
+        handleSelect(suggestions[activeIndex]);
+      } else if (value.trim()) {
+        // User pressed Enter with typed text — confirm and advance
+        setIsOpen(false);
+        setSuggestions([]);
+        onConfirm?.();
+      }
+      return;
+    }
     if (!isOpen || suggestions.length === 0) return;
 
     if (e.key === "ArrowDown") {
@@ -86,9 +98,6 @@ const PredictiveInput = ({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
-    } else if (e.key === "Enter" && activeIndex >= 0) {
-      e.preventDefault();
-      handleSelect(suggestions[activeIndex]);
     } else if (e.key === "Escape") {
       setIsOpen(false);
       setActiveIndex(-1);
