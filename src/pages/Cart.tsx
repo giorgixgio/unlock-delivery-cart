@@ -270,7 +270,17 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const formSectionRef = useRef<HTMLDivElement>(null);
 
-  // CTA click: open confirmation modal instead of submitting directly
+  // Missing fields helper message
+  const missingFields = useMemo(() => {
+    if (!canCheckout) return [];
+    const missing: string[] = [];
+    if (!form.phone || form.phone.trim().length < 5) missing.push("ტელეფონი");
+    if (!form.region || form.region.trim().length < 1) missing.push("ქალაქი");
+    if (!form.address || form.address.trim().length < 1) missing.push("მისამართი");
+    return missing;
+  }, [canCheckout, form]);
+
+  // CTA click: always tappable, validates on tap
   const handleCTAClick = useCallback(() => {
     if (!canCheckout) {
       closeCart();
@@ -278,8 +288,18 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       return;
     }
 
-    const hasAnyTouched = Object.values(touched).some(Boolean);
-    if (!hasAnyTouched && !isRecognized) return;
+    // Mark all fields as touched to show errors
+    ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
+
+    // If phone not revealed yet, reveal and focus
+    if (!phoneRevealed) {
+      setPhoneRevealed(true);
+      setTimeout(() => {
+        document.getElementById("checkout-phone-input")?.focus();
+        formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return;
+    }
 
     const result = orderSchema.safeParse(form);
     if (!result.success) {
@@ -287,27 +307,29 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       result.error.errors.forEach((e) => {
         if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
       });
-      ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
       if (isRecognized && !isEditing) setIsEditing(true);
 
-      // Scroll to form and focus first empty field
-      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Scroll to and focus first invalid field
       setTimeout(() => {
         if (!form.phone || form.phone.trim().length < 5) {
-          document.getElementById("checkout-phone-input")?.focus();
+          const el = document.getElementById("checkout-phone-input");
+          el?.focus();
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (!form.region || form.region.trim().length < 1) {
           cityInputRef.current?.focus();
+          cityRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (!form.address || form.address.trim().length < 1) {
           addressInputRef.current?.focus();
+          addressInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-      }, 400);
+      }, 150);
       return;
     }
 
     // Validation passed — open confirmation modal
     setConfirmModalOpen(true);
-  }, [canCheckout, closeCart, handleCheckoutIntent, touched, isRecognized, form, isEditing]);
+  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed]);
 
   // Actual order submission (called from modal confirm or auto-confirm)
   const handleSubmitOrder = useCallback(async () => {
