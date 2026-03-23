@@ -98,6 +98,32 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // ── Mobile keyboard detection: hide sticky CTA when typing ──
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        setKeyboardOpen(true);
+      }
+    };
+    const handleFocusOut = () => {
+      // Small delay to avoid flicker on field-to-field transitions
+      setTimeout(() => {
+        const active = document.activeElement?.tagName;
+        if (active !== "INPUT" && active !== "TEXTAREA" && active !== "SELECT") {
+          setKeyboardOpen(false);
+        }
+      }, 100);
+    };
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
+
   const [isRecognized, setIsRecognized] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
