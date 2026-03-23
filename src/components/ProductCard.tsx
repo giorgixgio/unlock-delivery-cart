@@ -12,6 +12,7 @@ import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore"
 
 interface ProductCardProps {
   product: Product;
+  isHero?: boolean;
 }
 
 const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
