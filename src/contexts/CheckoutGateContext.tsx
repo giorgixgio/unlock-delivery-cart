@@ -48,8 +48,8 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       addCountRef.current += 1;
       const postCount = itemCount + 1;
       toast("დამატებულია ✅", { duration: 1200 });
-      // Only auto-open sheet on FIRST add; after that user browses freely
-      if (postCount < threshold && addCountRef.current <= 1) {
+      // Open upsell sheet whenever still below threshold; skip after threshold reached
+      if (postCount < threshold) {
         setSource(src);
         setSheetOpen(true);
       }
