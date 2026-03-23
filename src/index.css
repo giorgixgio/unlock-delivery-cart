@@ -413,34 +413,44 @@
 
 /* Slot states */
 .neon-slot-filled {
-  background: #0f0800;
-  border: 1.5px solid #ff6a00;
-  box-shadow: 0 0 8px rgba(255,106,0,.5), inset 0 0 12px rgba(255,106,0,.08);
+  background: linear-gradient(135deg, #1a0c00, #2a1200);
+  border: 2px solid #ff6a00;
+  box-shadow: 0 0 10px rgba(255,106,0,.6), inset 0 0 16px rgba(255,106,0,.15), 0 0 20px rgba(255,106,0,.2);
 }
 .neon-slot-active {
-  background: #110800;
-  border: 1.5px solid #ff6a00;
-  box-shadow: 0 0 0 3px rgba(255,106,0,.15), 0 0 14px rgba(255,106,0,.2);
+  background: #0a0500;
+  border: 2px solid #ff8c00;
+  box-shadow: 0 0 12px rgba(255,140,0,.5), 0 0 24px rgba(255,106,0,.25), 0 0 0 4px rgba(255,106,0,.1);
+  animation: slotActivePulse 1.8s ease-in-out infinite !important;
+}
+@keyframes slotActivePulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(255,140,0,.5), 0 0 24px rgba(255,106,0,.25), 0 0 0 4px rgba(255,106,0,.1);
+    border-color: #ff8c00;
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(255,140,0,.8), 0 0 36px rgba(255,106,0,.4), 0 0 0 6px rgba(255,106,0,.2);
+    border-color: #ffaa00;
+  }
 }
 .neon-slot-locked {
-  background: #0d0d0d;
-  border: 1.5px dashed #1e1e1e;
-  opacity: 0.55;
+  background: #080808;
+  border: 1.5px dashed #1a1a1a;
 }
 .neon-slot-bonus {
-  background: #0f0e00;
-  border: 1.5px solid #ffd700;
-  box-shadow: 0 0 8px rgba(255,215,0,.4), inset 0 0 10px rgba(255,215,0,.06);
+  background: linear-gradient(135deg, #141000, #221a00);
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 10px rgba(255,215,0,.5), inset 0 0 14px rgba(255,215,0,.1);
 }
 .neon-slot-next-bonus {
   background: #0c0b00;
-  border: 1.5px solid #886600;
-  box-shadow: 0 0 6px rgba(255,215,0,.15);
+  border: 2px solid #cc9900;
+  box-shadow: 0 0 10px rgba(255,215,0,.3), 0 0 0 4px rgba(255,215,0,.08);
+  animation: slotActivePulse 1.8s ease-in-out infinite !important;
 }
 .neon-slot-locked-bonus {
-  background: #0a0a00;
-  border: 1.5px dashed #1a1800;
-  opacity: 0.4;
+  background: #080800;
+  border: 1.5px dashed #151300;
 }
 
 /* Bar track */
