@@ -2,71 +2,58 @@ import { useMemo, useRef } from "react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 
-// Bucket remaining into groups for caching
-function getBucket(remaining: number): string {
-  if (remaining <= 0) return "0";
-  if (remaining <= 5) return "0-5";
-  if (remaining <= 10) return "5-10";
-  if (remaining <= 20) return "10-20";
-  return "20+";
+// ── Similarity-first scoring for inline recommendation blocks ──
+
+const STOPWORDS = new Set([
+  "და", "ან", "არის", "ეს", "იყო", "რომ", "რა", "მე", "შენ",
+  "the", "and", "for", "with", "this", "that", "from", "your",
+  "pcs", "pack", "piece", "pieces", "size", "color", "style",
+]);
+
+function getKeywords(title: string): Set<string> {
+  const words = new Set<string>();
+  const raw = title.toLowerCase().replace(/[.,;:!?'"()[\]{}#@&%$^*+=<>~`|\\\/]/g, " ").split(/\s+/);
+  for (const w of raw) {
+    if (w.length > 2 && !STOPWORDS.has(w)) words.add(w);
+  }
+  return words;
 }
 
-// Score a product for recommendation
-function scoreProduct(
+function scoreSimilarity(
   product: Product,
-  remaining: number,
   cartProductIds: Set<string>,
-  recentlyShownIds: Set<string>,
-  cartTags: Set<string>
+  cartTags: Set<string>,
+  cartCategories: Set<string>,
+  cartKeywords: Set<string>
 ): number {
-  // Skip items already in cart
   if (cartProductIds.has(product.id)) return -1;
-  // Skip unavailable
   if (!product.available) return -1;
-  // Skip items priced above remaining (not helpful)
-  if (product.price > remaining * 1.5) return -1;
-  // Skip free items
   if (product.price <= 0) return -1;
 
   let score = 0;
 
-  // Prefer items that help reach threshold efficiently
-  // Best: price close to remaining (fills gap in one tap)
-  const ratio = product.price / remaining;
-  if (ratio >= 0.8 && ratio <= 1.2) {
-    score += 50; // Perfect fit
-  } else if (ratio >= 0.4 && ratio < 0.8) {
-    score += 30; // Good partial fill
-  } else if (ratio < 0.4) {
-    score += 15; // Small booster
-  } else {
-    score += 5; // Over remaining but still ok
-  }
-
-  // Tag complementarity — prefer items with tags matching cart items
+  // Tag overlap — primary signal
   if (product.tags) {
     for (const tag of product.tags) {
-      if (cartTags.has(tag)) {
-        score += 8;
-        break;
-      }
+      if (cartTags.has(tag.toLowerCase())) score += 10;
     }
   }
 
-  // Cheap boosters get a bonus (easy add)
-  if (product.price <= 5) score += 10;
+  // Category match
+  if (cartCategories.has(product.category)) score += 8;
 
-  // Penalize recently shown
-  if (recentlyShownIds.has(product.id)) score -= 25;
+  // Title keyword overlap
+  const pWords = getKeywords(product.title);
+  for (const w of pWords) {
+    if (cartKeywords.has(w)) score += 4;
+  }
 
   return score;
 }
 
 const BLOCK_SIZE = 12;
 const MAX_PER_CATEGORY = 4;
-const RECENT_PENALTY_BLOCKS = 3;
 
-// Enforce diversity: max N items from same category
 function applyDiversityCap(items: { product: Product; score: number }[], max: number, limit: number) {
   const result: { product: Product; score: number }[] = [];
   const catCount: Record<string, number> = {};
@@ -79,7 +66,6 @@ function applyDiversityCap(items: { product: Product; score: number }[], max: nu
       if (result.length >= limit) break;
     }
   }
-  // If not enough after diversity cap, fill from remaining
   if (result.length < limit) {
     const picked = new Set(result.map((r) => r.product.id));
     for (const item of items) {
@@ -92,22 +78,15 @@ function applyDiversityCap(items: { product: Product; score: number }[], max: nu
   return result;
 }
 
-// Generate a stable cart key for deduplication
 function cartKey(items: { product: { id: string }; quantity: number }[]): string {
-  return items
-    .map((i) => `${i.product.id}:${i.quantity}`)
-    .sort()
-    .join(",");
+  return items.map((i) => `${i.product.id}:${i.quantity}`).sort().join(",");
 }
 
 export function useRecommendations(products: Product[]) {
   const { items, total, remaining, isUnlocked, itemCount } = useCart();
 
-  // Track recently shown IDs across blocks
-  const recentlyShownRef = useRef<string[][]>([]);
   const cacheRef = useRef<{ key: string; result: Product[]; ts: number }>({ key: "", result: [], ts: 0 });
 
-  // Flag: should show recommendations?
   const shouldShow = !isUnlocked && itemCount > 0;
 
   const recommendations = useMemo(() => {
@@ -116,36 +95,28 @@ export function useRecommendations(products: Product[]) {
     const currentKey = cartKey(items);
     const now = Date.now();
 
-    // Use cache if same key and within 60s
-    if (
-      cacheRef.current.key === currentKey &&
-      cacheRef.current.result.length > 0 &&
-      now - cacheRef.current.ts < 60000
-    ) {
+    if (cacheRef.current.key === currentKey && cacheRef.current.result.length > 0 && now - cacheRef.current.ts < 60000) {
       return cacheRef.current.result;
     }
 
     const cartProductIds = new Set(items.map((i) => i.product.id));
-    const cartTags = new Set(items.flatMap((i) => i.product.tags || []));
-
-    // Build recently shown set from last N blocks
-    const recentlyShownIds = new Set(
-      recentlyShownRef.current.slice(-RECENT_PENALTY_BLOCKS).flat()
-    );
+    const cartTags = new Set(items.flatMap((i) => (i.product.tags || []).map((t) => t.toLowerCase())));
+    const cartCategories = new Set(items.map((i) => i.product.category));
+    const cartKeywords = new Set<string>();
+    for (const item of items) {
+      for (const w of getKeywords(item.product.title)) cartKeywords.add(w);
+    }
 
     const scored = products
-      .map((p) => ({
-        product: p,
-        score: scoreProduct(p, remaining, cartProductIds, recentlyShownIds, cartTags),
-      }))
+      .map((p) => ({ product: p, score: scoreSimilarity(p, cartProductIds, cartTags, cartCategories, cartKeywords) }))
       .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score);
+      // Similarity first, then higher price within same similarity
+      .sort((a, b) => b.score - a.score || b.product.price - a.product.price);
 
-    // Apply diversity cap then take BLOCK_SIZE
     const diverse = applyDiversityCap(scored, MAX_PER_CATEGORY, BLOCK_SIZE);
     let result = diverse.map((s) => s.product);
 
-    // Fallback: if too few, relax recently-shown penalty
+    // Fallback: if too few similar, add highest-priced available products
     if (result.length < 6 && products.length > 0) {
       const relaxed = products
         .filter((p) => !cartProductIds.has(p.id) && p.available && p.price > 0)
@@ -160,19 +131,10 @@ export function useRecommendations(products: Product[]) {
       }
     }
 
-    // Track shown
-    if (result.length > 0) {
-      recentlyShownRef.current.push(result.map((p) => p.id));
-      if (recentlyShownRef.current.length > RECENT_PENALTY_BLOCKS * 2) {
-        recentlyShownRef.current = recentlyShownRef.current.slice(-RECENT_PENALTY_BLOCKS);
-      }
-    }
-
     cacheRef.current = { key: currentKey, result, ts: now };
     return result;
   }, [shouldShow, products, remaining, items]);
 
-  // Invalidate cache when cart changes
   const prevKey = useRef(cartKey(items));
   const currentKey = cartKey(items);
   if (prevKey.current !== currentKey) {

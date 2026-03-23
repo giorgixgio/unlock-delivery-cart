@@ -2,27 +2,22 @@ import { Product } from "@/lib/constants";
 
 // ── Georgian + English stopwords ──
 const STOPWORDS = new Set([
-  // Georgian
   "და", "ან", "არის", "ეს", "იყო", "რომ", "რა", "ვის", "მას", "ის",
   "ამ", "მე", "შენ", "ჩვენ", "თქვენ", "ისინი", "ყველა", "ერთი", "ორი",
   "სამი", "კარგი", "ახალი", "დიდი", "პატარა", "თვის", "ზე", "თან",
-  // English
   "the", "and", "for", "with", "this", "that", "from", "your", "are",
   "was", "were", "been", "have", "has", "had", "but", "not", "you",
   "all", "can", "her", "his", "one", "our", "out", "new", "set",
   "use", "how", "its", "may", "who", "get", "also",
-  // Common product noise
   "pcs", "pack", "piece", "pieces", "size", "color", "style",
 ]);
 
-// ── Normalization cache (keyed by product id) ──
+// ── Normalization cache ──
 const normalizedTagsCache = new Map<string, Set<string>>();
 const normalizedKeywordsCache = new Map<string, Set<string>>();
 
 function normalizeTag(tag: string): string {
-  return tag
-    .toLowerCase()
-    .trim()
+  return tag.toLowerCase().trim()
     .replace(/[.,;:!?'"()[\]{}#@&%$^*+=<>~`|\\\/\-_]/g, "")
     .replace(/\s+/g, " ");
 }
@@ -45,8 +40,7 @@ function getKeywords(p: Product): Set<string> {
   let cached = normalizedKeywordsCache.get(p.id);
   if (cached) return cached;
   const words = new Set<string>();
-  const raw = p.title
-    .toLowerCase()
+  const raw = p.title.toLowerCase()
     .replace(/[.,;:!?'"()[\]{}#@&%$^*+=<>~`|\\\/]/g, " ")
     .split(/\s+/);
   for (const w of raw) {
@@ -56,32 +50,27 @@ function getKeywords(p: Product): Set<string> {
   return words;
 }
 
-// ── Similarity scoring ──
+// ── Similarity scoring (NO price-gap logic) ──
 function similarityScore(
   candidate: Product,
   contextTags: Set<string>,
   contextKeywords: Set<string>,
   contextCategories: Set<string>,
   contextVendors: Set<string>,
-  remaining: number
 ): number {
   let score = 0;
 
   // 1) Tag overlap — highest weight (10 per match)
   const cTags = getNormalizedTags(candidate);
-  let tagMatches = 0;
   for (const t of cTags) {
-    if (contextTags.has(t)) tagMatches++;
+    if (contextTags.has(t)) score += 10;
   }
-  score += tagMatches * 10;
 
   // 2) Title keyword overlap — medium weight (4 per match)
   const cWords = getKeywords(candidate);
-  let wordMatches = 0;
   for (const w of cWords) {
-    if (contextKeywords.has(w)) wordMatches++;
+    if (contextKeywords.has(w)) score += 4;
   }
-  score += wordMatches * 4;
 
   // 3) Category match — bonus 8
   if (contextCategories.has(candidate.category)) score += 8;
@@ -89,13 +78,7 @@ function similarityScore(
   // 4) Vendor match — bonus 3
   if (candidate.vendor && contextVendors.has(candidate.vendor)) score += 3;
 
-  // 5) Price-to-gap fitness (0–10 scale)
-  if (remaining > 0) {
-    const gapFit = 10 - Math.min(10, (Math.abs(candidate.price - remaining) / Math.max(1, remaining)) * 10);
-    score += gapFit;
-  }
-
-  // 6) Discount signal — bonus if ≥30% off
+  // 5) Discount signal — bonus if ≥30% off
   if (candidate.compareAtPrice && candidate.compareAtPrice > 0) {
     const discount = (candidate.compareAtPrice - candidate.price) / candidate.compareAtPrice;
     if (discount >= 0.3) score += 2;
@@ -132,19 +115,12 @@ function applyDiversity(
 ): Product[] {
   const result: Product[] = [];
   const catCount: Record<string, number> = {};
-  const topTagCount: Record<string, number> = {};
 
   for (const { product } of scored) {
     const cat = product.category || "__none__";
-    const topTag = (product.tags?.[0] || "").toLowerCase();
-
-    const catOk = (catCount[cat] || 0) < maxPerCategory;
-    const tagOk = topTag ? (topTagCount[topTag] || 0) < 2 : true;
-
-    if (catOk && tagOk) {
+    if ((catCount[cat] || 0) < maxPerCategory) {
       result.push(product);
       catCount[cat] = (catCount[cat] || 0) + 1;
-      if (topTag) topTagCount[topTag] = (topTagCount[topTag] || 0) + 1;
       if (result.length >= limit) return result;
     }
   }
@@ -163,39 +139,34 @@ function applyDiversity(
   return result;
 }
 
-// ── Fallback tags ──
-const FALLBACK_TAGS = new Set(["flash deal", "trending", "popular", "popular choice", "fast delivery", "bestseller", "hot"]);
-
-function isFallbackCandidate(p: Product): boolean {
-  const tags = getNormalizedTags(p);
-  for (const t of tags) {
-    if (FALLBACK_TAGS.has(t)) return true;
-    for (const fb of FALLBACK_TAGS) {
-      if (t.includes(fb)) return true;
-    }
-  }
-  return false;
-}
-
 // ══════════════════════════════════════════
 // PUBLIC API
 // ══════════════════════════════════════════
 
 export interface RecommendationResult {
-  /** "Perfect to unlock" — 8–10 gap-filling items */
-  gapFillers: Product[];
-  /** "Recommended for you" — broader relevance pool */
-  recommended: Product[];
+  /** Most similar products to cart context, higher-ticket first within similarity tier */
+  similar: Product[];
+  /** Broader catalog after similar products are exhausted */
+  broader: Product[];
 }
 
+/**
+ * Similarity-first recommendation engine.
+ *
+ * Priority:
+ *   1. Similarity score (tags, keywords, category, vendor)
+ *   2. Higher price within same similarity tier
+ *   3. Broader catalog as fallback
+ *
+ * NO cheap-filler / threshold-gap logic.
+ */
 export function getRecommendedProducts(
   currentProduct: Product | null | undefined,
   cartItems: { product: Product; quantity: number }[],
-  remaining: number,
+  _remaining: number,
   allProducts: Product[]
 ): RecommendationResult {
-  const cartIds = new Set(cartItems.map((i) => i.product.id));
-  const excludeIds = new Set(cartIds);
+  const excludeIds = new Set(cartItems.map((i) => i.product.id));
   if (currentProduct) excludeIds.add(currentProduct.id);
 
   const available = allProducts.filter(
@@ -205,42 +176,33 @@ export function getRecommendedProducts(
   const { contextTags, contextKeywords, contextCategories, contextVendors } =
     buildContext(cartItems, currentProduct);
 
-  // ── Score all candidates ──
+  // ── Score all candidates by similarity only ──
   const scored = available.map((p) => ({
     product: p,
-    score: similarityScore(p, contextTags, contextKeywords, contextCategories, contextVendors, remaining),
+    score: similarityScore(p, contextTags, contextKeywords, contextCategories, contextVendors),
   }));
 
-  // ── Gap fillers: price in target range ──
-  const minPrice = remaining <= 5 ? 2 : remaining * 0.5;
-  const maxPrice = remaining <= 5 ? 8 : remaining * 1.5;
+  // ── Sort: similarity DESC, then price DESC (higher-ticket first within same similarity) ──
+  scored.sort((a, b) => b.score - a.score || b.product.price - a.product.price);
 
-  const gapCandidates = scored
-    .filter((s) => s.product.price >= minPrice && s.product.price <= maxPrice)
-    .sort((a, b) => b.score - a.score || Math.abs(a.product.price - remaining) - Math.abs(b.product.price - remaining));
+  // ── Split into "similar" (score > 0) and "broader" (score == 0) ──
+  const SIMILAR_LIMIT = 12;
+  const BROADER_LIMIT = 50;
 
-  let gapFillers = applyDiversity(gapCandidates, 2, 10);
+  const similarCandidates = scored.filter((s) => s.score > 0);
+  const broaderCandidates = scored.filter((s) => s.score === 0);
 
-  // Fallback: if fewer than 4 gap fillers, add cheap impulse items
-  if (gapFillers.length < 4) {
-    const gapIds = new Set(gapFillers.map((p) => p.id));
-    const fallbacks = scored
-      .filter((s) => !gapIds.has(s.product.id) && (isFallbackCandidate(s.product) || s.product.price <= 10))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10 - gapFillers.length)
-      .map((s) => s.product);
-    gapFillers = [...gapFillers, ...fallbacks];
-  }
+  const similar = applyDiversity(similarCandidates, 4, SIMILAR_LIMIT);
+  const similarIds = new Set(similar.map((p) => p.id));
 
-  // ── Recommended: broader pool, excluding gap fillers ──
-  const gapFillerIds = new Set(gapFillers.map((p) => p.id));
-  const recCandidates = scored
-    .filter((s) => !gapFillerIds.has(s.product.id))
-    .sort((a, b) => b.score - a.score);
+  // Broader: remaining similar items that didn't make the cut + zero-score items
+  const overflowSimilar = similarCandidates.filter((s) => !similarIds.has(s.product.id));
+  const broaderPool = [...overflowSimilar, ...broaderCandidates];
+  // Within broader, still sort by price DESC for commercial value
+  broaderPool.sort((a, b) => b.product.price - a.product.price);
+  const broader = applyDiversity(broaderPool, 6, BROADER_LIMIT);
 
-  const recommended = applyDiversity(recCandidates, 6, 50);
-
-  return { gapFillers, recommended };
+  return { similar, broader };
 }
 
 /**
