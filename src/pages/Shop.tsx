@@ -9,7 +9,7 @@ import ProductCard from "@/components/ProductCard";
 import HeroProductCard from "@/components/HeroProductCard";
 import MissionHeroStrip from "@/components/MissionHeroStrip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 
 const INITIAL_LOAD = 16;
 const LOAD_MORE_BATCH = 12;
