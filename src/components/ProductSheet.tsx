@@ -257,6 +257,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
       trackViewContent(product);
+      console.log("[product_viewed] FIRING — open:", open, "product:", product.id, "ts:", Date.now(), "component: ProductSheet");
       trackEvent("product_viewed", {
         product_id: product.id,
         product_name: product.title,
@@ -264,7 +265,8 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
         category: product.category,
         cart_count: itemCount,
         cart_value: total,
-      });
+      }, true);
+      console.log("[product_viewed] FIRED — product:", product.id, "ts:", Date.now());
     }
   }, [open, product?.id]);
 
