@@ -158,36 +158,34 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
           {/* ── Sticky header ── */}
-          <div className="flex-shrink-0 sticky top-0 z-20 bg-card">
-            <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between">
-              <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted flex-shrink-0">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-              <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted flex-shrink-0">
-                <div ref={cartIconRef}><ShoppingCart className="w-5 h-5 text-foreground" /></div>
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{itemCount}</span>
-                )}
-              </button>
-            </div>
+          <div className="flex-shrink-0 sticky top-0 z-20 bg-card relative pt-2">
+            {/* Floating close button */}
+            <button onClick={onClose} className="absolute top-2 left-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+            {/* Floating cart icon */}
+            <button onClick={handleViewCart} className="absolute top-2 right-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
+              <div ref={cartIconRef}><ShoppingCart className="w-4 h-4 text-foreground" /></div>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{itemCount}</span>
+              )}
+            </button>
 
-            <div className="px-3 pb-2.5">
+            <div className="px-3 pb-1.5">
               <MiniMissionBar />
             </div>
 
             {lastAddedProduct && (
-              <div className="px-4 py-2 flex items-center gap-2.5 bg-accent/30 border-y border-border/30">
-                <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                <img src={lastAddedProduct.image} alt={lastAddedProduct.title} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+              <div className="px-4 py-1.5 flex items-center gap-2 bg-accent/30 border-t border-border/30">
+                <CheckCircle2 className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                <img src={lastAddedProduct.image} alt={lastAddedProduct.title} className="w-7 h-7 rounded object-cover flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold text-success leading-tight">დამატებულია ✓</p>
-                  <p className="text-[11px] font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
+                  <p className="text-[10px] font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
                 </div>
-                <span className="text-xs font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
+                <span className="text-[11px] font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
               </div>
             )}
-
-            <div className="h-px bg-border/50" />
           </div>
 
           {/* ── Scrollable content ── */}
