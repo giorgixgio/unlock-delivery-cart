@@ -21,6 +21,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
+  const addCountRef = useRef(0);
 
   const proceedToCheckout = useCallback(() => {
     openCart();
