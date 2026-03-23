@@ -16,18 +16,28 @@ const LOAD_MORE_BATCH = 12;
 
 /** Skeleton grid for loading state */
 const GridSkeleton = () => (
-  <div className="grid grid-cols-2 gap-3">
-    {/* Hero skeleton — full width */}
-    <div className="col-span-2 rounded-xl overflow-hidden border border-border">
-      <Skeleton className="aspect-[4/3] w-full" />
-      <div className="p-4 space-y-3">
+  <div className="grid grid-cols-2 gap-2.5">
+    {/* Hero skeleton — left column */}
+    <div className="row-span-2 rounded-xl overflow-hidden border border-border">
+      <Skeleton className="aspect-square w-full" />
+      <div className="p-3 space-y-2">
         <Skeleton className="h-5 w-3/4" />
         <Skeleton className="h-7 w-1/3" />
-        <Skeleton className="h-2 w-full" />
-        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
       </div>
     </div>
-    {Array.from({ length: 6 }).map((_, i) => (
+    {/* Right column skeletons */}
+    {Array.from({ length: 2 }).map((_, i) => (
+      <div key={`side-${i}`} className="rounded-lg overflow-hidden border border-border">
+        <Skeleton className="aspect-square w-full" />
+        <div className="p-2 space-y-1.5">
+          <Skeleton className="h-3 w-3/4" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+      </div>
+    ))}
+    {/* Below grid skeletons */}
+    {Array.from({ length: 4 }).map((_, i) => (
       <div key={i} className="rounded-lg overflow-hidden border border-border">
         <Skeleton className="aspect-square w-full" />
         <div className="p-3 space-y-2">
