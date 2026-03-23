@@ -23,6 +23,7 @@ import {
 } from "@/lib/demoData";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 interface ProductSheetProps {
@@ -240,7 +241,7 @@ const SheetProgressBar = ({ itemCount, threshold, isUnlocked }: { itemCount: num
 
 // ── Main Product Sheet ──
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
-  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining, threshold } = useCart();
+  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining, threshold, total } = useCart();
   const isMobile = useIsMobile();
   const { handleCheckoutIntent } = useCheckoutGate();
   const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
@@ -256,6 +257,14 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
       trackViewContent(product);
+      trackEvent("product_viewed", {
+        product_id: product.id,
+        product_name: product.title,
+        price: product.price,
+        category: product.category,
+        cart_count: itemCount,
+        cart_value: total,
+      });
     }
   }, [open, product?.id]);
 
