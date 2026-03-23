@@ -663,7 +663,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 ? "იგზავნება..."
                 : canCheckout
                 ? (isFormValid || showRecognizedCard ? "✓ შეკვეთა — გადახდა მიწოდებისას" : "შეკვეთა — გადახდა მიწოდებისას")
-                : `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`}
+                : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
           </div>
         </div>
