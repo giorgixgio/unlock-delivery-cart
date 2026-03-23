@@ -359,18 +359,18 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-      <div className="pb-[160px]">
-        {/* Header */}
+       <div className="pb-[140px]">
+        {/* Header — compact */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
-          <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={closeCart} className="p-1">
-              <ArrowLeft className="w-6 h-6" />
+          <div className="container max-w-2xl mx-auto px-3 py-1.5 flex items-center gap-2">
+            <button onClick={closeCart} className="p-0.5">
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-extrabold tracking-tight">შეკვეთის გაფორმება</h1>
+            <h1 className="text-[15px] font-extrabold tracking-tight">შეკვეთის გაფორმება</h1>
           </div>
         </header>
 
-        <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-2.5">
+        <div className="container max-w-2xl mx-auto px-3 pt-2 space-y-1.5">
 
           {/* ══════ SECTION 1: Product Carousel (auto-expanded) ══════ */}
           <div className="checkout-card overflow-hidden">
