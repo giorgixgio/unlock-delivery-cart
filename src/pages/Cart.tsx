@@ -444,7 +444,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-       <div className="pb-[140px]">
+       <div className={keyboardOpen ? "pb-[60px]" : "pb-[180px]"}>
         {/* Header — compact */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
           <div className="container max-w-2xl mx-auto px-3 py-1.5 flex items-center gap-2">
