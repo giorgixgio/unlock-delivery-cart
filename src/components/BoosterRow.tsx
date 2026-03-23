@@ -26,7 +26,7 @@ const BoosterRow = ({ products }: BoosterRowProps) => {
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-5 h-5 text-primary" />
         <h3 className="text-base font-bold text-foreground">
-          კიდევ {remaining.toFixed(1)} ₾ მინიმალურ შეკვეთამდე
+          კიდევ {remaining} პროდუქტი მინიმალურ შეკვეთამდე
         </h3>
       </div>
       <ScrollArea className="w-full">

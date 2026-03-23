@@ -3,23 +3,21 @@ import { Truck, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-import AnimatedNumber from "@/components/AnimatedNumber";
-
 interface DeliveryMissionBarProps {
   mini?: boolean;
 }
 
 const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
-  const { total, isUnlocked, remaining, isFreeDelivery, uniqueItemCount, threshold } = useCart();
+  const { itemCount, isUnlocked, remaining, threshold } = useCart();
   const { t } = useLanguage();
-  const targetPercent = Math.min(100, (total / threshold) * 100);
+  const targetPercent = Math.min(100, (itemCount / threshold) * 100);
   const [percent, setPercent] = useState(0);
   const hasAnimated = useRef(false);
   const [bounce, setBounce] = useState(false);
   const [microBounce, setMicroBounce] = useState(false);
   const [glow, setGlow] = useState(false);
   const prevUnlocked = useRef(isUnlocked);
-  const prevTotal = useRef(total);
+  const prevCount = useRef(itemCount);
 
   useEffect(() => {
     if (isUnlocked && !prevUnlocked.current) {
@@ -32,18 +30,17 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
   }, [isUnlocked]);
 
   useEffect(() => {
-    if (total !== prevTotal.current && total > 0 && !isUnlocked) {
+    if (itemCount !== prevCount.current && itemCount > 0 && !isUnlocked) {
       setMicroBounce(true);
       setTimeout(() => setMicroBounce(false), 400);
     }
-    prevTotal.current = total;
-  }, [total, isUnlocked]);
+    prevCount.current = itemCount;
+  }, [itemCount, isUnlocked]);
 
   // Animate from 0 on first render, then track changes instantly
   useEffect(() => {
     if (!hasAnimated.current) {
       hasAnimated.current = true;
-      // Start from 0 and animate to current value
       const timer = setTimeout(() => setPercent(targetPercent), 50);
       return () => clearTimeout(timer);
     } else {
@@ -89,17 +86,17 @@ const DeliveryMissionBar = ({ mini = false }: DeliveryMissionBarProps) => {
         <p className={`text-xs font-semibold text-center transition-all duration-500 ${
             isUnlocked
               ? "text-success animate-success-reveal"
-              : remaining < 5
+              : remaining <= 1
               ? "almost-there-text"
               : "text-muted-foreground"
           }`}
         >
         {isUnlocked ? (
             "✅ შეკვეთა მზადაა — მიტანა უფასო!"
-          ) : remaining < 5 ? (
-            <>{t("almost_there")} {t("more_to_go")} <AnimatedNumber value={remaining} /> ₾</>
+          ) : remaining <= 1 ? (
+            <>{t("almost_there")} {t("more_to_go")} {remaining} პროდუქტი</>
           ) : (
-            <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ — {t("min_order")} {threshold} ₾</>
+            <>{t("more_to_go")} {remaining} პროდუქტი — {t("min_order")} {threshold}</>
           )}
         </p>
       )}

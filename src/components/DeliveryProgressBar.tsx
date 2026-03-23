@@ -1,12 +1,11 @@
 import { CheckCircle, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import AnimatedNumber from "@/components/AnimatedNumber";
 
 const DeliveryProgressBar = () => {
-  const { total, isUnlocked, remaining, isFreeDelivery, threshold } = useCart();
+  const { itemCount, isUnlocked, remaining, isFreeDelivery, threshold } = useCart();
   const { t } = useLanguage();
-  const percent = Math.min(100, (total / threshold) * 100);
+  const percent = Math.min(100, (itemCount / threshold) * 100);
 
   return (
     <div className="w-full">
@@ -20,24 +19,19 @@ const DeliveryProgressBar = () => {
           <span className="text-sm font-semibold text-foreground">
             {isUnlocked ? (
               <span className="animate-success-reveal inline-block">
-                {isFreeDelivery ? "✅ მიტანა უფასო!" : "✅ შეკვეთა მზადაა — მიტანა 5 ₾"}
+                {isFreeDelivery ? "✅ მიტანა უფასო!" : "✅ შეკვეთა მზადაა"}
               </span>
             ) : (
-              <>{t("more_to_go")} <AnimatedNumber value={remaining} /> ₾ {t("min_order_threshold")}</>
+              <>{t("more_to_go")} {remaining} პროდუქტი {t("min_order_threshold")}</>
             )}
           </span>
         </div>
         {!isUnlocked && (
           <span className="text-sm font-bold text-muted-foreground">
-            <AnimatedNumber value={total} /> / {threshold} ₾
+            {itemCount} / {threshold}
           </span>
         )}
       </div>
-      {!isUnlocked && !isFreeDelivery && (
-        <p className="text-[11px] text-success font-semibold mb-1.5">
-          💡 დაამატე კიდევ 1 პროდუქტი — მიტანა უფასო!
-        </p>
-      )}
       <div className="relative h-4 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${

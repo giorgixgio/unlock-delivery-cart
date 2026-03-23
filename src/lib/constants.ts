@@ -1,4 +1,5 @@
-export const DELIVERY_THRESHOLD = 24;
+export const MIN_PRODUCT_QUANTITY = 3;
+export const DELIVERY_THRESHOLD = MIN_PRODUCT_QUANTITY; // alias kept for compat
 export const DELIVERY_FEE = 0;
 
 export const CATEGORIES = [

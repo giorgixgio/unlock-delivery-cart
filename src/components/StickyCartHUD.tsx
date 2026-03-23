@@ -68,10 +68,10 @@ const StickyCartHUD = () => {
           className={`w-full h-11 text-base font-bold rounded-xl transition-all duration-200 ${isUnlocked ? `bg-success hover:bg-success/90 text-success-foreground ${pulse ? "animate-cta-pulse-success" : ""}` : `bg-primary hover:bg-primary/90 text-primary-foreground ${pulse ? "animate-cta-pulse" : ""}`}`}
           size="lg"
         >
-          {isUnlocked ? t("complete_order_btn") : t("unlock_btn").replace("{amount}", remaining.toFixed(1))}
+          {isUnlocked ? t("complete_order_btn") : t("unlock_btn").replace("{count}", String(remaining))}
         </Button>
         {!isUnlocked && (
-          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {threshold} ₾</p>
+          <p className="text-[10px] text-center text-muted-foreground font-medium">{t("min_order")} {threshold} პროდუქტი</p>
         )}
       </div>
     </div>
