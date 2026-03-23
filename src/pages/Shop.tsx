@@ -218,17 +218,29 @@ const Shop = () => {
         {isLoading ? (
           <GridSkeleton />
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2.5">
-              {renderGrid()}
-            </div>
+          (() => {
+            const { heroSection, remainingElements } = renderHeroSection();
+            return (
+              <>
+                {heroSection}
 
-            {hasMore && (
-              <div ref={loaderRef} className="flex justify-center py-6">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-          </>
+                {/* Scroll cue */}
+                {remainingElements.length > 0 && <ScrollCue />}
+
+                {remainingElements.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+                    {remainingElements}
+                  </div>
+                )}
+
+                {hasMore && (
+                  <div ref={loaderRef} className="flex justify-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </>
+            );
+          })()
         )}
       </div>
     </main>
