@@ -19,7 +19,7 @@ const badgeColors: Record<ProofBadge["color"], string> = {
 
 /**
  * Renders max 2 badges on a product card image overlay.
- * Top-left stacked vertically with gap, max-width enforced, text truncated.
+ * HORIZONTAL row at top-left with gap. If 2 badges can't fit, only 1 shows.
  * Discount badge stays top-right and never collides.
  */
 const ProductBadgeStack = memo(({ product, gridIndex = 0, overrides, context = "grid" }: Props) => {
@@ -30,30 +30,29 @@ const ProductBadgeStack = memo(({ product, gridIndex = 0, overrides, context = "
 
   if (proof.badges.length === 0) return null;
 
-  // Separate top-right (discount) from top-left (info) badges
   const leftBadges = proof.badges.filter(b => b.position === "top-left").slice(0, 2);
   const rightBadges = proof.badges.filter(b => b.position === "top-right").slice(0, 1);
 
   return (
     <>
-      {/* Top-left: stacked vertically, max 2 */}
+      {/* Top-left: horizontal row, max 2, each truncated */}
       {leftBadges.length > 0 && (
-        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 max-w-[calc(100%-3.5rem)]">
+        <div className="absolute top-1.5 left-1.5 z-10 flex flex-row gap-1 max-w-[calc(100%-3rem)]">
           {leftBadges.map((badge, i) => (
             <span
               key={i}
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm truncate max-w-full block ${badgeColors[badge.color]}`}
+              className={`text-[9px] leading-none font-bold px-1.5 py-[3px] rounded-full shadow-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(50%-2px)] block ${badgeColors[badge.color]}`}
             >
               {badge.text}
             </span>
           ))}
         </div>
       )}
-      {/* Top-right: discount badge, always separate */}
+      {/* Top-right: discount badge */}
       {rightBadges.map((badge, i) => (
         <span
           key={`r-${i}`}
-          className={`absolute top-2 right-2 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap ${badgeColors[badge.color]}`}
+          className={`absolute top-1.5 right-1.5 z-10 text-[9px] leading-none font-bold px-1.5 py-[3px] rounded-full shadow-sm whitespace-nowrap ${badgeColors[badge.color]}`}
         >
           {badge.text}
         </span>

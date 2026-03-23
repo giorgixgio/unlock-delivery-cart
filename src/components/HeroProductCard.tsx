@@ -57,7 +57,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           </div>
         )}
 
-        {/* Discount badge — top left like Temu */}
+        {/* Discount badge — top left */}
         {discount > 0 && (
           <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
             ↓ {discount}% OFF
@@ -90,7 +90,8 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
         </div>
 
         <div className="p-3 space-y-1.5">
-          <h2 className="text-sm font-bold text-foreground leading-tight line-clamp-2">
+          {/* Title: fixed 2-line area */}
+          <h2 className="text-sm font-bold text-foreground leading-tight line-clamp-2 h-[2.5rem]">
             {product.title}
           </h2>
 
@@ -98,31 +99,40 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="text-lg font-extrabold text-primary">{product.price} ₾</span>
             <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+            <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
+              -{discount}%
+            </span>
           </div>
 
           {/* Micro proof */}
-          <ProductMicroProof product={product} />
+          <ProductMicroProof product={product} maxChars={36} />
 
           {/* Add to cart */}
           {!isOOS && (
-            <div className="flex items-center justify-between pt-1">
-              {quantity === 0 ? (
-                <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
-                  <Plus className="w-4 h-4 mr-1" />
-                  შეკვეთა
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2 w-full justify-between">
-                  <Button onClick={handleMinus} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
-                    <Minus className="w-4 h-4" />
+            <>
+              <div className="flex items-center justify-between pt-1">
+                {quantity === 0 ? (
+                  <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
+                    <Plus className="w-4 h-4 mr-1" />
+                    შეკვეთა
                   </Button>
-                  <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
-                  <Button onClick={handleAdd} size="icon" className="h-10 w-10 rounded-lg">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex items-center gap-2 w-full justify-between">
+                    <Button onClick={handleMinus} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
+                    <Button onClick={handleAdd} size="icon" className="h-10 w-10 rounded-lg">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {/* COD helper text */}
+              <p className="text-[9px] text-muted-foreground text-center leading-tight">
+                გადახდა მიღებისას
+              </p>
+            </>
           )}
         </div>
       </div>

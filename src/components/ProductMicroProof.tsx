@@ -5,13 +5,34 @@ import { Product } from "@/lib/constants";
 interface Props {
   product: Product;
   className?: string;
+  /** Max characters before truncation. Default 36 */
+  maxChars?: number;
+}
+
+/** Compact urgency/micro-proof messages mapped to shorter versions */
+const COMPACT_MAP: Record<string, string> = {
+  "ბოლო 24სთ-ში პოპულარულია": "⏰ 24სთ-ში პოპულარული",
+  "ბოლო დარჩა 24სთ-ში": "⏰ ბოლო 24სთ-ში",
+};
+
+function compactText(text: string, maxChars: number): string {
+  // Try known compact replacements first
+  for (const [long, short] of Object.entries(COMPACT_MAP)) {
+    if (text.includes(long)) {
+      text = text.replace(long, short);
+    }
+  }
+  if (text.length > maxChars) {
+    return text.slice(0, maxChars - 1) + "…";
+  }
+  return text;
 }
 
 /**
  * Rotating micro-proof text line under product cards.
- * Updates every 4-6s with smooth fade transition.
+ * Single line, truncated, with icon prefix.
  */
-const ProductMicroProof = memo(({ product, className = "" }: Props) => {
+const ProductMicroProof = memo(({ product, className = "", maxChars = 36 }: Props) => {
   const [tick, setTick] = useState(0);
   const [fading, setFading] = useState(false);
 
@@ -22,16 +43,17 @@ const ProductMicroProof = memo(({ product, className = "" }: Props) => {
         setTick(t => t + 1);
         setFading(false);
       }, 250);
-    }, 4500 + Math.random() * 1500); // 4.5-6s
+    }, 4500 + Math.random() * 1500);
     return () => clearInterval(interval);
   }, []);
 
-  const text = getMicroProofRotation(product, tick);
+  const raw = getMicroProofRotation(product, tick);
+  const text = compactText(raw, maxChars);
 
   return (
     <div className={`h-4 overflow-hidden mt-1 ${className}`}>
       <p
-        className={`text-[10px] font-semibold text-muted-foreground leading-4 truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-full transition-opacity duration-250 ${
+        className={`text-[10px] font-semibold text-muted-foreground leading-4 whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200 ${
           fading ? "opacity-0" : "opacity-100"
         }`}
       >
