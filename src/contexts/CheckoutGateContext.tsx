@@ -27,7 +27,7 @@ function estimateSavings(product: Product): number {
 }
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked, addItem, itemCount, threshold } = useCart();
+  const { isUnlocked, addItem, itemCount, threshold, total } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
