@@ -46,6 +46,27 @@ const SectionLabel = ({ label }: { label: string }) => (
     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{label}</h3>
   </div>
 );
+/** Scroll cue — subtle chevron that auto-hides after first scroll */
+const ScrollCue = () => {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 80) setVisible(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="flex flex-col items-center py-3 animate-bounce-slow">
+      <span className="text-[11px] font-semibold text-muted-foreground">იხილე მეტი</span>
+      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+    </div>
+  );
+};
 
 const Shop = () => {
   const [searchParams] = useSearchParams();
