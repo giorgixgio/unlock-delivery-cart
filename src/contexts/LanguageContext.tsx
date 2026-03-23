@@ -382,7 +382,7 @@ const ru: Record<string, string> = {
   "recommended_for_you": "Рекомендации для вас",
   "delivery_unlocked_emoji": "🎉 Доставка разблокирована",
   "redirecting": "Перенаправление...",
-  "added_more_left": "Добавлено — ещё {amount} ₾",
+  "added_more_left": "Добавлено — ещё {count} товаров",
 
   // Recommendation block
   "delivery_unlocked_check": "Доставка разблокирована ✅",
