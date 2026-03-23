@@ -115,15 +115,24 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const countdown = useCountdown(6);
 
-  // Phone validity check for reveal
+  // Phone validity check for reveal + focus city
   useEffect(() => {
     if (isValidGeorgianPhone(form.phone) && !phoneRevealed) {
       setPhoneRevealed(true);
       setTimeout(() => {
-        cityRef.current?.querySelector("input")?.focus();
-      }, 280);
+        cityInputRef.current?.focus();
+        cityRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
     }
   }, [form.phone, phoneRevealed]);
+
+  // Focus address after city is confirmed (called from PredictiveInput onConfirm)
+  const handleCityConfirm = useCallback(() => {
+    setTimeout(() => {
+      addressInputRef.current?.focus();
+      addressInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, []);
 
   // If recognized user, fields should be revealed
   useEffect(() => {
