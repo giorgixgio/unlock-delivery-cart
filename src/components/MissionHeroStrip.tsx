@@ -1,65 +1,319 @@
 import { useMemo, useEffect, useState, useRef, useCallback } from "react";
-import { ShoppingCart, Sparkles, ChevronDown, Gift, TrendingUp } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { cn } from "@/lib/utils";
 
 const MAX_SLOTS = 5;
-const CORE_THRESHOLD = 3;
+const PARTICLE_COLORS = ["#ff6a00","#ff9500","#ffd700","#ff3300","#ffcc00","#fff","#ff4500"];
 
 type Phase = "mission" | "unlock" | "upgrade";
 
+interface Particle {
+  id: number;
+  style: React.CSSProperties;
+}
+
+function makeParticles(n: number): Particle[] {
+  return Array.from({ length: n }, (_, i) => ({
+    id: i,
+    style: {
+      "--dx": `${(Math.random() - 0.5) * 300}px`,
+      "--dy": `${-(Math.random() * 150 + 50)}px`,
+      "--rot": `${Math.random() * 720 - 360}deg`,
+      background: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+      width: `${Math.random() * 8 + 5}px`,
+      height: `${Math.random() * 8 + 5}px`,
+      borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+      left: `${Math.random() * 80 + 10}%`,
+      top: "40%",
+      animationDelay: `${Math.random() * 0.2}s`,
+      boxShadow: `0 0 6px ${PARTICLE_COLORS[i % PARTICLE_COLORS.length]}`,
+    } as React.CSSProperties,
+  }));
+}
+
+// ── Hook Line ──────────────────────────────────────────────
+const HookLine = ({ itemCount, threshold, remaining }: {
+  itemCount: number; threshold: number; remaining: number;
+}) => {
+  const unlocked = itemCount >= threshold;
+  const extra = itemCount - threshold;
+
+  if (unlocked && extra >= 2) return (
+    <div className="text-center mb-[11px]">
+      <span className="text-sm font-bold text-[#e8e8e8] leading-snug">
+        🔥 მეტი პროდუქტი — <b className="text-[#ff6a00] font-black not-italic neon-text-orange">მეტი სარგებელი</b>
+      </span>
+    </div>
+  );
+
+  if (unlocked) return (
+    <div className="text-center mb-[11px]">
+      <span className="text-sm font-black text-[#39ff14] neon-text-green">
+        ✅ შეთავაზება გახსნილია — გააგრძელე!
+      </span>
+    </div>
+  );
+
+  if (remaining === 1) return (
+    <div className="text-center mb-[11px]">
+      <span className="text-sm font-bold text-[#e8e8e8] leading-snug">
+        ⚡ კიდევ <b className="text-[#ff6a00] font-black not-italic neon-text-orange">1 პროდუქტი</b> — და გახსნი შეთავაზებას!
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="text-center mb-[11px]">
+      <span className="text-sm font-bold text-[#e8e8e8] leading-snug">
+        🔥 აირჩიე <b className="text-[#ff6a00] font-black not-italic neon-text-orange">{threshold} პროდუქტი</b> — მიიღე ფასდაკლება + ბონუსი
+      </span>
+    </div>
+  );
+};
+
+// ── Slot Row ───────────────────────────────────────────────
+const SlotRow = ({ itemCount, threshold, lastFilled }: {
+  itemCount: number; threshold: number; lastFilled: number;
+}) => (
+  <div className="flex gap-[7px] mb-[9px]">
+    {Array.from({ length: threshold }).map((_, i) => {
+      const filled = i < itemCount;
+      const active = i === itemCount;
+      const isNew = i === lastFilled;
+
+      return (
+        <div
+          key={i}
+          className={cn(
+            "flex-1 rounded-[10px] pt-[9px] px-1 pb-2 flex flex-col items-center gap-[3px] transition-all duration-300 relative overflow-hidden",
+            filled && "neon-slot-filled",
+            active && "neon-slot-active",
+            !filled && !active && "neon-slot-locked"
+          )}
+          style={{
+            animation: isNew
+              ? "slotPop .55s cubic-bezier(0.34,1.56,0.64,1)"
+              : active
+              ? "activePulse 2s ease-in-out infinite"
+              : "none",
+          }}
+        >
+          {filled && (
+            <div className="absolute top-0 left-0 right-0 h-[2px] opacity-90"
+              style={{ background: "linear-gradient(90deg, transparent, #ff6a00, transparent)" }}
+            />
+          )}
+          <span
+            className="text-xl font-black leading-none"
+            style={{
+              color: filled ? "#ff6a00" : active ? "#ff6a00" : "#1e1e1e",
+              textShadow: filled
+                ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.5)"
+                : active
+                ? "0 0 6px rgba(255,106,0,.6)"
+                : "none",
+            }}
+          >
+            {filled ? "✓" : active ? i + 1 : "🔒"}
+          </span>
+          <span
+            className="text-[9px] font-bold uppercase tracking-wide text-center"
+            style={{
+              color: filled ? "#ff6a00" : active ? "#cc4400" : "#1a1a1a",
+            }}
+          >
+            {filled ? "დამატდა" : active ? "შემდეგი" : `${i + 1}-ე`}
+          </span>
+        </div>
+      );
+    })}
+  </div>
+);
+
+// ── Progress Bar ───────────────────────────────────────────
+const NeonProgressBar = ({ pct, empty }: { pct: number; empty: boolean }) => (
+  <div className="mb-2">
+    <div className="relative h-2 rounded-full overflow-hidden neon-bar-track">
+      {/* Empty shimmer */}
+      {empty && (
+        <>
+          <div className="absolute inset-0 rounded-full neon-ghost-glow" />
+          <div className="absolute top-0 w-[55%] h-full rounded-full neon-empty-shimmer" />
+        </>
+      )}
+      {/* Filling */}
+      {!empty && pct < 100 && (
+        <>
+          <div
+            className="absolute left-0 top-0 h-full rounded-full overflow-hidden neon-bar-fill"
+            style={{ width: `${pct}%` }}
+          >
+            <div className="absolute top-0 -left-[60%] w-1/2 h-full rounded-full neon-shimmer-slide" />
+          </div>
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full neon-bar-head"
+            style={{ left: `calc(${pct}% - 7px)` }}
+          />
+        </>
+      )}
+      {/* Complete */}
+      {pct >= 100 && (
+        <div className="absolute inset-0 rounded-full overflow-hidden neon-bar-complete">
+          <div className="absolute top-0 -left-[60%] w-1/2 h-full rounded-full neon-shimmer-slide" />
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// ── Sub Line ───────────────────────────────────────────────
+const SubLine = ({ itemCount, remaining }: { itemCount: number; remaining: number }) => {
+  const msg = itemCount === 0
+    ? "აირჩიე პირველი პროდუქტი ↓"
+    : remaining === 1
+    ? "კიდევ 1 — თითქმის მიაღწიე! ↓"
+    : `კიდევ ${remaining} პროდუქტი ↓`;
+
+  return (
+    <div className="text-center text-[11px] text-[#444] mb-[9px] font-semibold tracking-tight">
+      {msg}
+    </div>
+  );
+};
+
+// ── Upgrade Layer ──────────────────────────────────────────
+const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
+  itemCount: number; threshold: number; lastFilled: number; exploding: boolean; aovMax: number;
+}) => (
+  <>
+    <div className="flex items-center justify-center gap-1.5 mb-[9px] rounded-[10px] py-1.5 px-3 neon-upgrade-nudge">
+      <span className="text-[13px]">➕</span>
+      <span className="text-xs text-[#997722] font-semibold">
+        დაამატე კიდევ — <b className="text-[#ffd700] font-extrabold not-italic neon-text-gold">გაზარდე სარგებელი</b>
+      </span>
+    </div>
+
+    <div className="flex gap-[7px] mb-[9px]">
+      {Array.from({ length: aovMax }).map((_, i) => {
+        const filled = i < itemCount;
+        const isCore = i < threshold;
+        const isNext = i === itemCount;
+        const isNew = i === lastFilled;
+
+        return (
+          <div
+            key={i}
+            className={cn(
+              "flex-1 rounded-[10px] pt-[9px] px-1 pb-2 flex flex-col items-center gap-[3px] transition-all duration-300 relative overflow-hidden",
+              filled && isCore && "neon-slot-filled",
+              filled && !isCore && "neon-slot-bonus",
+              isNext && "neon-slot-next-bonus",
+              !filled && !isNext && isCore && "neon-slot-locked",
+              !filled && !isNext && !isCore && "neon-slot-locked-bonus"
+            )}
+            style={{
+              transform: !isCore && !filled ? "scale(0.92)" : "scale(1)",
+              animation: isNew
+                ? "slotPop .55s cubic-bezier(0.34,1.56,0.64,1)"
+                : exploding && filled && isCore
+                ? "slotGlow .6s ease-in-out infinite alternate"
+                : "none",
+            }}
+          >
+            <span
+              className="font-black leading-none"
+              style={{
+                fontSize: !isCore ? 14 : 20,
+                color: filled ? (isCore ? "#ff6a00" : "#ffd700") : isNext ? "#cc9900" : "#1a1a1a",
+                textShadow: filled && isCore
+                  ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.4)"
+                  : filled && !isCore
+                  ? "0 0 8px rgba(255,215,0,.8)"
+                  : "none",
+              }}
+            >
+              {filled ? (isCore ? "✓" : "★") : isNext ? "+" : "·"}
+            </span>
+            <span
+              className="text-[9px] font-bold uppercase tracking-wide text-center"
+              style={{
+                color: filled ? (isCore ? "#ff6a00" : "#cc9900") : isNext ? "#996600" : "#1a1a1a",
+              }}
+            >
+              {filled ? (isCore ? "დამატდა" : "ბონუსი!") : isNext ? "დაამატე" : `+${i + 1 - threshold}`}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+
+    <div className="text-center text-[10px] text-[#333] mb-2 italic">
+      💡 ხშირად ყიდულობენ 4–5 პროდუქტს ერთად
+    </div>
+  </>
+);
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
 const MissionHeroStrip = () => {
   const { itemCount, threshold, isUnlocked } = useCart();
   const { openCart } = useCartOverlay();
-  const [phase, setPhase] = useState<Phase>("mission");
-  const [showConfetti, setShowConfetti] = useState(false);
-  const prevCount = useRef(itemCount);
-  const [slotPop, setSlotPop] = useState<number | null>(null);
 
-  const effectiveThreshold = threshold || CORE_THRESHOLD;
+  const effectiveThreshold = threshold || 3;
   const remaining = Math.max(0, effectiveThreshold - itemCount);
-  const progress = Math.min(100, (itemCount / effectiveThreshold) * 100);
+  const pct = Math.min(100, (itemCount / effectiveThreshold) * 100);
 
-  // Phase management
+  const [phase, setPhase] = useState<Phase>(
+    itemCount >= effectiveThreshold ? "upgrade" : "mission"
+  );
+  const [showUpgrade, setShowUpgrade] = useState(itemCount >= effectiveThreshold);
+  const [lastFilled, setLastFilled] = useState(-1);
+  const [exploding, setExploding] = useState(false);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const prevCount = useRef(itemCount);
+
+  // Phase & animation management
   useEffect(() => {
+    if (itemCount > prevCount.current) {
+      const idx = itemCount - 1;
+      setLastFilled(idx);
+      setTimeout(() => setLastFilled(-1), 650);
+
+      if (itemCount === effectiveThreshold) {
+        setPhase("unlock");
+        setExploding(true);
+        setParticles(makeParticles(24));
+        setTimeout(() => setExploding(false), 2400);
+        setTimeout(() => setParticles([]), 2400);
+        setTimeout(() => {
+          setPhase("upgrade");
+          setShowUpgrade(true);
+        }, 850);
+      }
+    }
+
     if (itemCount < effectiveThreshold) {
       setPhase("mission");
-    } else if (itemCount >= effectiveThreshold && prevCount.current < effectiveThreshold) {
-      // Just crossed threshold
-      setPhase("unlock");
-      setShowConfetti(true);
-      const t = setTimeout(() => {
-        setPhase("upgrade");
-        setShowConfetti(false);
-      }, 2200);
-      prevCount.current = itemCount;
-      return () => clearTimeout(t);
-    } else if (itemCount >= effectiveThreshold) {
+      setShowUpgrade(false);
+    } else if (itemCount >= effectiveThreshold && phase === "mission") {
       setPhase("upgrade");
+      setShowUpgrade(true);
     }
+
     prevCount.current = itemCount;
-  }, [itemCount, effectiveThreshold]);
+  }, [itemCount, effectiveThreshold, phase]);
 
-  // Slot pop animation
-  useEffect(() => {
-    if (itemCount > 0 && itemCount !== prevCount.current) {
-      setSlotPop(itemCount);
-      const t = setTimeout(() => setSlotPop(null), 400);
-      return () => clearTimeout(t);
-    }
-  }, [itemCount]);
-
-  // Scroll-shrink + auto-expand on meaningful changes
+  // Scroll-shrink
   const [shrunk, setShrunk] = useState(false);
   const forceExpandUntil = useRef(0);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
-  // Auto-expand hero on meaningful state changes
   useEffect(() => {
     if (itemCount > 0 && itemCount !== prevCount.current) {
-      // Force expand for 2 seconds on every add / threshold cross
       forceExpandUntil.current = Date.now() + 2000;
       setShrunk(false);
     }
@@ -69,7 +323,6 @@ const MissionHeroStrip = () => {
     if (ticking.current) return;
     ticking.current = true;
     requestAnimationFrame(() => {
-      // Skip shrink if force-expanded
       if (Date.now() < forceExpandUntil.current) {
         ticking.current = false;
         return;
@@ -87,22 +340,7 @@ const MissionHeroStrip = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [onScroll]);
 
-  // --- COPY ---
-  const hookCopy = useMemo(() => {
-    if (phase === "unlock") return "🎉 შეთავაზება გახსნილია!";
-    if (phase === "upgrade") return "🔥 მეტი პროდუქტი — მეტი სარგებელი";
-    if (remaining === 1) return "⚡ კიდევ 1 პროდუქტი — და გახსნი შეთავაზებას!";
-    return `🔥 აირჩიე ${effectiveThreshold} პროდუქტი — მიიღე ფასდაკლება + ბონუსი`;
-  }, [phase, remaining, effectiveThreshold]);
-
-  const directionCopy = useMemo(() => {
-    if (phase === "upgrade") return "➕ დაამატე კიდევ 1–2 პროდუქტი — შეკვეთა უფრო მომგებიანი გახდება";
-    if (itemCount === 0) return "აირჩიე პირველი პროდუქტი ↓";
-    if (remaining === 1) return "კიდევ 1 პროდუქტი — თითქმის მიაღწიე! ↓";
-    return `კიდევ ${remaining} პროდუქტი — შემდეგ ↓`;
-  }, [phase, itemCount, remaining]);
-
-  const slotsToShow = phase === "upgrade" ? MAX_SLOTS : effectiveThreshold;
+  const unlocked = itemCount >= effectiveThreshold;
 
   return (
     <div className="sticky top-0 z-40">
@@ -131,167 +369,90 @@ const MissionHeroStrip = () => {
         </div>
       </div>
 
-      {/* Mission strip */}
+      {/* Neon mission strip */}
       <div
         className={cn(
-          "transition-all duration-300 overflow-hidden",
-          shrunk ? "max-h-[80px]" : "max-h-[220px]"
+          "transition-all duration-300 overflow-hidden relative",
+          shrunk ? "max-h-[50px]" : "max-h-[300px]"
         )}
-        style={{ background: "hsl(220 15% 13%)" }}
+        style={{
+          background: "#0a0a0a",
+          borderBottom: "2px solid #ff4500",
+          boxShadow: "0 4px 32px rgba(255,106,0,.22), inset 0 -1px 0 rgba(255,106,0,.15)",
+        }}
       >
+        {/* Confetti particles */}
+        {particles.map((p) => (
+          <div
+            key={p.id}
+            className="absolute pointer-events-none"
+            style={{
+              ...p.style,
+              animation: "confettiFly 2.2s ease-out forwards",
+            }}
+          />
+        ))}
+
         <div className={cn(
-          "container max-w-2xl mx-auto px-3 transition-all duration-300",
-          shrunk ? "py-2" : "py-3"
+          "container max-w-2xl mx-auto transition-all duration-300",
+          shrunk ? "px-4 py-1.5" : "px-4 pt-[13px] pb-[11px]"
         )}>
-          {/* Hook copy */}
-          <p className={cn(
-            "font-extrabold text-white leading-tight transition-all duration-300",
-            shrunk ? "text-[12px]" : "text-[13px]",
-            phase === "unlock" && "text-[hsl(145,63%,50%)]"
-          )}>
-            {hookCopy}
-          </p>
+          {/* Shrunk state — compact single line */}
+          {shrunk ? (
+            <p className="text-[11px] font-bold text-center truncate"
+              style={{ color: unlocked ? "#39ff14" : "#e8e8e8" }}
+            >
+              {unlocked
+                ? "✅ შეთავაზება გახსნილია"
+                : `🔥 კიდევ ${remaining} პროდუქტი — ${itemCount}/${effectiveThreshold}`
+              }
+            </p>
+          ) : (
+            <>
+              <HookLine itemCount={itemCount} threshold={effectiveThreshold} remaining={remaining} />
 
-          {/* Confetti burst */}
-          {showConfetti && (
-            <div className="flex justify-center gap-1 my-1 animate-fade-in">
-              {["🎊", "✨", "🎉", "⭐", "🎊"].map((e, i) => (
-                <span
-                  key={i}
-                  className="text-sm animate-bounce"
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  {e}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Slot row */}
-          {!shrunk && (
-            <div className="flex items-center gap-1.5 mt-2">
-              {Array.from({ length: slotsToShow }).map((_, i) => {
-                const slotNum = i + 1;
-                const isFilled = slotNum <= itemCount;
-                const isActive = slotNum === itemCount + 1;
-                const isBonus = slotNum > effectiveThreshold;
-                const isPopping = slotPop === slotNum;
-
-                let label: string;
-                if (isFilled && isBonus) label = "ბონუსი!";
-                else if (isFilled) label = "დამატდა";
-                else if (isActive && isBonus) label = "+1 ბონუსი";
-                else if (isActive) label = "შემდეგი →";
-                else if (isBonus) label = `+${slotNum - effectiveThreshold}`;
-                else label = `${slotNum}-ე`;
-
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex-1 rounded-lg flex flex-col items-center justify-center transition-all duration-300",
-                      shrunk ? "h-6" : "h-10",
-                      isFilled && !isBonus && "bg-primary/90 shadow-[0_0_8px_hsl(14,90%,52%,0.4)]",
-                      isFilled && isBonus && "bg-[hsl(45,100%,50%)]/80 shadow-[0_0_8px_hsl(45,100%,50%,0.3)]",
-                      isActive && !isBonus && "border-2 border-primary/70 bg-primary/10 animate-pulse",
-                      isActive && isBonus && "border-2 border-[hsl(45,100%,50%)]/50 bg-[hsl(45,100%,50%)]/10 animate-pulse",
-                      !isFilled && !isActive && !isBonus && "bg-white/8 border border-white/15",
-                      !isFilled && !isActive && isBonus && "bg-white/5 border border-white/10",
-                      isPopping && "scale-110"
-                    )}
-                  >
-                    {!shrunk && (
-                      <>
-                        {isFilled ? (
-                          isBonus ? (
-                            <Gift className="w-3 h-3 text-[hsl(45,100%,25%)]" />
-                          ) : (
-                            <Sparkles className="w-3 h-3 text-primary-foreground" />
-                          )
-                        ) : isActive ? (
-                          <ChevronDown className={cn(
-                            "w-3 h-3",
-                            isBonus ? "text-[hsl(45,100%,50%)]" : "text-primary"
-                          )} />
-                        ) : null}
-                        <span className={cn(
-                          "text-[8px] font-bold leading-none mt-0.5 truncate max-w-full px-0.5",
-                          isFilled && !isBonus && "text-primary-foreground",
-                          isFilled && isBonus && "text-[hsl(45,100%,20%)]",
-                          isActive && "text-white/80",
-                          !isFilled && !isActive && "text-white/30"
-                        )}>
-                          {label}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Progress bar */}
-          <div className={cn(
-            "relative rounded-full overflow-hidden bg-white/10 transition-all duration-300",
-            shrunk ? "h-1.5 mt-1.5" : "h-2 mt-2"
-          )}>
-            {/* Shimmer background on fill */}
-            <div
-              className="absolute inset-0 h-full rounded-full transition-[width] duration-500 ease-out"
-              style={{
-                width: `${progress}%`,
-                background: phase === "upgrade"
-                  ? "linear-gradient(90deg, hsl(145,63%,42%), hsl(145,63%,50%))"
-                  : "linear-gradient(90deg, hsl(14,90%,45%), hsl(14,90%,58%))"
-              }}
-            />
-            {/* Glowing head */}
-            {phase === "mission" && progress > 0 && progress < 100 && (
-              <div
-                className="absolute top-0 h-full w-3 rounded-full animate-pulse"
-                style={{
-                  left: `calc(${progress}% - 6px)`,
-                  background: "radial-gradient(circle, hsl(14,90%,65%), transparent)",
-                }}
-              />
-            )}
-          </div>
-
-          {/* Direction / upgrade copy */}
-          {!shrunk && (
-            <div className="mt-2 space-y-1">
-              <p className={cn(
-                "text-[11px] font-semibold leading-tight",
-                phase === "upgrade" ? "text-[hsl(145,63%,55%)]" : "text-white/70"
-              )}>
-                {directionCopy}
-              </p>
-
-              {/* Social proof in upgrade mode */}
-              {phase === "upgrade" && (
-                <p className="text-[10px] text-white/50 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  💡 ხშირად ყიდულობენ 4–5 პროდუქტს ერთად
-                </p>
+              {/* Mission phase */}
+              {!unlocked && (
+                <>
+                  <SlotRow itemCount={itemCount} threshold={effectiveThreshold} lastFilled={lastFilled} />
+                  <NeonProgressBar pct={pct} empty={itemCount === 0} />
+                  <SubLine itemCount={itemCount} remaining={remaining} />
+                </>
               )}
 
-              {/* Trust line */}
-              <p className="text-[10px] text-white/40">
-                🚚 გადახდა მიღებისას • 🔥 სწრაფად იწურება
-              </p>
-            </div>
-          )}
+              {/* Unlock flash */}
+              {unlocked && !showUpgrade && (
+                <div className="flex items-center justify-center gap-2 mb-[10px]">
+                  <span className="text-2xl">🎉</span>
+                  <span className="text-base font-black text-[#39ff14] neon-text-green">
+                    შეთავაზება გახსნილია!
+                  </span>
+                </div>
+              )}
 
-          {/* Cart CTA in upgrade mode */}
-          {phase === "upgrade" && !shrunk && (
-            <button
-              onClick={() => openCart()}
-              className="w-full mt-2 py-2 rounded-lg font-bold text-sm text-white transition-all duration-200"
-              style={{ background: "hsl(145,63%,42%)" }}
-            >
-              კალათაზე გადასვლა →
-            </button>
+              {/* Upgrade phase */}
+              {unlocked && showUpgrade && (
+                <UpgradeLayer
+                  itemCount={itemCount}
+                  threshold={effectiveThreshold}
+                  lastFilled={lastFilled}
+                  exploding={exploding}
+                  aovMax={MAX_SLOTS}
+                />
+              )}
+
+              {/* Bottom trust row */}
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-xs font-bold text-[#666]">🚚 გადახდა მიღებისას</span>
+                <span className="text-xs text-[#222]">•</span>
+                <span className="flex items-center gap-[5px] text-xs font-bold text-[#ff6a00] neon-text-orange">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff6a00] inline-block neon-blink"
+                    style={{ boxShadow: "0 0 6px #ff6a00, 0 0 12px rgba(255,106,0,.5)" }}
+                  />
+                  სწრაფად იწურება
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>

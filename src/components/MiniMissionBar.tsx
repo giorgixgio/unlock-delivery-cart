@@ -1,5 +1,4 @@
 import { useMemo, useEffect, useState, useRef } from "react";
-import { Sparkles, ChevronDown, Gift } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { cn } from "@/lib/utils";
 
@@ -7,24 +6,23 @@ const CORE_THRESHOLD = 3;
 const MAX_SLOTS = 5;
 
 /**
- * Compact "high-energy" hero for inside sheets/drawers.
- * Same gamification as grid MissionHeroStrip, compressed to ~60–70% height.
+ * Compact neon-dark mission bar for inside sheets/drawers.
  */
 const MiniMissionBar = () => {
   const { itemCount, threshold, isUnlocked } = useCart();
   const effectiveThreshold = threshold || CORE_THRESHOLD;
   const remaining = Math.max(0, effectiveThreshold - itemCount);
-  const progress = Math.min(100, (itemCount / effectiveThreshold) * 100);
+  const pct = Math.min(100, (itemCount / effectiveThreshold) * 100);
   const isUpgrade = itemCount >= effectiveThreshold;
 
   // Slot pop animation
-  const [slotPop, setSlotPop] = useState<number | null>(null);
+  const [lastFilled, setLastFilled] = useState(-1);
   const prevCount = useRef(itemCount);
 
   useEffect(() => {
     if (itemCount > prevCount.current && itemCount > 0) {
-      setSlotPop(itemCount);
-      const t = setTimeout(() => setSlotPop(null), 400);
+      setLastFilled(itemCount - 1);
+      const t = setTimeout(() => setLastFilled(-1), 650);
       prevCount.current = itemCount;
       return () => clearTimeout(t);
     }
@@ -52,7 +50,6 @@ const MiniMissionBar = () => {
     return `🔥 აირჩიე ${effectiveThreshold} პროდუქტი — მიიღე შეთავაზება`;
   }, [isUpgrade, remaining, effectiveThreshold, itemCount]);
 
-  // Direction copy
   const directionCopy = useMemo(() => {
     if (isUpgrade) return "დაამატე მეტი — დაზოგავ მეტს";
     return `კიდევ ${remaining} პროდუქტი დარჩა ↓`;
@@ -64,80 +61,83 @@ const MiniMissionBar = () => {
     <div
       className={cn(
         "rounded-lg px-3 py-2.5 space-y-1.5 transition-shadow duration-500",
-        showGlow && "shadow-[0_0_20px_hsl(145,63%,50%,0.3)]"
+        showGlow && "shadow-[0_0_20px_rgba(57,255,20,0.3)]"
       )}
-      style={{ background: "hsl(220 15% 13%)" }}
+      style={{
+        background: "#0a0a0a",
+        borderBottom: "2px solid #ff4500",
+        boxShadow: showGlow
+          ? "0 0 20px rgba(57,255,20,0.3)"
+          : "0 2px 16px rgba(255,106,0,.15)",
+      }}
     >
       {/* Hook line */}
-      <p
-        className={cn(
-          "text-[11px] font-extrabold leading-tight",
-          isUpgrade ? "text-[hsl(145,63%,55%)]" : "text-white"
-        )}
-      >
+      <p className={cn(
+        "text-[11px] font-extrabold leading-tight",
+        isUpgrade ? "text-[#39ff14] neon-text-green" : "text-[#e8e8e8]"
+      )}>
         {hookCopy}
       </p>
 
       {/* Slot row */}
       <div className="flex items-center gap-1">
         {Array.from({ length: slotsToShow }).map((_, i) => {
-          const slotNum = i + 1;
-          const isFilled = slotNum <= itemCount;
-          const isActive = slotNum === itemCount + 1;
-          const isBonus = slotNum > effectiveThreshold;
-          const isPopping = slotPop === slotNum;
+          const filled = i < itemCount;
+          const active = i === itemCount;
+          const isBonus = i >= effectiveThreshold;
+          const isNew = i === lastFilled;
 
           let label: string;
-          if (isFilled && isBonus) label = "ბონუსი!";
-          else if (isFilled) label = "დამატდა";
-          else if (isActive && isBonus) label = "+1 ბონუსი";
-          else if (isActive) label = "შემდეგი →";
-          else if (isBonus) label = `+${slotNum - effectiveThreshold}`;
-          else label = `${slotNum}-ე`;
+          if (filled && isBonus) label = "ბონუსი!";
+          else if (filled) label = "დამატდა";
+          else if (active && isBonus) label = "+1 ბონუსი";
+          else if (active) label = "შემდეგი →";
+          else if (isBonus) label = `+${i + 1 - effectiveThreshold}`;
+          else label = `${i + 1}-ე`;
 
           return (
             <div
               key={i}
               className={cn(
-                "flex-1 rounded-md flex flex-col items-center justify-center h-8 transition-all duration-300",
-                // Filled core
-                isFilled && !isBonus && "bg-primary/90 shadow-[0_0_6px_hsl(14,90%,52%,0.4)]",
-                // Filled bonus
-                isFilled && isBonus && "bg-[hsl(45,100%,50%)]/80 shadow-[0_0_6px_hsl(45,100%,50%,0.3)]",
-                // Active core
-                isActive && !isBonus && "border-[1.5px] border-primary/70 bg-primary/10 animate-pulse",
-                // Active bonus
-                isActive && isBonus && "border-[1.5px] border-[hsl(45,100%,50%)]/50 bg-[hsl(45,100%,50%)]/10 animate-pulse",
-                // Locked core
-                !isFilled && !isActive && !isBonus && "bg-white/8 border border-white/15",
-                // Locked bonus (smaller feel)
-                !isFilled && !isActive && isBonus && "bg-white/5 border border-white/10 max-w-[80%] mx-auto",
-                // Pop
-                isPopping && "scale-110"
+                "flex-1 rounded-lg flex flex-col items-center justify-center h-8 transition-all duration-300 relative overflow-hidden",
+                filled && !isBonus && "neon-slot-filled",
+                filled && isBonus && "neon-slot-bonus",
+                active && !isBonus && "neon-slot-active",
+                active && isBonus && "neon-slot-next-bonus",
+                !filled && !active && !isBonus && "neon-slot-locked",
+                !filled && !active && isBonus && "neon-slot-locked-bonus",
               )}
+              style={{
+                animation: isNew
+                  ? "slotPop .55s cubic-bezier(0.34,1.56,0.64,1)"
+                  : active
+                  ? "activePulse 2s ease-in-out infinite"
+                  : "none",
+              }}
             >
-              {isFilled ? (
-                isBonus ? (
-                  <Gift className="w-2.5 h-2.5 text-[hsl(45,100%,25%)]" />
-                ) : (
-                  <Sparkles className="w-2.5 h-2.5 text-primary-foreground" />
-                )
-              ) : isActive ? (
-                <ChevronDown
-                  className={cn(
-                    "w-2.5 h-2.5",
-                    isBonus ? "text-[hsl(45,100%,50%)]" : "text-primary"
-                  )}
+              {filled && (
+                <div className="absolute top-0 left-0 right-0 h-[2px] opacity-90"
+                  style={{ background: "linear-gradient(90deg, transparent, #ff6a00, transparent)" }}
                 />
-              ) : null}
+              )}
               <span
-                className={cn(
-                  "text-[7px] font-bold leading-none mt-0.5 truncate max-w-full px-0.5",
-                  isFilled && !isBonus && "text-primary-foreground",
-                  isFilled && isBonus && "text-[hsl(45,100%,20%)]",
-                  isActive && "text-white/80",
-                  !isFilled && !isActive && "text-white/30"
-                )}
+                className="text-xs font-black leading-none"
+                style={{
+                  color: filled ? (isBonus ? "#ffd700" : "#ff6a00") : active ? "#ff6a00" : "#1e1e1e",
+                  textShadow: filled && !isBonus
+                    ? "0 0 8px rgba(255,106,0,.9)"
+                    : filled && isBonus
+                    ? "0 0 8px rgba(255,215,0,.8)"
+                    : "none",
+                }}
+              >
+                {filled ? (isBonus ? "★" : "✓") : active ? i + 1 : "🔒"}
+              </span>
+              <span
+                className="text-[7px] font-bold uppercase tracking-wide text-center"
+                style={{
+                  color: filled ? (isBonus ? "#cc9900" : "#ff6a00") : active ? "#cc4400" : "#1a1a1a",
+                }}
               >
                 {label}
               </span>
@@ -147,35 +147,35 @@ const MiniMissionBar = () => {
       </div>
 
       {/* Progress bar */}
-      <div className="relative h-1.5 rounded-full overflow-hidden bg-white/10">
-        <div
-          className="absolute inset-0 h-full rounded-full transition-[width] duration-500 ease-out"
-          style={{
-            width: `${progress}%`,
-            background: isUpgrade
-              ? "linear-gradient(90deg, hsl(145,63%,42%), hsl(145,63%,50%))"
-              : "linear-gradient(90deg, hsl(14,90%,45%), hsl(14,90%,58%))",
-          }}
-        />
-        {/* Glowing head */}
-        {!isUpgrade && progress > 0 && progress < 100 && (
-          <div
-            className="absolute top-0 h-full w-2.5 rounded-full animate-pulse"
-            style={{
-              left: `calc(${progress}% - 5px)`,
-              background: "radial-gradient(circle, hsl(14,90%,65%), transparent)",
-            }}
-          />
+      <div className="relative h-1.5 rounded-full overflow-hidden neon-bar-track">
+        {itemCount === 0 && (
+          <>
+            <div className="absolute inset-0 rounded-full neon-ghost-glow" />
+            <div className="absolute top-0 w-[55%] h-full rounded-full neon-empty-shimmer" />
+          </>
+        )}
+        {itemCount > 0 && pct < 100 && (
+          <>
+            <div
+              className="absolute left-0 top-0 h-full rounded-full overflow-hidden neon-bar-fill"
+              style={{ width: `${pct}%` }}
+            >
+              <div className="absolute top-0 -left-[60%] w-1/2 h-full rounded-full neon-shimmer-slide" />
+            </div>
+          </>
+        )}
+        {pct >= 100 && (
+          <div className="absolute inset-0 rounded-full overflow-hidden neon-bar-complete">
+            <div className="absolute top-0 -left-[60%] w-1/2 h-full rounded-full neon-shimmer-slide" />
+          </div>
         )}
       </div>
 
       {/* Direction text */}
-      <p
-        className={cn(
-          "text-[9px] font-semibold leading-tight",
-          isUpgrade ? "text-[hsl(145,63%,55%)]" : "text-white/60"
-        )}
-      >
+      <p className={cn(
+        "text-[9px] font-semibold leading-tight",
+        isUpgrade ? "text-[#39ff14]" : "text-[#666]"
+      )}>
         {directionCopy}
       </p>
     </div>
