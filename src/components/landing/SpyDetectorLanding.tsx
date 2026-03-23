@@ -11,6 +11,7 @@ import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
 import { useNavigate } from "react-router-dom";
 
