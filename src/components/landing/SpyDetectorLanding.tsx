@@ -66,7 +66,7 @@ LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
 const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
-  const {} = useCart();
+  
   const { openCart } = useCartOverlay();
   const { addAndGate } = useCheckoutGate();
   const navigate = useNavigate();
