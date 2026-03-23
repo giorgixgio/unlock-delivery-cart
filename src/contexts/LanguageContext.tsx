@@ -110,7 +110,7 @@ const ge: Record<string, string> = {
   "more_to_go": "კიდევ",
   "min_order": "მინ. შეკვეთა",
   "min_order_threshold": "მინიმალურ შეკვეთამდე",
-  "plus_free_delivery": "— მინ. შეკვეთა {threshold} ₾ + უფასო მიტანა",
+  "plus_free_delivery": "— მინ. {threshold} პროდუქტი + უფასო მიტანა",
 
   // Cart
   "cart_title": "კალათა",
