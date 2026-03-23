@@ -98,8 +98,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const [isRecognized, setIsRecognized] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Collapsible cart summary
-  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  // Product section auto-expanded
+  const summaryExpanded = true;
 
   // Phone-first progressive disclosure
   const [phoneRevealed, setPhoneRevealed] = useState(false);
