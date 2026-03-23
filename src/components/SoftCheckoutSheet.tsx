@@ -167,14 +167,19 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const handleViewCart = () => { onClose(); openCart(); };
   const handleCloseSheet = useCallback(() => {
     if (addedDuringSession.current === 0) {
-      trackEvent("upsell_rejected", {
+      trackEvent("popup_closed", {
         source,
         cart_count: itemCount,
         cart_value: total,
+        threshold,
+        items_to_threshold: remaining,
+        is_unlocked: isUnlocked,
+        popup_type: "cart_builder",
+        context: isUnlocked ? "post_threshold" : "pre_threshold",
       });
     }
     onClose();
-  }, [onClose, source, itemCount, total]);
+  }, [onClose, source, itemCount, total, threshold, remaining, isUnlocked]);
   const hasContent = similarProducts.length > 0 || allBroader.length > 0;
   const showEmpty = !isLoading && !hasContent;
 
