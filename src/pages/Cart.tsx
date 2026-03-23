@@ -543,9 +543,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                             value={form.region}
                             onChange={(val) => handleChange("region", val)}
                             onSelect={(s) => handleChange("region", s.text)}
+                            onConfirm={handleCityConfirm}
                             getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
                             placeholder="მაგ: თბილისი"
                             error={errors.region}
+                            inputRef={cityInputRef}
                           />
                         </div>
                       </div>
@@ -559,6 +561,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                             getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
                             placeholder="ქუჩა, სახლი, ბინა"
                             error={errors.address}
+                            inputRef={addressInputRef}
                           />
                         </div>
                       </div>
