@@ -390,7 +390,7 @@ const ru: Record<string, string> = {
   "more_left_short": "Ещё {count} товаров",
 
   // Booster row
-  "more_to_min_order": "Ещё {amount} ₾ до минимального заказа",
+  "more_to_min_order": "Ещё {count} товаров до минимального заказа",
   "add_btn": "+ Добавить",
 
   // Cart item urgency
