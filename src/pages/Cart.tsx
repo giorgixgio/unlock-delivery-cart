@@ -292,6 +292,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCart();
       dismissCart();
       setConfirmModalOpen(false);
+      trackEvent("order_submitted", {
+        order_number: order.public_order_number,
+        order_total: orderTotal,
+        item_count: items.length,
+        cart_value: total,
+        shipping_fee: shippingFee,
+        is_tbilisi: isTbilisi,
+        source: isLandingPage ? "landing_pdp" : "shop",
+      });
       navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);

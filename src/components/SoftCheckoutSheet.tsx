@@ -253,7 +253,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {visibleBroader.map((product) => (
-                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
+                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} onAdd={() => { addedDuringSession.current += 1; }} />
                       ))}
                     </div>
                     <div className="flex justify-center mt-4 mb-2">
