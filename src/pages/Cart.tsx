@@ -274,6 +274,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const handleSubmitOrder = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
+    console.log("[order_submitted] submit started, isMobile viewport:", window.innerWidth < 768);
     try {
       const order = await createOrder({
         customerName: generatePlaceholderName(),
@@ -288,7 +289,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      // Track BEFORE clearing state to avoid unmount race
+      console.log("[order_submitted] createOrder succeeded:", order.public_order_number);
+      console.log("[order_submitted] about to trackEvent");
+      // Track with flush=true so PostHog sends immediately before navigation/unmount
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
         order_total: orderTotal,
@@ -304,7 +307,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           price: i.product.price,
           quantity: i.quantity,
         })),
-      });
+      }, true);
+      console.log("[order_submitted] trackEvent fired, navigating to /success");
       clearCustomerInfo();
       clearCart();
       dismissCart();
@@ -317,7 +321,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast]);
+  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast, itemCount]);
 
   // ── Urgency ticker state (before early returns for hooks rules) ──
   const URGENCY_MSGS = useMemo(() => [
