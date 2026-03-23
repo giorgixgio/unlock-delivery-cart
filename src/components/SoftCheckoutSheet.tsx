@@ -13,6 +13,7 @@ import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
 import { cn } from "@/lib/utils";
 import MiniMissionBar from "@/components/MiniMissionBar";
+import { trackEvent } from "@/lib/analytics";
 
 const PAGE_SIZE = 10;
 
