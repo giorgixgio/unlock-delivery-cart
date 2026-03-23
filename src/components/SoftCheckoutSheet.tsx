@@ -58,19 +58,15 @@ const SheetProductCard = memo(({
   cartIconRef: React.RefObject<HTMLDivElement | null>;
   onTapProduct: (product: Product) => void;
 }) => {
-  const { addItem, remaining } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const [added, setAdded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem(product);
+    addAndGate(product, "upsell");
     setAdded(true);
     if (imgRef.current && cartIconRef.current) flyToCart(imgRef.current, cartIconRef.current);
-    const newRemaining = Math.max(0, remaining - 1);
-    if (newRemaining > 0) {
-      toast(`დამატებულია — კიდევ ${newRemaining} პროდუქტი`, { duration: 1500 });
-    }
     setTimeout(() => setAdded(false), 1200);
   };
 
