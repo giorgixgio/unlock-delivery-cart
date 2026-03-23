@@ -598,7 +598,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             {/* Timer badge */}
             <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
               <Clock className="w-[11px] h-[11px]" />
-              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">⏰ ფასდაკლება იწურება {countdown}-ში</span>
             </div>
             <Button
               onClick={handleCTAClick}
@@ -609,9 +609,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
               {submitting
                 ? "იგზავნება..."
                 : canCheckout
-                ? (isFormValid || showRecognizedCard ? "✓ შეკვეთა — გადახდა მიწოდებისას" : "შეკვეთა — გადახდა მიწოდებისას")
+                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეკვეთის დასრულება")
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
+            {canCheckout && (
+              <p className="text-center text-[10px] font-semibold text-muted-foreground mt-1">გადახდა კურიერთან</p>
+            )}
           </div>
         </div>
       </div>
