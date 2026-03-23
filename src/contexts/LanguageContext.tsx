@@ -246,7 +246,7 @@ const ru: Record<string, string> = {
 
   // Trust modal content
   "free_delivery_desc_1": "Доставка всегда бесплатна.",
-  "free_delivery_desc_2": "Минимальный заказ 25₾.",
+  "free_delivery_desc_2": "Минимальный заказ 3 товара.",
   "price_guarantee_desc": "Если цена снизится в течение 30 дней после покупки, мы компенсируем разницу.",
   "why_us_desc_1": "Качественные товары по лучшим ценам.",
   "why_us_desc_2": "Быстрая доставка и поддержка клиентов.",
