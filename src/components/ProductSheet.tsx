@@ -23,6 +23,7 @@ import {
 } from "@/lib/demoData";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 interface ProductSheetProps {
