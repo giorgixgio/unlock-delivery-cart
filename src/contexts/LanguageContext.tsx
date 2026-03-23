@@ -302,7 +302,7 @@ const ru: Record<string, string> = {
   "price_saved_for_you": "Цена сохранена для вас",
   "items_left": "шт. осталось на складе",
   "complete_order": "Завершить заказ",
-  "continue_shopping_min": "Продолжить покупки — мин. заказ 25 ₾",
+  "continue_shopping_min": "Продолжить покупки — мин. 3 товара",
   "cart_add_cod": "В корзину — оплата при доставке",
   "add_to_cart_btn": "Добавить в корзину",
 
