@@ -495,12 +495,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   <div
                     className="transition-all duration-[280ms] ease-out overflow-hidden"
                     style={{
-                      maxHeight: phoneRevealed ? "400px" : "0px",
+                      maxHeight: phoneRevealed ? "350px" : "0px",
                       opacity: phoneRevealed ? 1 : 0,
-                      transform: phoneRevealed ? "translateY(0)" : "translateY(8px)",
+                      transform: phoneRevealed ? "translateY(0)" : "translateY(6px)",
                     }}
                   >
-                    <div className="space-y-2.5" ref={cityRef}>
+                    <div className="space-y-2" ref={cityRef}>
                       <div>
                         <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
                         <div className="mt-1">
