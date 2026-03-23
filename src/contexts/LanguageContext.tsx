@@ -158,8 +158,8 @@ const ge: Record<string, string> = {
   // Soft checkout
   "min_order_title": "მინიმალური შეკვეთა",
   "almost_there_fire": "თითქმის მოხერხდა! 🔥",
-  "more_left": "კიდევ {amount} ₾ დარჩა 🎉",
-  "add_1_2_products": "დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({threshold} ₾)",
+  "more_left": "კიდევ {count} პროდუქტი დარჩა 🎉",
+  "add_1_2_products": "დაამატე კიდევ პროდუქტი მინ. შეკვეთის მისაღწევად ({threshold} ცალი)",
   "no_recommendations": "რეკომენდაციები ამჟამად არ არის — დაამატეთ კატალოგიდან",
   "perfect_to_unlock": "იდეალური გასახსნელად",
   "recommended_for_you": "რეკომენდაცია შენთვის",
