@@ -451,7 +451,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             ) : (
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-foreground">შეკვეთის მონაცემები</h2>
+                  <div>
+                    <h2 className="text-base font-bold text-foreground">📦 სად მოგიტანოთ შეკვეთა?</h2>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">მხოლოდ 1 წუთი სჭირდება</p>
+                  </div>
                   {isRecognized && isEditing && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}
                       className="text-sm text-muted-foreground font-medium h-8 px-3">
