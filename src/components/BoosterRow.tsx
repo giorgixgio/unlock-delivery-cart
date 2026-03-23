@@ -1,5 +1,6 @@
 import { Zap } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
