@@ -515,8 +515,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                         </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-bold text-foreground">მისამართი</Label>
-                        <div className="mt-1">
+                        <Label className="text-xs font-bold text-foreground">მისამართი</Label>
+                        <div className="mt-0.5">
                           <PredictiveInput
                             value={form.address}
                             onChange={(val) => handleChange("address", val)}
