@@ -75,6 +75,23 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         is_unlocked: postCount >= threshold,
       });
 
+      // ── Fire popup_item_added for popup-sourced adds ──
+      if (src === "popup") {
+        trackEvent("popup_item_added", {
+          product_id: product.id,
+          product_name: product.title,
+          price: product.price,
+          source: "popup",
+          cart_count: postCount,
+          cart_value: postValue,
+          threshold,
+          items_to_threshold: postRemaining,
+          is_unlocked: postCount >= threshold,
+          context: itemCount >= threshold ? "post_threshold" : "pre_threshold",
+          popup_type: "cart_builder",
+        });
+      }
+
       // ── Reward toast logic ──
       if (postCount < threshold) {
         toast(`⚡ კიდევ ${postRemaining} პროდუქტი დარჩა`, { duration: 1500 });
