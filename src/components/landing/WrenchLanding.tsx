@@ -66,7 +66,8 @@ LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
 const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
-  const { addItem, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
 
