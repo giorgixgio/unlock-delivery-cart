@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
-import { ShoppingCart, Gift, Unlock, Lock, ChevronRight, PartyPopper } from "lucide-react";
+import { ShoppingCart, Gift, Lock, PartyPopper } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { cn } from "@/lib/utils";

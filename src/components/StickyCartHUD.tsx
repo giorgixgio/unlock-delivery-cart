@@ -50,15 +50,6 @@ const StickyCartHUD = () => {
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
   if (itemCount === 0) return null;
 
-  // Tappable collapsed bar — whole bar navigates when unlocked
-  const handleCollapsedTap = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      toggleExpand();
-    }
-  };
-
   // ── Completion mode: full-width CTA only ──
   if (isUnlocked) {
     return (
