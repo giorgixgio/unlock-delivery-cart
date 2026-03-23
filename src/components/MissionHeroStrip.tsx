@@ -80,7 +80,8 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
   <div className="flex gap-[7px] mb-[9px]">
     {Array.from({ length: threshold }).map((_, i) => {
       const filled = i < itemCount;
-      const active = i === itemCount;
+      const active = i === itemCount && itemCount < threshold;
+      const locked = !filled && !active;
       const isNew = i === lastFilled;
 
       return (
@@ -90,7 +91,7 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
             "flex-1 rounded-[10px] pt-[9px] px-1 pb-2 flex flex-col items-center gap-[3px] transition-all duration-300 relative overflow-hidden",
             filled && "neon-slot-filled",
             active && "neon-slot-active",
-            !filled && !active && "neon-slot-locked"
+            locked && "neon-slot-locked opacity-50"
           )}
           style={{
             animation: isNew
@@ -108,7 +109,7 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
           <span
             className="text-xl font-black leading-none"
             style={{
-              color: filled ? "#ff6a00" : active ? "#ff6a00" : "#1e1e1e",
+              color: filled ? "#ff6a00" : active ? "#ff6a00" : "#2a2a2a",
               textShadow: filled
                 ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.5)"
                 : active
@@ -121,10 +122,10 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
           <span
             className="text-[9px] font-bold uppercase tracking-wide text-center"
             style={{
-              color: filled ? "#ff6a00" : active ? "#cc4400" : "#1a1a1a",
+              color: filled ? "#ff6a00" : active ? "#cc4400" : "#2a2a2a",
             }}
           >
-            {filled ? "დამატდა" : active ? "შემდეგი" : `${i + 1}-ე`}
+            {filled ? "დაემატა" : active ? "შემდეგი" : `${i + 1}-ე`}
           </span>
         </div>
       );
