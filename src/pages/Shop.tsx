@@ -195,7 +195,7 @@ const Shop = () => {
           <GridSkeleton />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {renderGrid()}
             </div>
 
