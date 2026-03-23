@@ -29,7 +29,7 @@ const ge: Record<string, string> = {
 
   // Trust modal content
   "free_delivery_desc_1": "მიტანა ყოველთვის უფასოა.",
-  "free_delivery_desc_2": "მინიმალური შეკვეთა 25₾.",
+  "free_delivery_desc_2": "მინიმალური შეკვეთა 3 პროდუქტი.",
   "price_guarantee_desc": "თუ პროდუქტის ფასი შემცირდა შეძენიდან 30 დღეში, ჩვენ ავანაზღაურებთ სხვაობას.",
   "why_us_desc_1": "ხარისხიანი პროდუქტები საუკეთესო ფასად.",
   "why_us_desc_2": "სწრაფი მიტანა და მომხმარებლის მხარდაჭერა.",
