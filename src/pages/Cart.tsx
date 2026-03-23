@@ -642,7 +642,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       </div>
 
       {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)", padding: "0 10px 14px" }}>
+      <div
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100] transition-all duration-300"
+        style={{
+          background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)",
+          padding: "0 10px 14px",
+          transform: keyboardOpen ? "translate(-50%, 100%)" : "translate(-50%, 0)",
+          opacity: keyboardOpen ? 0 : 1,
+          pointerEvents: keyboardOpen ? "none" : "auto",
+        }}
+      >
         <div className="flex flex-col gap-1.5">
           {/* Ticker — compact */}
           <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
@@ -684,7 +693,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
-          {/* CTA — compact */}
+          {/* Missing fields hint */}
+          {canCheckout && missingFields.length > 0 && !showRecognizedCard && (
+            <p className="text-center text-[10px] font-semibold text-destructive/80 animate-fade-in">
+              ⚠️ შეავსე: {missingFields.join(", ")}
+            </p>
+          )}
+
+          {/* CTA — always tappable */}
           <div className="relative">
             <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
               <Clock className="w-[10px] h-[10px]" />
@@ -692,14 +708,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
             <Button
               onClick={handleCTAClick}
-              disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
+              disabled={submitting}
               className={`w-full h-12 !text-[15px] font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
               size="lg"
             >
               {submitting
                 ? "იგზავნება..."
                 : canCheckout
-                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეკვეთის დასრულება")
+                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეავსე და შეუკვეთე")
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
             {canCheckout && (
