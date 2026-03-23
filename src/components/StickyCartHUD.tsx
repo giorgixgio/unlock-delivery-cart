@@ -5,7 +5,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { usePulseCTA } from "@/hooks/usePulseCTA";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +14,6 @@ const StickyCartHUD = () => {
   const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
   const pulse = usePulseCTA(itemCount > 0);
-  const { t } = useLanguage();
 
   const [expanded, setExpanded] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
@@ -50,48 +48,51 @@ const StickyCartHUD = () => {
   if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
   if (itemCount === 0) return null;
 
-  // Tappable collapsed bar — whole bar navigates when unlocked
-  const handleCollapsedTap = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      toggleExpand();
-    }
-  };
+  // ── Completion mode: full-width CTA only ──
+  if (isUnlocked) {
+    return (
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 transition-all duration-500",
+        justUnlocked && "animate-fade-in"
+      )}>
+        <div className="container max-w-2xl mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
+          <p className="text-center text-[11px] font-semibold text-success mb-1.5 pt-2">
+            ✅ შეკვეთა მზადაა
+          </p>
+          <Button
+            onClick={() => openCart()}
+            className="w-full h-12 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg mb-2"
+            size="lg"
+          >
+            კალათაზე გადასვლა
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
+  // ── Progress mode ──
   return (
-    <div className={cn(
-      "fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-lg transition-all duration-300",
-      isUnlocked ? "border-success" : "border-border",
-      justUnlocked && "animate-glow-pulse"
-    )}>
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg transition-all duration-300">
       <div className="container max-w-2xl mx-auto px-4">
         {/* ── Collapsed bar ── */}
-        <button onClick={handleCollapsedTap} className="w-full flex items-center gap-3 py-2.5">
+        <button onClick={toggleExpand} className="w-full flex items-center gap-3 py-2.5">
           <div className="relative flex-shrink-0">
-            <ShoppingCart className={cn("w-5 h-5", isUnlocked ? "text-success" : "text-foreground")} />
-            <span className={cn(
-              "absolute -top-1.5 -right-2 text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-0.5 leading-none",
-              isUnlocked ? "bg-success text-success-foreground" : "bg-primary text-primary-foreground"
-            )}>{itemCount}</span>
+            <ShoppingCart className="w-5 h-5 text-foreground" />
+            <span className="absolute -top-1.5 -right-2 text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-0.5 leading-none bg-primary text-primary-foreground">
+              {itemCount}
+            </span>
           </div>
 
-          <div className="flex-1 text-left min-w-0">
-            {isUnlocked ? (
-              <span className="text-sm font-bold text-success truncate block">✅ კალათაზე</span>
-            ) : (
-              <span className="text-sm font-bold text-foreground truncate block">+{remaining}</span>
-            )}
-          </div>
+          <span className="text-sm font-bold text-foreground truncate block flex-1 text-left">
+            +{remaining}
+          </span>
 
-          <span className={cn(
-            "text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0",
-            isUnlocked ? "bg-success/15 text-success" : "bg-primary/10 text-primary"
-          )}>{itemCount}/{threshold}</span>
+          <span className="text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0 bg-primary/10 text-primary">
+            {itemCount}/{threshold}
+          </span>
 
-          {!isUnlocked && (
-            <ChevronUp className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200 flex-shrink-0", expanded && "rotate-180")} />
-          )}
+          <ChevronUp className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200 flex-shrink-0", expanded && "rotate-180")} />
         </button>
 
         {/* ── Expanded section ── */}
@@ -101,7 +102,7 @@ const StickyCartHUD = () => {
         )}>
           <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden mb-3">
             <div
-              className={cn("h-full rounded-full transition-[width] duration-500 ease-out", isUnlocked ? "delivery-path-complete" : "delivery-path-active")}
+              className="h-full rounded-full transition-[width] duration-500 ease-out delivery-path-active"
               style={{ width: `${Math.min(100, (itemCount / threshold) * 100)}%` }}
             />
           </div>
@@ -124,16 +125,14 @@ const StickyCartHUD = () => {
           </div>
 
           <Button
-            onClick={() => { if (isUnlocked) openCart(); else handleCheckoutIntent("sticky_hud"); }}
+            onClick={() => handleCheckoutIntent("sticky_hud")}
             className={cn(
-              "w-full h-11 text-base font-bold rounded-xl transition-all duration-200",
-              isUnlocked
-                ? `bg-success hover:bg-success/90 text-success-foreground ${pulse ? "animate-cta-pulse-success" : ""}`
-                : `bg-primary hover:bg-primary/90 text-primary-foreground ${pulse ? "animate-cta-pulse" : ""}`
+              "w-full h-11 text-base font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200",
+              pulse && "animate-cta-pulse"
             )}
             size="lg"
           >
-            {isUnlocked ? t("complete_order_btn") : `დამატე კიდევ ${remaining} — გახსენი შეკვეთა`}
+            დამატე კიდევ {remaining} — გახსენი შეკვეთა
           </Button>
         </div>
       </div>

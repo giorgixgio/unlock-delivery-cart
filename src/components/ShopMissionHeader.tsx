@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
-import { ShoppingCart, Gift, Unlock, Lock, ChevronRight, PartyPopper } from "lucide-react";
+import { ShoppingCart, Gift, Lock } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,7 @@ const ShopMissionHeader = () => {
     prevCount.current = itemCount;
   }, [itemCount]);
 
-  const StatusIcon = isUnlocked ? Unlock : itemCount > 0 ? Gift : Lock;
+  const StatusIcon = itemCount > 0 ? Gift : Lock;
 
   return (
     <div className="sticky top-0 z-40">
@@ -91,14 +91,14 @@ const ShopMissionHeader = () => {
         </div>
       </div>
 
-      {/* ── Mission bar ── */}
+      {/* ── Mission bar — hidden in completion mode ── */}
       <div
         className={cn(
-          "border-b transition-all duration-300 overflow-hidden",
+          "border-b transition-all duration-500 overflow-hidden",
           isUnlocked
-            ? "bg-success/10 border-success/30"
+            ? "max-h-0 border-transparent"
             : "bg-card border-border",
-          shrunk ? "max-h-[38px]" : "max-h-[72px]"
+          !isUnlocked && (shrunk ? "max-h-[38px]" : "max-h-[72px]")
         )}
       >
         <div className={cn(
@@ -111,35 +111,17 @@ const ShopMissionHeader = () => {
               className={cn(
                 "flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-400",
                 shrunk ? "w-6 h-6" : "w-7 h-7",
-                isUnlocked
-                  ? "bg-success text-success-foreground"
-                  : itemCount > 0
+                itemCount > 0
                   ? "bg-primary/15 text-primary"
                   : "bg-muted text-muted-foreground",
                 iconPulse && "scale-125"
               )}
             >
-              {isUnlocked ? (
-                <PartyPopper className={cn(shrunk ? "w-3 h-3" : "w-3.5 h-3.5")} />
-              ) : (
-                <StatusIcon className={cn(shrunk ? "w-3 h-3" : "w-3.5 h-3.5")} />
-              )}
+              <StatusIcon className={cn(shrunk ? "w-3 h-3" : "w-3.5 h-3.5")} />
             </div>
 
             <div className="flex-1 min-w-0">
-              {isUnlocked ? (
-                <button onClick={() => openCart()} className="text-left w-full group">
-                  <p className="text-[13px] font-bold text-success leading-tight truncate">
-                    🎉 მზადაა — შეგიძლია შეკვეთა
-                  </p>
-                  {!shrunk && (
-                    <p className="text-[10px] text-success/70 leading-tight flex items-center gap-0.5 mt-0.5">
-                      გააგრძელე შეკვეთა
-                      <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                    </p>
-                  )}
-                </button>
-              ) : itemCount === 0 ? (
+              {itemCount === 0 ? (
                 <div>
                   <p className="text-[13px] font-bold text-foreground leading-tight truncate">
                     🎁 აირჩიე {threshold} პროდუქტი — გახსენი შეკვეთა
@@ -171,13 +153,8 @@ const ShopMissionHeader = () => {
 
             {/* Compact fraction badge */}
             {itemCount > 0 && (
-              <span className={cn(
-                "text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0 transition-colors duration-300",
-                isUnlocked
-                  ? "text-success bg-success/15"
-                  : "text-primary bg-primary/10"
-              )}>
-                {isUnlocked ? "✓" : `${itemCount}/${threshold}`}
+              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0 text-primary bg-primary/10">
+                {itemCount}/{threshold}
               </span>
             )}
           </div>
@@ -188,10 +165,7 @@ const ShopMissionHeader = () => {
             shrunk && "mt-1 h-1"
           )}>
             <div
-              className={cn(
-                "h-full rounded-full transition-[width] duration-500 ease-out",
-                isUnlocked ? "delivery-path-complete" : "delivery-path-active"
-              )}
+              className="h-full rounded-full transition-[width] duration-500 ease-out delivery-path-active"
               style={{ width: `${progress}%` }}
             />
           </div>
