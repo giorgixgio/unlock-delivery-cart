@@ -178,10 +178,10 @@ const Shop = () => {
   };
 
   return (
-    <main className="pb-52">
+    <main className="pb-32">
       <ShopMissionHeader />
 
-      <div className="container max-w-2xl mx-auto px-4 pt-4">
+      <div className="container max-w-2xl mx-auto px-3 pt-3">
         {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
         {productId && !isLoading && !heroProduct && allProducts.length > 0 && !allProducts.find(p => p.id === productId || p.handle === productId) && (
           <div className="bg-accent/50 border border-border rounded-lg p-3 mb-4 text-center">
@@ -195,7 +195,7 @@ const Shop = () => {
           <GridSkeleton />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {renderGrid()}
             </div>
 

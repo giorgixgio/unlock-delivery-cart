@@ -1,17 +1,22 @@
-import { useMemo } from "react";
-import { ShoppingCart, Lock, Unlock, Gift, Package, ChevronRight } from "lucide-react";
+import { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import { ShoppingCart, Gift, Unlock, Lock, ChevronRight, PartyPopper } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { cn } from "@/lib/utils";
 
 /**
- * ShopMissionHeader — sticky gamified progress header for SKU-entry grid pages.
- * Drives users from hero-item entry toward multi-item bundle completion.
+ * ShopMissionHeader — compact, gamified, scroll-aware sticky header.
  *
  * States:
  *   A) 0 items  → orient + invite
  *   B) partial  → progress + encourage
  *   C) unlocked → celebrate + CTA
+ *
+ * Features:
+ *   - Scroll-shrink (not hide) on scroll down
+ *   - Smooth progress bar with flow animation
+ *   - Icon scale transitions on progress updates
+ *   - Max ~60px height
  */
 const ShopMissionHeader = () => {
   const { itemCount, remaining, isUnlocked, threshold } = useCart();
@@ -22,16 +27,48 @@ const ShopMissionHeader = () => {
     [itemCount, threshold]
   );
 
-  // Step dots
-  const steps = useMemo(() => {
-    return Array.from({ length: threshold }, (_, i) => i < itemCount);
-  }, [threshold, itemCount]);
+  // Scroll-shrink logic
+  const [shrunk, setShrunk] = useState(false);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  const onScroll = useCallback(() => {
+    if (ticking.current) return;
+    ticking.current = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      if (y > 80 && y > lastScrollY.current + 8) setShrunk(true);
+      else if (y < lastScrollY.current - 8 || y < 40) setShrunk(false);
+      lastScrollY.current = y;
+      ticking.current = false;
+    });
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
+
+  // Icon pulse on item count change
+  const [iconPulse, setIconPulse] = useState(false);
+  const prevCount = useRef(itemCount);
+  useEffect(() => {
+    if (itemCount !== prevCount.current && itemCount > 0) {
+      setIconPulse(true);
+      const t = setTimeout(() => setIconPulse(false), 500);
+      prevCount.current = itemCount;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = itemCount;
+  }, [itemCount]);
+
+  const StatusIcon = isUnlocked ? Unlock : itemCount > 0 ? Gift : Lock;
 
   return (
     <div className="sticky top-0 z-40">
       {/* ── Brand bar ── */}
       <div className="bg-card border-b border-border shadow-sm">
-        <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-12">
+        <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-11">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="flex-shrink-0 font-extrabold tracking-tight text-lg text-primary"
@@ -57,111 +94,105 @@ const ShopMissionHeader = () => {
       {/* ── Mission bar ── */}
       <div
         className={cn(
-          "border-b transition-colors duration-300",
+          "border-b transition-all duration-300 overflow-hidden",
           isUnlocked
             ? "bg-success/10 border-success/30"
-            : "bg-card border-border"
+            : "bg-card border-border",
+          shrunk ? "max-h-[38px]" : "max-h-[72px]"
         )}
       >
-        <div className="container max-w-2xl mx-auto px-3 py-2.5">
-          {/* Main message */}
-          <div className="flex items-center gap-2.5">
+        <div className={cn(
+          "container max-w-2xl mx-auto px-3 transition-all duration-300",
+          shrunk ? "py-1.5" : "py-2"
+        )}>
+          {/* Main row: icon + message + fraction */}
+          <div className="flex items-center gap-2">
             <div
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500",
+                "flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-400",
+                shrunk ? "w-6 h-6" : "w-7 h-7",
                 isUnlocked
-                  ? "bg-success text-success-foreground scale-110"
+                  ? "bg-success text-success-foreground"
                   : itemCount > 0
                   ? "bg-primary/15 text-primary"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground",
+                iconPulse && "scale-125"
               )}
             >
               {isUnlocked ? (
-                <Unlock className="w-4 h-4" />
-              ) : itemCount > 0 ? (
-                <Gift className="w-4 h-4" />
+                <PartyPopper className={cn(shrunk ? "w-3 h-3" : "w-3.5 h-3.5")} />
               ) : (
-                <Lock className="w-4 h-4" />
+                <StatusIcon className={cn(shrunk ? "w-3 h-3" : "w-3.5 h-3.5")} />
               )}
             </div>
 
             <div className="flex-1 min-w-0">
               {isUnlocked ? (
                 <button onClick={() => openCart()} className="text-left w-full group">
-                  <p className="text-sm font-bold text-success leading-tight">
-                    🎉 შეკვეთა გახსნილია!
+                  <p className="text-[13px] font-bold text-success leading-tight truncate">
+                    🎉 მზადაა — შეგიძლია შეკვეთა
                   </p>
-                  <p className="text-[11px] text-success/80 leading-tight flex items-center gap-0.5">
-                    გააგრძელე შეკვეთა
-                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </p>
+                  {!shrunk && (
+                    <p className="text-[10px] text-success/70 leading-tight flex items-center gap-0.5 mt-0.5">
+                      გააგრძელე შეკვეთა
+                      <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </p>
+                  )}
                 </button>
               ) : itemCount === 0 ? (
                 <div>
-                  <p className="text-sm font-bold text-foreground leading-tight">
-                    🎁 აირჩიე {threshold} პროდუქტი — უფასო მიწოდება
+                  <p className="text-[13px] font-bold text-foreground leading-tight truncate">
+                    🎁 აირჩიე {threshold} პროდუქტი — გახსენი შეკვეთა
                   </p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    დაამატე პროდუქტები შეკვეთის გასახსნელად
-                  </p>
+                  {!shrunk && (
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                      დაამატე პროდუქტები შეკვეთის გასახსნელად
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-bold text-foreground leading-tight">
-                    კიდევ {remaining} პროდუქტი და შეკვეთა იხსნება
+                  <p className={cn(
+                    "text-[13px] font-bold leading-tight truncate",
+                    remaining <= 1 ? "text-success" : "text-foreground"
+                  )}>
+                    {remaining <= 1
+                      ? "🔥 თითქმის მოხერხდა — კიდევ 1 პროდუქტი!"
+                      : `კიდევ ${remaining} პროდუქტი — გახსნი შეკვეთას`}
                   </p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    კალათაში: {itemCount} / {threshold} პროდუქტი
-                  </p>
+                  {!shrunk && (
+                    <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                      კალათაში: {itemCount} / {threshold} პროდუქტი
+                    </p>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Compact cart count on right */}
-            {itemCount > 0 && !isUnlocked && (
-              <span className="text-xs font-extrabold text-primary bg-primary/10 px-2 py-1 rounded-full flex-shrink-0">
-                {itemCount}/{threshold}
+            {/* Compact fraction badge */}
+            {itemCount > 0 && (
+              <span className={cn(
+                "text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0 transition-colors duration-300",
+                isUnlocked
+                  ? "text-success bg-success/15"
+                  : "text-primary bg-primary/10"
+              )}>
+                {isUnlocked ? "✓" : `${itemCount}/${threshold}`}
               </span>
             )}
           </div>
 
-          {/* Progress bar */}
-          <div className="mt-2 flex items-center gap-1.5">
-            {/* Step dots for small thresholds (≤6), otherwise continuous bar */}
-            {threshold <= 6 ? (
-              <div className="flex items-center gap-1.5 flex-1">
-                {steps.map((filled, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-2 flex-1 rounded-full transition-all duration-500",
-                      filled
-                        ? isUnlocked
-                          ? "bg-success"
-                          : "bg-primary"
-                        : "bg-muted"
-                    )}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500",
-                    isUnlocked ? "bg-success" : "bg-primary"
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            )}
-
-            {/* End icon */}
-            <Package
+          {/* Thin animated progress bar */}
+          <div className={cn(
+            "mt-1.5 h-1.5 bg-muted/60 rounded-full overflow-hidden transition-all duration-300",
+            shrunk && "mt-1 h-1"
+          )}>
+            <div
               className={cn(
-                "w-4 h-4 flex-shrink-0 transition-colors duration-300",
-                isUnlocked ? "text-success" : "text-muted-foreground"
+                "h-full rounded-full transition-[width] duration-500 ease-out",
+                isUnlocked ? "delivery-path-complete" : "delivery-path-active"
               )}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
