@@ -57,7 +57,7 @@ const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
 };
 
 
-const ProductCard = memo(({ product }: ProductCardProps) => {
+const ProductCard = memo(({ product, isHero = false }: ProductCardProps) => {
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
   const { updateQuantity, getQuantity } = useCart();
