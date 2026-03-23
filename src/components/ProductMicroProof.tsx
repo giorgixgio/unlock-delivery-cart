@@ -31,7 +31,7 @@ const ProductMicroProof = memo(({ product, className = "" }: Props) => {
   return (
     <div className={`h-4 overflow-hidden mt-1 ${className}`}>
       <p
-        className={`text-[10px] font-semibold text-muted-foreground leading-4 truncate transition-opacity duration-250 ${
+        className={`text-[10px] font-semibold text-muted-foreground leading-4 truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-full transition-opacity duration-250 ${
           fading ? "opacity-0" : "opacity-100"
         }`}
       >
