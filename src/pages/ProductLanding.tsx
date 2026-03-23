@@ -102,7 +102,7 @@ const ProductLanding = () => {
 
 /** Generic landing page — uses global cart + threshold logic */
 const GenericLanding = ({ product }: { product: Product }) => {
-  const { addItem, updateQuantity, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { updateQuantity, getQuantity, isUnlocked, remaining } = useCart();
   const { openCart } = useCartOverlay();
   const { addAndGate } = useCheckoutGate();
 
@@ -118,7 +118,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
 
   /** First tap: add to cart + open threshold sheet in one step */
   const handleFirstAdd = () => addAndGate(product, "landing_cta");
-  const handleAdd = () => addItem(product);
+  const handleAdd = () => addAndGate(product, "landing_qty");
   const handleMinus = () => updateQuantity(product.id, quantity - 1);
 
   const handleCTA = () => {

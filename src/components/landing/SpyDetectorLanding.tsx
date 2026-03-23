@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
-import { useCart } from "@/contexts/CartContext";
+
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
 import { useNavigate } from "react-router-dom";
 
@@ -65,8 +66,9 @@ LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
 const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
-  const { addItem } = useCart();
+  
   const { openCart } = useCartOverlay();
+  const { addAndGate } = useCheckoutGate();
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
@@ -94,7 +96,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       setCodOpen(true);
     } else {
       for (let i = 0; i < selectedQty; i++) {
-        addItem(product);
+        addAndGate(product, "landing_cod");
       }
       setTimeout(() => openCart(), 100);
     }

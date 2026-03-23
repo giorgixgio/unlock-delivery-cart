@@ -66,7 +66,8 @@ LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
 const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
-  const { addItem, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
 
@@ -95,7 +96,7 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   const handleCTA = () => {
     // Add selected quantity to cart
     for (let i = 0; i < selectedQty; i++) {
-      addItem(product);
+      addAndGate(product, "landing_cta");
     }
     setTimeout(() => openCart(), 100);
   };

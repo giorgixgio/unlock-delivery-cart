@@ -1,5 +1,6 @@
 import { Zap } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -9,7 +10,8 @@ interface BoosterRowProps {
 }
 
 const BoosterRow = ({ products }: BoosterRowProps) => {
-  const { isUnlocked, remaining, addItem } = useCart();
+  const { isUnlocked, remaining } = useCart();
+  const { addAndGate } = useCheckoutGate();
 
   if (isUnlocked) return null;
 
@@ -49,7 +51,7 @@ const BoosterRow = ({ products }: BoosterRowProps) => {
                 <p className="text-xs font-medium text-foreground line-clamp-1">{product.title}</p>
                 <p className="text-sm font-bold text-primary">{product.price} ₾</p>
                 <Button
-                  onClick={() => addItem(product)}
+                  onClick={() => addAndGate(product, "booster")}
                   size="sm"
                   className="w-full mt-1.5 h-9 text-sm font-bold rounded-md"
                 >

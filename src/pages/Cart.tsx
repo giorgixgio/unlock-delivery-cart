@@ -274,7 +274,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const handleSubmitOrder = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    console.log("[order_submitted] submit started, isMobile viewport:", window.innerWidth < 768);
     try {
       const order = await createOrder({
         customerName: generatePlaceholderName(),
@@ -289,8 +288,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      console.log("[order_submitted] createOrder succeeded:", order.public_order_number);
-      console.log("[order_submitted] about to trackEvent");
       // Track with flush=true so PostHog sends immediately before navigation/unmount
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
@@ -308,7 +305,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           quantity: i.quantity,
         })),
       }, true);
-      console.log("[order_submitted] trackEvent fired, navigating to /success");
+      
       clearCustomerInfo();
       clearCart();
       dismissCart();

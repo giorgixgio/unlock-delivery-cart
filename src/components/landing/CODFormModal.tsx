@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { createOrder } from "@/lib/orderService";
+import { trackEvent } from "@/lib/analytics";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -137,6 +138,16 @@ const CODFormModal = ({
           .update({ status: "pending_bump" } as any)
           .eq("id", order.id);
       }
+
+      trackEvent("order_submitted", {
+        order_number: order.public_order_number,
+        order_total: totalAfter,
+        item_count: 1,
+        cart_count: quantity,
+        source: "landing_cod",
+        landing_slug: landingSlug,
+        products: [{ id: product.id, name: product.title, price: unitPrice, quantity }],
+      }, true);
 
       onOrderCreated(order.id, order.public_order_number, totalAfter);
     } catch (err: any) {
