@@ -290,7 +290,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         </DrawerContent>
       </Drawer>
 
-      <ProductSheet product={sheetProduct} open={!!sheetProduct} onClose={() => setSheetProduct(null)} />
+      <ProductSheet product={sheetProduct} open={!!sheetProduct} onClose={() => setSheetProduct(null)} sourceOverride="popup" onAdd={() => { addedDuringSession.current += 1; }} />
     </>
   );
 };

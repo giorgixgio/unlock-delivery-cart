@@ -30,6 +30,8 @@ interface ProductSheetProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
+  sourceOverride?: string;
+  onAdd?: () => void;
 }
 
 // ── Image Carousel ──
@@ -240,7 +242,7 @@ const SheetProgressBar = ({ itemCount, threshold, isUnlocked }: { itemCount: num
 };
 
 // ── Main Product Sheet ──
-const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
+const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining, threshold, total } = useCart();
   const isMobile = useIsMobile();
   const { handleCheckoutIntent } = useCheckoutGate();
@@ -285,7 +287,8 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   const handleQuickOrder = () => {
     if (isOOS) return;
-    addAndGate(product, "pdp_quick_order");
+    addAndGate(product, sourceOverride ?? "pdp_quick_order");
+    onAdd?.();
     setActionState("added");
     setTimeout(() => {
       onClose();
@@ -317,7 +320,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
               <Minus className="w-5 h-5" />
             </Button>
             <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
-            <Button onClick={() => addAndGate(product, "pdp_sheet")} size="icon" className="h-12 w-12 rounded-lg">
+            <Button onClick={() => { addAndGate(product, sourceOverride ?? "pdp_sheet"); onAdd?.(); }} size="icon" className="h-12 w-12 rounded-lg">
               <Plus className="w-5 h-5" />
             </Button>
           </div>
