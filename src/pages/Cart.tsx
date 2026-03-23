@@ -288,8 +288,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      console.log("[order_submitted] createOrder succeeded:", order.public_order_number);
-      console.log("[order_submitted] about to trackEvent");
       // Track with flush=true so PostHog sends immediately before navigation/unmount
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
