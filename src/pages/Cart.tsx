@@ -8,6 +8,8 @@ import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import DeliveryInfoBox from "@/components/DeliveryInfoBox";
+import CheckoutProductCarousel from "@/components/CheckoutProductCarousel";
+import CheckoutPriceReveal from "@/components/CheckoutPriceReveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
