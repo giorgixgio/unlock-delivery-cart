@@ -6,7 +6,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
-import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2, CheckCircle2, Gift, Lock, PartyPopper } from "lucide-react";
+import { Plus, Check, Sparkles, ShoppingCart, X, Loader2, CheckCircle2, Gift, Lock, PartyPopper, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import ProductSheet from "@/components/ProductSheet";
@@ -114,20 +114,15 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const cartIconRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
-  const [cachedRanking, setCachedRanking] = useState<{ gapFillers: Product[]; recommended: Product[] } | null>(null);
+  const [cachedRanking, setCachedRanking] = useState<{ similar: Product[]; broader: Product[] } | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Progress pulse animation
-  const [pulsing, setPulsing] = useState(false);
   const prevCount = useRef(itemCount);
 
   useEffect(() => {
     if (itemCount > prevCount.current && itemCount > 0) {
-      setPulsing(true);
-      const t = setTimeout(() => setPulsing(false), 450);
-      prevCount.current = itemCount;
-      return () => clearTimeout(t);
+      // pulse handled elsewhere
     }
     prevCount.current = itemCount;
   }, [itemCount]);
@@ -135,7 +130,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const handleTapProduct = useCallback((product: Product) => setSheetProduct(product), []);
 
   useEffect(() => {
-    if (open && products.length > 0 && remaining > 0) {
+    if (open && products.length > 0) {
       const result = getRecommendedProducts(null, items, remaining, products);
       setCachedRanking(result);
       setVisibleCount(PAGE_SIZE);
@@ -145,20 +140,16 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     }
   }, [open, products]);
 
-  // NO auto-close/redirect — user decides when to proceed
-  const progress = Math.min(100, (itemCount / threshold) * 100);
   const cartIds = useMemo(() => new Set(items.map((i) => i.product.id)), [items]);
-  const gapFillers = useMemo(() => cachedRanking ? cachedRanking.gapFillers.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
-  const allRecommended = useMemo(() => cachedRanking ? cachedRanking.recommended.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
-  const visibleRecommended = useMemo(() => allRecommended.slice(0, visibleCount), [allRecommended, visibleCount]);
-  const hasMoreRecommended = visibleCount < allRecommended.length;
+  const similarProducts = useMemo(() => cachedRanking ? cachedRanking.similar.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
+  const allBroader = useMemo(() => cachedRanking ? cachedRanking.broader.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
+  const visibleBroader = useMemo(() => allBroader.slice(0, visibleCount), [allBroader, visibleCount]);
+  const hasMoreBroader = visibleCount < allBroader.length;
   const handleLoadMore = useCallback(() => { setLoadingMore(true); setTimeout(() => { setVisibleCount((prev) => prev + PAGE_SIZE); setLoadingMore(false); }, 300); }, []);
 
   const handleViewCart = () => { onClose(); openCart(); };
-  const hasContent = gapFillers.length > 0 || allRecommended.length > 0;
+  const hasContent = similarProducts.length > 0 || allBroader.length > 0;
   const showEmpty = !isLoading && !hasContent;
-
-  const StatusIcon = isUnlocked ? PartyPopper : itemCount > 0 ? Gift : Lock;
 
   return (
     <>
@@ -166,9 +157,8 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         <DrawerContent className="max-h-[85vh] focus:outline-none flex flex-col">
           <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
-          {/* ── Sticky header with DOMINANT progress ── */}
+          {/* ── Sticky header ── */}
           <div className="flex-shrink-0 sticky top-0 z-20 bg-card">
-           {/* Header row: close + cart icon */}
             <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between">
               <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted flex-shrink-0">
                 <X className="w-5 h-5 text-muted-foreground" />
@@ -181,12 +171,10 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </button>
             </div>
 
-            {/* Mini mission bar — compact version of the main hero */}
             <div className="px-3 pb-2.5">
               <MiniMissionBar />
             </div>
 
-            {/* Last added confirmation */}
             {lastAddedProduct && (
               <div className="px-4 py-2 flex items-center gap-2.5 bg-accent/30 border-y border-border/30">
                 <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
@@ -212,37 +200,39 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </div>
             ) : (
               <>
-                {gapFillers.length > 0 && (
+                {/* SECTION 1: Most similar products */}
+                {similarProducts.length > 0 && (
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2.5 mt-3">
-                      <Target className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-bold text-foreground">იდეალური გასახსნელად</span>
+                      <Star className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-bold text-foreground">მსგავსი პროდუქტები</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {gapFillers.map((product) => (
+                      {similarProducts.map((product) => (
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
                     </div>
                   </div>
                 )}
 
-                {visibleRecommended.length > 0 && (
+                {/* SECTION 2: Broader catalog */}
+                {visibleBroader.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2.5">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-bold text-foreground">ხშირად ამატებენ ასევე</span>
+                      <span className="text-xs font-bold text-foreground">ასევე შეიძლება მოგეწონოს</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {visibleRecommended.map((product) => (
+                      {visibleBroader.map((product) => (
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
                     </div>
                     <div className="flex justify-center mt-4 mb-2">
-                      {hasMoreRecommended ? (
+                      {hasMoreBroader ? (
                         <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={loadingMore} className="gap-2 text-xs font-bold">
                           {loadingMore ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> იტვირთება...</> : "მეტის ჩატვირთვა"}
                         </Button>
-                      ) : allRecommended.length > PAGE_SIZE ? (
+                      ) : allBroader.length > PAGE_SIZE ? (
                         <span className="text-xs text-muted-foreground">მეტი აღარ არის</span>
                       ) : null}
                     </div>
