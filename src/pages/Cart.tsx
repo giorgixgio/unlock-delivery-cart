@@ -98,6 +98,32 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // ── Mobile keyboard detection: hide sticky CTA when typing ──
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        setKeyboardOpen(true);
+      }
+    };
+    const handleFocusOut = () => {
+      // Small delay to avoid flicker on field-to-field transitions
+      setTimeout(() => {
+        const active = document.activeElement?.tagName;
+        if (active !== "INPUT" && active !== "TEXTAREA" && active !== "SELECT") {
+          setKeyboardOpen(false);
+        }
+      }, 100);
+    };
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
+
   const [isRecognized, setIsRecognized] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -244,7 +270,17 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const formSectionRef = useRef<HTMLDivElement>(null);
 
-  // CTA click: open confirmation modal instead of submitting directly
+  // Missing fields helper message
+  const missingFields = useMemo(() => {
+    if (!canCheckout) return [];
+    const missing: string[] = [];
+    if (!form.phone || form.phone.trim().length < 5) missing.push("ტელეფონი");
+    if (!form.region || form.region.trim().length < 1) missing.push("ქალაქი");
+    if (!form.address || form.address.trim().length < 1) missing.push("მისამართი");
+    return missing;
+  }, [canCheckout, form]);
+
+  // CTA click: always tappable, validates on tap
   const handleCTAClick = useCallback(() => {
     if (!canCheckout) {
       closeCart();
@@ -252,8 +288,18 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       return;
     }
 
-    const hasAnyTouched = Object.values(touched).some(Boolean);
-    if (!hasAnyTouched && !isRecognized) return;
+    // Mark all fields as touched to show errors
+    ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
+
+    // If phone not revealed yet, reveal and focus
+    if (!phoneRevealed) {
+      setPhoneRevealed(true);
+      setTimeout(() => {
+        document.getElementById("checkout-phone-input")?.focus();
+        formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return;
+    }
 
     const result = orderSchema.safeParse(form);
     if (!result.success) {
@@ -261,27 +307,29 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       result.error.errors.forEach((e) => {
         if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
       });
-      ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
       if (isRecognized && !isEditing) setIsEditing(true);
 
-      // Scroll to form and focus first empty field
-      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Scroll to and focus first invalid field
       setTimeout(() => {
         if (!form.phone || form.phone.trim().length < 5) {
-          document.getElementById("checkout-phone-input")?.focus();
+          const el = document.getElementById("checkout-phone-input");
+          el?.focus();
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (!form.region || form.region.trim().length < 1) {
           cityInputRef.current?.focus();
+          cityRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (!form.address || form.address.trim().length < 1) {
           addressInputRef.current?.focus();
+          addressInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-      }, 400);
+      }, 150);
       return;
     }
 
     // Validation passed — open confirmation modal
     setConfirmModalOpen(true);
-  }, [canCheckout, closeCart, handleCheckoutIntent, touched, isRecognized, form, isEditing]);
+  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed]);
 
   // Actual order submission (called from modal confirm or auto-confirm)
   const handleSubmitOrder = useCallback(async () => {
@@ -396,7 +444,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-       <div className="pb-[140px]">
+       <div className={keyboardOpen ? "pb-[60px]" : "pb-[180px]"}>
         {/* Header — compact */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
           <div className="container max-w-2xl mx-auto px-3 py-1.5 flex items-center gap-2">
@@ -594,7 +642,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       </div>
 
       {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)", padding: "0 10px 14px" }}>
+      <div
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100] transition-all duration-300"
+        style={{
+          background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)",
+          padding: "0 10px 14px",
+          transform: keyboardOpen ? "translate(-50%, 100%)" : "translate(-50%, 0)",
+          opacity: keyboardOpen ? 0 : 1,
+          pointerEvents: keyboardOpen ? "none" : "auto",
+        }}
+      >
         <div className="flex flex-col gap-1.5">
           {/* Ticker — compact */}
           <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
@@ -636,7 +693,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
-          {/* CTA — compact */}
+          {/* Missing fields hint */}
+          {canCheckout && missingFields.length > 0 && !showRecognizedCard && (
+            <p className="text-center text-[10px] font-semibold text-destructive/80 animate-fade-in">
+              ⚠️ შეავსე: {missingFields.join(", ")}
+            </p>
+          )}
+
+          {/* CTA — always tappable */}
           <div className="relative">
             <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
               <Clock className="w-[10px] h-[10px]" />
@@ -644,14 +708,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
             <Button
               onClick={handleCTAClick}
-              disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
+              disabled={submitting}
               className={`w-full h-12 !text-[15px] font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
               size="lg"
             >
               {submitting
                 ? "იგზავნება..."
                 : canCheckout
-                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეკვეთის დასრულება")
+                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეავსე და შეუკვეთე")
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
             {canCheckout && (
