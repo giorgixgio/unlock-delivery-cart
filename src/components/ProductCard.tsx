@@ -112,65 +112,75 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           )}
         </div>
 
-        <div className="p-3">
-      <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 min-h-[2.5rem] md:text-base md:min-h-[3rem]">
+        <div className="p-2.5">
+          {/* Title: fixed 2-line area */}
+          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 h-[2.5rem] md:text-base md:h-[3rem]">
             {product.title}
           </p>
-          {/* Temu-style pricing */}
+
+          {/* Price row */}
           {(() => {
             const oldPrice = getFakeOldPrice(product.id, product.price);
             const discount = getDiscountPercent(product.price, oldPrice);
             return (
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <span className="text-price text-primary">{product.price} ₾</span>
-                <span className="text-sm text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
-                <span className="bg-deal text-deal-foreground text-[11px] font-extrabold px-1.5 py-0.5 rounded">
+                <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+                <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
                   -{discount}%
                 </span>
               </div>
             );
           })()}
 
-          {/* Micro proof */}
-          <ProductMicroProof product={product} />
+          {/* Micro proof: single line, truncated */}
+          <ProductMicroProof product={product} maxChars={32} />
 
-          <div className="flex items-center justify-between mt-2">
+          {/* CTA */}
+          <div className="mt-2">
             {isOOS ? (
-              <Button disabled className="w-full h-12 text-base font-bold rounded-lg opacity-50" size="lg">
+              <Button disabled className="w-full h-10 text-sm font-bold rounded-lg opacity-50" size="default">
                 Sold Out
               </Button>
             ) : quantity === 0 ? (
               <Button
                 onClick={handleAdd}
-                className="w-full h-12 text-base font-bold rounded-lg"
-                size="lg"
+                className="w-full h-10 text-sm font-bold rounded-lg"
+                size="default"
               >
-                <Plus className="w-5 h-5 mr-1" />
+                <Plus className="w-4 h-4 mr-1" />
                 შეკვეთა
               </Button>
             ) : (
-              <div className="flex items-center gap-3 w-full justify-between">
+              <div className="flex items-center gap-2 w-full justify-between">
                 <Button
                   onClick={handleMinus}
                   variant="outline"
                   size="icon"
-                  className="h-12 w-12 rounded-lg border-2"
+                  className="h-10 w-10 rounded-lg border-2"
                 >
-                  <Minus className="w-5 h-5" />
+                  <Minus className="w-4 h-4" />
                 </Button>
-                <span className="text-xl font-bold text-foreground min-w-[2rem] text-center">
+                <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">
                   {quantity}
                 </span>
                 <Button
                   onClick={handleAdd}
                   size="icon"
-                  className="h-12 w-12 rounded-lg"
+                  className="h-10 w-10 rounded-lg"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4" />
                 </Button>
               </div>
             )}
           </div>
+
+          {/* COD helper text */}
+          {!isOOS && (
+            <p className="text-[9px] text-muted-foreground text-center mt-1 leading-tight">
+              გადახდა მიღებისას
+            </p>
+          )}
         </div>
       </div>
 

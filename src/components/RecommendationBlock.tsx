@@ -55,28 +55,33 @@ const MiniProductCard = memo(({ product }: { product: Product }) => {
           </button>
         </div>
         <div className="p-2 space-y-1">
-          <p className="text-[11px] font-medium text-foreground leading-tight line-clamp-2 min-h-[28px]">
+          {/* Title: fixed 2-line area */}
+          <p className="text-[11px] font-medium text-foreground leading-tight line-clamp-2 h-[28px]">
             {product.title}
           </p>
           <p className="text-sm font-bold text-primary">{product.price} ₾</p>
           <Button
             onClick={handleAdd}
             size="sm"
-            className={`w-full h-8 text-xs font-bold rounded-md transition-all duration-200 ${
+            className={`w-full h-7 text-xs font-bold rounded-md transition-all duration-200 ${
               added ? "bg-success hover:bg-success text-success-foreground" : ""
             }`}
             disabled={added}
           >
             {added ? (
               <span className="flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> დამატებულია
+                <Check className="w-3 h-3" /> ✓
               </span>
             ) : (
               <span className="flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" /> დამატება
+                <Plus className="w-3 h-3" /> დამატება
               </span>
             )}
           </Button>
+          {/* COD helper */}
+          <p className="text-[8px] text-muted-foreground text-center leading-tight">
+            გადახდა მიღებისას
+          </p>
         </div>
       </div>
       <ProductSheet product={product} open={sheetOpen} onClose={() => setSheetOpen(false)} />
@@ -90,7 +95,6 @@ const RecommendationBlock = memo(({ products, remaining }: RecommendationBlockPr
 
   if (products.length === 0) return null;
 
-  // If delivery is unlocked, show brief success then hide
   if (isUnlocked) {
     return (
       <div className="col-span-2 my-2 py-3 px-4 rounded-lg bg-success/10 border border-success/30 text-center transition-all duration-500">
