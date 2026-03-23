@@ -225,6 +225,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     return result.success;
   }, [form]);
 
+  const formSectionRef = useRef<HTMLDivElement>(null);
+
   // CTA click: open confirmation modal instead of submitting directly
   const handleCTAClick = useCallback(() => {
     if (!canCheckout) {
@@ -245,6 +247,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       ["phone", "region", "address"].forEach((f) => setTouched((prev) => ({ ...prev, [f]: true })));
       setErrors(fieldErrors);
       if (isRecognized && !isEditing) setIsEditing(true);
+
+      // Scroll to form and focus first empty field
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => {
+        if (!form.phone || form.phone.trim().length < 5) {
+          document.getElementById("checkout-phone-input")?.focus();
+        } else if (!form.region || form.region.trim().length < 1) {
+          cityRef.current?.querySelector("input")?.focus();
+        }
+      }, 400);
       return;
     }
 
