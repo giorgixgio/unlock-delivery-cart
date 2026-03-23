@@ -362,15 +362,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
           {/* ══════ SECTION 1: Product Carousel (auto-expanded) ══════ */}
           <div className="checkout-card overflow-hidden">
-            <div className="px-4 py-3 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShoppingBag className="w-4 h-4 text-primary" />
-              </div>
-              <p className="text-sm font-bold text-foreground">
-                {itemCount} პროდუქტი
+            <div className="px-4 py-2 flex items-center gap-2">
+              <span className="text-sm">🧺</span>
+              <p className="text-xs font-bold text-foreground">
+                შენი შეკვეთა ({itemCount} პროდუქტი)
               </p>
+              <span className="text-[10px] font-semibold text-primary ml-auto">🔥 პაკეტი მზადაა</span>
             </div>
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <CheckoutProductCarousel
                 items={items}
                 onUpdateQuantity={updateQuantity}
@@ -397,6 +396,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* ══════ Flow guidance ══════ */}
+          <div className="flex items-center justify-center gap-1.5 py-1">
+            <span className="text-xs font-bold text-primary">⚡ ბოლო ნაბიჯი — შეავსე ინფორმაცია ↓</span>
           </div>
 
           {/* ══════ SECTION 2: Order Form ══════ */}
@@ -594,7 +598,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             {/* Timer badge */}
             <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
               <Clock className="w-[11px] h-[11px]" />
-              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">{countdown}</span>
+              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">⏰ ფასდაკლება იწურება {countdown}-ში</span>
             </div>
             <Button
               onClick={handleCTAClick}
@@ -605,9 +609,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
               {submitting
                 ? "იგზავნება..."
                 : canCheckout
-                ? (isFormValid || showRecognizedCard ? "✓ შეკვეთა — გადახდა მიწოდებისას" : "შეკვეთა — გადახდა მიწოდებისას")
+                ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეკვეთის დასრულება")
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
+            {canCheckout && (
+              <p className="text-center text-[10px] font-semibold text-muted-foreground mt-1">გადახდა კურიერთან</p>
+            )}
           </div>
         </div>
       </div>

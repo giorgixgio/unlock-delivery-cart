@@ -23,7 +23,7 @@ function getBadgeType(productId: string): BadgeType {
 }
 
 function getStockCount(productId: string): number {
-  return Math.floor(seededRand(productId + "_checkout_stock") * 10) + 3; // 3-12
+  return Math.floor(seededRand(productId + "_checkout_stock") * 10) + 3;
 }
 
 function getBadgeContent(productId: string, product: Product): { line1: string; line2?: string } {
@@ -55,6 +55,16 @@ function getBadgeContent(productId: string, product: Product): { line1: string; 
   }
 }
 
+// Generate compare price if missing
+function getComparePrice(product: Product): number | null {
+  if (product.compareAtPrice && product.compareAtPrice > product.price) {
+    return product.compareAtPrice;
+  }
+  // Generate synthetic compare price for visual consistency
+  const mult = 2.0 + seededRand(product.id + "_compare") * 0.9; // 2.0x–2.9x
+  return Math.round(product.price * mult * 10) / 10;
+}
+
 interface CheckoutProductCarouselProps {
   items: CartItem[];
   onUpdateQuantity: (id: string, qty: number) => void;
@@ -65,30 +75,31 @@ const CheckoutProductCarousel = ({ items, onUpdateQuantity, onRemove }: Checkout
   return (
     <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
       <div
-        className="flex gap-2.5 snap-x snap-mandatory pb-2"
+        className="flex gap-2 snap-x snap-mandatory pb-1"
         style={{ scrollSnapType: "x mandatory" }}
       >
         {items.map(({ product, quantity }) => {
           const badge = getBadgeContent(product.id, product);
+          const comparePrice = getComparePrice(product);
           return (
             <div
               key={product.id}
-              className="snap-start flex-shrink-0 w-[140px] bg-card rounded-xl border border-border shadow-sm overflow-hidden relative"
+              className="snap-start flex-shrink-0 w-[120px] bg-card rounded-lg border border-border shadow-sm overflow-hidden relative"
             >
               {/* Urgency Badge */}
-              <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-0.5">
-                <span className="bg-destructive/90 text-destructive-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-tight line-clamp-1">
+              <div className="absolute top-1 left-1 z-10 flex flex-col gap-0.5">
+                <span className="bg-destructive/90 text-destructive-foreground text-[8px] font-bold px-1 py-[1px] rounded leading-tight line-clamp-1">
                   {badge.line1}
                 </span>
                 {badge.line2 && (
-                  <span className="bg-deal/90 text-deal-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-md leading-tight line-clamp-1">
+                  <span className="bg-deal/90 text-deal-foreground text-[8px] font-bold px-1 py-[1px] rounded leading-tight line-clamp-1">
                     {badge.line2}
                   </span>
                 )}
               </div>
 
-              {/* Product Image */}
-              <div className="w-full aspect-square bg-muted/30">
+              {/* Product Image — compact */}
+              <div className="w-full aspect-[4/3] bg-muted/30">
                 <img
                   src={product.image}
                   alt={product.title}
@@ -96,51 +107,51 @@ const CheckoutProductCarousel = ({ items, onUpdateQuantity, onRemove }: Checkout
                 />
               </div>
 
-              {/* Info */}
-              <div className="p-2 space-y-1.5">
-                <p className="text-[11px] font-semibold text-foreground leading-tight line-clamp-2 h-[2rem]">
+              {/* Info — tight */}
+              <div className="p-1.5 space-y-1">
+                <p className="text-[10px] font-semibold text-foreground leading-tight line-clamp-2 h-[1.75rem]">
                   {product.title}
                 </p>
 
-                {/* Price */}
+                {/* Price with strikethrough */}
                 <div className="flex items-baseline gap-1">
-                  <span className="text-sm font-extrabold text-primary">
+                  <span className="text-xs font-extrabold text-primary">
                     {(product.price * quantity).toFixed(1)}₾
                   </span>
-                  {product.compareAtPrice && product.compareAtPrice > product.price && (
-                    <span className="text-[10px] text-muted-foreground line-through">
-                      {(product.compareAtPrice * quantity).toFixed(1)}₾
+                  {comparePrice && (
+                    <span className="text-[9px] text-muted-foreground line-through">
+                      {(comparePrice * quantity).toFixed(1)}₾
                     </span>
                   )}
                 </div>
 
-                {/* Quantity Controls */}
+                {/* Quantity Controls — compact */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     <Button
                       onClick={() => onUpdateQuantity(product.id, quantity - 1)}
                       variant="outline"
                       size="icon"
-                      className="h-6 w-6 rounded-md"
+                      className="h-5 w-5 rounded"
                     >
-                      <Minus className="w-2.5 h-2.5" />
+                      <Minus className="w-2 h-2" />
                     </Button>
-                    <span className="text-xs font-bold w-4 text-center">{quantity}</span>
+                    <span className="text-[10px] font-bold w-3 text-center">{quantity}</span>
                     <Button
                       onClick={() => onUpdateQuantity(product.id, quantity + 1)}
                       size="icon"
-                      className="h-6 w-6 rounded-md"
+                      className="h-5 w-5 rounded"
                     >
-                      <Plus className="w-2.5 h-2.5" />
+                      <Plus className="w-2 h-2" />
                     </Button>
                   </div>
                   <Button
                     onClick={() => onRemove(product.id)}
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-destructive"
+                    className="h-5 w-5 text-destructive"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-2.5 h-2.5" />
                   </Button>
                 </div>
               </div>
