@@ -374,14 +374,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
           {/* ══════ SECTION 1: Product Carousel (auto-expanded) ══════ */}
           <div className="checkout-card overflow-hidden">
-            <div className="px-4 py-2 flex items-center gap-2">
-              <span className="text-sm">🧺</span>
-              <p className="text-xs font-bold text-foreground">
+            <div className="px-3 py-1.5 flex items-center gap-1.5">
+              <span className="text-xs">🧺</span>
+              <p className="text-[11px] font-bold text-foreground">
                 შენი შეკვეთა ({itemCount} პროდუქტი)
               </p>
-              <span className="text-[10px] font-semibold text-primary ml-auto">🔥 პაკეტი მზადაა</span>
+              <span className="text-[9px] font-semibold text-primary ml-auto">🔥 პაკეტი მზადაა</span>
             </div>
-            <div className="px-2 pb-2">
+            <div className="px-1.5 pb-1.5">
               <CheckoutProductCarousel
                 items={items}
                 onUpdateQuantity={updateQuantity}
