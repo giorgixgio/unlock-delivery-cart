@@ -168,68 +168,27 @@ const Shop = () => {
   // Number of side-stack products next to hero
   const SIDE_STACK_COUNT = 2;
 
-  const renderHeroSection = () => {
-    // Collect all initial products in order
-    const allInitial: { product: Product; isHero: boolean; sectionType: string }[] = [];
-    let rendered = 0;
+  /** Build flat ordered product list from sections, capped at INITIAL_LOAD */
+  const buildInitialList = () => {
+    const list: { product: Product; sectionType: string }[] = [];
+    let count = 0;
     for (const section of sections) {
-      if (rendered >= INITIAL_LOAD) break;
+      if (count >= INITIAL_LOAD) break;
       for (const product of section.products) {
-        if (rendered >= INITIAL_LOAD) break;
-        allInitial.push({ product, isHero: rendered === 0, sectionType: section.type });
-        rendered++;
+        if (count >= INITIAL_LOAD) break;
+        list.push({ product, sectionType: section.type });
+        count++;
       }
     }
+    return list;
+  };
 
-    if (allInitial.length === 0) return { heroSection: null, remainingElements: [] };
-
-    const heroItem = allInitial[0];
-    const sideItems = allInitial.slice(1, 1 + SIDE_STACK_COUNT);
-    const restItems = allInitial.slice(1 + SIDE_STACK_COUNT);
-
-    const overrides = getStockOverrides();
-    const heroIsOOS = heroProduct && (overrides[heroProduct.id] !== undefined ? !overrides[heroProduct.id] : heroProduct.available === false);
-    const sectionLabels: Record<string, string> = {
-      related: heroIsOOS ? "აღმოაჩინე მსგავსი" : "მსგავსი პროდუქტები",
-      trending: "ტრენდული",
-      weighted: "შენთვის",
-    };
-
-    const heroSection = (
-      <div className="grid grid-cols-2 gap-2.5">
-        {/* Hero — left column, spans full height */}
-        <div className="row-span-2 flex">
-          <div className="w-full">
-            <HeroProductCard key={heroItem.product.id} product={heroItem.product} />
-          </div>
-        </div>
-        {/* Right column — stacked smaller cards */}
-        {sideItems.map((item) => (
-          <ProductCard key={item.product.id} product={item.product} />
-        ))}
-      </div>
-    );
-
-    // Build remaining grid elements
-    const remainingElements: React.ReactNode[] = [];
-    let lastSectionType = "";
-    for (const item of restItems) {
-      if (item.sectionType !== lastSectionType && item.sectionType !== "hero" && sectionLabels[item.sectionType]) {
-        remainingElements.push(<SectionLabel key={`label-${item.sectionType}`} label={sectionLabels[item.sectionType]} />);
-        lastSectionType = item.sectionType;
-      }
-      remainingElements.push(<ProductCard key={item.product.id} product={item.product} />);
-    }
-
-    // Extra items from infinite scroll
-    if (extraItems.length > 0) {
-      remainingElements.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
-      for (const product of extraItems) {
-        remainingElements.push(<ProductCard key={product.id} product={product} />);
-      }
-    }
-
-    return { heroSection, remainingElements };
+  const overrides = getStockOverrides();
+  const heroIsOOS = heroProduct && (overrides[heroProduct.id] !== undefined ? !overrides[heroProduct.id] : heroProduct.available === false);
+  const sectionLabels: Record<string, string> = {
+    related: heroIsOOS ? "აღმოაჩინე მსგავსი" : "მსგავსი პროდუქტები",
+    trending: "ტრენდული",
+    weighted: "შენთვის",
   };
 
   return (
@@ -237,7 +196,7 @@ const Shop = () => {
       <MissionHeroStrip />
 
       <div className="container max-w-2xl mx-auto px-3 pt-3">
-        {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
+        {/* Fallback message if hero not found */}
         {productId && !isLoading && !heroProduct && allProducts.length > 0 && !allProducts.find(p => p.id === productId || p.handle === productId) && (
           <div className="bg-accent/50 border border-border rounded-lg p-3 mb-4 text-center">
             <p className="text-sm text-muted-foreground">
@@ -250,17 +209,54 @@ const Shop = () => {
           <GridSkeleton />
         ) : (
           (() => {
-            const { heroSection, remainingElements } = renderHeroSection();
+            const allInitial = buildInitialList();
+            if (allInitial.length === 0) return null;
+
+            const heroItem = allInitial[0];
+            const sideItems = allInitial.slice(1, 1 + SIDE_STACK_COUNT);
+            const restItems = allInitial.slice(1 + SIDE_STACK_COUNT);
+
             return (
               <>
-                {heroSection}
+                {/* === TOP SECTION: hero left + 2 stacked right === */}
+                <div className="flex gap-2.5">
+                  {/* Hero — left, takes ~50% */}
+                  <div className="flex-1 min-w-0">
+                    <HeroProductCard key={heroItem.product.id} product={heroItem.product} />
+                  </div>
+                  {/* Right column — 2 stacked cards */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+                    {sideItems.map((item) => (
+                      <ProductCard key={item.product.id} product={item.product} />
+                    ))}
+                  </div>
+                </div>
 
                 {/* Scroll cue */}
-                {remainingElements.length > 0 && <ScrollCue />}
+                {restItems.length > 0 && <ScrollCue />}
 
-                {remainingElements.length > 0 && (
+                {/* === NORMAL GRID: remaining items === */}
+                {restItems.length > 0 && (
                   <div className="grid grid-cols-2 gap-2.5 mt-2.5">
-                    {remainingElements}
+                    {(() => {
+                      const els: React.ReactNode[] = [];
+                      let lastType = "";
+                      for (const item of restItems) {
+                        if (item.sectionType !== lastType && item.sectionType !== "hero" && sectionLabels[item.sectionType]) {
+                          els.push(<SectionLabel key={`label-${item.sectionType}`} label={sectionLabels[item.sectionType]} />);
+                          lastType = item.sectionType;
+                        }
+                        els.push(<ProductCard key={item.product.id} product={item.product} />);
+                      }
+                      // Extra items from infinite scroll
+                      if (extraItems.length > 0) {
+                        els.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
+                        for (const product of extraItems) {
+                          els.push(<ProductCard key={product.id} product={product} />);
+                        }
+                      }
+                      return els;
+                    })()}
                   </div>
                 )}
 
