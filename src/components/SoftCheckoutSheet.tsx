@@ -116,6 +116,22 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const [loadingMore, setLoadingMore] = useState(false);
 
   const prevCount = useRef(itemCount);
+  const addedDuringSession = useRef(0);
+
+  // Track upsell_shown once per open
+  useEffect(() => {
+    if (open) {
+      addedDuringSession.current = 0;
+      trackEvent("upsell_shown", {
+        source,
+        cart_count: itemCount,
+        cart_value: total,
+        threshold,
+        items_to_threshold: remaining,
+        is_unlocked: isUnlocked,
+      });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (itemCount > prevCount.current && itemCount > 0) {
