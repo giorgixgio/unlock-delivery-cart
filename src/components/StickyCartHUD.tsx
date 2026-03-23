@@ -5,7 +5,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { usePulseCTA } from "@/hooks/usePulseCTA";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +14,6 @@ const StickyCartHUD = () => {
   const { handleCheckoutIntent } = useCheckoutGate();
   const location = useLocation();
   const pulse = usePulseCTA(itemCount > 0);
-  const { t } = useLanguage();
 
   const [expanded, setExpanded] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
