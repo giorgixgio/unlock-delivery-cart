@@ -13,11 +13,16 @@ const MiniMissionBar = () => {
 
   const message = useMemo(() => {
     if (isUnlocked && itemCount > threshold)
-      return "🔥 მეტი პროდუქტი — მეტი სარგებელი";
-    if (isUnlocked) return "🎉 შეთავაზება გახსნილია!";
+      return "💰 მეტი პროდუქტი — მეტი დაზოგვა";
+    if (isUnlocked) return "🎉 უფასო მიწოდება გააქტიურდა!";
     if (remaining === 1) return "⚡ კიდევ 1 პროდუქტი — გახსნი შეთავაზებას";
     return `🔥 კიდევ ${remaining} პროდუქტი — გახსნი შეთავაზებას`;
   }, [isUnlocked, remaining, itemCount, threshold]);
+
+  const hint = useMemo(() => {
+    if (isUnlocked) return null;
+    return "🎁 ბონუსი გელოდება";
+  }, [isUnlocked]);
 
   // Compact step dots
   const dots = Array.from({ length: Math.min(threshold + 2, 5) }, (_, i) => i + 1);
@@ -27,15 +32,22 @@ const MiniMissionBar = () => {
       className="rounded-lg px-3 py-2 space-y-1.5"
       style={{ background: "hsl(220 15% 13%)" }}
     >
-      {/* Message */}
-      <p
-        className={cn(
-          "text-[11px] font-bold leading-tight",
-          isUnlocked ? "text-[hsl(145,63%,55%)]" : "text-white"
+      {/* Message row */}
+      <div className="flex items-center justify-between gap-2">
+        <p
+          className={cn(
+            "text-[11px] font-bold leading-tight",
+            isUnlocked ? "text-[hsl(145,63%,55%)]" : "text-white"
+          )}
+        >
+          {message}
+        </p>
+        {hint && (
+          <span className="text-[9px] font-semibold text-[hsl(45,100%,65%)] whitespace-nowrap flex-shrink-0">
+            {hint}
+          </span>
         )}
-      >
-        {message}
-      </p>
+      </div>
 
       {/* Progress bar + step dots row */}
       <div className="flex items-center gap-2">
