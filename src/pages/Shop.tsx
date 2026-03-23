@@ -16,38 +16,42 @@ const LOAD_MORE_BATCH = 12;
 
 /** Skeleton grid for loading state */
 const GridSkeleton = () => (
-  <div className="grid grid-cols-2 gap-2.5">
-    {/* Hero skeleton — left column */}
-    <div className="row-span-2 rounded-xl overflow-hidden border border-border">
-      <Skeleton className="aspect-square w-full" />
-      <div className="p-3 space-y-2">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-7 w-1/3" />
-        <Skeleton className="h-10 w-full rounded-lg" />
-      </div>
-    </div>
-    {/* Right column skeletons */}
-    {Array.from({ length: 2 }).map((_, i) => (
-      <div key={`side-${i}`} className="rounded-lg overflow-hidden border border-border">
-        <Skeleton className="aspect-square w-full" />
-        <div className="p-2 space-y-1.5">
-          <Skeleton className="h-3 w-3/4" />
-          <Skeleton className="h-4 w-1/3" />
-        </div>
-      </div>
-    ))}
-    {/* Below grid skeletons */}
-    {Array.from({ length: 4 }).map((_, i) => (
-      <div key={i} className="rounded-lg overflow-hidden border border-border">
+  <>
+    {/* Top section skeleton */}
+    <div className="flex gap-2.5">
+      <div className="flex-1 rounded-xl overflow-hidden border border-border">
         <Skeleton className="aspect-square w-full" />
         <div className="p-3 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-7 w-1/3" />
           <Skeleton className="h-10 w-full rounded-lg" />
         </div>
       </div>
-    ))}
-  </div>
+      <div className="flex-1 flex flex-col gap-2.5">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={`side-${i}`} className="rounded-lg overflow-hidden border border-border">
+            <Skeleton className="aspect-square w-full" />
+            <div className="p-2 space-y-1.5">
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+    {/* Below grid skeletons */}
+    <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-lg overflow-hidden border border-border">
+          <Skeleton className="aspect-square w-full" />
+          <div className="p-2 space-y-1.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-5 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </>
 );
 
 /** Section label between grid sections */

@@ -112,9 +112,9 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
           )}
         </div>
 
-        <div className="p-2.5">
-          {/* Title: fixed 2-line area — deterministic height */}
-          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 h-[2.5rem]">
+        <div className="p-2">
+          {/* Title: fixed 2-line area */}
+          <p className="text-[13px] font-medium text-foreground leading-tight line-clamp-2 h-[2.25rem]">
             {product.title}
           </p>
 
@@ -123,9 +123,19 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
             const oldPrice = getFakeOldPrice(product.id, product.price);
             const discount = getDiscountPercent(product.price, oldPrice);
             return (
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-price text-primary">{product.price} ₾</span>
                 <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+              </div>
+            );
+          })()}
+
+          {/* Discount badge — dedicated line with reserved height */}
+          {(() => {
+            const oldPrice = getFakeOldPrice(product.id, product.price);
+            const discount = getDiscountPercent(product.price, oldPrice);
+            return (
+              <div className="h-[18px] mt-0.5">
                 <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
                   -{discount}%
                 </span>
@@ -133,8 +143,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
             );
           })()}
 
-          {/* Urgency/info: fixed 2-line area */}
-          <ProductMicroProof product={product} maxChars={40} lines={2} />
+          {/* Urgency/info: single line */}
+          <ProductMicroProof product={product} maxChars={40} lines={1} />
 
           {/* CTA */}
           <div className="mt-1.5">
