@@ -412,7 +412,7 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
               {isUnlocked ? (
                 <><ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთა</>
               ) : (
-                `🔓 დაამატე ${remaining.toFixed(1)} ₾`
+                `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
               )}
             </Button>
           ) : (

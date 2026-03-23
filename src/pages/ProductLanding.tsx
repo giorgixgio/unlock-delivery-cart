@@ -224,7 +224,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
                   {isUnlocked ? (
                     <><ShoppingCart className="w-5 h-5 mr-1" /> შეკვეთა</>
                   ) : (
-                    `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`
+                    `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
                   )}
                 </AttentionButton>
               </div>
