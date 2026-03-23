@@ -179,7 +179,7 @@ const Shop = () => {
 
   return (
     <main className="pb-32">
-      <ShopMissionHeader />
+      <MissionHeroStrip />
 
       <div className="container max-w-2xl mx-auto px-3 pt-3">
         {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
