@@ -360,86 +360,27 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
         <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-2.5">
 
-          {/* ══════ SECTION 1: Collapsible Order Summary Bar ══════ */}
+          {/* ══════ SECTION 1: Product Carousel (auto-expanded) ══════ */}
           <div className="checkout-card overflow-hidden">
-            <button
-              onClick={() => setSummaryExpanded(!summaryExpanded)}
-              className="w-full flex items-center justify-between px-4 py-3 active:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-foreground">
-                    {itemCount} პროდუქტი — {orderTotal.toFixed(1)}₾
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    სულ {orderTotal.toFixed(1)}₾ · მიტანა უფასო
-                  </p>
-                </div>
+            <div className="px-4 py-3 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <ShoppingBag className="w-4 h-4 text-primary" />
               </div>
-              {summaryExpanded ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-              )}
-            </button>
-
-            {/* Expandable cart items */}
-            <div
-              className="transition-[max-height] duration-300 ease-in-out overflow-hidden"
-              style={{ maxHeight: summaryExpanded ? `${items.length * 88 + 16}px` : "0px" }}
-            >
-              <div className="px-4 pb-3 space-y-2 border-t border-border/50">
-                {items.map(({ product, quantity }) => (
-                  <div key={product.id} className="flex items-center gap-3 py-2">
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      className="w-14 h-14 rounded-md object-cover flex-shrink-0 border border-border"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground line-clamp-1">{product.title}</p>
-                      <p className="text-sm font-bold text-primary">{(product.price * quantity).toFixed(1)} ₾</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button
-                        onClick={() => updateQuantity(product.id, quantity - 1)}
-                        variant="outline" size="icon"
-                        className="h-7 w-7 rounded-md"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <span className="text-sm font-bold w-5 text-center">{quantity}</span>
-                      <Button
-                        onClick={() => updateQuantity(product.id, quantity + 1)}
-                        size="icon"
-                        className="h-7 w-7 rounded-md"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        onClick={() => removeItem(product.id)}
-                        variant="ghost" size="icon"
-                        className="h-7 w-7 text-destructive"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm font-bold text-foreground">
+                {itemCount} პროდუქტი
+              </p>
             </div>
-
-            {/* Summary row: subtotal + shipping */}
-            <div className="px-4 py-2.5 bg-muted/30 border-t border-border/50 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">მიტანა</span>
-              <span className="text-xs font-bold text-success flex items-center gap-1">
-                <Check className="w-3 h-3" /> უფასო ✓
-              </span>
+            <div className="px-3 pb-3">
+              <CheckoutProductCarousel
+                items={items}
+                onUpdateQuantity={updateQuantity}
+                onRemove={removeItem}
+              />
             </div>
           </div>
+
+          {/* ══════ Price Reveal + Savings ══════ */}
+          <CheckoutPriceReveal />
 
           {/* ══════ Trust Icon Row ══════ */}
           <div className="checkout-card px-4 py-2.5">
