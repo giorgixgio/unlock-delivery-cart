@@ -66,14 +66,8 @@ const SheetProductCard = memo(({
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addAndGate(product, "upsell");
+    addAndGate(product, "popup");
     onAdd?.();
-    trackEvent("upsell_accepted", {
-      product_id: product.id,
-      product_name: product.title,
-      price: product.price,
-      source: "upsell",
-    });
     setAdded(true);
     if (imgRef.current && cartIconRef.current) flyToCart(imgRef.current, cartIconRef.current);
     setTimeout(() => setAdded(false), 1200);
