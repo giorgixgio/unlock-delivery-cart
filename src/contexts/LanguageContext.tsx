@@ -170,7 +170,7 @@ const ge: Record<string, string> = {
   // Recommendation block
   "delivery_unlocked_check": "მიტანა გახსნილია ✅",
   "rec_for_delivery": "რეკომენდაცია მიტანის გასახსნელად",
-  "more_left_short": "კიდევ {amount} ₾ დარჩა",
+  "more_left_short": "კიდევ {count} პროდუქტი დარჩა",
 
   // Booster row
   "more_to_min_order": "კიდევ {amount} ₾ მინიმალურ შეკვეთამდე",
