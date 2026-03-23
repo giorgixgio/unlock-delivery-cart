@@ -554,41 +554,36 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       </div>
 
       {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, #f3f4f6 80%, transparent)", padding: "0 13px 22px" }}>
-        <div className="flex flex-col gap-2">
-          {/* Ticker card */}
-          <div className="bg-card rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
-            {/* Sweep bar */}
-            <div className="h-[3px] bg-muted relative">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)", padding: "0 10px 14px" }}>
+        <div className="flex flex-col gap-1.5">
+          {/* Ticker — compact */}
+          <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
+            <div className="h-[2px] bg-muted relative">
               <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
             </div>
-            {/* Content row */}
-            <div className="flex items-center gap-2 px-3.5 py-[11px]" style={{ minHeight: 42 }}>
-              {/* Icon slot */}
-              <div className="w-[18px] flex items-center justify-center flex-shrink-0">
+            <div className="flex items-center gap-1.5 px-3 py-[7px]" style={{ minHeight: 32 }}>
+              <div className="w-4 flex items-center justify-center flex-shrink-0">
                 {tickerMsg.icon === "dot" ? (
-                  <span className="w-2 h-2 rounded-full bg-[#22c55e] block animate-live-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] block animate-live-pulse" />
                 ) : (
-                  <span className="text-sm leading-none">{tickerMsg.icon}</span>
+                  <span className="text-xs leading-none">{tickerMsg.icon}</span>
                 )}
               </div>
-              {/* Text */}
-              <div className="flex-1 overflow-hidden relative h-5">
+              <div className="flex-1 overflow-hidden relative h-4">
                 <div
-                  className="absolute text-xs font-semibold text-foreground whitespace-nowrap leading-5 transition-all"
+                  className="absolute text-[11px] font-semibold text-foreground whitespace-nowrap leading-4 transition-all"
                   style={{
                     transitionDuration: `${TRANS_MS}ms`,
                     transitionTimingFunction: "ease",
                     opacity: tickerPhase === "hold" ? 1 : 0,
-                    transform: tickerPhase === "out" ? "translateY(-10px)" : tickerPhase === "in" ? "translateY(10px)" : "translateY(0)",
+                    transform: tickerPhase === "out" ? "translateY(-8px)" : tickerPhase === "in" ? "translateY(8px)" : "translateY(0)",
                   }}
                 >
                   {tickerMsg.text}
                 </div>
               </div>
-              {/* Badge pill */}
               <div
-                className="flex-shrink-0 rounded-[20px] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap transition-opacity"
+                className="flex-shrink-0 rounded-full px-2 py-[2px] text-[10px] font-bold whitespace-nowrap transition-opacity"
                 style={{
                   background: "hsl(var(--accent))",
                   color: "hsl(var(--primary))",
@@ -601,17 +596,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
-          {/* CTA button */}
+          {/* CTA — compact */}
           <div className="relative">
-            {/* Timer badge */}
-            <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
-              <Clock className="w-[11px] h-[11px]" />
-              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">⏰ ფასდაკლება იწურება {countdown}-ში</span>
+            <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
+              <Clock className="w-[10px] h-[10px]" />
+              <span className="text-[10px] font-extrabold tabular-nums tracking-[0.3px]">⏰ იწურება {countdown}-ში</span>
             </div>
             <Button
               onClick={handleCTAClick}
               disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-              className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+              className={`w-full h-12 !text-[15px] font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
               size="lg"
             >
               {submitting
@@ -621,7 +615,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
             {canCheckout && (
-              <p className="text-center text-[10px] font-semibold text-muted-foreground mt-1">გადახდა კურიერთან</p>
+              <p className="text-center text-[9px] font-semibold text-muted-foreground mt-0.5">გადახდა კურიერთან</p>
             )}
           </div>
         </div>
