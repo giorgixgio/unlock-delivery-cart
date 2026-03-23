@@ -68,6 +68,7 @@ LastOrderBadge.displayName = "LastOrderBadge";
 const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
   const { addItem } = useCart();
   const { openCart } = useCartOverlay();
+  const { addAndGate } = useCheckoutGate();
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
