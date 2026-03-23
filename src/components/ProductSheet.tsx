@@ -319,7 +319,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
               <Minus className="w-5 h-5" />
             </Button>
             <span className="text-2xl font-extrabold text-foreground min-w-[2.5rem] text-center">{quantity}</span>
-            <Button onClick={() => addItem(product)} size="icon" className="h-12 w-12 rounded-lg">
+            <Button onClick={() => addAndGate(product, "pdp_sheet")} size="icon" className="h-12 w-12 rounded-lg">
               <Plus className="w-5 h-5" />
             </Button>
           </div>

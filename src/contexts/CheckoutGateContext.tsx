@@ -74,7 +74,8 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         threshold,
         items_to_threshold: postRemaining,
         is_unlocked: postCount >= threshold,
-      });
+      }, true);
+      console.log("[product_added] FIRED — product:", product.id, "ts:", Date.now());
 
       // ── Fire popup_item_added for popup-sourced adds ──
       if (src === "popup") {

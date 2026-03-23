@@ -124,6 +124,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   useEffect(() => {
     if (open) {
       addedDuringSession.current = 0;
+      console.log("[popup_shown] FIRING — open:", open, "ts:", Date.now(), "component: SoftCheckoutSheet");
       trackEvent("popup_shown", {
         source,
         cart_count: itemCount,
