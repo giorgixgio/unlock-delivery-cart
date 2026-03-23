@@ -153,7 +153,7 @@ const ge: Record<string, string> = {
 
   // Sticky HUD
   "complete_order_btn": "შეკვეთის დასრულება",
-  "unlock_btn": "🔓 დაამატე {amount} ₾ — გახსენი შეკვეთა",
+  "unlock_btn": "🔓 დაამატე {count} პროდუქტი — გახსენი შეკვეთა",
 
   // Soft checkout
   "min_order_title": "მინიმალური შეკვეთა",
