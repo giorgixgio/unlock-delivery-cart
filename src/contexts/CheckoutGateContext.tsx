@@ -60,17 +60,29 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       const postCount = itemCount + 1;
       const postRemaining = Math.max(0, threshold - postCount);
+      const postValue = total + product.price;
+
+      // ── Always fire product_added ──
+      trackEvent("product_added", {
+        product_id: product.id,
+        product_name: product.title,
+        price: product.price,
+        source: src,
+        cart_count: postCount,
+        cart_value: postValue,
+        threshold,
+        items_to_threshold: postRemaining,
+        is_unlocked: postCount >= threshold,
+      });
 
       // ── Reward toast logic ──
       if (postCount < threshold) {
-        // Pre-threshold: show remaining count
         toast(`⚡ კიდევ ${postRemaining} პროდუქტი დარჩა`, { duration: 1500 });
       } else if (postCount === threshold) {
-        // Exact threshold: unlock celebration
         trackEvent("threshold_unlocked", {
           threshold,
           cart_count: postCount,
-          cart_value: total + product.price,
+          cart_value: postValue,
           product_id: product.id,
           product_name: product.title,
           price: product.price,
@@ -80,7 +92,6 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
         toast("🎉 უფასო მიწოდება გააქტიურდა!", { duration: 2500 });
       } else {
-        // Post-threshold: show savings
         const saved = estimateSavings(product);
         toast(`💰 დამატებითი დაზოგვა +${saved}₾`, { duration: 1800 });
       }
@@ -91,7 +102,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSheetOpen(true);
       }
     },
-    [addItem, itemCount, threshold]
+    [addItem, itemCount, threshold, total]
   );
 
   return (
