@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ShoppingCart, Lock, Unlock, Gift, Package, ChevronRight, Search, Menu, User, X } from "lucide-react";
+import { ShoppingCart, Lock, Unlock, Gift, Package, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { cn } from "@/lib/utils";

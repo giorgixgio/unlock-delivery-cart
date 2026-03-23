@@ -179,7 +179,7 @@ const Shop = () => {
 
   return (
     <main className="pb-52">
-      <HomeHeaderTemuStyle />
+      <ShopMissionHeader />
 
       <div className="container max-w-2xl mx-auto px-4 pt-4">
         {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
