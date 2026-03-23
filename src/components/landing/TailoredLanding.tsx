@@ -26,7 +26,8 @@ interface TailoredLandingProps {
 }
 
 const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
-  const { addItem, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const { openCart } = useCartOverlay();
   const { handleCheckoutIntent } = useCheckoutGate();
 
