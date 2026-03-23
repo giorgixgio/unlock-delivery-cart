@@ -96,7 +96,7 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   const handleCTA = () => {
     // Add selected quantity to cart
     for (let i = 0; i < selectedQty; i++) {
-      addItem(product);
+      addAndGate(product, "landing_cta");
     }
     setTimeout(() => openCart(), 100);
   };

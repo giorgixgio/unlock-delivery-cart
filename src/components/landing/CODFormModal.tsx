@@ -139,6 +139,16 @@ const CODFormModal = ({
           .eq("id", order.id);
       }
 
+      trackEvent("order_submitted", {
+        order_number: order.public_order_number,
+        order_total: totalAfter,
+        item_count: 1,
+        cart_count: quantity,
+        source: "landing_cod",
+        landing_slug: landingSlug,
+        products: [{ id: product.id, name: product.title, price: unitPrice, quantity }],
+      }, true);
+
       onOrderCreated(order.id, order.public_order_number, totalAfter);
     } catch (err: any) {
       console.error("COD order failed:", err);

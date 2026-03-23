@@ -305,7 +305,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           quantity: i.quantity,
         })),
       }, true);
-      console.log("[order_submitted] trackEvent fired, navigating to /success");
+      
       clearCustomerInfo();
       clearCart();
       dismissCart();

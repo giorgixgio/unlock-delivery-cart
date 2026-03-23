@@ -118,7 +118,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
 
   /** First tap: add to cart + open threshold sheet in one step */
   const handleFirstAdd = () => addAndGate(product, "landing_cta");
-  const handleAdd = () => addItem(product);
+  const handleAdd = () => addAndGate(product, "landing_qty");
   const handleMinus = () => updateQuantity(product.id, quantity - 1);
 
   const handleCTA = () => {

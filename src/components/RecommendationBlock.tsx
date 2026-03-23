@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import { Sparkles, Plus, Eye, Check } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
+import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ProductSheet from "@/components/ProductSheet";

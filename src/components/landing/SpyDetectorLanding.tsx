@@ -96,7 +96,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       setCodOpen(true);
     } else {
       for (let i = 0; i < selectedQty; i++) {
-        addItem(product);
+        addAndGate(product, "landing_cod");
       }
       setTimeout(() => openCart(), 100);
     }

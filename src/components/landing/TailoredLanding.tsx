@@ -55,7 +55,7 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   const handleCTA = () => {
     // Add selected quantity to cart
     for (let i = 0; i < selectedQty; i++) {
-      addItem(product);
+      addAndGate(product, "landing_cta");
     }
     // If threshold met, open cart; otherwise show threshold messaging
     if (isUnlocked || product.price * selectedQty + (itemCount > 0 ? 0 : 0) >= 19) {
