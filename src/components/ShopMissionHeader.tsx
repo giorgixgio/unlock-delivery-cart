@@ -62,7 +62,7 @@ const ShopMissionHeader = () => {
     prevCount.current = itemCount;
   }, [itemCount]);
 
-  const StatusIcon = isUnlocked ? Unlock : itemCount > 0 ? Gift : Lock;
+  const StatusIcon = itemCount > 0 ? Gift : Lock;
 
   return (
     <div className="sticky top-0 z-40">
