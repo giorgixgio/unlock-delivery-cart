@@ -155,21 +155,13 @@ const Shop = () => {
               {(() => {
                 const allInitial = buildInitialList();
                 const els: React.ReactNode[] = [];
-                let lastType = "";
                 for (let i = 0; i < allInitial.length; i++) {
                   const item = allInitial[i];
-                  if (item.sectionType !== lastType && item.sectionType !== "hero" && sectionLabels[item.sectionType]) {
-                    els.push(<SectionLabel key={`label-${item.sectionType}`} label={sectionLabels[item.sectionType]} />);
-                    lastType = item.sectionType;
-                  }
                   const isHero = i === 0 && heroProduct?.id === item.product.id;
                   els.push(<ProductCard key={item.product.id} product={item.product} isHero={isHero} />);
                 }
-                if (extraItems.length > 0) {
-                  els.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
-                  for (const product of extraItems) {
-                    els.push(<ProductCard key={product.id} product={product} />);
-                  }
+                for (const product of extraItems) {
+                  els.push(<ProductCard key={product.id} product={product} />);
                 }
                 return els;
               })()}
