@@ -460,12 +460,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 <div className="space-y-2">
                   {/* Phone input with flag prefix */}
                   <div>
-                    <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
-                    <div className="mt-1 phone-prefix-group flex">
-                      <div className="phone-prefix-panel flex items-center gap-[5px] px-2.5 bg-[#f3f4f6] border-[1.5px] border-[#e5e7eb] border-r-0 rounded-l-xl">
+                    <Label className="text-xs font-bold text-foreground">ტელეფონი</Label>
+                    <div className="mt-0.5 phone-prefix-group flex">
+                      <div className="phone-prefix-panel flex items-center gap-[5px] px-2 bg-[#f3f4f6] border-[1.5px] border-[#e5e7eb] border-r-0 rounded-l-xl">
                         <GeorgianFlag />
                         <span className="text-[13px] font-bold text-foreground/80">+995</span>
-                        <div className="w-px h-5 bg-[#e5e7eb] ml-1" />
+                        <div className="w-px h-4 bg-[#e5e7eb] ml-0.5" />
                       </div>
                       <Input
                         id="checkout-phone-input"
@@ -475,7 +475,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                         placeholder="5XX XXX XXX"
                         value={form.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
-                        className="h-12 !text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
+                        className="h-10 !text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
                       />
                     </div>
                     {errors.phone && (
