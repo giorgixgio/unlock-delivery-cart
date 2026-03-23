@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
@@ -26,7 +27,7 @@ function estimateSavings(product: Product): number {
 }
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked, addItem, itemCount, threshold } = useCart();
+  const { isUnlocked, addItem, itemCount, threshold, total } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -66,6 +67,17 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         toast(`⚡ კიდევ ${postRemaining} პროდუქტი დარჩა`, { duration: 1500 });
       } else if (postCount === threshold) {
         // Exact threshold: unlock celebration
+        trackEvent("threshold_unlocked", {
+          threshold,
+          cart_count: postCount,
+          cart_value: total + product.price,
+          product_id: product.id,
+          product_name: product.title,
+          price: product.price,
+          source: src,
+          items_to_threshold: 0,
+          is_unlocked: true,
+        });
         toast("🎉 უფასო მიწოდება გააქტიურდა!", { duration: 2500 });
       } else {
         // Post-threshold: show savings
