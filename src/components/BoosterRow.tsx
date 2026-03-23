@@ -10,7 +10,8 @@ interface BoosterRowProps {
 }
 
 const BoosterRow = ({ products }: BoosterRowProps) => {
-  const { isUnlocked, remaining, addItem } = useCart();
+  const { isUnlocked, remaining } = useCart();
+  const { addAndGate } = useCheckoutGate();
 
   if (isUnlocked) return null;
 
