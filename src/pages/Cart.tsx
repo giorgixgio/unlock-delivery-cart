@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
+import { trackEvent } from "@/lib/analytics";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
@@ -130,6 +131,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   // Fetch historical cities/addresses
   useEffect(() => {
     if (!isOpen) return;
+    trackEvent("checkout_viewed", {
+      cart_count: itemCount,
+      cart_value: orderTotal,
+      item_count: items.length,
+    });
     const fetchHistorical = async () => {
       try {
         const { data: cities } = await supabase
@@ -286,6 +292,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCart();
       dismissCart();
       setConfirmModalOpen(false);
+      trackEvent("order_submitted", {
+        order_number: order.public_order_number,
+        order_total: orderTotal,
+        item_count: items.length,
+        cart_value: total,
+        shipping_fee: shippingFee,
+        is_tbilisi: isTbilisi,
+        source: isLandingPage ? "landing_pdp" : "shop",
+      });
       navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);

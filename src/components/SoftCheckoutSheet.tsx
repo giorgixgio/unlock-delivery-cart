@@ -13,6 +13,7 @@ import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
 import { cn } from "@/lib/utils";
 import MiniMissionBar from "@/components/MiniMissionBar";
+import { trackEvent } from "@/lib/analytics";
 
 const PAGE_SIZE = 10;
 
@@ -52,11 +53,12 @@ function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
 
 // ── Product Card ──
 const SheetProductCard = memo(({
-  product, cartIconRef, onTapProduct,
+  product, cartIconRef, onTapProduct, onAdd,
 }: {
   product: Product;
   cartIconRef: React.RefObject<HTMLDivElement | null>;
   onTapProduct: (product: Product) => void;
+  onAdd?: () => void;
 }) => {
   const { addAndGate } = useCheckoutGate();
   const [added, setAdded] = useState(false);
@@ -65,6 +67,13 @@ const SheetProductCard = memo(({
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     addAndGate(product, "upsell");
+    onAdd?.();
+    trackEvent("upsell_accepted", {
+      product_id: product.id,
+      product_name: product.title,
+      price: product.price,
+      source: "upsell",
+    });
     setAdded(true);
     if (imgRef.current && cartIconRef.current) flyToCart(imgRef.current, cartIconRef.current);
     setTimeout(() => setAdded(false), 1200);
@@ -115,6 +124,22 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const [loadingMore, setLoadingMore] = useState(false);
 
   const prevCount = useRef(itemCount);
+  const addedDuringSession = useRef(0);
+
+  // Track upsell_shown once per open
+  useEffect(() => {
+    if (open) {
+      addedDuringSession.current = 0;
+      trackEvent("upsell_shown", {
+        source,
+        cart_count: itemCount,
+        cart_value: total,
+        threshold,
+        items_to_threshold: remaining,
+        is_unlocked: isUnlocked,
+      });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (itemCount > prevCount.current && itemCount > 0) {
@@ -144,19 +169,29 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const handleLoadMore = useCallback(() => { setLoadingMore(true); setTimeout(() => { setVisibleCount((prev) => prev + PAGE_SIZE); setLoadingMore(false); }, 300); }, []);
 
   const handleViewCart = () => { onClose(); openCart(); };
+  const handleCloseSheet = useCallback(() => {
+    if (addedDuringSession.current === 0) {
+      trackEvent("upsell_rejected", {
+        source,
+        cart_count: itemCount,
+        cart_value: total,
+      });
+    }
+    onClose();
+  }, [onClose, source, itemCount, total]);
   const hasContent = similarProducts.length > 0 || allBroader.length > 0;
   const showEmpty = !isLoading && !hasContent;
 
   return (
     <>
-      <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
+      <Drawer open={open} onOpenChange={(o) => !o && handleCloseSheet()}>
         <DrawerContent className="max-h-[85vh] focus:outline-none flex flex-col">
           <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
           {/* ── Sticky header ── */}
           <div className="flex-shrink-0 sticky top-0 z-20 bg-card relative pt-2">
             {/* Floating close button */}
-            <button onClick={onClose} className="absolute top-2 left-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
+            <button onClick={handleCloseSheet} className="absolute top-2 left-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
             {/* Floating cart icon */}
@@ -203,7 +238,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {similarProducts.map((product) => (
-                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
+                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} onAdd={() => { addedDuringSession.current += 1; }} />
                       ))}
                     </div>
                   </div>
@@ -218,7 +253,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {visibleBroader.map((product) => (
-                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
+                        <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} onAdd={() => { addedDuringSession.current += 1; }} />
                       ))}
                     </div>
                     <div className="flex justify-center mt-4 mb-2">
