@@ -131,6 +131,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   // Fetch historical cities/addresses
   useEffect(() => {
     if (!isOpen) return;
+    trackEvent("checkout_viewed", {
+      cart_count: itemCount,
+      cart_value: orderTotal,
+      item_count: items.length,
+    });
     const fetchHistorical = async () => {
       try {
         const { data: cities } = await supabase
