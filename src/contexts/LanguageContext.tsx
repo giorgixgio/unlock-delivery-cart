@@ -387,7 +387,7 @@ const ru: Record<string, string> = {
   // Recommendation block
   "delivery_unlocked_check": "Доставка разблокирована ✅",
   "rec_for_delivery": "Рекомендации для разблокировки доставки",
-  "more_left_short": "Ещё {amount} ₾",
+  "more_left_short": "Ещё {count} товаров",
 
   // Booster row
   "more_to_min_order": "Ещё {amount} ₾ до минимального заказа",
