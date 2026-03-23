@@ -287,10 +287,10 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   const handleQuickOrder = () => {
     if (isOOS) return;
+    addAndGate(product, "pdp_quick_order");
     setActionState("added");
     setTimeout(() => {
       onClose();
-      addAndGate(product, "pdp_quick_order");
     }, 600);
   };
 
