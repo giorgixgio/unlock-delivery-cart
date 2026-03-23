@@ -416,7 +416,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           </div>
 
           {/* ══════ SECTION 2: Order Form ══════ */}
-          <div className="checkout-card overflow-hidden">
+          <div ref={formSectionRef} className="checkout-card overflow-hidden">
             {showRecognizedCard ? (
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
