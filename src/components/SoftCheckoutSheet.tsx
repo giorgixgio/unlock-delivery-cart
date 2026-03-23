@@ -191,7 +191,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           {/* ── Sticky header ── */}
           <div className="flex-shrink-0 sticky top-0 z-20 bg-card relative pt-2">
             {/* Floating close button */}
-            <button onClick={onClose} className="absolute top-2 left-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
+            <button onClick={handleCloseSheet} className="absolute top-2 left-2.5 z-30 p-1.5 rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-muted flex-shrink-0">
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
             {/* Floating cart icon */}
