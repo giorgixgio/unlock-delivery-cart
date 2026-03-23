@@ -438,7 +438,6 @@ const MissionHeroStrip = () => {
                   itemCount={itemCount}
                   threshold={effectiveThreshold}
                   lastFilled={lastFilled}
-                  exploding={exploding}
                   aovMax={MAX_SLOTS}
                 />
               )}
