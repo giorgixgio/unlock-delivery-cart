@@ -32,7 +32,8 @@ const PredictiveInput = ({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [justSelected, setJustSelected] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const internalRef = useRef<HTMLInputElement>(null);
+  const inputRef = externalRef || internalRef;
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Compute suggestions on input change
