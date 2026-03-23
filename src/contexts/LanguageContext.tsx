@@ -370,7 +370,7 @@ const ru: Record<string, string> = {
 
   // Sticky HUD
   "complete_order_btn": "Завершить заказ",
-  "unlock_btn": "🔓 Добавьте {amount} ₾ — откройте заказ",
+  "unlock_btn": "🔓 Добавьте {count} товаров — откройте заказ",
 
   // Soft checkout
   "min_order_title": "Минимальный заказ",
