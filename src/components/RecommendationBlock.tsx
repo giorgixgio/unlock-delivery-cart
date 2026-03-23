@@ -56,7 +56,7 @@ const MiniProductCard = memo(({ product }: { product: Product }) => {
         </div>
         <div className="p-2 space-y-1">
           {/* Title: fixed 2-line area */}
-          <p className="text-[11px] font-medium text-foreground leading-tight line-clamp-2 h-[28px]">
+          <p className="text-[11px] font-medium text-foreground leading-[14px] line-clamp-2 h-[28px]">
             {product.title}
           </p>
           <p className="text-sm font-bold text-primary">{product.price} ₾</p>

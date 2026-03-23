@@ -79,7 +79,7 @@ const SheetProductCard = memo(({
         <img ref={imgRef} src={product.image} alt={product.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
       </div>
       <div className="p-2 space-y-1">
-        <p className="text-[11px] font-medium text-foreground leading-tight line-clamp-2 h-[28px]">{product.title}</p>
+        <p className="text-[11px] font-medium text-foreground leading-[14px] line-clamp-2 h-[28px]">{product.title}</p>
         <p className="text-sm font-bold text-primary">{product.price} ₾</p>
         <Button onClick={handleAdd} size="sm" className={cn("w-full h-7 text-xs font-bold rounded-md transition-all duration-200", added && "bg-success hover:bg-success text-success-foreground")} disabled={added}>
           {added ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> ✓</span> : <span className="flex items-center gap-1"><Plus className="w-3 h-3" /> დამატება</span>}
