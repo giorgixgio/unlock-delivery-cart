@@ -132,7 +132,7 @@ const ge: Record<string, string> = {
   "address_placeholder": "ქუჩა, სახლი, ბინა",
   "submitting": "იგზავნება...",
   "order_cod": "შეკვეთა — გადახდა მიტანისას",
-  "unlock_order": "🔓 დაამატე {amount} ₾ — გახსენი შეკვეთა",
+  "unlock_order": "🔓 დაამატე {count} პროდუქტი — გახსენი შეკვეთა",
   "order_failed": "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.",
 
   // Validation
