@@ -398,6 +398,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
+          {/* ══════ Flow guidance ══════ */}
+          <div className="flex items-center justify-center gap-1.5 py-1">
+            <span className="text-xs font-bold text-primary">⚡ ბოლო ნაბიჯი — შეავსე ინფორმაცია ↓</span>
+          </div>
+
           {/* ══════ SECTION 2: Order Form ══════ */}
           <div className="checkout-card overflow-hidden">
             {showRecognizedCard ? (
