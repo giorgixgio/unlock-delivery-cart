@@ -9,25 +9,35 @@ import ProductCard from "@/components/ProductCard";
 import HeroProductCard from "@/components/HeroProductCard";
 import MissionHeroStrip from "@/components/MissionHeroStrip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 
 const INITIAL_LOAD = 16;
 const LOAD_MORE_BATCH = 12;
 
 /** Skeleton grid for loading state */
 const GridSkeleton = () => (
-  <div className="grid grid-cols-2 gap-3">
-    {/* Hero skeleton — full width */}
-    <div className="col-span-2 rounded-xl overflow-hidden border border-border">
-      <Skeleton className="aspect-[4/3] w-full" />
-      <div className="p-4 space-y-3">
+  <div className="grid grid-cols-2 gap-2.5">
+    {/* Hero skeleton — left column */}
+    <div className="row-span-2 rounded-xl overflow-hidden border border-border">
+      <Skeleton className="aspect-square w-full" />
+      <div className="p-3 space-y-2">
         <Skeleton className="h-5 w-3/4" />
         <Skeleton className="h-7 w-1/3" />
-        <Skeleton className="h-2 w-full" />
-        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
       </div>
     </div>
-    {Array.from({ length: 6 }).map((_, i) => (
+    {/* Right column skeletons */}
+    {Array.from({ length: 2 }).map((_, i) => (
+      <div key={`side-${i}`} className="rounded-lg overflow-hidden border border-border">
+        <Skeleton className="aspect-square w-full" />
+        <div className="p-2 space-y-1.5">
+          <Skeleton className="h-3 w-3/4" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+      </div>
+    ))}
+    {/* Below grid skeletons */}
+    {Array.from({ length: 4 }).map((_, i) => (
       <div key={i} className="rounded-lg overflow-hidden border border-border">
         <Skeleton className="aspect-square w-full" />
         <div className="p-3 space-y-2">
@@ -46,6 +56,27 @@ const SectionLabel = ({ label }: { label: string }) => (
     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{label}</h3>
   </div>
 );
+/** Scroll cue — subtle chevron that auto-hides after first scroll */
+const ScrollCue = () => {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 80) setVisible(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="flex flex-col items-center py-3 animate-bounce-slow">
+      <span className="text-[11px] font-semibold text-muted-foreground">იხილე მეტი</span>
+      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+    </div>
+  );
+};
 
 const Shop = () => {
   const [searchParams] = useSearchParams();
@@ -134,8 +165,28 @@ const Shop = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [heroProduct?.id]);
 
-  const renderGrid = () => {
-    const elements: React.ReactNode[] = [];
+  // Number of side-stack products next to hero
+  const SIDE_STACK_COUNT = 2;
+
+  const renderHeroSection = () => {
+    // Collect all initial products in order
+    const allInitial: { product: Product; isHero: boolean; sectionType: string }[] = [];
+    let rendered = 0;
+    for (const section of sections) {
+      if (rendered >= INITIAL_LOAD) break;
+      for (const product of section.products) {
+        if (rendered >= INITIAL_LOAD) break;
+        allInitial.push({ product, isHero: rendered === 0, sectionType: section.type });
+        rendered++;
+      }
+    }
+
+    if (allInitial.length === 0) return { heroSection: null, remainingElements: [] };
+
+    const heroItem = allInitial[0];
+    const sideItems = allInitial.slice(1, 1 + SIDE_STACK_COUNT);
+    const restItems = allInitial.slice(1 + SIDE_STACK_COUNT);
+
     const overrides = getStockOverrides();
     const heroIsOOS = heroProduct && (overrides[heroProduct.id] !== undefined ? !overrides[heroProduct.id] : heroProduct.available === false);
     const sectionLabels: Record<string, string> = {
@@ -144,37 +195,41 @@ const Shop = () => {
       weighted: "შენთვის",
     };
 
-    let rendered = 0;
+    const heroSection = (
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Hero — left column, spans full height */}
+        <div className="row-span-2 flex">
+          <div className="w-full">
+            <HeroProductCard key={heroItem.product.id} product={heroItem.product} />
+          </div>
+        </div>
+        {/* Right column — stacked smaller cards */}
+        {sideItems.map((item) => (
+          <ProductCard key={item.product.id} product={item.product} />
+        ))}
+      </div>
+    );
 
-    for (const section of sections) {
-      if (rendered >= INITIAL_LOAD) break;
-
-      // Section label (skip for hero)
-      if (section.type !== "hero" && section.products.length > 0 && sectionLabels[section.type]) {
-        elements.push(<SectionLabel key={`label-${section.type}`} label={sectionLabels[section.type]} />);
+    // Build remaining grid elements
+    const remainingElements: React.ReactNode[] = [];
+    let lastSectionType = "";
+    for (const item of restItems) {
+      if (item.sectionType !== lastSectionType && item.sectionType !== "hero" && sectionLabels[item.sectionType]) {
+        remainingElements.push(<SectionLabel key={`label-${item.sectionType}`} label={sectionLabels[item.sectionType]} />);
+        lastSectionType = item.sectionType;
       }
-
-      for (const product of section.products) {
-        if (rendered >= INITIAL_LOAD) break;
-
-        if (rendered === 0) {
-          elements.push(<HeroProductCard key={product.id} product={product} />);
-        } else {
-          elements.push(<ProductCard key={product.id} product={product} />);
-        }
-        rendered++;
-      }
+      remainingElements.push(<ProductCard key={item.product.id} product={item.product} />);
     }
 
     // Extra items from infinite scroll
     if (extraItems.length > 0) {
-      elements.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
+      remainingElements.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
       for (const product of extraItems) {
-        elements.push(<ProductCard key={product.id} product={product} />);
+        remainingElements.push(<ProductCard key={product.id} product={product} />);
       }
     }
 
-    return elements;
+    return { heroSection, remainingElements };
   };
 
   return (
@@ -194,17 +249,29 @@ const Shop = () => {
         {isLoading ? (
           <GridSkeleton />
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2.5">
-              {renderGrid()}
-            </div>
+          (() => {
+            const { heroSection, remainingElements } = renderHeroSection();
+            return (
+              <>
+                {heroSection}
 
-            {hasMore && (
-              <div ref={loaderRef} className="flex justify-center py-6">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-          </>
+                {/* Scroll cue */}
+                {remainingElements.length > 0 && <ScrollCue />}
+
+                {remainingElements.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+                    {remainingElements}
+                  </div>
+                )}
+
+                {hasMore && (
+                  <div ref={loaderRef} className="flex justify-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </>
+            );
+          })()
         )}
       </div>
     </main>
