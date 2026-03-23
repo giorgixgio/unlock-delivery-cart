@@ -67,6 +67,17 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         toast(`⚡ კიდევ ${postRemaining} პროდუქტი დარჩა`, { duration: 1500 });
       } else if (postCount === threshold) {
         // Exact threshold: unlock celebration
+        trackEvent("threshold_unlocked", {
+          threshold,
+          cart_count: postCount,
+          cart_value: total + product.price,
+          product_id: product.id,
+          product_name: product.title,
+          price: product.price,
+          source: src,
+          items_to_threshold: 0,
+          is_unlocked: true,
+        });
         toast("🎉 უფასო მიწოდება გააქტიურდა!", { duration: 2500 });
       } else {
         // Post-threshold: show savings
