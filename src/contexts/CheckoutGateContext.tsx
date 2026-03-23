@@ -63,6 +63,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const postValue = total + product.price;
 
       // ── Always fire product_added ──
+      console.log("[product_added] FIRING — product:", product.id, "source:", src, "ts:", Date.now(), "component: CheckoutGateContext");
       trackEvent("product_added", {
         product_id: product.id,
         product_name: product.title,
@@ -73,7 +74,8 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
         threshold,
         items_to_threshold: postRemaining,
         is_unlocked: postCount >= threshold,
-      });
+      }, true);
+      console.log("[product_added] FIRED — product:", product.id, "ts:", Date.now());
 
       // ── Fire popup_item_added for popup-sourced adds ──
       if (src === "popup") {
