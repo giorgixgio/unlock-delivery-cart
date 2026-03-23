@@ -89,14 +89,14 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
           )}
         </div>
 
-        <div className="p-3 space-y-1.5">
+        <div className="p-3">
           {/* Title: fixed 2-line area */}
           <h2 className="text-sm font-bold text-foreground leading-tight line-clamp-2 h-[2.5rem]">
             {product.title}
           </h2>
 
           {/* Pricing row */}
-          <div className="flex items-baseline gap-1.5 flex-wrap">
+          <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
             <span className="text-lg font-extrabold text-primary">{product.price} ₾</span>
             <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
             <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
@@ -104,13 +104,13 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
             </span>
           </div>
 
-          {/* Micro proof */}
-          <ProductMicroProof product={product} maxChars={36} />
+          {/* Urgency/info: fixed 2-line area */}
+          <ProductMicroProof product={product} maxChars={40} lines={2} />
 
           {/* Add to cart */}
           {!isOOS && (
             <>
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center justify-between mt-1.5">
                 {quantity === 0 ? (
                   <Button onClick={handleAdd} className="w-full h-10 text-sm font-bold rounded-lg" size="default">
                     <Plus className="w-4 h-4 mr-1" />
@@ -129,7 +129,7 @@ const HeroProductCard = memo(({ product }: HeroProductCardProps) => {
                 )}
               </div>
               {/* COD helper text */}
-              <p className="text-[9px] text-muted-foreground text-center leading-tight">
+              <p className="text-[9px] text-muted-foreground text-center mt-1 leading-tight h-[14px]">
                 გადახდა მიღებისას
               </p>
             </>

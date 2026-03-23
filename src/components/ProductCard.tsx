@@ -113,8 +113,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
 
         <div className="p-2.5">
-          {/* Title: fixed 2-line area */}
-          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 h-[2.5rem] md:text-base md:h-[3rem]">
+          {/* Title: fixed 2-line area — deterministic height */}
+          <p className="text-sm font-medium text-foreground leading-tight line-clamp-2 h-[2.5rem]">
             {product.title}
           </p>
 
@@ -133,11 +133,11 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
             );
           })()}
 
-          {/* Micro proof: single line, truncated */}
-          <ProductMicroProof product={product} maxChars={32} />
+          {/* Urgency/info: fixed 2-line area */}
+          <ProductMicroProof product={product} maxChars={40} lines={2} />
 
           {/* CTA */}
-          <div className="mt-2">
+          <div className="mt-1.5">
             {isOOS ? (
               <Button disabled className="w-full h-10 text-sm font-bold rounded-lg opacity-50" size="default">
                 Sold Out
@@ -177,7 +177,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
 
           {/* COD helper text */}
           {!isOOS && (
-            <p className="text-[9px] text-muted-foreground text-center mt-1 leading-tight">
+            <p className="text-[9px] text-muted-foreground text-center mt-1 leading-tight h-[14px]">
               გადახდა მიღებისას
             </p>
           )}
