@@ -7,7 +7,7 @@ import { Product } from "@/lib/constants";
 import { getStockOverrides } from "@/lib/stockOverrideStore";
 import ProductCard from "@/components/ProductCard";
 import HeroProductCard from "@/components/HeroProductCard";
-import ShopMissionHeader from "@/components/ShopMissionHeader";
+import MissionHeroStrip from "@/components/MissionHeroStrip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 
@@ -179,7 +179,7 @@ const Shop = () => {
 
   return (
     <main className="pb-32">
-      <ShopMissionHeader />
+      <MissionHeroStrip />
 
       <div className="container max-w-2xl mx-auto px-3 pt-3">
         {/* Fallback message if hero not found (only for truly missing products, not OOS) */}
