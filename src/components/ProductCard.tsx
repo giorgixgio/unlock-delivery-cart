@@ -12,6 +12,7 @@ import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore"
 
 interface ProductCardProps {
   product: Product;
+  isHero?: boolean;
 }
 
 const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
@@ -56,7 +57,7 @@ const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
 };
 
 
-const ProductCard = memo(({ product }: ProductCardProps) => {
+const ProductCard = memo(({ product, isHero = false }: ProductCardProps) => {
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
   const { updateQuantity, getQuantity } = useCart();
@@ -85,9 +86,9 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
   return (
     <>
       <div
-        className={`relative bg-card rounded-lg shadow-card overflow-hidden border border-border cursor-pointer transition-transform duration-150 ${
-          pressed ? "scale-[0.98] shadow-lg" : ""
-        }`}
+        className={`relative bg-card rounded-lg shadow-card overflow-hidden border cursor-pointer transition-transform duration-150 ${
+          isHero ? "border-primary border-2 ring-2 ring-primary/20 shadow-lg" : "border-border"
+        } ${pressed ? "scale-[0.98] shadow-lg" : ""}`}
         onClick={handleCardClick}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
