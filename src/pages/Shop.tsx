@@ -7,7 +7,7 @@ import { Product } from "@/lib/constants";
 import { getStockOverrides } from "@/lib/stockOverrideStore";
 import ProductCard from "@/components/ProductCard";
 import HeroProductCard from "@/components/HeroProductCard";
-import ShopMissionHeader from "@/components/ShopMissionHeader";
+import MissionHeroStrip from "@/components/MissionHeroStrip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 
