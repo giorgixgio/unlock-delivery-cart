@@ -88,6 +88,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const cityRef = useRef<HTMLDivElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
 
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
@@ -113,15 +115,24 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   const countdown = useCountdown(6);
 
-  // Phone validity check for reveal
+  // Phone validity check for reveal + focus city
   useEffect(() => {
     if (isValidGeorgianPhone(form.phone) && !phoneRevealed) {
       setPhoneRevealed(true);
       setTimeout(() => {
-        cityRef.current?.querySelector("input")?.focus();
-      }, 280);
+        cityInputRef.current?.focus();
+        cityRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
     }
   }, [form.phone, phoneRevealed]);
+
+  // Focus address after city is confirmed (called from PredictiveInput onConfirm)
+  const handleCityConfirm = useCallback(() => {
+    setTimeout(() => {
+      addressInputRef.current?.focus();
+      addressInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, []);
 
   // If recognized user, fields should be revealed
   useEffect(() => {
@@ -260,7 +271,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         if (!form.phone || form.phone.trim().length < 5) {
           document.getElementById("checkout-phone-input")?.focus();
         } else if (!form.region || form.region.trim().length < 1) {
-          cityRef.current?.querySelector("input")?.focus();
+          cityInputRef.current?.focus();
+        } else if (!form.address || form.address.trim().length < 1) {
+          addressInputRef.current?.focus();
         }
       }, 400);
       return;
@@ -532,9 +545,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                             value={form.region}
                             onChange={(val) => handleChange("region", val)}
                             onSelect={(s) => handleChange("region", s.text)}
+                            onConfirm={handleCityConfirm}
                             getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
                             placeholder="მაგ: თბილისი"
                             error={errors.region}
+                            inputRef={cityInputRef}
                           />
                         </div>
                       </div>
@@ -548,6 +563,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                             getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
                             placeholder="ქუჩა, სახლი, ბინა"
                             error={errors.address}
+                            inputRef={addressInputRef}
                           />
                         </div>
                       </div>
