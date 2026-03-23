@@ -120,17 +120,19 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const prevCount = useRef(itemCount);
   const addedDuringSession = useRef(0);
 
-  // Track upsell_shown once per open
+  // Track popup_shown once per open
   useEffect(() => {
     if (open) {
       addedDuringSession.current = 0;
-      trackEvent("upsell_shown", {
+      trackEvent("popup_shown", {
         source,
         cart_count: itemCount,
         cart_value: total,
         threshold,
         items_to_threshold: remaining,
         is_unlocked: isUnlocked,
+        popup_type: "cart_builder",
+        context: isUnlocked ? "post_threshold" : "pre_threshold",
       });
     }
   }, [open]);
