@@ -242,7 +242,7 @@ const SheetProgressBar = ({ itemCount, threshold, isUnlocked }: { itemCount: num
 };
 
 // ── Main Product Sheet ──
-const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
+const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: ProductSheetProps) => {
   const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining, threshold, total } = useCart();
   const isMobile = useIsMobile();
   const { handleCheckoutIntent } = useCheckoutGate();
