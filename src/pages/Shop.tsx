@@ -134,8 +134,28 @@ const Shop = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [heroProduct?.id]);
 
-  const renderGrid = () => {
-    const elements: React.ReactNode[] = [];
+  // Number of side-stack products next to hero
+  const SIDE_STACK_COUNT = 2;
+
+  const renderHeroSection = () => {
+    // Collect all initial products in order
+    const allInitial: { product: Product; isHero: boolean; sectionType: string }[] = [];
+    let rendered = 0;
+    for (const section of sections) {
+      if (rendered >= INITIAL_LOAD) break;
+      for (const product of section.products) {
+        if (rendered >= INITIAL_LOAD) break;
+        allInitial.push({ product, isHero: rendered === 0, sectionType: section.type });
+        rendered++;
+      }
+    }
+
+    if (allInitial.length === 0) return { heroSection: null, remainingElements: [] };
+
+    const heroItem = allInitial[0];
+    const sideItems = allInitial.slice(1, 1 + SIDE_STACK_COUNT);
+    const restItems = allInitial.slice(1 + SIDE_STACK_COUNT);
+
     const overrides = getStockOverrides();
     const heroIsOOS = heroProduct && (overrides[heroProduct.id] !== undefined ? !overrides[heroProduct.id] : heroProduct.available === false);
     const sectionLabels: Record<string, string> = {
@@ -144,37 +164,41 @@ const Shop = () => {
       weighted: "შენთვის",
     };
 
-    let rendered = 0;
+    const heroSection = (
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Hero — left column, spans full height */}
+        <div className="row-span-2 flex">
+          <div className="w-full">
+            <HeroProductCard key={heroItem.product.id} product={heroItem.product} />
+          </div>
+        </div>
+        {/* Right column — stacked smaller cards */}
+        {sideItems.map((item) => (
+          <ProductCard key={item.product.id} product={item.product} />
+        ))}
+      </div>
+    );
 
-    for (const section of sections) {
-      if (rendered >= INITIAL_LOAD) break;
-
-      // Section label (skip for hero)
-      if (section.type !== "hero" && section.products.length > 0 && sectionLabels[section.type]) {
-        elements.push(<SectionLabel key={`label-${section.type}`} label={sectionLabels[section.type]} />);
+    // Build remaining grid elements
+    const remainingElements: React.ReactNode[] = [];
+    let lastSectionType = "";
+    for (const item of restItems) {
+      if (item.sectionType !== lastSectionType && item.sectionType !== "hero" && sectionLabels[item.sectionType]) {
+        remainingElements.push(<SectionLabel key={`label-${item.sectionType}`} label={sectionLabels[item.sectionType]} />);
+        lastSectionType = item.sectionType;
       }
-
-      for (const product of section.products) {
-        if (rendered >= INITIAL_LOAD) break;
-
-        if (rendered === 0) {
-          elements.push(<HeroProductCard key={product.id} product={product} />);
-        } else {
-          elements.push(<ProductCard key={product.id} product={product} />);
-        }
-        rendered++;
-      }
+      remainingElements.push(<ProductCard key={item.product.id} product={item.product} />);
     }
 
     // Extra items from infinite scroll
     if (extraItems.length > 0) {
-      elements.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
+      remainingElements.push(<SectionLabel key="label-more" label="მეტი პროდუქტი" />);
       for (const product of extraItems) {
-        elements.push(<ProductCard key={product.id} product={product} />);
+        remainingElements.push(<ProductCard key={product.id} product={product} />);
       }
     }
 
-    return elements;
+    return { heroSection, remainingElements };
   };
 
   return (
