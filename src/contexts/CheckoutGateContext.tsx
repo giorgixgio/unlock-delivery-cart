@@ -44,17 +44,16 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (product: Product, src: string) => {
       addItem(product);
       setLastAddedProduct(product);
-      // Post-add item count (current + 1)
       const postCount = itemCount + 1;
       toast("დამატებულია ✅", { duration: 1200 });
-      if (postCount >= threshold) {
-        openCart();
-      } else {
+      // Never auto-redirect to cart — always open suggestion sheet
+      if (postCount < threshold) {
         setSource(src);
         setSheetOpen(true);
       }
+      // If threshold met, do nothing — user stays on grid/sheet
     },
-    [addItem, itemCount, openCart, threshold]
+    [addItem, itemCount, threshold]
   );
 
   return (
