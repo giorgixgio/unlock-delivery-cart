@@ -349,7 +349,7 @@ const ru: Record<string, string> = {
   "address_placeholder": "Улица, дом, квартира",
   "submitting": "Отправка...",
   "order_cod": "Заказ — оплата при доставке",
-  "unlock_order": "🔓 Добавьте {amount} ₾ — откройте заказ",
+  "unlock_order": "🔓 Добавьте {count} товаров — откройте заказ",
   "order_failed": "Не удалось создать заказ. Попробуйте снова.",
 
   // Validation
