@@ -502,8 +502,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   >
                     <div className="space-y-2" ref={cityRef}>
                       <div>
-                        <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
-                        <div className="mt-1">
+                        <Label className="text-xs font-bold text-foreground">ქალაქი / რეგიონი</Label>
+                        <div className="mt-0.5">
                           <PredictiveInput
                             value={form.region}
                             onChange={(val) => handleChange("region", val)}
