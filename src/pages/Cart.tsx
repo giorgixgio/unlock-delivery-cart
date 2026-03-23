@@ -486,9 +486,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   </div>
 
                   {/* Microcopy below phone */}
-                  <div className="flex items-center gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-[9px] px-[11px] py-2">
-                    <Phone className="w-3.5 h-3.5 text-[#166534] flex-shrink-0" />
-                    <span className="text-[11px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ შეკვეთის დასადასტურებლად</span>
+                  <div className="flex items-center gap-1.5 bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2 py-1.5">
+                    <Phone className="w-3 h-3 text-[#166534] flex-shrink-0" />
+                    <span className="text-[10px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ დასადასტურებლად</span>
                   </div>
 
                   {/* City and address — progressive reveal */}
