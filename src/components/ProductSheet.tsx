@@ -318,7 +318,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
               onClick={handleFinalize}
               className="h-full text-base transition-all duration-300 bg-primary text-primary-foreground"
             >
-              დაამატე კიდევ — აკლია {remaining.toFixed(1)} ₾
+              დაამატე კიდევ — აკლია {remaining} პროდუქტი
             </AttentionButton>
           ) : (
             <Button onClick={handleQuickOrder} className="w-full h-full text-base font-bold rounded-xl transition-all duration-200" size="lg">
