@@ -1,35 +1,43 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useCart } from "@/contexts/CartContext";
-import { Check, Truck, CreditCard } from "lucide-react";
+import { Truck, CreditCard } from "lucide-react";
+
+// Seeded random for synthetic compare price
+function seededRand(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  }
+  return (Math.abs(h) % 1000) / 1000;
+}
 
 const CheckoutPriceReveal = () => {
   const { items, total, orderTotal } = useCart();
 
-  const { oldTotal, hasSale, savings } = useMemo(() => {
+  const { oldTotal, savings } = useMemo(() => {
     let old = 0;
-    let hasAny = false;
     for (const { product, quantity } of items) {
       if (product.compareAtPrice && product.compareAtPrice > product.price) {
         old += product.compareAtPrice * quantity;
-        hasAny = true;
       } else {
-        old += product.price * quantity;
+        // Synthetic compare price
+        const mult = 2.0 + seededRand(product.id + "_compare") * 0.9;
+        old += Math.round(product.price * mult * 10) / 10 * quantity;
       }
     }
-    const sav = hasAny ? old - total : 0;
-    return { oldTotal: hasAny ? old : null, hasSale: hasAny && sav > 0, savings: sav };
+    const sav = old - total;
+    return { oldTotal: old, savings: sav > 0 ? sav : 0 };
   }, [items, total]);
 
-  // Slot-machine animation
-  const [phase, setPhase] = useState<"counting" | "done">("counting");
+  // Slot-machine animation with delay
+  const [phase, setPhase] = useState<"waiting" | "counting" | "done">("waiting");
   const [displayValue, setDisplayValue] = useState(0);
   const hasRun = useRef(false);
   const prefersReduced = useRef(
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 
-  // Start value for countdown: use oldTotal if available, otherwise 2x total
-  const startValue = oldTotal ?? orderTotal * 2.2;
+  const startValue = oldTotal;
 
   useEffect(() => {
     if (hasRun.current || prefersReduced.current) {
@@ -38,30 +46,36 @@ const CheckoutPriceReveal = () => {
       return;
     }
     hasRun.current = true;
-
     setDisplayValue(startValue);
-    const duration = 1000; // ms
-    const startTime = performance.now();
-    let raf: number;
 
-    const animate = (time: number) => {
-      const elapsed = time - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease-out cubic for fast start, smooth end
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = startValue - (startValue - orderTotal) * eased;
-      setDisplayValue(current);
+    // 300ms delay before animation starts
+    const delayTimer = setTimeout(() => {
+      setPhase("counting");
+      const duration = 1800; // longer duration
+      const startTime = performance.now();
+      let raf: number;
 
-      if (progress < 1) {
-        raf = requestAnimationFrame(animate);
-      } else {
-        setDisplayValue(orderTotal);
-        setPhase("done");
-      }
-    };
+      const animate = (time: number) => {
+        const elapsed = time - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic for fast start, smooth slow finish
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = startValue - (startValue - orderTotal) * eased;
+        setDisplayValue(current);
 
-    raf = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(raf);
+        if (progress < 1) {
+          raf = requestAnimationFrame(animate);
+        } else {
+          setDisplayValue(orderTotal);
+          setPhase("done");
+        }
+      };
+
+      raf = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(raf);
+    }, 300);
+
+    return () => clearTimeout(delayTimer);
   }, [orderTotal, startValue]);
 
   const showBounce = phase === "done";
@@ -72,7 +86,7 @@ const CheckoutPriceReveal = () => {
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-foreground">სულ გადასახდელი</span>
         <div className="flex items-baseline gap-2">
-          {hasSale && oldTotal && phase === "done" && (
+          {phase === "done" && oldTotal > 0 && (
             <span className="text-sm text-muted-foreground line-through animate-fade-in">
               {oldTotal.toFixed(1)}₾
             </span>
@@ -81,6 +95,7 @@ const CheckoutPriceReveal = () => {
             className={`text-2xl font-extrabold text-primary transition-transform duration-300 ${
               showBounce ? "animate-checkout-bounce" : ""
             }`}
+            style={showBounce ? { textShadow: "0 0 12px hsl(var(--primary) / 0.3)" } : undefined}
           >
             {displayValue.toFixed(1)}₾
           </span>
@@ -88,7 +103,7 @@ const CheckoutPriceReveal = () => {
       </div>
 
       {/* Savings badge */}
-      {hasSale && phase === "done" && (
+      {savings > 0 && phase === "done" && (
         <div className="flex justify-end animate-fade-in">
           <span className="text-xs font-bold bg-deal text-deal-foreground px-2.5 py-1 rounded-md inline-flex items-center gap-1">
             შენ დაზოგე {savings.toFixed(1)}₾ 🎉
