@@ -271,7 +271,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         if (!form.phone || form.phone.trim().length < 5) {
           document.getElementById("checkout-phone-input")?.focus();
         } else if (!form.region || form.region.trim().length < 1) {
-          cityRef.current?.querySelector("input")?.focus();
+          cityInputRef.current?.focus();
+        } else if (!form.address || form.address.trim().length < 1) {
+          addressInputRef.current?.focus();
         }
       }, 400);
       return;
