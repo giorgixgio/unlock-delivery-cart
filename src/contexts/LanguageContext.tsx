@@ -165,7 +165,7 @@ const ge: Record<string, string> = {
   "recommended_for_you": "რეკომენდაცია შენთვის",
   "delivery_unlocked_emoji": "🎉 მიტანა გახსნილია",
   "redirecting": "გადამისამართება...",
-  "added_more_left": "დამატებულია — კიდევ {amount} ₾",
+  "added_more_left": "დამატებულია — კიდევ {count} პროდუქტი",
 
   // Recommendation block
   "delivery_unlocked_check": "მიტანა გახსნილია ✅",
