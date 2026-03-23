@@ -173,7 +173,7 @@ const ge: Record<string, string> = {
   "more_left_short": "კიდევ {count} პროდუქტი დარჩა",
 
   // Booster row
-  "more_to_min_order": "კიდევ {amount} ₾ მინიმალურ შეკვეთამდე",
+  "more_to_min_order": "კიდევ {count} პროდუქტი მინიმალურ შეკვეთამდე",
   "add_btn": "+ დამატება",
 
   // Cart item urgency
