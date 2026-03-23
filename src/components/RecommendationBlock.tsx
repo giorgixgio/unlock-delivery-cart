@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import { Sparkles, Plus, Eye, Check } from "lucide-react";
-import { Product, DELIVERY_THRESHOLD } from "@/lib/constants";
+import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -13,8 +13,7 @@ interface RecommendationBlockProps {
 }
 
 const MiniProductCard = memo(({ product }: { product: Product }) => {
-  const { addItem, isUnlocked } = useCart();
-  const { remaining } = useCart();
+  const { addItem, isUnlocked, remaining } = useCart();
   const [added, setAdded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -22,11 +21,11 @@ const MiniProductCard = memo(({ product }: { product: Product }) => {
     e.stopPropagation();
     addItem(product);
     setAdded(true);
-    const newRemaining = Math.max(0, remaining - product.price);
+    const newRemaining = Math.max(0, remaining - 1);
     if (newRemaining > 0) {
-      toast(`დამატებულია — კიდევ ${newRemaining.toFixed(1)} ₾`, { duration: 1500 });
+      toast(`დამატებულია — კიდევ ${newRemaining} პროდუქტი`, { duration: 1500 });
     } else {
-      toast("მიტანა გახსნილია ✅", { duration: 2000 });
+      toast("შეკვეთა მზადაა ✅", { duration: 2000 });
     }
     setTimeout(() => setAdded(false), 1200);
   };
@@ -97,7 +96,7 @@ const RecommendationBlock = memo(({ products, remaining }: RecommendationBlockPr
       <div className="col-span-2 my-2 py-3 px-4 rounded-lg bg-success/10 border border-success/30 text-center transition-all duration-500">
         <p className="text-sm font-bold text-success flex items-center justify-center gap-2">
           <Check className="w-4 h-4" />
-          მიტანა გახსნილია ✅
+          შეკვეთა მზადაა ✅
         </p>
       </div>
     );
@@ -107,10 +106,10 @@ const RecommendationBlock = memo(({ products, remaining }: RecommendationBlockPr
     <div className="col-span-2 my-2 py-3 px-3 rounded-lg bg-accent border border-primary/15">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles className="w-4 h-4 text-primary" />
-        <span className="text-sm font-bold text-foreground">რეკომენდაცია მიტანის გასახსნელად</span>
+        <span className="text-sm font-bold text-foreground">დაამატე კიდევ პროდუქტი</span>
       </div>
       <p className="text-xs text-muted-foreground mb-2.5">
-        კიდევ {remaining.toFixed(1)} ₾ დარჩა
+        კიდევ {remaining} პროდუქტი დარჩა
       </p>
       <ScrollArea className="w-full">
         <div className="flex gap-2.5 pb-1">

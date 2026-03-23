@@ -21,10 +21,10 @@ const AdminSettings = () => {
   const [newRole, setNewRole] = useState("operator");
   const [adding, setAdding] = useState(false);
 
-  // Threshold setting
-  const [threshold, setThreshold] = useState("");
-  const [thresholdLoading, setThresholdLoading] = useState(true);
-  const [thresholdSaving, setThresholdSaving] = useState(false);
+  // Minimum product quantity setting
+  const [minQuantity, setMinQuantity] = useState("");
+  const [quantityLoading, setQuantityLoading] = useState(true);
+  const [quantitySaving, setQuantitySaving] = useState(false);
 
   const fetchUsers = async () => {
     const { data } = await supabase.from("admin_users").select("*").order("created_at");
@@ -32,38 +32,38 @@ const AdminSettings = () => {
     setLoading(false);
   };
 
-  const fetchThreshold = async () => {
+  const fetchMinQuantity = async () => {
     const { data } = await supabase
       .from("site_settings")
       .select("value")
-      .eq("key", "minimum_order_threshold")
+      .eq("key", "minimum_product_quantity")
       .maybeSingle();
-    if (data?.value) setThreshold(data.value);
-    setThresholdLoading(false);
+    if (data?.value) setMinQuantity(data.value);
+    setQuantityLoading(false);
   };
 
   useEffect(() => {
     fetchUsers();
-    fetchThreshold();
+    fetchMinQuantity();
   }, []);
 
-  const saveThreshold = async () => {
-    const val = parseFloat(threshold);
+  const saveMinQuantity = async () => {
+    const val = parseInt(minQuantity, 10);
     if (isNaN(val) || val <= 0) {
       toast.error("შეიყვანეთ სწორი რიცხვი");
       return;
     }
-    setThresholdSaving(true);
+    setQuantitySaving(true);
     const { error } = await supabase
       .from("site_settings")
       .update({ value: String(val), updated_at: new Date().toISOString() })
-      .eq("key", "minimum_order_threshold");
+      .eq("key", "minimum_product_quantity");
     if (error) {
       toast.error("შენახვა ვერ მოხერხდა");
     } else {
-      toast.success(`მინიმალური შეკვეთა შეიცვალა: ${val}₾`);
+      toast.success(`მინიმალური პროდუქტების რაოდენობა შეიცვალა: ${val}`);
     }
-    setThresholdSaving(false);
+    setQuantitySaving(false);
   };
 
   const addUser = async () => {
@@ -89,29 +89,29 @@ const AdminSettings = () => {
     <div className="p-6 space-y-6 max-w-3xl">
       <h1 className="text-2xl font-extrabold text-foreground">Settings</h1>
 
-      {/* Minimum order threshold */}
+      {/* Minimum product quantity */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
-        <h3 className="font-bold text-sm">მინიმალური შეკვეთის თანხა (₾)</h3>
+        <h3 className="font-bold text-sm">მინიმალური პროდუქტების რაოდენობა</h3>
         <p className="text-xs text-muted-foreground">
-          ეს მნიშვნელობა გამოიყენება მთელ საიტზე — კალათაში, პროგრეს ბარში, რეკომენდაციებში.
+          რამდენი პროდუქტი უნდა იყოს კალათაში შეკვეთის გასაფორმებლად. გამოიყენება მთელ საიტზე — კალათაში, პროგრეს ბარში, რეკომენდაციებში.
         </p>
-        {thresholdLoading ? (
+        {quantityLoading ? (
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
         ) : (
           <div className="flex gap-3 items-end">
             <div className="w-32">
-              <Label className="text-xs">თანხა (₾)</Label>
+              <Label className="text-xs">რაოდენობა</Label>
               <Input
                 type="number"
                 min="1"
-                step="0.1"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
+                step="1"
+                value={minQuantity}
+                onChange={(e) => setMinQuantity(e.target.value)}
                 className="h-10"
               />
             </div>
-            <Button onClick={saveThreshold} disabled={thresholdSaving} className="h-10">
-              {thresholdSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            <Button onClick={saveMinQuantity} disabled={quantitySaving} className="h-10">
+              {quantitySaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
               შენახვა
             </Button>
           </div>

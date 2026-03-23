@@ -16,7 +16,7 @@ interface CheckoutGateContextType {
 const CheckoutGateContext = createContext<CheckoutGateContextType | undefined>(undefined);
 
 export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isUnlocked, addItem, total, threshold } = useCart();
+  const { isUnlocked, addItem, itemCount, threshold } = useCart();
   const { openCart } = useCartOverlay();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -44,17 +44,17 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (product: Product, src: string) => {
       addItem(product);
       setLastAddedProduct(product);
-      // Compute post-add total with rounding to avoid floating-point issues
-      const postTotal = Math.round((total + product.price) * 10) / 10;
+      // Post-add item count (current + 1)
+      const postCount = itemCount + 1;
       toast("დამატებულია ✅", { duration: 1200 });
-      if (postTotal >= threshold) {
+      if (postCount >= threshold) {
         openCart();
       } else {
         setSource(src);
         setSheetOpen(true);
       }
     },
-    [addItem, total, openCart, threshold]
+    [addItem, itemCount, openCart, threshold]
   );
 
   return (

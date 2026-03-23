@@ -9,7 +9,6 @@ import { Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import AnimatedNumber from "@/components/AnimatedNumber";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
@@ -77,9 +76,9 @@ const SheetProductCard = memo(({
     if (imgRef.current && cartIconRef.current) {
       flyToCart(imgRef.current, cartIconRef.current);
     }
-    const newRemaining = Math.max(0, remaining - product.price);
+    const newRemaining = Math.max(0, remaining - 1);
     if (newRemaining > 0) {
-      toast(`დამატებულია — კიდევ ${newRemaining.toFixed(1)} ₾`, { duration: 1500 });
+      toast(`დამატებულია — კიდევ ${newRemaining} პროდუქტი`, { duration: 1500 });
     }
     setTimeout(() => setAdded(false), 1200);
   };
@@ -197,9 +196,8 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     lastScrollTop.current = st;
   }, []);
 
-  const progress = Math.min(100, (total / threshold) * 100);
-  const gap = remaining;
-  const almostThere = gap > 0 && gap < 5;
+  const progress = Math.min(100, (itemCount / threshold) * 100);
+  const almostThere = remaining > 0 && remaining <= 1;
 
   // ── Filter out cart items from cached ranking on render ──
   const cartIds = useMemo(() => new Set(items.map((i) => i.product.id)), [items]);
@@ -250,7 +248,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
               <span className="text-xs font-bold text-muted-foreground">
-                <AnimatedNumber value={total} /> / {threshold} ₾
+                {itemCount} / {threshold} პროდუქტი
               </span>
               <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
                 <div ref={cartIconRef}>
@@ -269,12 +267,10 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
                   {almostThere
                     ? "თითქმის მოხერხდა! 🔥"
-                    : `კალათაში უკვე არის ${total.toFixed(1)}₾`}
+                    : `კალათაში ${itemCount} პროდუქტია`}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {almostThere
-                    ? `დაამატეთ კიდევ ${gap.toFixed(1)}₾ შეკვეთის დასასრულებლად`
-                    : `დაამატეთ კიდევ ${gap.toFixed(1)}₾ შეკვეთის დასასრულებლად`}
+                  დაამატეთ კიდევ {remaining} პროდუქტი შეკვეთის დასასრულებლად
                 </p>
               </div>
               <DeliveryMissionBar />

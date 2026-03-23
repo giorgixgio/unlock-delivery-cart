@@ -242,7 +242,7 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
               {isUnlocked ? (
                 <><ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება</>
               ) : (
-                `🔓 დაამატე ${remaining.toFixed(1)} ₾ — გახსენი შეკვეთა`
+                `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
               )}
             </Button>
           ) : (

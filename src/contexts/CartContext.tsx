@@ -34,6 +34,7 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   itemCount: number;
+  /** Number of additional products needed to reach minimum */
   remaining: number;
   isUnlocked: boolean;
   getQuantity: (productId: string) => number;
@@ -41,6 +42,7 @@ interface CartContextType {
   isFreeDelivery: boolean;
   shippingFee: number;
   orderTotal: number;
+  /** Minimum product quantity required */
   threshold: number;
 }
 
@@ -98,8 +100,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const total = useMemo(() => Math.round(items.reduce((sum, i) => sum + i.product.price * i.quantity, 0) * 100) / 100, [items]);
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
   const uniqueItemCount = items.length;
-  // Round to 1 decimal for threshold check — matches what user sees in UI
-  const remaining = Math.max(0, Math.round((threshold - total) * 10) / 10);
+  // remaining = how many more products needed
+  const remaining = Math.max(0, threshold - itemCount);
   const isUnlocked = remaining <= 0;
   const isFreeDelivery = true;
   const shippingFee = 0;

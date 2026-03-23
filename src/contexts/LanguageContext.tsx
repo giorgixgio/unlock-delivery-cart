@@ -29,7 +29,7 @@ const ge: Record<string, string> = {
 
   // Trust modal content
   "free_delivery_desc_1": "მიტანა ყოველთვის უფასოა.",
-  "free_delivery_desc_2": "მინიმალური შეკვეთა 25₾.",
+  "free_delivery_desc_2": "მინიმალური შეკვეთა 3 პროდუქტი.",
   "price_guarantee_desc": "თუ პროდუქტის ფასი შემცირდა შეძენიდან 30 დღეში, ჩვენ ავანაზღაურებთ სხვაობას.",
   "why_us_desc_1": "ხარისხიანი პროდუქტები საუკეთესო ფასად.",
   "why_us_desc_2": "სწრაფი მიტანა და მომხმარებლის მხარდაჭერა.",
@@ -85,7 +85,7 @@ const ge: Record<string, string> = {
   "price_saved_for_you": "ფასი შენთვის დაცულია",
   "items_left": "ცალი დარჩა მარაგში",
   "complete_order": "შეკვეთის დასრულება",
-  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. შეკვეთა 25 ₾",
+  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. 3 პროდუქტი",
   "cart_add_cod": "კალათაში — გადახდა მიტანისას",
   "add_to_cart_btn": "დამატება კალათაში",
 
@@ -110,13 +110,13 @@ const ge: Record<string, string> = {
   "more_to_go": "კიდევ",
   "min_order": "მინ. შეკვეთა",
   "min_order_threshold": "მინიმალურ შეკვეთამდე",
-  "plus_free_delivery": "— მინ. შეკვეთა {threshold} ₾ + უფასო მიტანა",
+  "plus_free_delivery": "— მინ. {threshold} პროდუქტი + უფასო მიტანა",
 
   // Cart
   "cart_title": "კალათა",
   "cart_empty": "კალათა ცარიელია",
   "go_back": "უკან დაბრუნება",
-  "add_more": "დაამატე კიდევ {amount} ₾ შეკვეთის გასაფორმებლად",
+  "add_more": "დაამატე კიდევ {count} პროდუქტი შეკვეთის გასაფორმებლად",
   "cod_info_title": "გადახდა მიტანისას",
   "cod_info_desc": "თანხას გადაიხდით კურიერთან. ბარათი არ გჭირდებათ.",
   "your_data": "შენი მონაცემები",
@@ -132,7 +132,7 @@ const ge: Record<string, string> = {
   "address_placeholder": "ქუჩა, სახლი, ბინა",
   "submitting": "იგზავნება...",
   "order_cod": "შეკვეთა — გადახდა მიტანისას",
-  "unlock_order": "🔓 დაამატე {amount} ₾ — გახსენი შეკვეთა",
+  "unlock_order": "🔓 დაამატე {count} პროდუქტი — გახსენი შეკვეთა",
   "order_failed": "შეკვეთის შექმნა ვერ მოხერხდა. სცადეთ თავიდან.",
 
   // Validation
@@ -153,27 +153,27 @@ const ge: Record<string, string> = {
 
   // Sticky HUD
   "complete_order_btn": "შეკვეთის დასრულება",
-  "unlock_btn": "🔓 დაამატე {amount} ₾ — გახსენი შეკვეთა",
+  "unlock_btn": "🔓 დაამატე {count} პროდუქტი — გახსენი შეკვეთა",
 
   // Soft checkout
   "min_order_title": "მინიმალური შეკვეთა",
   "almost_there_fire": "თითქმის მოხერხდა! 🔥",
-  "more_left": "კიდევ {amount} ₾ დარჩა 🎉",
-  "add_1_2_products": "დაამატე 1–2 პროდუქტი მინ. შეკვეთის მისაღწევად ({threshold} ₾)",
+  "more_left": "კიდევ {count} პროდუქტი დარჩა 🎉",
+  "add_1_2_products": "დაამატე კიდევ პროდუქტი მინ. შეკვეთის მისაღწევად ({threshold} ცალი)",
   "no_recommendations": "რეკომენდაციები ამჟამად არ არის — დაამატეთ კატალოგიდან",
   "perfect_to_unlock": "იდეალური გასახსნელად",
   "recommended_for_you": "რეკომენდაცია შენთვის",
   "delivery_unlocked_emoji": "🎉 მიტანა გახსნილია",
   "redirecting": "გადამისამართება...",
-  "added_more_left": "დამატებულია — კიდევ {amount} ₾",
+  "added_more_left": "დამატებულია — კიდევ {count} პროდუქტი",
 
   // Recommendation block
   "delivery_unlocked_check": "მიტანა გახსნილია ✅",
   "rec_for_delivery": "რეკომენდაცია მიტანის გასახსნელად",
-  "more_left_short": "კიდევ {amount} ₾ დარჩა",
+  "more_left_short": "კიდევ {count} პროდუქტი დარჩა",
 
   // Booster row
-  "more_to_min_order": "კიდევ {amount} ₾ მინიმალურ შეკვეთამდე",
+  "more_to_min_order": "კიდევ {count} პროდუქტი მინიმალურ შეკვეთამდე",
   "add_btn": "+ დამატება",
 
   // Cart item urgency
@@ -246,7 +246,7 @@ const ru: Record<string, string> = {
 
   // Trust modal content
   "free_delivery_desc_1": "Доставка всегда бесплатна.",
-  "free_delivery_desc_2": "Минимальный заказ 25₾.",
+  "free_delivery_desc_2": "Минимальный заказ 3 товара.",
   "price_guarantee_desc": "Если цена снизится в течение 30 дней после покупки, мы компенсируем разницу.",
   "why_us_desc_1": "Качественные товары по лучшим ценам.",
   "why_us_desc_2": "Быстрая доставка и поддержка клиентов.",
@@ -302,7 +302,7 @@ const ru: Record<string, string> = {
   "price_saved_for_you": "Цена сохранена для вас",
   "items_left": "шт. осталось на складе",
   "complete_order": "Завершить заказ",
-  "continue_shopping_min": "Продолжить покупки — мин. заказ 25 ₾",
+  "continue_shopping_min": "Продолжить покупки — мин. 3 товара",
   "cart_add_cod": "В корзину — оплата при доставке",
   "add_to_cart_btn": "Добавить в корзину",
 
@@ -327,13 +327,13 @@ const ru: Record<string, string> = {
   "more_to_go": "Ещё",
   "min_order": "Мин. заказ",
   "min_order_threshold": "до минимального заказа",
-  "plus_free_delivery": "— мин. заказ {threshold} ₾ + бесплатная доставка",
+  "plus_free_delivery": "— мин. {threshold} товаров + бесплатная доставка",
 
   // Cart
   "cart_title": "Корзина",
   "cart_empty": "Корзина пуста",
   "go_back": "Вернуться назад",
-  "add_more": "Добавьте ещё {amount} ₾ для оформления заказа",
+  "add_more": "Добавьте ещё {count} товаров для оформления заказа",
   "cod_info_title": "Оплата при доставке",
   "cod_info_desc": "Оплатите курьеру на месте. Карта не нужна.",
   "your_data": "Ваши данные",
@@ -349,7 +349,7 @@ const ru: Record<string, string> = {
   "address_placeholder": "Улица, дом, квартира",
   "submitting": "Отправка...",
   "order_cod": "Заказ — оплата при доставке",
-  "unlock_order": "🔓 Добавьте {amount} ₾ — откройте заказ",
+  "unlock_order": "🔓 Добавьте {count} товаров — откройте заказ",
   "order_failed": "Не удалось создать заказ. Попробуйте снова.",
 
   // Validation
@@ -370,27 +370,27 @@ const ru: Record<string, string> = {
 
   // Sticky HUD
   "complete_order_btn": "Завершить заказ",
-  "unlock_btn": "🔓 Добавьте {amount} ₾ — откройте заказ",
+  "unlock_btn": "🔓 Добавьте {count} товаров — откройте заказ",
 
   // Soft checkout
   "min_order_title": "Минимальный заказ",
   "almost_there_fire": "Почти готово! 🔥",
-  "more_left": "Ещё {amount} ₾ осталось 🎉",
-  "add_1_2_products": "Добавьте 1–2 товара для минимального заказа ({threshold} ₾)",
+  "more_left": "Ещё {count} товаров 🎉",
+  "add_1_2_products": "Добавьте ещё товары для минимального заказа ({threshold} шт.)",
   "no_recommendations": "Рекомендации пока недоступны — добавьте из каталога",
   "perfect_to_unlock": "Идеально для разблокировки",
   "recommended_for_you": "Рекомендации для вас",
   "delivery_unlocked_emoji": "🎉 Доставка разблокирована",
   "redirecting": "Перенаправление...",
-  "added_more_left": "Добавлено — ещё {amount} ₾",
+  "added_more_left": "Добавлено — ещё {count} товаров",
 
   // Recommendation block
   "delivery_unlocked_check": "Доставка разблокирована ✅",
   "rec_for_delivery": "Рекомендации для разблокировки доставки",
-  "more_left_short": "Ещё {amount} ₾",
+  "more_left_short": "Ещё {count} товаров",
 
   // Booster row
-  "more_to_min_order": "Ещё {amount} ₾ до минимального заказа",
+  "more_to_min_order": "Ещё {count} товаров до минимального заказа",
   "add_btn": "+ Добавить",
 
   // Cart item urgency
