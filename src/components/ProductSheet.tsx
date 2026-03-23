@@ -6,10 +6,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
-import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X, Link2 } from "lucide-react";
+import { Plus, Minus, Check, Truck, Banknote, ShoppingBag, ChevronDown, Flame, ShoppingCart, X, Link2, Lock, Gift, PartyPopper } from "lucide-react";
 import AttentionButton from "@/components/AttentionButton";
 import { toast } from "sonner";
 import {
@@ -24,6 +23,7 @@ import {
 } from "@/lib/demoData";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 import { trackViewContent } from "@/lib/metaPixel";
+import { cn } from "@/lib/utils";
 
 interface ProductSheetProps {
   product: Product | null;
@@ -31,6 +31,7 @@ interface ProductSheetProps {
   onClose: () => void;
 }
 
+// ── Image Carousel ──
 const ImageCarousel = ({ images, title, productId }: { images: string[]; title: string; productId: string }) => {
   const [current, setCurrent] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -38,73 +39,30 @@ const ImageCarousel = ({ images, title, productId }: { images: string[]; title: 
   const startXRef = useRef(0);
   const imgs = images.length > 0 ? images : ["/placeholder.svg"];
 
-  useEffect(() => {
-    setCurrent(0);
-    setOffset(0);
-  }, [productId]);
+  useEffect(() => { setCurrent(0); setOffset(0); }, [productId]);
+  useEffect(() => { imgs.forEach((src) => { const img = new Image(); img.src = src; }); }, [imgs]);
 
-  useEffect(() => {
-    imgs.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, [imgs]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    startXRef.current = e.touches[0].clientX;
-    setSwiping(true);
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!swiping) return;
-    setOffset(e.touches[0].clientX - startXRef.current);
-  }, [swiping]);
-
+  const handleTouchStart = useCallback((e: React.TouchEvent) => { startXRef.current = e.touches[0].clientX; setSwiping(true); }, []);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => { if (!swiping) return; setOffset(e.touches[0].clientX - startXRef.current); }, [swiping]);
   const handleTouchEnd = useCallback(() => {
     setSwiping(false);
     const threshold = 50;
-    if (offset < -threshold && current < imgs.length - 1) {
-      setCurrent((c) => c + 1);
-    } else if (offset > threshold && current > 0) {
-      setCurrent((c) => c - 1);
-    }
+    if (offset < -threshold && current < imgs.length - 1) setCurrent((c) => c + 1);
+    else if (offset > threshold && current > 0) setCurrent((c) => c - 1);
     setOffset(0);
   }, [offset, current, imgs.length]);
 
   return (
-    <div
-      className="relative w-full aspect-square bg-muted overflow-hidden"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div
-        className="flex h-full"
-        style={{
-          transform: `translateX(calc(-${current * 100}% + ${swiping ? offset : 0}px))`,
-          transition: swiping ? "none" : "transform 280ms ease-out",
-        }}
-      >
+    <div className="relative w-full aspect-square bg-muted overflow-hidden" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+      <div className="flex h-full" style={{ transform: `translateX(calc(-${current * 100}% + ${swiping ? offset : 0}px))`, transition: swiping ? "none" : "transform 280ms ease-out" }}>
         {imgs.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt={`${title} ${i + 1}`}
-            className="w-full h-full object-cover flex-shrink-0"
-            draggable={false}
-          />
+          <img key={i} src={src} alt={`${title} ${i + 1}`} className="w-full h-full object-cover flex-shrink-0" draggable={false} />
         ))}
       </div>
       {imgs.length > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20">
           {imgs.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === current ? "w-6 h-2.5 bg-primary" : "w-2.5 h-2.5 bg-foreground/30"
-              }`}
-            />
+            <button key={i} onClick={() => setCurrent(i)} className={`rounded-full transition-all duration-300 ${i === current ? "w-6 h-2.5 bg-primary" : "w-2.5 h-2.5 bg-foreground/30"}`} />
           ))}
         </div>
       )}
@@ -119,9 +77,7 @@ const DemoBadges = ({ productId }: { productId: string }) => {
   return (
     <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
       {badges.map((b) => (
-        <span key={b} className="bg-badge text-badge-foreground text-xs font-bold px-2.5 py-1 rounded-md shadow-md">
-          {b}
-        </span>
+        <span key={b} className="bg-badge text-badge-foreground text-xs font-bold px-2.5 py-1 rounded-md shadow-md">{b}</span>
       ))}
     </div>
   );
@@ -152,7 +108,6 @@ const ScarcityPanel = ({ productId }: { productId: string }) => {
   const isMed = label.color === "orange";
   const barColor = isLow ? "bg-destructive" : isMed ? "bg-secondary" : "bg-primary";
   const iconColor = isLow ? "text-destructive" : isMed ? "text-secondary" : "text-primary";
-
   return (
     <div className="mx-4 py-2.5 px-3 rounded-lg bg-card border border-border space-y-2">
       <div className="flex items-center gap-2">
@@ -171,20 +126,8 @@ const DemoTimer = ({ productId }: { productId: string }) => {
   const [timerEnd] = useState(() => getTimerEnd(productId));
   const [msLeft, setMsLeft] = useState(() => Math.max(0, timerEnd - Date.now()));
   const [pulse, setPulse] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => setMsLeft(Math.max(0, timerEnd - Date.now())), 1000);
-    return () => clearInterval(interval);
-  }, [timerEnd]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPulse(true);
-      setTimeout(() => setPulse(false), 600);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
+  useEffect(() => { const interval = setInterval(() => setMsLeft(Math.max(0, timerEnd - Date.now())), 1000); return () => clearInterval(interval); }, [timerEnd]);
+  useEffect(() => { const interval = setInterval(() => { setPulse(true); setTimeout(() => setPulse(false), 600); }, 10000); return () => clearInterval(interval); }, []);
   return (
     <div className={`mx-4 py-2.5 px-3 rounded-lg bg-accent border border-primary/20 transition-transform duration-300 ${pulse ? "scale-[1.02]" : ""}`}>
       <p className="text-xs text-muted-foreground font-medium">ფასი შენთვის დაცულია</p>
@@ -200,7 +143,6 @@ const DescriptionSection = ({ description }: { description: string }) => {
     return description.replace(/<[^>]*>/g, "").split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 5).slice(0, 3);
   }, [description]);
   const fullText = description?.replace(/<[^>]*>/g, "").trim();
-
   return (
     <div className="px-4 py-3 space-y-2">
       {bullets.length > 0 && (
@@ -226,13 +168,84 @@ const DescriptionSection = ({ description }: { description: string }) => {
   );
 };
 
+// ── Sheet Progress Bar — elastic pulse fill ──
+const SheetProgressBar = ({ itemCount, threshold, isUnlocked }: { itemCount: number; threshold: number; isUnlocked: boolean }) => {
+  const progress = Math.min(100, (itemCount / threshold) * 100);
+  const [pulsing, setPulsing] = useState(false);
+  const prevCount = useRef(itemCount);
+
+  useEffect(() => {
+    if (itemCount > prevCount.current && itemCount > 0) {
+      setPulsing(true);
+      const t = setTimeout(() => setPulsing(false), 450);
+      prevCount.current = itemCount;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = itemCount;
+  }, [itemCount]);
+
+  const StatusIcon = isUnlocked ? PartyPopper : itemCount > 0 ? Gift : Lock;
+  const remaining = Math.max(0, threshold - itemCount);
+
+  return (
+    <div className="px-4 py-2.5 space-y-2 bg-accent/30 border-b border-border/50">
+      {/* Status line */}
+      <div className="flex items-center gap-2">
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+          isUnlocked ? "bg-success text-success-foreground" : "bg-primary/15 text-primary",
+          pulsing && "scale-125"
+        )}>
+          <StatusIcon className="w-3 h-3" />
+        </div>
+        <p className={cn(
+          "text-[13px] font-bold leading-tight flex-1",
+          isUnlocked ? "text-success" : "text-foreground"
+        )}>
+          {isUnlocked
+            ? "🎉 შეკვეთა მზადაა"
+            : remaining === 1
+            ? "🔥 კიდევ 1 პროდუქტი დარჩა!"
+            : `კიდევ ${remaining} პროდუქტი — გახსნი შეკვეთას`}
+        </p>
+        <span className={cn(
+          "text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0",
+          isUnlocked ? "bg-success/15 text-success" : "bg-primary/10 text-primary"
+        )}>
+          {itemCount}/{threshold}
+        </span>
+      </div>
+
+      {/* Thick elastic progress bar */}
+      <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-[width] duration-500 ease-out",
+            isUnlocked ? "delivery-path-complete progress-glow-success" : "delivery-path-active progress-glow",
+            pulsing && "animate-pulse-fill"
+          )}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Micro explanation */}
+      <p className="text-[10px] text-muted-foreground leading-tight">
+        {isUnlocked
+          ? "შეგიძლია გააგრძელო ან შეკვეთა დაასრულო"
+          : `მინიმუმ ${threshold} პროდუქტი შეკვეთის გასაგრძელებლად`}
+      </p>
+    </div>
+  );
+};
+
+// ── Main Product Sheet ──
 const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
-  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining } = useCart();
+  const { addItem, updateQuantity, getQuantity, isUnlocked, itemCount, remaining, threshold } = useCart();
   const isMobile = useIsMobile();
   const { handleCheckoutIntent } = useCheckoutGate();
   const [actionState, setActionState] = useState<"idle" | "added" | "finalize">("idle");
   const prevUnlocked = useRef(isUnlocked);
-  const [_justUnlocked, setJustUnlocked] = useState(false);
+  const [justUnlocked, setJustUnlocked] = useState(false);
   const initialItemCount = useRef(0);
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
 
@@ -249,7 +262,7 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
   useEffect(() => {
     if (isUnlocked && !prevUnlocked.current) {
       setJustUnlocked(true);
-      setTimeout(() => setJustUnlocked(false), 2000);
+      setTimeout(() => setJustUnlocked(false), 2500);
     }
     prevUnlocked.current = isUnlocked;
   }, [isUnlocked]);
@@ -258,7 +271,6 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   const isOOS = overrides[product.id] !== undefined ? !overrides[product.id] : product.available === false;
   const quantity = getQuantity(product.id);
-  const showThresholdUI = itemCount > 0;
 
   const { addAndGate } = useCheckoutGate();
 
@@ -273,7 +285,11 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
   const handleFinalize = () => {
     onClose();
-    handleCheckoutIntent("pdp_sheet");
+    if (isUnlocked) {
+      handleCheckoutIntent("pdp_sheet");
+    } else {
+      handleCheckoutIntent("pdp_sheet");
+    }
   };
 
   const renderActionZone = () => {
@@ -307,10 +323,13 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
           ) : quantity > 0 && isUnlocked ? (
             <Button
               onClick={handleFinalize}
-              className="w-full h-full text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
+              className={cn(
+                "w-full h-full text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock",
+                justUnlocked && "animate-cta-pulse-success"
+              )}
               size="lg"
             >
-              <ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება
+              <ShoppingCart className="w-5 h-5 mr-2" /> კალათის გახსნა
             </Button>
           ) : quantity > 0 && !isUnlocked ? (
             <AttentionButton
@@ -348,6 +367,9 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
         </div>
 
         <div className={isMobile ? '' : 'flex-1 overflow-y-auto max-h-[80vh]'}>
+          {/* ── Progress bar — PRIMARY feedback surface ── */}
+          <SheetProgressBar itemCount={itemCount} threshold={threshold} isUnlocked={isUnlocked} />
+
           <div className="px-4 pt-3 pb-1 md:px-6 md:pt-5">
             <div className="flex items-start gap-2">
               <h2 className="text-lg font-extrabold text-foreground leading-tight line-clamp-2 flex-1 md:text-xl">{product.title}</h2>
@@ -379,19 +401,14 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
             })()}
             <MicroBenefitStacked />
           </div>
-          <div className="my-3">
-            <DeliveryInfoRow />
-          </div>
+          <div className="my-3"><DeliveryInfoRow /></div>
           <TrustStrip />
-          <div className="my-3">
-            <ScarcityPanel productId={product.id} />
-          </div>
+          <div className="my-3"><ScarcityPanel productId={product.id} /></div>
           <DemoTimer productId={product.id} />
           <DescriptionSection description={product.description} />
 
           {!isMobile && (
             <div className="border-t border-border p-6 bg-card space-y-3">
-              {showThresholdUI && !isUnlocked && !isOOS && <DeliveryMissionBar mini />}
               {renderActionZone()}
             </div>
           )}
@@ -400,7 +417,6 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
 
       {isMobile && (
         <div className="border-t border-border p-4 bg-card space-y-3">
-          {showThresholdUI && !isUnlocked && !isOOS && <DeliveryMissionBar mini />}
           {renderActionZone()}
         </div>
       )}

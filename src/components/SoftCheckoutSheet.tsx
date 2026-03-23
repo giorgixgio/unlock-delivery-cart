@@ -6,7 +6,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
-import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2, CheckCircle2, Gift, Lock, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import ProductSheet from "@/components/ProductSheet";
@@ -30,18 +30,12 @@ function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
     { duration: 300, easing: "ease-out" }
   );
   if (prefersReduced) return;
-
   const imgRect = imgEl.getBoundingClientRect();
   const targetRect = targetEl.getBoundingClientRect();
   const clone = document.createElement("img");
   clone.src = imgEl.src;
-  clone.style.cssText = `
-    position:fixed; z-index:9999; pointer-events:none; border-radius:8px;
-    width:${imgRect.width}px; height:${imgRect.height}px;
-    left:${imgRect.left}px; top:${imgRect.top}px; object-fit:cover;
-  `;
+  clone.style.cssText = `position:fixed;z-index:9999;pointer-events:none;border-radius:8px;width:${imgRect.width}px;height:${imgRect.height}px;left:${imgRect.left}px;top:${imgRect.top}px;object-fit:cover;`;
   document.body.appendChild(clone);
-
   const dx = targetRect.left + targetRect.width / 2 - (imgRect.left + imgRect.width / 2);
   const dy = targetRect.top + targetRect.height / 2 - (imgRect.top + imgRect.height / 2);
   clone.animate(
@@ -57,9 +51,7 @@ function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
 
 // ── Product Card ──
 const SheetProductCard = memo(({
-  product,
-  cartIconRef,
-  onTapProduct,
+  product, cartIconRef, onTapProduct,
 }: {
   product: Product;
   cartIconRef: React.RefObject<HTMLDivElement | null>;
@@ -73,9 +65,7 @@ const SheetProductCard = memo(({
     e.stopPropagation();
     addItem(product);
     setAdded(true);
-    if (imgRef.current && cartIconRef.current) {
-      flyToCart(imgRef.current, cartIconRef.current);
-    }
+    if (imgRef.current && cartIconRef.current) flyToCart(imgRef.current, cartIconRef.current);
     const newRemaining = Math.max(0, remaining - 1);
     if (newRemaining > 0) {
       toast(`დამატებულია — კიდევ ${newRemaining} პროდუქტი`, { duration: 1500 });
@@ -84,30 +74,15 @@ const SheetProductCard = memo(({
   };
 
   return (
-    <div
-      className="bg-card rounded-lg border border-border overflow-hidden shadow-sm cursor-pointer active:scale-[0.97] transition-transform"
-      onClick={() => onTapProduct(product)}
-    >
+    <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm cursor-pointer active:scale-[0.97] transition-transform" onClick={() => onTapProduct(product)}>
       <div className="relative w-full aspect-square bg-muted overflow-hidden">
-        <img ref={imgRef} src={product.image} alt={product.title}
-          className="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img ref={imgRef} src={product.image} alt={product.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
       </div>
       <div className="p-2 space-y-1">
         <p className="text-xs font-medium text-foreground leading-tight line-clamp-1">{product.title}</p>
         <p className="text-sm font-bold text-primary">{product.price} ₾</p>
-        <Button
-          onClick={handleAdd} size="sm"
-          className={cn(
-            "w-full h-7 text-xs font-bold rounded-md transition-all duration-200",
-            added && "bg-success hover:bg-success text-success-foreground"
-          )}
-          disabled={added}
-        >
-          {added ? (
-            <span className="flex items-center gap-1"><Check className="w-3 h-3" /> ✓</span>
-          ) : (
-            <span className="flex items-center gap-1"><Plus className="w-3 h-3" /> დამატება</span>
-          )}
+        <Button onClick={handleAdd} size="sm" className={cn("w-full h-7 text-xs font-bold rounded-md transition-all duration-200", added && "bg-success hover:bg-success text-success-foreground")} disabled={added}>
+          {added ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> ✓</span> : <span className="flex items-center gap-1"><Plus className="w-3 h-3" /> დამატება</span>}
         </Button>
       </div>
     </div>
@@ -115,7 +90,6 @@ const SheetProductCard = memo(({
 });
 SheetProductCard.displayName = "SheetProductCard";
 
-// ── Skeleton Grid ──
 const SkeletonGrid = () => (
   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
     {Array.from({ length: 8 }).map((_, i) => (
@@ -134,22 +108,29 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   const { total, isUnlocked, remaining, itemCount, items, threshold } = useCart();
   const { lastAddedProduct } = useCheckoutGate();
   const { data: products = [], isLoading } = useProducts();
-  const prevUnlocked = useRef(isUnlocked);
   const { openCart } = useCartOverlay();
   const cartIconRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // ProductSheet state
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
-
-  // ── Cached ranked list ──
   const [cachedRanking, setCachedRanking] = useState<{ gapFillers: Product[]; recommended: Product[] } | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const handleTapProduct = useCallback((product: Product) => {
-    setSheetProduct(product);
-  }, []);
+  // Progress pulse animation
+  const [pulsing, setPulsing] = useState(false);
+  const prevCount = useRef(itemCount);
+
+  useEffect(() => {
+    if (itemCount > prevCount.current && itemCount > 0) {
+      setPulsing(true);
+      const t = setTimeout(() => setPulsing(false), 450);
+      prevCount.current = itemCount;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = itemCount;
+  }, [itemCount]);
+
+  const handleTapProduct = useCallback((product: Product) => setSheetProduct(product), []);
 
   useEffect(() => {
     if (open && products.length > 0 && remaining > 0) {
@@ -160,62 +141,22 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
       setCachedRanking(null);
       setVisibleCount(PAGE_SIZE);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, products]);
 
-  useEffect(() => {
-    if (open) {
-      prevUnlocked.current = false;
-    }
-  }, [open]);
-
-  // Auto-close when threshold reached
-  useEffect(() => {
-    if (open && isUnlocked) {
-      const timer = setTimeout(() => {
-        onClose();
-        onProceed();
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isUnlocked, open, onClose, onProceed]);
-
+  // NO auto-close/redirect — user decides when to proceed
   const progress = Math.min(100, (itemCount / threshold) * 100);
-
   const cartIds = useMemo(() => new Set(items.map((i) => i.product.id)), [items]);
-
-  const gapFillers = useMemo(() => {
-    if (!cachedRanking) return [];
-    return cachedRanking.gapFillers.filter((p) => !cartIds.has(p.id));
-  }, [cachedRanking, cartIds]);
-
-  const allRecommended = useMemo(() => {
-    if (!cachedRanking) return [];
-    return cachedRanking.recommended.filter((p) => !cartIds.has(p.id));
-  }, [cachedRanking, cartIds]);
-
-  const visibleRecommended = useMemo(
-    () => allRecommended.slice(0, visibleCount),
-    [allRecommended, visibleCount]
-  );
-
+  const gapFillers = useMemo(() => cachedRanking ? cachedRanking.gapFillers.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
+  const allRecommended = useMemo(() => cachedRanking ? cachedRanking.recommended.filter((p) => !cartIds.has(p.id)) : [], [cachedRanking, cartIds]);
+  const visibleRecommended = useMemo(() => allRecommended.slice(0, visibleCount), [allRecommended, visibleCount]);
   const hasMoreRecommended = visibleCount < allRecommended.length;
+  const handleLoadMore = useCallback(() => { setLoadingMore(true); setTimeout(() => { setVisibleCount((prev) => prev + PAGE_SIZE); setLoadingMore(false); }, 300); }, []);
 
-  const handleLoadMore = useCallback(() => {
-    setLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + PAGE_SIZE);
-      setLoadingMore(false);
-    }, 300);
-  }, []);
-
-  const handleViewCart = () => {
-    onClose();
-    openCart();
-  };
-
+  const handleViewCart = () => { onClose(); openCart(); };
   const hasContent = gapFillers.length > 0 || allRecommended.length > 0;
   const showEmpty = !isLoading && !hasContent;
+
+  const StatusIcon = isUnlocked ? PartyPopper : itemCount > 0 ? Gift : Lock;
 
   return (
     <>
@@ -223,57 +164,65 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         <DrawerContent className="max-h-[85vh] focus:outline-none flex flex-col">
           <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
-          {/* ── Compact sticky header ── */}
-          <div className="flex-shrink-0 sticky top-0 z-20 bg-card border-b border-border/50">
-            <div className="px-4 py-2.5 flex items-center gap-3">
-              <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
+          {/* ── Sticky header with DOMINANT progress ── */}
+          <div className="flex-shrink-0 sticky top-0 z-20 bg-card">
+            {/* Mission + progress row */}
+            <div className="px-4 py-2.5 space-y-2">
+              <div className="flex items-center gap-2.5">
+                <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted flex-shrink-0">
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </button>
 
-              {/* Progress + message */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-foreground leading-tight truncate">
-                  {remaining <= 1
-                    ? "🔥 კიდევ 1 პროდუქტი დარჩა!"
-                    : `ხშირად ამასაც ამატებენ 👇`}
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                  კალათაში {itemCount} / {threshold} • კიდევ {remaining} პროდუქტი
-                </p>
+                <div className={cn(
+                  "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                  isUnlocked ? "bg-success text-success-foreground" : "bg-primary/15 text-primary",
+                  pulsing && "scale-125"
+                )}>
+                  <StatusIcon className="w-3 h-3" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "text-[13px] font-bold leading-tight truncate",
+                    isUnlocked ? "text-success" : "text-foreground"
+                  )}>
+                    {isUnlocked
+                      ? "🎉 შეკვეთა მზადაა"
+                      : remaining === 1
+                      ? "🔥 კიდევ 1 პროდუქტი დარჩა!"
+                      : `კიდევ ${remaining} პროდუქტი — გახსნი შეკვეთას`}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                    კალათაში {itemCount} / {threshold} პროდუქტი
+                  </p>
+                </div>
+
+                <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted flex-shrink-0">
+                  <div ref={cartIconRef}><ShoppingCart className="w-5 h-5 text-foreground" /></div>
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{itemCount}</span>
+                  )}
+                </button>
               </div>
 
-              <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
-                <div ref={cartIconRef}>
-                  <ShoppingCart className="w-5 h-5 text-foreground" />
-                </div>
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Thin progress bar */}
-            <div className="h-1 bg-muted/60">
-              <div
-                className={cn(
-                  "h-full transition-[width] duration-500 ease-out",
-                  isUnlocked ? "delivery-path-complete" : "delivery-path-active"
-                )}
-                style={{ width: `${progress}%` }}
-              />
+              {/* Thick elastic progress bar */}
+              <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-500 ease-out",
+                    isUnlocked ? "delivery-path-complete progress-glow-success" : "delivery-path-active progress-glow",
+                    pulsing && "animate-pulse-fill"
+                  )}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
 
             {/* Last added confirmation */}
             {lastAddedProduct && (
-              <div className="px-4 py-2 flex items-center gap-2.5 bg-accent/30 border-b border-border/30">
+              <div className="px-4 py-2 flex items-center gap-2.5 bg-accent/30 border-y border-border/30">
                 <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                <img
-                  src={lastAddedProduct.image}
-                  alt={lastAddedProduct.title}
-                  className="w-8 h-8 rounded-md object-cover flex-shrink-0"
-                />
+                <img src={lastAddedProduct.image} alt={lastAddedProduct.title} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold text-success leading-tight">დამატებულია ✓</p>
                   <p className="text-[11px] font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
@@ -281,10 +230,29 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                 <span className="text-xs font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
               </div>
             )}
+
+            <div className="h-px bg-border/50" />
           </div>
 
           {/* ── Scrollable content ── */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-6">
+            {/* Unlocked: show CTA at top of content */}
+            {isUnlocked && (
+              <div className="py-4 space-y-3">
+                <div className="text-center space-y-1">
+                  <p className="text-lg font-extrabold text-success animate-success-reveal">🎉 შეკვეთა მზადაა!</p>
+                  <p className="text-xs text-muted-foreground">გააგრძელე ან გახსენი კალათა</p>
+                </div>
+                <Button
+                  onClick={handleViewCart}
+                  className="w-full h-12 text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
+                  size="lg"
+                >
+                  <ShoppingCart className="w-5 h-5 mr-2" /> კალათის გახსნა
+                </Button>
+              </div>
+            )}
+
             {isLoading ? (
               <SkeletonGrid />
             ) : showEmpty ? (
@@ -318,24 +286,10 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
                     </div>
-
                     <div className="flex justify-center mt-4 mb-2">
                       {hasMoreRecommended ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleLoadMore}
-                          disabled={loadingMore}
-                          className="gap-2 text-xs font-bold"
-                        >
-                          {loadingMore ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              იტვირთება...
-                            </>
-                          ) : (
-                            "მეტის ჩატვირთვა"
-                          )}
+                        <Button variant="outline" size="sm" onClick={handleLoadMore} disabled={loadingMore} className="gap-2 text-xs font-bold">
+                          {loadingMore ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> იტვირთება...</> : "მეტის ჩატვირთვა"}
                         </Button>
                       ) : allRecommended.length > PAGE_SIZE ? (
                         <span className="text-xs text-muted-foreground">მეტი აღარ არის</span>
@@ -346,24 +300,10 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </>
             )}
           </div>
-
-          {/* Unlocked overlay */}
-          {isUnlocked && (
-            <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
-              <div className="text-center space-y-2 animate-success-reveal">
-                <p className="text-2xl font-extrabold text-success">🎉 შეკვეთა მზადაა!</p>
-                <p className="text-sm text-muted-foreground">გადამისამართება...</p>
-              </div>
-            </div>
-          )}
         </DrawerContent>
       </Drawer>
 
-      <ProductSheet
-        product={sheetProduct}
-        open={!!sheetProduct}
-        onClose={() => setSheetProduct(null)}
-      />
+      <ProductSheet product={sheetProduct} open={!!sheetProduct} onClose={() => setSheetProduct(null)} />
     </>
   );
 };

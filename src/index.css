@@ -388,4 +388,25 @@
   animation: livePulse 1.5s ease-in-out infinite;
 }
 
+/* Elastic pulse-fill for progress bars */
+@keyframes pulse-fill {
+  0%   { transform: scaleX(1); }
+  50%  { transform: scaleX(1.08); }
+  100% { transform: scaleX(1); }
+}
+.animate-pulse-fill {
+  animation: pulse-fill 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: left center;
+}
+
+/* Progress bar inner glow */
+.progress-glow {
+  box-shadow: inset 0 0 6px 1px hsl(0 0% 100% / 0.3),
+              0 0 8px 1px hsl(var(--primary) / 0.25);
+}
+.progress-glow-success {
+  box-shadow: inset 0 0 6px 1px hsl(0 0% 100% / 0.3),
+              0 0 8px 1px hsl(var(--success) / 0.25);
+}
+
 /* Confirm modal animation helpers */
