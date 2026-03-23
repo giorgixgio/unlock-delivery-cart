@@ -85,7 +85,7 @@ const ge: Record<string, string> = {
   "price_saved_for_you": "ფასი შენთვის დაცულია",
   "items_left": "ცალი დარჩა მარაგში",
   "complete_order": "შეკვეთის დასრულება",
-  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. შეკვეთა 25 ₾",
+  "continue_shopping_min": "გააგრძელე შოპინგი — მინ. 3 პროდუქტი",
   "cart_add_cod": "კალათაში — გადახდა მიტანისას",
   "add_to_cart_btn": "დამატება კალათაში",
 
