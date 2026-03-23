@@ -6,11 +6,13 @@ interface PredictiveInputProps {
   value: string;
   onChange: (value: string) => void;
   onSelect?: (suggestion: Suggestion) => void;
+  onConfirm?: () => void;
   getSuggestions: (input: string) => Suggestion[];
   placeholder?: string;
   type?: string;
   className?: string;
   error?: string;
+  inputRef?: React.RefObject<HTMLInputElement>;
 }
 
 const PredictiveInput = ({
