@@ -185,8 +185,8 @@ const SubLine = ({ itemCount, remaining }: { itemCount: number; remaining: numbe
 };
 
 // ── Upgrade Layer ──────────────────────────────────────────
-const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
-  itemCount: number; threshold: number; lastFilled: number; exploding: boolean; aovMax: number;
+const UpgradeLayer = ({ itemCount, threshold, lastFilled, aovMax }: {
+  itemCount: number; threshold: number; lastFilled: number; aovMax: number;
 }) => (
   <>
     <div className="flex items-center justify-center gap-1.5 mb-[9px] rounded-[10px] py-1.5 px-3 neon-upgrade-nudge">
