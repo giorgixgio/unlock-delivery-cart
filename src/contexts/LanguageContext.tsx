@@ -327,7 +327,7 @@ const ru: Record<string, string> = {
   "more_to_go": "Ещё",
   "min_order": "Мин. заказ",
   "min_order_threshold": "до минимального заказа",
-  "plus_free_delivery": "— мин. заказ {threshold} ₾ + бесплатная доставка",
+  "plus_free_delivery": "— мин. {threshold} товаров + бесплатная доставка",
 
   // Cart
   "cart_title": "Корзина",
