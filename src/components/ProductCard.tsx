@@ -86,9 +86,9 @@ const ProductCard = memo(({ product, isHero = false }: ProductCardProps) => {
   return (
     <>
       <div
-        className={`relative bg-card rounded-lg shadow-card overflow-hidden border border-border cursor-pointer transition-transform duration-150 ${
-          pressed ? "scale-[0.98] shadow-lg" : ""
-        }`}
+        className={`relative bg-card rounded-lg shadow-card overflow-hidden border cursor-pointer transition-transform duration-150 ${
+          isHero ? "border-primary border-2 ring-2 ring-primary/20 shadow-lg" : "border-border"
+        } ${pressed ? "scale-[0.98] shadow-lg" : ""}`}
         onClick={handleCardClick}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
