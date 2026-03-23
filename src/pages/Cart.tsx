@@ -274,7 +274,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const handleSubmitOrder = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    console.log("[order_submitted] submit started, isMobile viewport:", window.innerWidth < 768);
     try {
       const order = await createOrder({
         customerName: generatePlaceholderName(),
