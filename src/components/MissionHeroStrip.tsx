@@ -80,7 +80,8 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
   <div className="flex gap-[7px] mb-[9px]">
     {Array.from({ length: threshold }).map((_, i) => {
       const filled = i < itemCount;
-      const active = i === itemCount;
+      const active = i === itemCount && itemCount < threshold;
+      const locked = !filled && !active;
       const isNew = i === lastFilled;
 
       return (
@@ -90,7 +91,7 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
             "flex-1 rounded-[10px] pt-[9px] px-1 pb-2 flex flex-col items-center gap-[3px] transition-all duration-300 relative overflow-hidden",
             filled && "neon-slot-filled",
             active && "neon-slot-active",
-            !filled && !active && "neon-slot-locked"
+            locked && "neon-slot-locked opacity-50"
           )}
           style={{
             animation: isNew
@@ -108,7 +109,7 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
           <span
             className="text-xl font-black leading-none"
             style={{
-              color: filled ? "#ff6a00" : active ? "#ff6a00" : "#1e1e1e",
+              color: filled ? "#ff6a00" : active ? "#ff6a00" : "#2a2a2a",
               textShadow: filled
                 ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.5)"
                 : active
@@ -121,10 +122,10 @@ const SlotRow = ({ itemCount, threshold, lastFilled }: {
           <span
             className="text-[9px] font-bold uppercase tracking-wide text-center"
             style={{
-              color: filled ? "#ff6a00" : active ? "#cc4400" : "#1a1a1a",
+              color: filled ? "#ff6a00" : active ? "#cc4400" : "#2a2a2a",
             }}
           >
-            {filled ? "დამატდა" : active ? "შემდეგი" : `${i + 1}-ე`}
+            {filled ? "დაემატა" : active ? "შემდეგი" : `${i + 1}-ე`}
           </span>
         </div>
       );
@@ -184,8 +185,8 @@ const SubLine = ({ itemCount, remaining }: { itemCount: number; remaining: numbe
 };
 
 // ── Upgrade Layer ──────────────────────────────────────────
-const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
-  itemCount: number; threshold: number; lastFilled: number; exploding: boolean; aovMax: number;
+const UpgradeLayer = ({ itemCount, threshold, lastFilled, aovMax }: {
+  itemCount: number; threshold: number; lastFilled: number; aovMax: number;
 }) => (
   <>
     <div className="flex items-center justify-center gap-1.5 mb-[9px] rounded-[10px] py-1.5 px-3 neon-upgrade-nudge">
@@ -199,7 +200,8 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
       {Array.from({ length: aovMax }).map((_, i) => {
         const filled = i < itemCount;
         const isCore = i < threshold;
-        const isNext = i === itemCount;
+        const isNext = i === itemCount && i < aovMax;
+        const locked = !filled && !isNext;
         const isNew = i === lastFilled;
 
         return (
@@ -210,15 +212,15 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
               filled && isCore && "neon-slot-filled",
               filled && !isCore && "neon-slot-bonus",
               isNext && "neon-slot-next-bonus",
-              !filled && !isNext && isCore && "neon-slot-locked",
-              !filled && !isNext && !isCore && "neon-slot-locked-bonus"
+              locked && isCore && "neon-slot-locked opacity-50",
+              locked && !isCore && "neon-slot-locked-bonus opacity-40"
             )}
             style={{
-              transform: !isCore && !filled ? "scale(0.92)" : "scale(1)",
+              transform: locked && !isCore ? "scale(0.92)" : "scale(1)",
               animation: isNew
                 ? "slotPop .55s cubic-bezier(0.34,1.56,0.64,1)"
-                : exploding && filled && isCore
-                ? "slotGlow .6s ease-in-out infinite alternate"
+                : isNext
+                ? "activePulse 2s ease-in-out infinite"
                 : "none",
             }}
           >
@@ -226,7 +228,7 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
               className="font-black leading-none"
               style={{
                 fontSize: !isCore ? 14 : 20,
-                color: filled ? (isCore ? "#ff6a00" : "#ffd700") : isNext ? "#cc9900" : "#1a1a1a",
+                color: filled ? (isCore ? "#ff6a00" : "#ffd700") : isNext ? "#cc9900" : "#2a2a2a",
                 textShadow: filled && isCore
                   ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.4)"
                   : filled && !isCore
@@ -234,15 +236,15 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
                   : "none",
               }}
             >
-              {filled ? (isCore ? "✓" : "★") : isNext ? "+" : "·"}
+              {filled ? (isCore ? "✓" : "★") : isNext ? "+" : "🔒"}
             </span>
             <span
               className="text-[9px] font-bold uppercase tracking-wide text-center"
               style={{
-                color: filled ? (isCore ? "#ff6a00" : "#cc9900") : isNext ? "#996600" : "#1a1a1a",
+                color: filled ? (isCore ? "#ff6a00" : "#cc9900") : isNext ? "#996600" : "#2a2a2a",
               }}
             >
-              {filled ? (isCore ? "დამატდა" : "ბონუსი!") : isNext ? "დაამატე" : `+${i + 1 - threshold}`}
+              {filled ? (isCore ? "დაემატა" : "ბონუსი!") : isNext ? "დაამატე" : `+${i + 1 - threshold}`}
             </span>
           </div>
         );
@@ -436,7 +438,6 @@ const MissionHeroStrip = () => {
                   itemCount={itemCount}
                   threshold={effectiveThreshold}
                   lastFilled={lastFilled}
-                  exploding={exploding}
                   aovMax={MAX_SLOTS}
                 />
               )}
