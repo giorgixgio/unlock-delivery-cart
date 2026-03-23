@@ -88,6 +88,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const cityRef = useRef<HTMLDivElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
 
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
