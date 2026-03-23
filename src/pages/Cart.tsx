@@ -98,7 +98,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // ── Mobile keyboard detection: hide sticky CTA when typing ──
+  // ── Mobile keyboard detection: compact CTA when typing ──
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
@@ -108,13 +108,12 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       }
     };
     const handleFocusOut = () => {
-      // Small delay to avoid flicker on field-to-field transitions
       setTimeout(() => {
         const active = document.activeElement?.tagName;
         if (active !== "INPUT" && active !== "TEXTAREA" && active !== "SELECT") {
           setKeyboardOpen(false);
         }
-      }, 100);
+      }, 120);
     };
     document.addEventListener("focusin", handleFocusIn);
     document.addEventListener("focusout", handleFocusOut);
@@ -444,7 +443,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-       <div className={keyboardOpen ? "pb-[60px]" : "pb-[180px]"}>
+       <div className={keyboardOpen ? "pb-[100px]" : "pb-[180px]"}>
         {/* Header — compact */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
           <div className="container max-w-2xl mx-auto px-3 py-1.5 flex items-center gap-2">
@@ -642,74 +641,79 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       </div>
 
       {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
+      {/* Always rendered — switches between normal and compact mode */}
       <div
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100] transition-all duration-300"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100] transition-all duration-200"
         style={{
-          background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)",
-          padding: "0 10px 14px",
-          transform: keyboardOpen ? "translate(-50%, 100%)" : "translate(-50%, 0)",
-          opacity: keyboardOpen ? 0 : 1,
-          pointerEvents: keyboardOpen ? "none" : "auto",
+          background: keyboardOpen
+            ? "hsl(var(--background))"
+            : "linear-gradient(to top, hsl(var(--background)) 75%, transparent)",
+          padding: keyboardOpen ? "0 10px 6px" : "0 10px 14px",
         }}
       >
         <div className="flex flex-col gap-1.5">
-          {/* Ticker — compact */}
-          <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
-            <div className="h-[2px] bg-muted relative">
-              <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-[7px]" style={{ minHeight: 32 }}>
-              <div className="w-4 flex items-center justify-center flex-shrink-0">
-                {tickerMsg.icon === "dot" ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] block animate-live-pulse" />
-                ) : (
-                  <span className="text-xs leading-none">{tickerMsg.icon}</span>
-                )}
+
+          {/* Ticker — hidden in compact/keyboard mode */}
+          {!keyboardOpen && (
+            <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
+              <div className="h-[2px] bg-muted relative">
+                <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
               </div>
-              <div className="flex-1 overflow-hidden relative h-4">
+              <div className="flex items-center gap-1.5 px-3 py-[7px]" style={{ minHeight: 32 }}>
+                <div className="w-4 flex items-center justify-center flex-shrink-0">
+                  {tickerMsg.icon === "dot" ? (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] block animate-live-pulse" />
+                  ) : (
+                    <span className="text-xs leading-none">{tickerMsg.icon}</span>
+                  )}
+                </div>
+                <div className="flex-1 overflow-hidden relative h-4">
+                  <div
+                    className="absolute text-[11px] font-semibold text-foreground whitespace-nowrap leading-4 transition-all"
+                    style={{
+                      transitionDuration: `${TRANS_MS}ms`,
+                      transitionTimingFunction: "ease",
+                      opacity: tickerPhase === "hold" ? 1 : 0,
+                      transform: tickerPhase === "out" ? "translateY(-8px)" : tickerPhase === "in" ? "translateY(8px)" : "translateY(0)",
+                    }}
+                  >
+                    {tickerMsg.text}
+                  </div>
+                </div>
                 <div
-                  className="absolute text-[11px] font-semibold text-foreground whitespace-nowrap leading-4 transition-all"
+                  className="flex-shrink-0 rounded-full px-2 py-[2px] text-[10px] font-bold whitespace-nowrap transition-opacity"
                   style={{
+                    background: "hsl(var(--accent))",
+                    color: "hsl(var(--primary))",
                     transitionDuration: `${TRANS_MS}ms`,
-                    transitionTimingFunction: "ease",
-                    opacity: tickerPhase === "hold" ? 1 : 0,
-                    transform: tickerPhase === "out" ? "translateY(-8px)" : tickerPhase === "in" ? "translateY(8px)" : "translateY(0)",
+                    opacity: tickerVisible ? 1 : 0,
                   }}
                 >
-                  {tickerMsg.text}
+                  {tickerMsg.badge}
                 </div>
               </div>
-              <div
-                className="flex-shrink-0 rounded-full px-2 py-[2px] text-[10px] font-bold whitespace-nowrap transition-opacity"
-                style={{
-                  background: "hsl(var(--accent))",
-                  color: "hsl(var(--primary))",
-                  transitionDuration: `${TRANS_MS}ms`,
-                  opacity: tickerVisible ? 1 : 0,
-                }}
-              >
-                {tickerMsg.badge}
-              </div>
             </div>
-          </div>
+          )}
 
-          {/* Missing fields hint */}
+          {/* Missing fields hint — shown in both modes */}
           {canCheckout && missingFields.length > 0 && !showRecognizedCard && (
-            <p className="text-center text-[10px] font-semibold text-destructive/80 animate-fade-in">
+            <p className={`text-center font-semibold text-destructive/80 animate-fade-in ${keyboardOpen ? "text-[9px]" : "text-[10px]"}`}>
               ⚠️ შეავსე: {missingFields.join(", ")}
             </p>
           )}
 
-          {/* CTA — always tappable */}
+          {/* CTA — always tappable, compact when keyboard open */}
           <div className="relative">
-            <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
-              <Clock className="w-[10px] h-[10px]" />
-              <span className="text-[10px] font-extrabold tabular-nums tracking-[0.3px]">⏰ იწურება {countdown}-ში</span>
-            </div>
+            {!keyboardOpen && (
+              <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
+                <Clock className="w-[10px] h-[10px]" />
+                <span className="text-[10px] font-extrabold tabular-nums tracking-[0.3px]">⏰ იწურება {countdown}-ში</span>
+              </div>
+            )}
             <Button
               onClick={handleCTAClick}
               disabled={submitting}
-              className={`w-full h-12 !text-[15px] font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+              className={`w-full font-bold rounded-xl transition-all duration-200 ${ctaColorClass} ${keyboardOpen ? "h-9 !text-[13px]" : "h-12 !text-[15px]"}`}
               size="lg"
             >
               {submitting
@@ -718,7 +722,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 ? (isFormValid || showRecognizedCard ? "🔥 შეკვეთის დასრულება" : "🔥 შეავსე და შეუკვეთე")
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
-            {canCheckout && (
+            {!keyboardOpen && canCheckout && (
               <p className="text-center text-[9px] font-semibold text-muted-foreground mt-0.5">გადახდა კურიერთან</p>
             )}
           </div>
