@@ -102,7 +102,7 @@ const ProductLanding = () => {
 
 /** Generic landing page — uses global cart + threshold logic */
 const GenericLanding = ({ product }: { product: Product }) => {
-  const { addItem, updateQuantity, getQuantity, isUnlocked, remaining, itemCount } = useCart();
+  const { updateQuantity, getQuantity, isUnlocked, remaining } = useCart();
   const { openCart } = useCartOverlay();
   const { addAndGate } = useCheckoutGate();
 

@@ -13,7 +13,7 @@ interface RecommendationBlockProps {
 }
 
 const MiniProductCard = memo(({ product }: { product: Product }) => {
-  const { isUnlocked, remaining } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const { addAndGate } = useCheckoutGate();
   const [added, setAdded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
