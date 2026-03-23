@@ -68,7 +68,12 @@ const PredictiveInput = ({
     setSuggestions([]);
     setIsOpen(false);
     setActiveIndex(-1);
-    inputRef.current?.blur();
+    // After selection, advance to next field instead of just blurring
+    if (onConfirm) {
+      onConfirm();
+    } else {
+      inputRef.current?.blur();
+    }
   };
 
   // Keyboard navigation
