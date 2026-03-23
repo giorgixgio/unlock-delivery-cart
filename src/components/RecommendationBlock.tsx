@@ -6,7 +6,6 @@ import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ProductSheet from "@/components/ProductSheet";
-import { toast } from "sonner";
 
 interface RecommendationBlockProps {
   products: Product[];
