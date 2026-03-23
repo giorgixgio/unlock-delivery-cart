@@ -257,6 +257,14 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
       trackViewContent(product);
+      trackEvent("product_viewed", {
+        product_id: product.id,
+        product_name: product.title,
+        price: product.price,
+        category: product.category,
+        cart_count: itemCount,
+        cart_value: total,
+      });
     }
   }, [open, product?.id]);
 
