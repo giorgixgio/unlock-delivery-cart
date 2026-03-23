@@ -288,19 +288,27 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
-      clearCustomerInfo();
-      clearCart();
-      dismissCart();
-      setConfirmModalOpen(false);
+      // Track BEFORE clearing state to avoid unmount race
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
         order_total: orderTotal,
+        cart_count: itemCount,
         item_count: items.length,
         cart_value: total,
         shipping_fee: shippingFee,
         is_tbilisi: isTbilisi,
         source: isLandingPage ? "landing_pdp" : "shop",
+        products: items.map(i => ({
+          id: i.product.id,
+          name: i.product.title,
+          price: i.product.price,
+          quantity: i.quantity,
+        })),
       });
+      clearCustomerInfo();
+      clearCart();
+      dismissCart();
+      setConfirmModalOpen(false);
       navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
