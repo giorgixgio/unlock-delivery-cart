@@ -13,20 +13,15 @@ interface RecommendationBlockProps {
 }
 
 const MiniProductCard = memo(({ product }: { product: Product }) => {
-  const { addItem, isUnlocked, remaining } = useCart();
+  const { isUnlocked, remaining } = useCart();
+  const { addAndGate } = useCheckoutGate();
   const [added, setAdded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem(product);
+    addAndGate(product, "recommendation");
     setAdded(true);
-    const newRemaining = Math.max(0, remaining - 1);
-    if (newRemaining > 0) {
-      toast(`დამატებულია — კიდევ ${newRemaining} პროდუქტი`, { duration: 1500 });
-    } else {
-      toast("შეკვეთა მზადაა ✅", { duration: 2000 });
-    }
     setTimeout(() => setAdded(false), 1200);
   };
 
