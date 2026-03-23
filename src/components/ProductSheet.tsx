@@ -287,7 +287,8 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
 
   const handleQuickOrder = () => {
     if (isOOS) return;
-    addAndGate(product, "pdp_quick_order");
+    addAndGate(product, sourceOverride ?? "pdp_quick_order");
+    onAdd?.();
     setActionState("added");
     setTimeout(() => {
       onClose();
