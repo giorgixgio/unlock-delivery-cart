@@ -413,51 +413,51 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           {/* ══════ SECTION 2: Order Form ══════ */}
           <div ref={formSectionRef} className="checkout-card overflow-hidden">
             {showRecognizedCard ? (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-success/15 flex items-center justify-center">
-                      <UserCheck className="w-4 h-4 text-success" />
+                    <div className="w-7 h-7 rounded-full bg-success/15 flex items-center justify-center">
+                      <UserCheck className="w-3.5 h-3.5 text-success" />
                     </div>
-                    <h2 className="text-base font-bold text-foreground">შენი მონაცემები</h2>
+                    <h2 className="text-sm font-bold text-foreground">შენი მონაცემები</h2>
                   </div>
                   <Button
                     variant="ghost" size="sm"
                     onClick={handleStartEditing}
-                    className="text-sm text-primary font-semibold h-8 px-3 gap-1.5"
+                    className="text-xs text-primary font-semibold h-7 px-2 gap-1"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3 h-3" />
                     შეცვლა
                   </Button>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="bg-muted/50 rounded-lg p-2.5 space-y-1.5">
                   {[
                     { label: "ტელეფონი", value: form.phone },
                     { label: "ქალაქი", value: form.region },
                     { label: "მისამართი", value: form.address },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{row.label}</span>
-                      <span className="text-sm font-semibold text-foreground text-right max-w-[60%]">{row.value || "—"}</span>
+                      <span className="text-xs text-muted-foreground">{row.label}</span>
+                      <span className="text-xs font-semibold text-foreground text-right max-w-[60%]">{row.value || "—"}</span>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-bold text-foreground">📦 სად მოგიტანოთ შეკვეთა?</h2>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">მხოლოდ 1 წუთი სჭირდება</p>
+                    <h2 className="text-sm font-bold text-foreground">📦 სად მოგიტანოთ შეკვეთა?</h2>
+                    <p className="text-[10px] text-muted-foreground">⚡ მხოლოდ 1 წუთი — შეავსე ინფორმაცია</p>
                   </div>
                   {isRecognized && isEditing && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}
-                      className="text-sm text-muted-foreground font-medium h-8 px-3">
+                      className="text-xs text-muted-foreground font-medium h-7 px-2">
                       გაუქმება
                     </Button>
                   )}
                 </div>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {/* Phone input with flag prefix */}
                   <div>
                     <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
