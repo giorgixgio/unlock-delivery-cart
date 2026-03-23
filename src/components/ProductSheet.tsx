@@ -30,6 +30,8 @@ interface ProductSheetProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
+  sourceOverride?: string;
+  onAdd?: () => void;
 }
 
 // ── Image Carousel ──
