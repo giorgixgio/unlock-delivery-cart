@@ -393,26 +393,21 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           {/* ══════ Price Reveal + Savings ══════ */}
           <CheckoutPriceReveal />
 
-          {/* ══════ Trust Icon Row ══════ */}
-          <div className="checkout-card px-4 py-2.5">
+          {/* ══════ Trust Icon Row — slim strip ══════ */}
+          <div className="checkout-card px-3 py-1.5">
             <div className="flex items-center justify-between">
               {[
-                { icon: <Lock className="w-4 h-4 text-muted-foreground" />, label: "უსაფრთხო" },
-                { icon: <RotateCcw className="w-4 h-4 text-muted-foreground" />, label: "დაბრუნება" },
-                { icon: <Truck className="w-4 h-4 text-muted-foreground" />, label: "სწრაფი" },
-                { icon: <Phone className="w-4 h-4 text-muted-foreground" />, label: "მხარდაჭერა" },
+                { icon: <Lock className="w-3.5 h-3.5 text-muted-foreground" />, label: "უსაფრთხო" },
+                { icon: <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />, label: "დაბრუნება" },
+                { icon: <Truck className="w-3.5 h-3.5 text-muted-foreground" />, label: "სწრაფი" },
+                { icon: <Phone className="w-3.5 h-3.5 text-muted-foreground" />, label: "მხარდაჭერა" },
               ].map((item) => (
-                <div key={item.label} className="flex flex-col items-center gap-1">
+                <div key={item.label} className="flex flex-col items-center gap-0.5">
                   {item.icon}
-                  <span className="text-[10px] font-semibold text-muted-foreground">{item.label}</span>
+                  <span className="text-[9px] font-semibold text-muted-foreground">{item.label}</span>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* ══════ Flow guidance ══════ */}
-          <div className="flex items-center justify-center gap-1.5 py-1">
-            <span className="text-xs font-bold text-primary">⚡ ბოლო ნაბიჯი — შეავსე ინფორმაცია ↓</span>
           </div>
 
           {/* ══════ SECTION 2: Order Form ══════ */}
