@@ -53,11 +53,12 @@ function flyToCart(imgEl: HTMLImageElement, targetEl: HTMLElement) {
 
 // ── Product Card ──
 const SheetProductCard = memo(({
-  product, cartIconRef, onTapProduct,
+  product, cartIconRef, onTapProduct, onAdd,
 }: {
   product: Product;
   cartIconRef: React.RefObject<HTMLDivElement | null>;
   onTapProduct: (product: Product) => void;
+  onAdd?: () => void;
 }) => {
   const { addAndGate } = useCheckoutGate();
   const [added, setAdded] = useState(false);
@@ -66,6 +67,13 @@ const SheetProductCard = memo(({
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     addAndGate(product, "upsell");
+    onAdd?.();
+    trackEvent("upsell_accepted", {
+      product_id: product.id,
+      product_name: product.title,
+      price: product.price,
+      source: "upsell",
+    });
     setAdded(true);
     if (imgRef.current && cartIconRef.current) flyToCart(imgRef.current, cartIconRef.current);
     setTimeout(() => setAdded(false), 1200);
