@@ -9,9 +9,9 @@ import { Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X, Target, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -97,9 +97,10 @@ const SheetProductCard = memo(({
         <p className="text-sm font-bold text-primary">{product.price} ₾</p>
         <Button
           onClick={handleAdd} size="sm"
-          className={`w-full h-7 text-xs font-bold rounded-md transition-all duration-200 ${
-            added ? "bg-success hover:bg-success text-success-foreground" : ""
-          }`}
+          className={cn(
+            "w-full h-7 text-xs font-bold rounded-md transition-all duration-200",
+            added && "bg-success hover:bg-success text-success-foreground"
+          )}
           disabled={added}
         >
           {added ? (
@@ -130,20 +131,18 @@ const SkeletonGrid = () => (
 
 // ── Main Component ──
 const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutSheetProps) => {
-  const { total, isUnlocked, remaining, itemCount, items, isFreeDelivery, threshold } = useCart();
+  const { total, isUnlocked, remaining, itemCount, items, threshold } = useCart();
   const { lastAddedProduct } = useCheckoutGate();
   const { data: products = [], isLoading } = useProducts();
   const prevUnlocked = useRef(isUnlocked);
   const { openCart } = useCartOverlay();
   const cartIconRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [headerCollapsed, setHeaderCollapsed] = useState(false);
-  const lastScrollTop = useRef(0);
 
   // ProductSheet state
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
 
-  // ── Cached ranked list (computed once on open, stable during session) ──
+  // ── Cached ranked list ──
   const [cachedRanking, setCachedRanking] = useState<{ gapFillers: Product[]; recommended: Product[] } | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -152,7 +151,6 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     setSheetProduct(product);
   }, []);
 
-  // Compute and cache ranking when sheet opens
   useEffect(() => {
     if (open && products.length > 0 && remaining > 0) {
       const result = getRecommendedProducts(null, items, remaining, products);
@@ -165,16 +163,13 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, products]);
 
-  // Reset state when sheet opens
   useEffect(() => {
     if (open) {
       prevUnlocked.current = false;
-      setHeaderCollapsed(false);
-      lastScrollTop.current = 0;
     }
   }, [open]);
 
-  // Auto-close and proceed when threshold is reached
+  // Auto-close when threshold reached
   useEffect(() => {
     if (open && isUnlocked) {
       const timer = setTimeout(() => {
@@ -185,21 +180,8 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
     }
   }, [isUnlocked, open, onClose, onProceed]);
 
-  // Scroll direction detection
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const st = el.scrollTop;
-    const delta = st - lastScrollTop.current;
-    if (delta > 15 && st > 60) setHeaderCollapsed(true);
-    else if (delta < -12) setHeaderCollapsed(false);
-    lastScrollTop.current = st;
-  }, []);
-
   const progress = Math.min(100, (itemCount / threshold) * 100);
-  const almostThere = remaining > 0 && remaining <= 1;
 
-  // ── Filter out cart items from cached ranking on render ──
   const cartIds = useMemo(() => new Set(items.map((i) => i.product.id)), [items]);
 
   const gapFillers = useMemo(() => {
@@ -238,18 +220,28 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
   return (
     <>
       <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-        <DrawerContent className="max-h-[88vh] focus:outline-none flex flex-col">
-          <DrawerTitle className="sr-only">მინიმალური შეკვეთა</DrawerTitle>
+        <DrawerContent className="max-h-[85vh] focus:outline-none flex flex-col">
+          <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
-          {/* ── Sticky Header (progress section) ── */}
-          <div className="flex-shrink-0 sticky top-0 z-20 bg-card border-b border-border/50 shadow-sm">
-            <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+          {/* ── Compact sticky header ── */}
+          <div className="flex-shrink-0 sticky top-0 z-20 bg-card border-b border-border/50">
+            <div className="px-4 py-2.5 flex items-center gap-3">
               <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted">
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
-              <span className="text-xs font-bold text-muted-foreground">
-                {itemCount} / {threshold} პროდუქტი
-              </span>
+
+              {/* Progress + message */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-foreground leading-tight truncate">
+                  {remaining <= 1
+                    ? "🔥 კიდევ 1 პროდუქტი დარჩა!"
+                    : `ხშირად ამასაც ამატებენ 👇`}
+                </p>
+                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                  კალათაში {itemCount} / {threshold} • კიდევ {remaining} პროდუქტი
+                </p>
+              </div>
+
               <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted">
                 <div ref={cartIconRef}>
                   <ShoppingCart className="w-5 h-5 text-foreground" />
@@ -262,40 +254,37 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </button>
             </div>
 
-            <div className="px-4 pb-2 space-y-2">
-              <div className="text-center space-y-0.5">
-                <h2 className={`text-base font-extrabold text-foreground ${almostThere ? "almost-there-text" : ""}`}>
-                  {almostThere
-                    ? "თითქმის მოხერხდა! 🔥"
-                    : `კალათაში ${itemCount} პროდუქტია`}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  დაამატეთ კიდევ {remaining} პროდუქტი შეკვეთის დასასრულებლად
-                </p>
-              </div>
-              <DeliveryMissionBar />
-
-              {/* Confirmation block: show last added product */}
-              {lastAddedProduct && (
-                <div className="flex items-center gap-3 bg-accent/40 border border-border rounded-xl p-2.5 mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                  <img
-                    src={lastAddedProduct.image}
-                    alt={lastAddedProduct.title}
-                    className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-success">დამატებულია კალათაში</p>
-                    <p className="text-xs font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
-                  </div>
-                  <span className="text-sm font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
-                </div>
-              )}
+            {/* Thin progress bar */}
+            <div className="h-1 bg-muted/60">
+              <div
+                className={cn(
+                  "h-full transition-[width] duration-500 ease-out",
+                  isUnlocked ? "delivery-path-complete" : "delivery-path-active"
+                )}
+                style={{ width: `${progress}%` }}
+              />
             </div>
+
+            {/* Last added confirmation */}
+            {lastAddedProduct && (
+              <div className="px-4 py-2 flex items-center gap-2.5 bg-accent/30 border-b border-border/30">
+                <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                <img
+                  src={lastAddedProduct.image}
+                  alt={lastAddedProduct.title}
+                  className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-success leading-tight">დამატებულია ✓</p>
+                  <p className="text-[11px] font-medium text-foreground line-clamp-1">{lastAddedProduct.title}</p>
+                </div>
+                <span className="text-xs font-bold text-primary flex-shrink-0">{lastAddedProduct.price} ₾</span>
+              </div>
+            )}
           </div>
 
           {/* ── Scrollable content ── */}
-          <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-6">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-6">
             {isLoading ? (
               <SkeletonGrid />
             ) : showEmpty ? (
@@ -304,14 +293,13 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </div>
             ) : (
               <>
-                {/* Section 1: Perfect to unlock */}
                 {gapFillers.length > 0 && (
                   <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-3 mt-3">
+                    <div className="flex items-center gap-2 mb-2.5 mt-3">
                       <Target className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-bold text-foreground">იდეალური გასახსნელად</span>
+                      <span className="text-xs font-bold text-foreground">იდეალური გასახსნელად</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {gapFillers.map((product) => (
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
@@ -319,20 +307,18 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
                   </div>
                 )}
 
-                {/* Section 2: Recommended for you (paginated) */}
                 {visibleRecommended.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-2.5">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-bold text-foreground">ხშირად ამატებენ ასევე</span>
+                      <span className="text-xs font-bold text-foreground">ხშირად ამატებენ ასევე</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {visibleRecommended.map((product) => (
                         <SheetProductCard key={product.id} product={product} cartIconRef={cartIconRef} onTapProduct={handleTapProduct} />
                       ))}
                     </div>
 
-                    {/* Load more / exhausted */}
                     <div className="flex justify-center mt-4 mb-2">
                       {hasMoreRecommended ? (
                         <Button
@@ -361,11 +347,11 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
             )}
           </div>
 
-          {/* Unlocked state overlay */}
+          {/* Unlocked overlay */}
           {isUnlocked && (
             <div className="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-t-[10px]">
               <div className="text-center space-y-2 animate-success-reveal">
-                <p className="text-2xl font-extrabold text-success">🎉 შეკვეთა მზადაა — მიტანა უფასო!</p>
+                <p className="text-2xl font-extrabold text-success">🎉 შეკვეთა მზადაა!</p>
                 <p className="text-sm text-muted-foreground">გადამისამართება...</p>
               </div>
             </div>
@@ -373,7 +359,6 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
         </DrawerContent>
       </Drawer>
 
-      {/* ProductSheet opened from within Unlock Sheet */}
       <ProductSheet
         product={sheetProduct}
         open={!!sheetProduct}
