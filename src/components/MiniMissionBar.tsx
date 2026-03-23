@@ -83,15 +83,16 @@ const MiniMissionBar = () => {
       <div className="flex items-center gap-1">
         {Array.from({ length: slotsToShow }).map((_, i) => {
           const filled = i < itemCount;
-          const active = i === itemCount;
           const isBonus = i >= effectiveThreshold;
+          const active = i === itemCount && i < slotsToShow;
+          const locked = !filled && !active;
           const isNew = i === lastFilled;
 
           let label: string;
           if (filled && isBonus) label = "ბონუსი!";
-          else if (filled) label = "დამატდა";
-          else if (active && isBonus) label = "+1 ბონუსი";
-          else if (active) label = "შემდეგი →";
+          else if (filled) label = "დაემატა";
+          else if (active && isBonus) label = "დაამატე";
+          else if (active) label = "შემდეგი";
           else if (isBonus) label = `+${i + 1 - effectiveThreshold}`;
           else label = `${i + 1}-ე`;
 
@@ -104,8 +105,8 @@ const MiniMissionBar = () => {
                 filled && isBonus && "neon-slot-bonus",
                 active && !isBonus && "neon-slot-active",
                 active && isBonus && "neon-slot-next-bonus",
-                !filled && !active && !isBonus && "neon-slot-locked",
-                !filled && !active && isBonus && "neon-slot-locked-bonus",
+                locked && !isBonus && "neon-slot-locked opacity-50",
+                locked && isBonus && "neon-slot-locked-bonus opacity-40",
               )}
               style={{
                 animation: isNew
@@ -123,7 +124,7 @@ const MiniMissionBar = () => {
               <span
                 className="text-xs font-black leading-none"
                 style={{
-                  color: filled ? (isBonus ? "#ffd700" : "#ff6a00") : active ? "#ff6a00" : "#1e1e1e",
+                  color: filled ? (isBonus ? "#ffd700" : "#ff6a00") : active ? "#ff6a00" : "#2a2a2a",
                   textShadow: filled && !isBonus
                     ? "0 0 8px rgba(255,106,0,.9)"
                     : filled && isBonus
@@ -136,7 +137,7 @@ const MiniMissionBar = () => {
               <span
                 className="text-[7px] font-bold uppercase tracking-wide text-center"
                 style={{
-                  color: filled ? (isBonus ? "#cc9900" : "#ff6a00") : active ? "#cc4400" : "#1a1a1a",
+                  color: filled ? (isBonus ? "#cc9900" : "#ff6a00") : active ? "#cc4400" : "#2a2a2a",
                 }}
               >
                 {label}

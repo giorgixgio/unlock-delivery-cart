@@ -200,7 +200,8 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
       {Array.from({ length: aovMax }).map((_, i) => {
         const filled = i < itemCount;
         const isCore = i < threshold;
-        const isNext = i === itemCount;
+        const isNext = i === itemCount && i < aovMax;
+        const locked = !filled && !isNext;
         const isNew = i === lastFilled;
 
         return (
@@ -211,15 +212,15 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
               filled && isCore && "neon-slot-filled",
               filled && !isCore && "neon-slot-bonus",
               isNext && "neon-slot-next-bonus",
-              !filled && !isNext && isCore && "neon-slot-locked",
-              !filled && !isNext && !isCore && "neon-slot-locked-bonus"
+              locked && isCore && "neon-slot-locked opacity-50",
+              locked && !isCore && "neon-slot-locked-bonus opacity-40"
             )}
             style={{
-              transform: !isCore && !filled ? "scale(0.92)" : "scale(1)",
+              transform: locked && !isCore ? "scale(0.92)" : "scale(1)",
               animation: isNew
                 ? "slotPop .55s cubic-bezier(0.34,1.56,0.64,1)"
-                : exploding && filled && isCore
-                ? "slotGlow .6s ease-in-out infinite alternate"
+                : isNext
+                ? "activePulse 2s ease-in-out infinite"
                 : "none",
             }}
           >
@@ -227,7 +228,7 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
               className="font-black leading-none"
               style={{
                 fontSize: !isCore ? 14 : 20,
-                color: filled ? (isCore ? "#ff6a00" : "#ffd700") : isNext ? "#cc9900" : "#1a1a1a",
+                color: filled ? (isCore ? "#ff6a00" : "#ffd700") : isNext ? "#cc9900" : "#2a2a2a",
                 textShadow: filled && isCore
                   ? "0 0 8px rgba(255,106,0,.9), 0 0 20px rgba(255,106,0,.4)"
                   : filled && !isCore
@@ -235,15 +236,15 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, exploding, aovMax }: {
                   : "none",
               }}
             >
-              {filled ? (isCore ? "✓" : "★") : isNext ? "+" : "·"}
+              {filled ? (isCore ? "✓" : "★") : isNext ? "+" : "🔒"}
             </span>
             <span
               className="text-[9px] font-bold uppercase tracking-wide text-center"
               style={{
-                color: filled ? (isCore ? "#ff6a00" : "#cc9900") : isNext ? "#996600" : "#1a1a1a",
+                color: filled ? (isCore ? "#ff6a00" : "#cc9900") : isNext ? "#996600" : "#2a2a2a",
               }}
             >
-              {filled ? (isCore ? "დამატდა" : "ბონუსი!") : isNext ? "დაამატე" : `+${i + 1 - threshold}`}
+              {filled ? (isCore ? "დაემატა" : "ბონუსი!") : isNext ? "დაამატე" : `+${i + 1 - threshold}`}
             </span>
           </div>
         );
