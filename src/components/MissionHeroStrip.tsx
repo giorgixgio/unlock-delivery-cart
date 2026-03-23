@@ -50,14 +50,30 @@ const MissionHeroStrip = () => {
     }
   }, [itemCount]);
 
-  // Scroll-shrink
+  // Scroll-shrink + auto-expand on meaningful changes
   const [shrunk, setShrunk] = useState(false);
+  const forceExpandUntil = useRef(0);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
+
+  // Auto-expand hero on meaningful state changes
+  useEffect(() => {
+    if (itemCount > 0 && itemCount !== prevCount.current) {
+      // Force expand for 2 seconds on every add / threshold cross
+      forceExpandUntil.current = Date.now() + 2000;
+      setShrunk(false);
+    }
+  }, [itemCount]);
+
   const onScroll = useCallback(() => {
     if (ticking.current) return;
     ticking.current = true;
     requestAnimationFrame(() => {
+      // Skip shrink if force-expanded
+      if (Date.now() < forceExpandUntil.current) {
+        ticking.current = false;
+        return;
+      }
       const y = window.scrollY;
       if (y > 100 && y > lastScrollY.current + 10) setShrunk(true);
       else if (y < lastScrollY.current - 10 || y < 50) setShrunk(false);

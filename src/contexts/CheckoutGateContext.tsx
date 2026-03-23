@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import SoftCheckoutSheet from "@/components/SoftCheckoutSheet";
@@ -21,6 +21,7 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [source, setSource] = useState("");
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
+  const addCountRef = useRef(0);
 
   const proceedToCheckout = useCallback(() => {
     openCart();
@@ -44,14 +45,14 @@ export const CheckoutGateProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (product: Product, src: string) => {
       addItem(product);
       setLastAddedProduct(product);
+      addCountRef.current += 1;
       const postCount = itemCount + 1;
       toast("დამატებულია ✅", { duration: 1200 });
-      // Never auto-redirect to cart — always open suggestion sheet
-      if (postCount < threshold) {
+      // Only auto-open sheet on FIRST add; after that user browses freely
+      if (postCount < threshold && addCountRef.current <= 1) {
         setSource(src);
         setSheetOpen(true);
       }
-      // If threshold met, do nothing — user stays on grid/sheet
     },
     [addItem, itemCount, threshold]
   );

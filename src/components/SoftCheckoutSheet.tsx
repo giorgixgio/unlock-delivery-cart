@@ -12,6 +12,7 @@ import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import ProductSheet from "@/components/ProductSheet";
 import { getRecommendedProducts } from "@/lib/recommendationEngine";
 import { cn } from "@/lib/utils";
+import MiniMissionBar from "@/components/MiniMissionBar";
 
 const PAGE_SIZE = 10;
 
@@ -167,56 +168,22 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
 
           {/* ── Sticky header with DOMINANT progress ── */}
           <div className="flex-shrink-0 sticky top-0 z-20 bg-card">
-            {/* Mission + progress row */}
-            <div className="px-4 py-2.5 space-y-2">
-              <div className="flex items-center gap-2.5">
-                <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted flex-shrink-0">
-                  <X className="w-5 h-5 text-muted-foreground" />
-                </button>
+           {/* Header row: close + cart icon */}
+            <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between">
+              <button onClick={onClose} className="p-1 -ml-1 rounded-md hover:bg-muted flex-shrink-0">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+              <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted flex-shrink-0">
+                <div ref={cartIconRef}><ShoppingCart className="w-5 h-5 text-foreground" /></div>
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{itemCount}</span>
+                )}
+              </button>
+            </div>
 
-                <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
-                  isUnlocked ? "bg-success text-success-foreground" : "bg-primary/15 text-primary",
-                  pulsing && "scale-125"
-                )}>
-                  <StatusIcon className="w-3 h-3" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "text-[13px] font-bold leading-tight truncate",
-                    isUnlocked ? "text-success" : "text-foreground"
-                  )}>
-                    {isUnlocked
-                      ? "🎉 შეკვეთა მზადაა"
-                      : remaining === 1
-                      ? "🔥 კიდევ 1 პროდუქტი დარჩა!"
-                      : `კიდევ ${remaining} პროდუქტი — გახსნი შეკვეთას`}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                    კალათაში {itemCount} / {threshold} პროდუქტი
-                  </p>
-                </div>
-
-                <button onClick={handleViewCart} className="relative p-1.5 rounded-md hover:bg-muted flex-shrink-0">
-                  <div ref={cartIconRef}><ShoppingCart className="w-5 h-5 text-foreground" /></div>
-                  {itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{itemCount}</span>
-                  )}
-                </button>
-              </div>
-
-              {/* Thick elastic progress bar */}
-              <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-[width] duration-500 ease-out",
-                    isUnlocked ? "delivery-path-complete progress-glow-success" : "delivery-path-active progress-glow",
-                    pulsing && "animate-pulse-fill"
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+            {/* Mini mission bar — compact version of the main hero */}
+            <div className="px-3 pb-2.5">
+              <MiniMissionBar />
             </div>
 
             {/* Last added confirmation */}
