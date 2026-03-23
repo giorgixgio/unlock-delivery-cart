@@ -84,7 +84,7 @@ const CheckoutProductCarousel = ({ items, onUpdateQuantity, onRemove }: Checkout
           return (
             <div
               key={product.id}
-              className="snap-start flex-shrink-0 w-[120px] bg-card rounded-lg border border-border shadow-sm overflow-hidden relative"
+              className="snap-start flex-shrink-0 w-[110px] bg-card rounded-lg border border-border shadow-sm overflow-hidden relative"
             >
               {/* Urgency Badge */}
               <div className="absolute top-1 left-1 z-10 flex flex-col gap-0.5">

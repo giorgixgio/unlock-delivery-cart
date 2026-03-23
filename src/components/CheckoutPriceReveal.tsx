@@ -81,47 +81,45 @@ const CheckoutPriceReveal = () => {
   const showBounce = phase === "done";
 
   return (
-    <div className="checkout-card px-4 py-3 space-y-2">
+    <div className="checkout-card px-3 py-2 space-y-1">
       {/* Price display */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-foreground">სულ გადასახდელი</span>
-        <div className="flex items-baseline gap-2">
+        <span className="text-xs font-bold text-foreground">სულ გადასახდელი</span>
+        <div className="flex items-baseline gap-1.5">
           {phase === "done" && oldTotal > 0 && (
-            <span className="text-sm text-muted-foreground line-through animate-fade-in">
+            <span className="text-xs text-muted-foreground line-through animate-fade-in">
               {oldTotal.toFixed(1)}₾
             </span>
           )}
           <span
-            className={`text-2xl font-extrabold text-primary transition-transform duration-300 ${
+            className={`text-xl font-extrabold text-primary transition-transform duration-300 ${
               showBounce ? "animate-checkout-bounce" : ""
             }`}
-            style={showBounce ? { textShadow: "0 0 12px hsl(var(--primary) / 0.3)" } : undefined}
+            style={showBounce ? { textShadow: "0 0 10px hsl(var(--primary) / 0.3)" } : undefined}
           >
             {displayValue.toFixed(1)}₾
           </span>
         </div>
       </div>
 
-      {/* Savings badge */}
-      {savings > 0 && phase === "done" && (
-        <div className="flex justify-end animate-fade-in">
-          <span className="text-xs font-bold bg-deal text-deal-foreground px-2.5 py-1 rounded-md inline-flex items-center gap-1">
-            შენ დაზოგე {savings.toFixed(1)}₾ 🎉
-          </span>
-        </div>
-      )}
-
-      {/* Micro reinforcement */}
+      {/* Savings badge + micro reinforcement inline */}
       {phase === "done" && (
-        <div className="flex items-center gap-3 pt-1 animate-fade-in">
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-success">
-            <Truck className="w-3 h-3" />
-            <span>უფასო მიწოდება</span>
+        <div className="flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 text-[9px] font-semibold text-success">
+              <Truck className="w-2.5 h-2.5" />
+              <span>უფასო მიწოდება</span>
+            </div>
+            <div className="flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground">
+              <CreditCard className="w-2.5 h-2.5" />
+              <span>კურიერთან</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
-            <CreditCard className="w-3 h-3" />
-            <span>გადახდა კურიერთან</span>
-          </div>
+          {savings > 0 && (
+            <span className="text-[10px] font-bold bg-deal text-deal-foreground px-2 py-0.5 rounded inline-flex items-center gap-0.5">
+              დაზოგე {savings.toFixed(1)}₾ 🎉
+            </span>
+          )}
         </div>
       )}
     </div>

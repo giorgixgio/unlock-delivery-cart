@@ -359,29 +359,29 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-      <div className="pb-[160px]">
-        {/* Header */}
+       <div className="pb-[140px]">
+        {/* Header — compact */}
         <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
-          <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={closeCart} className="p-1">
-              <ArrowLeft className="w-6 h-6" />
+          <div className="container max-w-2xl mx-auto px-3 py-1.5 flex items-center gap-2">
+            <button onClick={closeCart} className="p-0.5">
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-extrabold tracking-tight">შეკვეთის გაფორმება</h1>
+            <h1 className="text-[15px] font-extrabold tracking-tight">შეკვეთის გაფორმება</h1>
           </div>
         </header>
 
-        <div className="container max-w-2xl mx-auto px-4 pt-3 space-y-2.5">
+        <div className="container max-w-2xl mx-auto px-3 pt-2 space-y-1.5">
 
           {/* ══════ SECTION 1: Product Carousel (auto-expanded) ══════ */}
           <div className="checkout-card overflow-hidden">
-            <div className="px-4 py-2 flex items-center gap-2">
-              <span className="text-sm">🧺</span>
-              <p className="text-xs font-bold text-foreground">
+            <div className="px-3 py-1.5 flex items-center gap-1.5">
+              <span className="text-xs">🧺</span>
+              <p className="text-[11px] font-bold text-foreground">
                 შენი შეკვეთა ({itemCount} პროდუქტი)
               </p>
-              <span className="text-[10px] font-semibold text-primary ml-auto">🔥 პაკეტი მზადაა</span>
+              <span className="text-[9px] font-semibold text-primary ml-auto">🔥 პაკეტი მზადაა</span>
             </div>
-            <div className="px-2 pb-2">
+            <div className="px-1.5 pb-1.5">
               <CheckoutProductCarousel
                 items={items}
                 onUpdateQuantity={updateQuantity}
@@ -393,84 +393,79 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           {/* ══════ Price Reveal + Savings ══════ */}
           <CheckoutPriceReveal />
 
-          {/* ══════ Trust Icon Row ══════ */}
-          <div className="checkout-card px-4 py-2.5">
+          {/* ══════ Trust Icon Row — slim strip ══════ */}
+          <div className="checkout-card px-3 py-1.5">
             <div className="flex items-center justify-between">
               {[
-                { icon: <Lock className="w-4 h-4 text-muted-foreground" />, label: "უსაფრთხო" },
-                { icon: <RotateCcw className="w-4 h-4 text-muted-foreground" />, label: "დაბრუნება" },
-                { icon: <Truck className="w-4 h-4 text-muted-foreground" />, label: "სწრაფი" },
-                { icon: <Phone className="w-4 h-4 text-muted-foreground" />, label: "მხარდაჭერა" },
+                { icon: <Lock className="w-3.5 h-3.5 text-muted-foreground" />, label: "უსაფრთხო" },
+                { icon: <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />, label: "დაბრუნება" },
+                { icon: <Truck className="w-3.5 h-3.5 text-muted-foreground" />, label: "სწრაფი" },
+                { icon: <Phone className="w-3.5 h-3.5 text-muted-foreground" />, label: "მხარდაჭერა" },
               ].map((item) => (
-                <div key={item.label} className="flex flex-col items-center gap-1">
+                <div key={item.label} className="flex flex-col items-center gap-0.5">
                   {item.icon}
-                  <span className="text-[10px] font-semibold text-muted-foreground">{item.label}</span>
+                  <span className="text-[9px] font-semibold text-muted-foreground">{item.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* ══════ Flow guidance ══════ */}
-          <div className="flex items-center justify-center gap-1.5 py-1">
-            <span className="text-xs font-bold text-primary">⚡ ბოლო ნაბიჯი — შეავსე ინფორმაცია ↓</span>
-          </div>
-
           {/* ══════ SECTION 2: Order Form ══════ */}
           <div ref={formSectionRef} className="checkout-card overflow-hidden">
             {showRecognizedCard ? (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-success/15 flex items-center justify-center">
-                      <UserCheck className="w-4 h-4 text-success" />
+                    <div className="w-7 h-7 rounded-full bg-success/15 flex items-center justify-center">
+                      <UserCheck className="w-3.5 h-3.5 text-success" />
                     </div>
-                    <h2 className="text-base font-bold text-foreground">შენი მონაცემები</h2>
+                    <h2 className="text-sm font-bold text-foreground">შენი მონაცემები</h2>
                   </div>
                   <Button
                     variant="ghost" size="sm"
                     onClick={handleStartEditing}
-                    className="text-sm text-primary font-semibold h-8 px-3 gap-1.5"
+                    className="text-xs text-primary font-semibold h-7 px-2 gap-1"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-3 h-3" />
                     შეცვლა
                   </Button>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="bg-muted/50 rounded-lg p-2.5 space-y-1.5">
                   {[
                     { label: "ტელეფონი", value: form.phone },
                     { label: "ქალაქი", value: form.region },
                     { label: "მისამართი", value: form.address },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{row.label}</span>
-                      <span className="text-sm font-semibold text-foreground text-right max-w-[60%]">{row.value || "—"}</span>
+                      <span className="text-xs text-muted-foreground">{row.label}</span>
+                      <span className="text-xs font-semibold text-foreground text-right max-w-[60%]">{row.value || "—"}</span>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-bold text-foreground">📦 სად მოგიტანოთ შეკვეთა?</h2>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">მხოლოდ 1 წუთი სჭირდება</p>
+                    <h2 className="text-sm font-bold text-foreground">📦 სად მოგიტანოთ შეკვეთა?</h2>
+                    <p className="text-[10px] text-muted-foreground">⚡ მხოლოდ 1 წუთი — შეავსე ინფორმაცია</p>
                   </div>
                   {isRecognized && isEditing && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}
-                      className="text-sm text-muted-foreground font-medium h-8 px-3">
+                      className="text-xs text-muted-foreground font-medium h-7 px-2">
                       გაუქმება
                     </Button>
                   )}
                 </div>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {/* Phone input with flag prefix */}
                   <div>
-                    <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
-                    <div className="mt-1 phone-prefix-group flex">
-                      <div className="phone-prefix-panel flex items-center gap-[5px] px-2.5 bg-[#f3f4f6] border-[1.5px] border-[#e5e7eb] border-r-0 rounded-l-xl">
+                    <Label className="text-xs font-bold text-foreground">ტელეფონი</Label>
+                    <div className="mt-0.5 phone-prefix-group flex">
+                      <div className="phone-prefix-panel flex items-center gap-[5px] px-2 bg-[#f3f4f6] border-[1.5px] border-[#e5e7eb] border-r-0 rounded-l-xl">
                         <GeorgianFlag />
                         <span className="text-[13px] font-bold text-foreground/80">+995</span>
-                        <div className="w-px h-5 bg-[#e5e7eb] ml-1" />
+                        <div className="w-px h-4 bg-[#e5e7eb] ml-0.5" />
                       </div>
                       <Input
                         id="checkout-phone-input"
@@ -480,7 +475,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                         placeholder="5XX XXX XXX"
                         value={form.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
-                        className="h-12 !text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
+                        className="h-10 !text-base rounded-l-none rounded-r-xl border-[1.5px] border-[#e5e7eb] checkout-input flex-1"
                       />
                     </div>
                     {errors.phone && (
@@ -491,24 +486,24 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   </div>
 
                   {/* Microcopy below phone */}
-                  <div className="flex items-center gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-[9px] px-[11px] py-2">
-                    <Phone className="w-3.5 h-3.5 text-[#166534] flex-shrink-0" />
-                    <span className="text-[11px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ შეკვეთის დასადასტურებლად</span>
+                  <div className="flex items-center gap-1.5 bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2 py-1.5">
+                    <Phone className="w-3 h-3 text-[#166534] flex-shrink-0" />
+                    <span className="text-[10px] font-medium text-[#166534]">კურიერი დაგიკავშირდებათ დასადასტურებლად</span>
                   </div>
 
                   {/* City and address — progressive reveal */}
                   <div
                     className="transition-all duration-[280ms] ease-out overflow-hidden"
                     style={{
-                      maxHeight: phoneRevealed ? "400px" : "0px",
+                      maxHeight: phoneRevealed ? "350px" : "0px",
                       opacity: phoneRevealed ? 1 : 0,
-                      transform: phoneRevealed ? "translateY(0)" : "translateY(8px)",
+                      transform: phoneRevealed ? "translateY(0)" : "translateY(6px)",
                     }}
                   >
-                    <div className="space-y-2.5" ref={cityRef}>
+                    <div className="space-y-2" ref={cityRef}>
                       <div>
-                        <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
-                        <div className="mt-1">
+                        <Label className="text-xs font-bold text-foreground">ქალაქი / რეგიონი</Label>
+                        <div className="mt-0.5">
                           <PredictiveInput
                             value={form.region}
                             onChange={(val) => handleChange("region", val)}
@@ -520,8 +515,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                         </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-bold text-foreground">მისამართი</Label>
-                        <div className="mt-1">
+                        <Label className="text-xs font-bold text-foreground">მისამართი</Label>
+                        <div className="mt-0.5">
                           <PredictiveInput
                             value={form.address}
                             onChange={(val) => handleChange("address", val)}
@@ -539,16 +534,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             )}
           </div>
 
-          {/* ══════ SECTION 3: COD trust block ══════ */}
-          <div className="checkout-card px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-              <Truck className="w-4 h-4 text-primary" />
+          {/* ══════ SECTION 3: COD trust block — compact ══════ */}
+          <div className="checkout-card px-3 py-2 flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+              <Truck className="w-3 h-3 text-primary" />
             </div>
             <div>
-              <p className="font-bold text-foreground text-xs flex items-center gap-1.5">
-                <span>გადახდა მიტანისას</span>
-              </p>
-              <p className="text-[11px] text-muted-foreground">ბარათით ან ნაღდით — კურიერს</p>
+              <p className="font-bold text-foreground text-[11px]">გადახდა მიტანისას</p>
+              <p className="text-[10px] text-muted-foreground">ბარათით ან ნაღდით — კურიერს</p>
             </div>
           </div>
 
@@ -561,41 +554,36 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       </div>
 
       {/* ══════ STICKY BOTTOM BAR: Ticker + CTA ══════ */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, #f3f4f6 80%, transparent)", padding: "0 13px 22px" }}>
-        <div className="flex flex-col gap-2">
-          {/* Ticker card */}
-          <div className="bg-card rounded-xl overflow-hidden" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
-            {/* Sweep bar */}
-            <div className="h-[3px] bg-muted relative">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-[100]" style={{ background: "linear-gradient(to top, hsl(var(--background)) 75%, transparent)", padding: "0 10px 14px" }}>
+        <div className="flex flex-col gap-1.5">
+          {/* Ticker — compact */}
+          <div className="bg-card rounded-lg overflow-hidden" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.08)" }}>
+            <div className="h-[2px] bg-muted relative">
               <div className="absolute left-0 top-0 h-full rounded-sm animate-bar-sweep" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), #ff6b35)" }} />
             </div>
-            {/* Content row */}
-            <div className="flex items-center gap-2 px-3.5 py-[11px]" style={{ minHeight: 42 }}>
-              {/* Icon slot */}
-              <div className="w-[18px] flex items-center justify-center flex-shrink-0">
+            <div className="flex items-center gap-1.5 px-3 py-[7px]" style={{ minHeight: 32 }}>
+              <div className="w-4 flex items-center justify-center flex-shrink-0">
                 {tickerMsg.icon === "dot" ? (
-                  <span className="w-2 h-2 rounded-full bg-[#22c55e] block animate-live-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] block animate-live-pulse" />
                 ) : (
-                  <span className="text-sm leading-none">{tickerMsg.icon}</span>
+                  <span className="text-xs leading-none">{tickerMsg.icon}</span>
                 )}
               </div>
-              {/* Text */}
-              <div className="flex-1 overflow-hidden relative h-5">
+              <div className="flex-1 overflow-hidden relative h-4">
                 <div
-                  className="absolute text-xs font-semibold text-foreground whitespace-nowrap leading-5 transition-all"
+                  className="absolute text-[11px] font-semibold text-foreground whitespace-nowrap leading-4 transition-all"
                   style={{
                     transitionDuration: `${TRANS_MS}ms`,
                     transitionTimingFunction: "ease",
                     opacity: tickerPhase === "hold" ? 1 : 0,
-                    transform: tickerPhase === "out" ? "translateY(-10px)" : tickerPhase === "in" ? "translateY(10px)" : "translateY(0)",
+                    transform: tickerPhase === "out" ? "translateY(-8px)" : tickerPhase === "in" ? "translateY(8px)" : "translateY(0)",
                   }}
                 >
                   {tickerMsg.text}
                 </div>
               </div>
-              {/* Badge pill */}
               <div
-                className="flex-shrink-0 rounded-[20px] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap transition-opacity"
+                className="flex-shrink-0 rounded-full px-2 py-[2px] text-[10px] font-bold whitespace-nowrap transition-opacity"
                 style={{
                   background: "hsl(var(--accent))",
                   color: "hsl(var(--primary))",
@@ -608,17 +596,16 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
             </div>
           </div>
 
-          {/* CTA button */}
+          {/* CTA — compact */}
           <div className="relative">
-            {/* Timer badge */}
-            <div className="absolute -top-[11px] right-[14px] bg-destructive text-destructive-foreground rounded-[20px] px-[9px] py-[3px] flex items-center gap-1 z-10 cta-timer-pulse">
-              <Clock className="w-[11px] h-[11px]" />
-              <span className="text-[11px] font-extrabold tabular-nums tracking-[0.5px]">⏰ ფასდაკლება იწურება {countdown}-ში</span>
+            <div className="absolute -top-[9px] right-3 bg-destructive text-destructive-foreground rounded-full px-2 py-[2px] flex items-center gap-0.5 z-10 cta-timer-pulse">
+              <Clock className="w-[10px] h-[10px]" />
+              <span className="text-[10px] font-extrabold tabular-nums tracking-[0.3px]">⏰ იწურება {countdown}-ში</span>
             </div>
             <Button
               onClick={handleCTAClick}
               disabled={submitting || (canCheckout && !isFormValid && !showRecognizedCard)}
-              className={`w-full h-14 !text-base font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
+              className={`w-full h-12 !text-[15px] font-bold rounded-xl transition-all duration-300 ${ctaColorClass}`}
               size="lg"
             >
               {submitting
@@ -628,7 +615,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                 : `🔓 დაამატე კიდევ ${remaining} პროდუქტი`}
             </Button>
             {canCheckout && (
-              <p className="text-center text-[10px] font-semibold text-muted-foreground mt-1">გადახდა კურიერთან</p>
+              <p className="text-center text-[9px] font-semibold text-muted-foreground mt-0.5">გადახდა კურიერთან</p>
             )}
           </div>
         </div>
