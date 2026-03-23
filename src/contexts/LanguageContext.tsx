@@ -375,8 +375,8 @@ const ru: Record<string, string> = {
   // Soft checkout
   "min_order_title": "Минимальный заказ",
   "almost_there_fire": "Почти готово! 🔥",
-  "more_left": "Ещё {amount} ₾ осталось 🎉",
-  "add_1_2_products": "Добавьте 1–2 товара для минимального заказа ({threshold} ₾)",
+  "more_left": "Ещё {count} товаров 🎉",
+  "add_1_2_products": "Добавьте ещё товары для минимального заказа ({threshold} шт.)",
   "no_recommendations": "Рекомендации пока недоступны — добавьте из каталога",
   "perfect_to_unlock": "Идеально для разблокировки",
   "recommended_for_you": "Рекомендации для вас",
