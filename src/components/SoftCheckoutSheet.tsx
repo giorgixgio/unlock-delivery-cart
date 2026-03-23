@@ -184,7 +184,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
 
   return (
     <>
-      <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
+      <Drawer open={open} onOpenChange={(o) => !o && handleCloseSheet()}>
         <DrawerContent className="max-h-[85vh] focus:outline-none flex flex-col">
           <DrawerTitle className="sr-only">რეკომენდაციები</DrawerTitle>
 
