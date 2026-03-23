@@ -420,6 +420,22 @@ const ProductSheet = ({ product, open, onClose }: ProductSheetProps) => {
           {renderActionZone()}
         </div>
       )}
+
+      {/* Sticky bottom CTA when unlocked — always visible */}
+      {isUnlocked && quantity > 0 && (
+        <div className="sticky bottom-0 z-20 bg-card border-t border-success/30 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] animate-fade-in">
+          <p className="text-center text-[11px] font-semibold text-success mb-1.5">
+            ✅ შეკვეთა მზადაა
+          </p>
+          <Button
+            onClick={handleFinalize}
+            className="w-full h-12 text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 shadow-lg"
+            size="lg"
+          >
+            კალათაზე გადასვლა
+          </Button>
+        </div>
+      )}
     </>
   );
 

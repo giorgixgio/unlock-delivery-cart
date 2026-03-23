@@ -235,24 +235,7 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
           </div>
 
           {/* ── Scrollable content ── */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-6">
-            {/* Unlocked: show CTA at top of content */}
-            {isUnlocked && (
-              <div className="py-4 space-y-3">
-                <div className="text-center space-y-1">
-                  <p className="text-lg font-extrabold text-success animate-success-reveal">🎉 შეკვეთა მზადაა!</p>
-                  <p className="text-xs text-muted-foreground">გააგრძელე ან გახსენი კალათა</p>
-                </div>
-                <Button
-                  onClick={handleViewCart}
-                  className="w-full h-12 text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 glow-unlock"
-                  size="lg"
-                >
-                  <ShoppingCart className="w-5 h-5 mr-2" /> კალათის გახსნა
-                </Button>
-              </div>
-            )}
-
+          <div ref={scrollRef} className={cn("flex-1 overflow-y-auto px-4", isUnlocked ? "pb-28" : "pb-6")}>
             {isLoading ? (
               <SkeletonGrid />
             ) : showEmpty ? (
@@ -300,6 +283,22 @@ const SoftCheckoutSheet = ({ open, onClose, onProceed, source }: SoftCheckoutShe
               </>
             )}
           </div>
+
+          {/* ── Sticky bottom CTA when unlocked ── */}
+          {isUnlocked && (
+            <div className="flex-shrink-0 sticky bottom-0 z-20 bg-card border-t border-success/30 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] animate-fade-in">
+              <p className="text-center text-[11px] font-semibold text-success mb-1.5">
+                ✅ შეკვეთა მზადაა
+              </p>
+              <Button
+                onClick={handleViewCart}
+                className="w-full h-12 text-base font-bold rounded-xl bg-success text-success-foreground hover:bg-success/90 shadow-lg"
+                size="lg"
+              >
+                კალათაზე გადასვლა
+              </Button>
+            </div>
+          )}
         </DrawerContent>
       </Drawer>
 
