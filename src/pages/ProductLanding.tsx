@@ -18,6 +18,7 @@ import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
+import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 
 const ProductLanding = () => {
   const { slug } = useParams();
