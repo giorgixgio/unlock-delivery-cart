@@ -173,6 +173,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       cart_value: orderTotal,
       item_count: items.length,
     });
+    trackInitiateCheckout({
+      value: orderTotal,
+      items: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })),
+    });
     const fetchHistorical = async () => {
       try {
         const { data: cities } = await supabase
