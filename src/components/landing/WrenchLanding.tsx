@@ -117,7 +117,7 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white" />
           </a>
-          <span className="text-lg font-extrabold text-white tracking-widest mx-auto">BIGMART</span>
+          <img src={logoSrc} alt="BigMart" className="h-7 w-auto mx-auto brightness-0 invert" />
           <div className="w-8" />
         </div>
       </header>

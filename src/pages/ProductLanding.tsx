@@ -136,7 +136,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </a>
-          <span className="text-lg font-extrabold text-primary tracking-tight mx-auto">BIGMART</span>
+          <img src={logoSrc} alt="BigMart" className="h-7 w-auto mx-auto" />
           <div className="w-8" />
         </div>
       </header>
