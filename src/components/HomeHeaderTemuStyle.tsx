@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import logoSrc from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";

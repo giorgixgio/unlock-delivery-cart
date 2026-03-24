@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from "react";
+import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknote, ShoppingCart, ArrowLeft } from "lucide-react";

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import logoSrc from "@/assets/logo.png";
 import { ShoppingCart, Gift, Lock } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";

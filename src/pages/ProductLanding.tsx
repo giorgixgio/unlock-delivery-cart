@@ -1,4 +1,5 @@
 import { useMemo, useEffect, lazy, Suspense } from "react";
+import logoSrc from "@/assets/logo.png";
 import { useParams } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";

@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from "react";
+import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { Button } from "@/components/ui/button";
