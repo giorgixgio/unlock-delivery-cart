@@ -17,6 +17,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
+import { trackInitiateCheckout, trackPurchase } from "@/lib/metaPixel";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
@@ -171,6 +172,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       cart_count: itemCount,
       cart_value: orderTotal,
       item_count: items.length,
+    });
+    trackInitiateCheckout({
+      value: orderTotal,
+      items: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })),
     });
     const fetchHistorical = async () => {
       try {
@@ -348,6 +353,13 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
+      // Fire Meta Purchase BEFORE navigation for mobile reliability
+      trackPurchase({
+        value: orderTotal,
+        orderId: order.public_order_number,
+        items: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })),
+      });
+
       // Track with flush=true so PostHog sends immediately before navigation/unmount
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
@@ -370,7 +382,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCart();
       dismissCart();
       setConfirmModalOpen(false);
-      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
+      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal, orderItems: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })) }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
       setConfirmModalOpen(false);

@@ -9,6 +9,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
+import { trackPurchase } from "@/lib/metaPixel";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -138,6 +139,13 @@ const CODFormModal = ({
           .update({ status: "pending_bump" } as any)
           .eq("id", order.id);
       }
+
+      // Fire Meta Purchase BEFORE callback/navigation
+      trackPurchase({
+        value: totalAfter,
+        orderId: order.public_order_number,
+        items: [{ id: product.id, quantity, price: unitPrice }],
+      });
 
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
