@@ -13,7 +13,6 @@ import CODFormModal from "@/components/landing/CODFormModal";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
-import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 import { useNavigate } from "react-router-dom";
 
 interface SpyDetectorLandingProps {
