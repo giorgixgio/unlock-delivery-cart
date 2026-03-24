@@ -16,6 +16,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
+import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 
 interface TailoredLandingProps {
   product: Product;
@@ -46,6 +47,7 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    ttqTrackViewContent(product);
   }, [product.id]);
 
   // Split sections: benefits before bundle, faq after bundle

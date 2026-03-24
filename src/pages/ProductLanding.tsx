@@ -18,6 +18,7 @@ import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
+import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -114,6 +115,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    ttqTrackViewContent(product);
   }, [product.id]);
 
   /** First tap: add to cart + open threshold sheet in one step */
