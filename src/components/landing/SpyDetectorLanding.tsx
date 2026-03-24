@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from "react";
+import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       {/* ── Header ── */}
       <header className="sticky top-0 z-40 bg-[#111111] border-b border-white/10 shadow-lg">
         <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center justify-center">
-          <span className="text-lg font-extrabold text-white tracking-[0.3em]">BIGMART</span>
+          <img src={logoSrc} alt="BigMart" className="h-7 w-auto brightness-0 invert" />
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import logoSrc from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -216,9 +217,9 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
           <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14 md:max-w-[1280px] md:px-8 md:h-16">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="flex-shrink-0 font-extrabold tracking-tight text-xl text-primary"
+              className="flex-shrink-0"
             >
-              BigMart
+              <img src={logoSrc} alt="BigMart" className="h-7 w-auto" />
             </button>
 
             <button

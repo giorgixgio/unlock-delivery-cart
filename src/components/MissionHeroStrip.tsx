@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState, useRef, useCallback } from "react";
+import logoSrc from "@/assets/logo.png";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -351,10 +352,10 @@ const MissionHeroStrip = () => {
         <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-11">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex-shrink-0 font-extrabold tracking-tight text-lg text-primary"
-          >
-            BigMart
-          </button>
+              className="flex-shrink-0"
+            >
+              <img src={logoSrc} alt="BigMart" className="h-7 w-auto" />
+            </button>
           <div className="flex-1" />
           <button
             onClick={() => openCart()}
