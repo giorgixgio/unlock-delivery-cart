@@ -140,6 +140,13 @@ const CODFormModal = ({
           .eq("id", order.id);
       }
 
+      // Fire Meta Purchase BEFORE callback/navigation
+      trackPurchase({
+        value: totalAfter,
+        orderId: order.public_order_number,
+        items: [{ id: product.id, quantity, price: unitPrice }],
+      });
+
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
         order_total: totalAfter,

@@ -9,15 +9,21 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const OrderSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { orderNumber?: string; orderTotal?: number } | null;
+  const state = location.state as { orderNumber?: string; orderTotal?: number; orderItems?: Array<{ id: string; quantity: number; price: number }> } | null;
   const orderNumber = state?.orderNumber;
   const orderTotal = state?.orderTotal;
+  const orderItems = state?.orderItems;
   const { isTbilisi, deliveryDateStart, deliveryDateEnd, formatDate } = useDelivery();
   const { t } = useLanguage();
 
+  // Backup Purchase fire (dedup built into trackPurchase)
   useEffect(() => {
     if (orderTotal != null) {
-      trackPurchase(orderTotal, orderNumber);
+      trackPurchase({
+        value: orderTotal,
+        orderId: orderNumber,
+        items: orderItems || [],
+      });
     }
   }, []);
 

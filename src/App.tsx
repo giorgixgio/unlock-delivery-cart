@@ -98,7 +98,8 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <CartOverlayProvider>
-                <CheckoutGateProvider>
+              <CheckoutGateProvider>
+                  <MetaPageViewTracker />
                   <Routes>
                     {/* Storefront */}
                     <Route path="/" element={<Index />} />

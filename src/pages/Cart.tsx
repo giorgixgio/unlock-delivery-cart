@@ -382,7 +382,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       clearCart();
       dismissCart();
       setConfirmModalOpen(false);
-      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal }, replace: true });
+      navigate("/success", { state: { orderNumber: order.public_order_number, orderTotal, orderItems: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })) }, replace: true });
     } catch (err) {
       console.error("Order creation failed:", err);
       setConfirmModalOpen(false);
