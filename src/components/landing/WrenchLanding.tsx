@@ -9,7 +9,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
-import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 
 interface WrenchLandingProps {
   product: Product;
@@ -92,7 +91,6 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
-    ttqTrackViewContent(product);
   }, [product.id]);
 
   const handleCTA = () => {

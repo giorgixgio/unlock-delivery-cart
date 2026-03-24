@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useEf
 import { Product, CartItem, DELIVERY_FEE } from "@/lib/constants";
 import { isProductOOS } from "@/lib/stockOverrideStore";
 import { trackAddToCart } from "@/lib/metaPixel";
-import { ttqTrackAddToCart } from "@/lib/tiktokPixel";
 import { useThreshold } from "@/contexts/ThresholdContext";
 
 const CART_STORAGE_KEY = "lb_cart";
@@ -63,7 +62,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     trackAddToCart(product);
-    ttqTrackAddToCart(product);
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {

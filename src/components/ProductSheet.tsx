@@ -23,7 +23,6 @@ import {
 } from "@/lib/demoData";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 import { trackViewContent } from "@/lib/metaPixel";
-import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -260,7 +259,6 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
       trackViewContent(product);
-      ttqTrackViewContent(product);
       trackEvent("product_viewed", {
         product_id: product.id,
         product_name: product.title,
