@@ -16,6 +16,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
+import { ttqTrackViewContent } from "@/lib/tiktokPixel";
 
 interface TailoredLandingProps {
   product: Product;
