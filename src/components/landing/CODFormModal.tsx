@@ -150,6 +150,7 @@ const CODFormModal = ({
         products: [{ id: product.id, name: product.title, price: unitPrice, quantity }],
       }, true);
 
+      ttqTrackPurchase(totalAfter, order.public_order_number);
       onOrderCreated(order.id, order.public_order_number, totalAfter);
     } catch (err: any) {
       console.error("COD order failed:", err);

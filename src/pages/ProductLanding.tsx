@@ -115,6 +115,7 @@ const GenericLanding = ({ product }: { product: Product }) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    ttqTrackViewContent(product);
   }, [product.id]);
 
   /** First tap: add to cart + open threshold sheet in one step */

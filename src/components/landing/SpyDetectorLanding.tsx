@@ -90,6 +90,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
 
   useEffect(() => {
     trackViewContent(product);
+    ttqTrackViewContent(product);
   }, [product.id]);
 
   const handleCTA = () => {

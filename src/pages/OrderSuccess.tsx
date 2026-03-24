@@ -19,6 +19,7 @@ const OrderSuccess = () => {
   useEffect(() => {
     if (orderTotal != null) {
       trackPurchase(orderTotal, orderNumber);
+      ttqTrackPurchase(orderTotal, orderNumber);
     }
   }, []);
 
