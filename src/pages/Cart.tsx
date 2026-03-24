@@ -17,7 +17,6 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
-import { ttqTrackInitiateCheckout, ttqTrackPurchase } from "@/lib/tiktokPixel";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
