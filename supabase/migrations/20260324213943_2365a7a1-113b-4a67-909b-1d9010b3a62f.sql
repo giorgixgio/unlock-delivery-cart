@@ -1,0 +1,1 @@
+UPDATE products SET title = '45° ფილის საჭრელი დამჭერი კუთხსახეხისთვის — ზუსტი და სუფთა ჭრა', image = '/images/tile-cutter-holder.webp' WHERE id = '10068774322471';
