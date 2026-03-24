@@ -19,7 +19,7 @@ const TAG_CATEGORY_RULES: Array<{ keywords: string[]; category: string }> = [
   { keywords: ["აბაზანა", "სანტექნიკა"], category: "აბაზანა-სანტექნიკა" },
   { keywords: ["განათება", "ნათურა", "ლამპა"], category: "განათება" },
   { keywords: ["ელექტრონიკა", "გაჯეტ"], category: "ელექტრონიკა-გაჯეტები" },
-  { keywords: ["ხელსაწყო"], category: "ხელსაწყოები" },
+  { keywords: ["ხელსაწყო", "კუთხსახეხ", "ბურღ", "დრელ", "ხერხ"], category: "ხელსაწყოები" },
   { keywords: ["აქსესუარ"], category: "აქსესუარები" },
   { keywords: ["სახლი", "ინტერიერი"], category: "სახლი-ინტერიერი" },
 ];
