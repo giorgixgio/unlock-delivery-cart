@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, Home, Truck, PackageCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trackPurchase } from "@/lib/metaPixel";
+import { ttqTrackPurchase } from "@/lib/tiktokPixel";
 import { useDelivery } from "@/contexts/DeliveryContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
