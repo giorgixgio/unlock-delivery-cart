@@ -91,7 +91,6 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
-    ttqTrackViewContent(product);
   }, [product.id]);
 
   const handleCTA = () => {

@@ -46,7 +46,6 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
-    ttqTrackViewContent(product);
   }, [product.id]);
 
   // Split sections: benefits before bundle, faq after bundle

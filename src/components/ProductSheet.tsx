@@ -259,7 +259,6 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
       setJustUnlocked(false);
       initialItemCount.current = itemCount;
       trackViewContent(product);
-      ttqTrackViewContent(product);
       trackEvent("product_viewed", {
         product_id: product.id,
         product_name: product.title,
