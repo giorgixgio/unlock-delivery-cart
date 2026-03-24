@@ -79,6 +79,15 @@ const CartOverlayRenderer = () => {
   return <Cart isOpen={isCartOpen} />;
 };
 
+/** Fire Meta PageView on SPA route changes */
+const MetaPageViewTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
