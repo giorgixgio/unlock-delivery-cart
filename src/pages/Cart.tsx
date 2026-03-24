@@ -173,6 +173,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       cart_value: orderTotal,
       item_count: items.length,
     });
+    ttqTrackInitiateCheckout(orderTotal, itemCount);
     const fetchHistorical = async () => {
       try {
         const { data: cities } = await supabase
