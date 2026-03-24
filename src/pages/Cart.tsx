@@ -353,6 +353,13 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         total: orderTotal,
         ...(isLandingPage ? { source: "landing_pdp", landingSlug } : {}),
       });
+      // Fire Meta Purchase BEFORE navigation for mobile reliability
+      trackPurchase({
+        value: orderTotal,
+        orderId: order.public_order_number,
+        items: items.map(i => ({ id: i.product.id, quantity: i.quantity, price: i.product.price })),
+      });
+
       // Track with flush=true so PostHog sends immediately before navigation/unmount
       trackEvent("order_submitted", {
         order_number: order.public_order_number,
