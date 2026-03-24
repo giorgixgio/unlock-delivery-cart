@@ -367,6 +367,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
           quantity: i.quantity,
         })),
       }, true);
+      ttqTrackPurchase(orderTotal, order.public_order_number);
       
       clearCustomerInfo();
       clearCart();
