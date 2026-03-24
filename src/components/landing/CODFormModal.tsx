@@ -9,6 +9,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
+import { ttqTrackPurchase } from "@/lib/tiktokPixel";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
