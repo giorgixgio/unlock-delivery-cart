@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Download, AlertTriangle, Upload } from "lucide-react";
+import { Search, Loader2, Download, AlertTriangle, Upload, RefreshCw } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
