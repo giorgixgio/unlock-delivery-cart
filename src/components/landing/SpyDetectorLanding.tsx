@@ -453,6 +453,14 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
 
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
+      />
+
       {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}

@@ -450,6 +450,14 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
 
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
+      />
+
       {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}

@@ -276,6 +276,14 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
 
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
+      />
+
       {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}
