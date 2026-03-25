@@ -7,7 +7,7 @@ import CountdownTimer from "@/components/landing/CountdownTimer";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
-import LandingBulletDescription from "@/components/landing/LandingBulletDescription";
+
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import CODFormModal from "@/components/landing/CODFormModal";
 import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
