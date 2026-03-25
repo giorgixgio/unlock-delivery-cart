@@ -265,9 +265,22 @@ const AdminOrders = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {lastRefreshed.toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+          <Button
+            onClick={() => { fetchOrders(true); fetchCounts(); }}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            განახლება
+          </Button>
           <Button onClick={() => setFulfillOpen(true)} variant="outline" className="gap-2">
             <Upload className="w-4 h-4" />
             Mass Fulfill
