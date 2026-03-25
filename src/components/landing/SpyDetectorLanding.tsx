@@ -1,7 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
-import { LandingConfig } from "@/hooks/useLandingConfig";
 import { Button } from "@/components/ui/button";
 import {
   Shield, Wifi, Eye, Clock, Truck, Banknote, ShoppingCart,
@@ -9,11 +8,14 @@ import {
   AlertTriangle, CheckCircle2, MapPin, Car, Hotel, Lock
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
+import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
+import LandingTrustRow from "@/components/landing/LandingTrustRow";
+import LandingReviews from "@/components/landing/LandingReviews";
 import CODFormModal from "@/components/landing/CODFormModal";
 import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
-
+import { LandingConfig } from "@/hooks/useLandingConfig";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
@@ -26,13 +28,12 @@ interface SpyDetectorLandingProps {
   useCodModal: boolean;
 }
 
-/* ─── Reviews ─── */
 const REVIEWS = [
-  { name: "ნინო კ.", text: "სასტუმროში ვიყავი და ვიპოვე ფარული კამერა ბათრუმში. ეს მოწყობილობა სიცოცხლეს მიხსნის!", rating: 5 },
+  { name: "ნინო კ.", text: "სასტუმროში ვიყავი და ვიპოვე ფარული კამერა. ეს მოწყობილობა სიცოცხლეს მიხსნის!", rating: 5 },
   { name: "გიორგი მ.", text: "მანქანაში GPS ტრეკერი აღმოვაჩინე. ძალიან მარტივი გამოსაყენებელია.", rating: 5 },
-  { name: "მარიამი ს.", text: "ქირავნობის ბინაში შევამოწმე ყველა ოთახი — მშვიდობას არ დავდებ კომპრომისზე.", rating: 5 },
-  { name: "დავითი ბ.", text: "ოფისში გამოვიყენე, რომ გამერკვია ხომ არ იყო მოსასმენი მოწყობილობა. სუპერი!", rating: 4 },
-  { name: "ლევანი თ.", text: "მეგობარს ვაჩუქე — მოგზაურობისას ყოველთვის თან აქვს. რეკომენდაციაა.", rating: 5 },
+  { name: "მარიამი ს.", text: "ქირავნობის ბინაში შევამოწმე — მშვიდობას არ დავდებ კომპრომისზე.", rating: 5 },
+  { name: "დავითი ბ.", text: "ოფისში გამოვიყენე მოსასმენი აპარატურის შესამოწმებლად. სუპერი!", rating: 4 },
+  { name: "ლევანი თ.", text: "მეგობარს ვაჩუქე — მოგზაურობისას ყოველთვის თან აქვს.", rating: 5 },
 ];
 
 const SPECS = [
@@ -44,7 +45,6 @@ const SPECS = [
   { key: "დატენვა", value: "USB Type-C" },
 ];
 
-/* ─── Social proof tickers ─── */
 const ViewerCount = memo(() => {
   const [count] = useState(() => Math.floor(Math.random() * 60) + 120);
   return (
@@ -67,7 +67,6 @@ const LastOrderBadge = memo(() => {
 });
 LastOrderBadge.displayName = "LastOrderBadge";
 
-/* ─── Main Component ─── */
 const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant }: SpyDetectorLandingProps) => {
   const navigate = useNavigate();
 
@@ -76,7 +75,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const DISCOUNT_PCT = Math.round((1 - UNIT_PRICE / OLD_PRICE) * 100);
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
-  
+
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -87,23 +86,14 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  const bundleOptions = [
-    { qty: 1, label: "1 ცალი", discount_pct: 0 },
-    { qty: 2, label: "2 ცალი – 10% ფასდაკლება", discount_pct: 10 },
-    { qty: 3, label: "3 ცალი – 15% ფასდაკლება", discount_pct: 15 },
-  ];
-  const selectedOption = bundleOptions.find(o => o.qty === selectedQty) ?? bundleOptions[0];
-  const bundleDiscount = selectedOption?.discount_pct ?? 0;
-  const finalPrice = UNIT_PRICE * selectedQty * (1 - bundleDiscount / 100);
+  const totalPrice = UNIT_PRICE * selectedQty;
 
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: "spy-detector" });
   }, [product.id]);
 
-  const handleCTA = () => {
-    setCodOpen(true);
-  };
+  const handleCTA = () => setCodOpen(true);
 
   const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
     setPendingOrderId(orderId);
@@ -113,16 +103,8 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
     setConfirmOpen(true);
   };
 
-  const handleViewOffer = () => {
-    setConfirmOpen(false);
-    setUpsellOpen(true);
-  };
-
-  const handleSkipOffer = () => {
-    setConfirmOpen(false);
-    setDeliveryFee(5);
-    setAddressOpen(true);
-  };
+  const handleViewOffer = () => { setConfirmOpen(false); setUpsellOpen(true); };
+  const handleSkipOffer = () => { setConfirmOpen(false); setDeliveryFee(5); setAddressOpen(true); };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
@@ -131,29 +113,21 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
     setAddressOpen(true);
   };
 
-  const handleUpsellSkip = () => {
-    setDeliveryFee(5);
-    setUpsellOpen(false);
-    setAddressOpen(true);
-  };
-
-  const handleAddressComplete = () => {
-    setAddressOpen(false);
-    navigate(`/success?order=${pendingOrderNumber}`);
-  };
+  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
+  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-36">
-      {/* ── Urgency top banner ── */}
+      {/* Urgency banner */}
       <div className="bg-red-600 text-white text-center py-2 px-4">
         <p className="text-xs sm:text-sm font-bold animate-pulse">
           ⚡ მარაგშია მხოლოდ 12 ცალი — შეუკვეთეთ სანამ არ ამოიწურა!
         </p>
       </div>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-[#111111] border-b border-white/10 shadow-lg">
         <div className="container max-w-2xl mx-auto px-4 py-3 flex items-center justify-center">
           <img src={logoSrc} alt="BigMart" className="h-7 w-auto brightness-0 invert" />
@@ -161,25 +135,15 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       </header>
 
       <div className="container max-w-2xl mx-auto px-4 pt-5 space-y-6">
-        {/* ═══════ 1️⃣ HERO ═══════ */}
+        {/* HERO */}
         <section className="space-y-4">
-          {/* Product image */}
           <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#1a1a1a] border border-white/10 shadow-2xl">
-            <img
-              src={product.image}
-              alt={product.title}
-              className="w-full h-full object-cover"
-              loading="eager"
-            />
+            <img src={product.image} alt={product.title} className="w-full h-full object-cover" loading="eager" />
             <div className="absolute top-0 left-0 bg-red-600 text-white text-xs font-extrabold px-4 py-2 rounded-br-2xl">
               -{DISCOUNT_PCT}% ფასდაკლება
             </div>
-            <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-              <p className="text-[10px] font-bold text-red-400">🔥 მარაგი მთავრდება</p>
-            </div>
           </div>
 
-          {/* Headline */}
           <div className="space-y-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
               დაიცავით თქვენი პირადი სივრცე ნებისმიერ გარემოში
@@ -198,86 +162,78 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
             <span className="text-xs text-white/50">(347 შეფასება)</span>
           </div>
 
-          {/* Price block */}
+          {/* Price */}
           <div className="bg-[#1a1a1a] rounded-2xl border border-red-500/30 p-5 space-y-2">
             <div className="flex items-baseline gap-3 flex-wrap">
-              <span className="text-4xl font-extrabold text-red-500">{UNIT_PRICE} ₾</span>
-              <span className="text-xl text-white/40 line-through">{OLD_PRICE} ₾</span>
+              <span className="text-4xl font-extrabold text-red-500">{totalPrice.toFixed(0)} ₾</span>
+              <span className="text-xl text-white/40 line-through">{(OLD_PRICE * selectedQty).toFixed(0)} ₾</span>
               <span className="bg-red-600 text-white text-xs font-extrabold px-3 py-1 rounded-full">
                 -{DISCOUNT_PCT}%
               </span>
             </div>
-            <p className="text-xs font-bold text-red-400">⏰ ფასდაკლება მოქმედებს მხოლოდ დღეს</p>
+            {selectedQty > 1 && (
+              <p className="text-xs text-white/50">{selectedQty} ცალი × {UNIT_PRICE}₾</p>
+            )}
           </div>
 
-          {/* Social proof tickers */}
+          {/* Social proof */}
           <div className="flex flex-col gap-1">
             <ViewerCount />
             <LastOrderBadge />
           </div>
 
-          {/* Trust badges — COD prominent */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex flex-col items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
-              <Banknote className="w-6 h-6 text-emerald-400" />
-              <span className="text-[10px] font-bold text-white leading-tight">გადახდა კურიერთან</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-center">
-              <Truck className="w-6 h-6 text-blue-400" />
-              <span className="text-[10px] font-bold text-white leading-tight">უფასო მიწოდება</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
-              <Shield className="w-6 h-6 text-amber-400" />
-              <span className="text-[10px] font-bold text-white leading-tight">100% გარანტია</span>
-            </div>
-          </div>
+          {/* Trust row */}
+          <LandingTrustRow dark />
         </section>
 
-        {/* ═══════ 2️⃣ PROBLEM → SOLUTION ═══════ */}
+        {/* PROBLEM → SOLUTION */}
         <section className="bg-[#141414] rounded-2xl border border-white/10 p-5 space-y-4">
           <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             რატომ გჭირდება ეს მოწყობილობა?
           </h2>
-          <p className="text-sm text-white/60 leading-relaxed">
-            გრძნობთ თავს დაცულად სასტუმროში ან გასახდელში? ნუ დატოვებთ თქვენს კონფიდენციალურობას შემთხვევითობის იმედად.
-          </p>
+
+          {/* Bullet benefits */}
+          <div className="space-y-2.5">
+            {[
+              "✅ ფარული კამერების აღმოჩენა სასტუმროში, Airbnb-ში",
+              "✅ GPS ტრეკერების პოვნა მანქანაში",
+              "✅ მოსასმენი აპარატურის შემოწმება ოფისში",
+              "✅ კომპაქტური — ჯიბეში ეტევა",
+              "✅ მარტივი გამოყენება — ჩართე და სკანირე",
+            ].map((b, i) => (
+              <p key={i} className="text-sm text-white/80 leading-relaxed">{b}</p>
+            ))}
+          </div>
 
           {/* Use cases */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: Hotel, text: "სასტუმრო / Airbnb", desc: "ფარული კამერების აღმოჩენა" },
-              { icon: Car, text: "ავტომობილი", desc: "GPS ტრეკერების პოვნა" },
-              { icon: Lock, text: "გასახდელი", desc: "პირადი სივრცის დაცვა" },
-              { icon: MapPin, text: "ოფისი", desc: "მოსასმენი აპარატურის შემოწმება" },
-            ].map(({ icon: Icon, text, desc }, i) => (
+              { icon: Hotel, text: "სასტუმრო / Airbnb" },
+              { icon: Car, text: "ავტომობილი" },
+              { icon: Lock, text: "გასახდელი" },
+              { icon: MapPin, text: "ოფისი" },
+            ].map(({ icon: Icon, text }, i) => (
               <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3 text-center space-y-2">
-                <Icon className="w-7 h-7 text-red-400 mx-auto" />
+                <Icon className="w-6 h-6 text-red-400 mx-auto" />
                 <p className="text-xs font-bold text-white">{text}</p>
-                <p className="text-[10px] text-white/50">{desc}</p>
               </div>
             ))}
           </div>
-
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-            <p className="text-sm font-bold text-white text-center">
-              🛡️ დაიცავი შენი კონფიდენციალურობა — სანამ გვიან არ არის
-            </p>
-          </div>
         </section>
 
-        {/* ═══════ 3️⃣ KEY FEATURES ═══════ */}
+        {/* KEY FEATURES */}
         <section className="space-y-3">
           <h2 className="text-xl font-extrabold text-white text-center">რას აკეთებს?</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: Radio, title: "ფართო დიაპაზონი", desc: "1MHz–6.5GHz სიგნალის აღმოჩენა", color: "text-blue-400" },
-              { icon: Scan, title: "ინფრაწითელი სკანირება", desc: "კამერის ლინზების სწრაფი პოვნა", color: "text-red-400" },
-              { icon: Smartphone, title: "კომპაქტური ზომა", desc: "ჯიბეში ეტევა, მარტივია სატარებლად", color: "text-emerald-400" },
-              { icon: Battery, title: "25 საათი ბატარეა", desc: "ხანგრძლივი მუშაობის რეჟიმი", color: "text-amber-400" },
+              { icon: Radio, title: "ფართო დიაპაზონი", desc: "1MHz–6.5GHz", color: "text-blue-400" },
+              { icon: Scan, title: "ინფრაწითელი სკანირება", desc: "კამერის ლინზების პოვნა", color: "text-red-400" },
+              { icon: Smartphone, title: "კომპაქტური ზომა", desc: "ჯიბეში ეტევა", color: "text-emerald-400" },
+              { icon: Battery, title: "25 საათი ბატარეა", desc: "ხანგრძლივი მუშაობა", color: "text-amber-400" },
             ].map(({ icon: Icon, title, desc, color }, i) => (
               <div key={i} className="bg-[#1a1a1a] border border-white/10 rounded-xl p-4 space-y-2">
-                <Icon className={`w-8 h-8 ${color}`} />
+                <Icon className={`w-7 h-7 ${color}`} />
                 <p className="text-sm font-extrabold text-white">{title}</p>
                 <p className="text-[11px] text-white/50">{desc}</p>
               </div>
@@ -285,17 +241,17 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           </div>
         </section>
 
-        {/* ═══════ 4️⃣ HOW IT WORKS ═══════ */}
+        {/* HOW IT WORKS */}
         <section className="space-y-3">
           <h2 className="text-xl font-extrabold text-white text-center">როგორ მუშაობს?</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { step: "ჩართე", desc: "დააჭირე ღილაკს", icon: "1", color: "bg-red-500" },
-              { step: "სკანირე", desc: "შეამოწმე ოთახი", icon: "2", color: "bg-red-500" },
-              { step: "იპოვე", desc: "აღმოაჩინე საფრთხე", icon: "3", color: "bg-red-500" },
+              { step: "ჩართე", desc: "დააჭირე ღილაკს", icon: "1" },
+              { step: "სკანირე", desc: "შეამოწმე ოთახი", icon: "2" },
+              { step: "იპოვე", desc: "აღმოაჩინე საფრთხე", icon: "3" },
             ].map((s, i) => (
               <div key={i} className="bg-[#1a1a1a] rounded-xl border border-white/10 p-4 text-center space-y-2">
-                <div className={`w-10 h-10 ${s.color} rounded-full flex items-center justify-center mx-auto text-white font-extrabold text-lg`}>
+                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mx-auto text-white font-extrabold text-lg">
                   {s.icon}
                 </div>
                 <p className="text-sm font-extrabold text-white">{s.step}</p>
@@ -305,34 +261,19 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           </div>
         </section>
 
-        {/* ═══════ 5️⃣ SOCIAL PROOF / REVIEWS ═══════ */}
-        <section className="space-y-3">
-          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            ვერიფიცირებული მომხმარებლები
-          </h2>
-          <div className="space-y-2.5">
-            {REVIEWS.map((r, i) => (
-              <div key={i} className="bg-[#1a1a1a] rounded-xl border border-white/10 p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-xs font-bold text-red-400">
-                    {r.name.charAt(0)}
-                  </div>
-                  <span className="text-sm font-bold text-white">{r.name}</span>
-                  <span className="text-[10px] text-emerald-400 font-semibold ml-1">✓ ვერიფიცირებული</span>
-                  <div className="flex gap-0.5 ml-auto">
-                    {Array.from({ length: r.rating }).map((_, j) => (
-                      <Star key={j} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-sm text-white/60 leading-relaxed">"{r.text}"</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* QUANTITY SELECTOR */}
+        <LandingQuantitySelector
+          unitPrice={UNIT_PRICE}
+          selectedQty={selectedQty}
+          onSelect={setSelectedQty}
+          oldUnitPrice={OLD_PRICE}
+          dark
+        />
 
-        {/* ═══════ 6️⃣ TECH SPECS ═══════ */}
+        {/* REVIEWS */}
+        <LandingReviews reviews={REVIEWS} dark />
+
+        {/* TECH SPECS */}
         <section>
           <button
             onClick={() => setSpecsOpen(!specsOpen)}
@@ -356,57 +297,15 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           )}
         </section>
 
-        {/* ═══════ 7️⃣ BUNDLE SELECTOR ═══════ */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-extrabold text-white">აირჩიე რაოდენობა</h2>
-          <div className="space-y-2">
-            {bundleOptions.map(opt => {
-              const isSelected = selectedQty === opt.qty;
-              const totalBefore = UNIT_PRICE * opt.qty;
-              const totalAfter = totalBefore * (1 - opt.discount_pct / 100);
-              return (
-                <button
-                  key={opt.qty}
-                  onClick={() => setSelectedQty(opt.qty)}
-                  className={`relative w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? "border-red-500 bg-red-500/10 shadow-lg shadow-red-500/20"
-                      : "border-white/10 bg-[#1a1a1a] hover:border-red-500/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-red-500" : "border-white/30"}`}>
-                      {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-red-500" />}
-                    </div>
-                    <span className="font-bold text-white text-sm">{opt.label}</span>
-                  </div>
-                  <div className="text-right">
-                    {opt.discount_pct > 0 && (
-                      <span className="text-xs text-white/40 line-through mr-2">{totalBefore.toFixed(2)} ₾</span>
-                    )}
-                    <span className="font-extrabold text-red-400 text-lg">{totalAfter.toFixed(2)} ₾</span>
-                  </div>
-                  {opt.discount_pct > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                      -{opt.discount_pct}%
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ═══════ 8️⃣ COUNTDOWN URGENCY ═══════ */}
+        {/* COUNTDOWN */}
         <section className="bg-gradient-to-br from-red-900/40 to-[#1a1a1a] rounded-2xl p-5 text-center space-y-3 border border-red-500/20">
           <h2 className="text-xl font-extrabold text-white">⏰ ფასდაკლება სრულდება მალე</h2>
           <div className="inline-block">
             <CountdownTimer minutes={27} />
           </div>
-          <p className="text-sm text-white/50 font-semibold">მარაგშია მხოლოდ 12 ცალი</p>
         </section>
 
-        {/* Extra product images */}
+        {/* Extra images */}
         {images.length > 1 && (
           <section className="space-y-2">
             <p className="text-sm font-bold text-white">პროდუქტის ფოტოები</p>
@@ -421,13 +320,13 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         )}
       </div>
 
-      {/* ═══════ STICKY CTA ═══════ */}
+      {/* STICKY CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/95 backdrop-blur-sm border-t border-white/10 p-3 shadow-[0_-4px_30px_rgba(220,38,38,0.15)]">
         <div className="container max-w-2xl mx-auto flex items-center gap-3">
           <div className="flex-shrink-0">
-            <p className="text-xl font-extrabold text-red-500">{finalPrice.toFixed(2)} ₾</p>
-            {bundleDiscount > 0 && (
-              <p className="text-[10px] text-white/40 line-through">{(UNIT_PRICE * selectedQty).toFixed(2)} ₾</p>
+            <p className="text-xl font-extrabold text-red-500">{totalPrice.toFixed(0)} ₾</p>
+            {selectedQty > 1 && (
+              <p className="text-[10px] text-white/40">{selectedQty} ცალი</p>
             )}
           </div>
           <Button
@@ -443,19 +342,17 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         </div>
       </div>
 
-      {/* Phone-Only COD Modal */}
+      {/* Modals */}
       <CODFormModal
         open={codOpen}
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={bundleDiscount}
+        discountPct={0}
         landingSlug={landingSlug}
         landingVariant={landingVariant}
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
-
-      {/* Order Confirmation Overlay */}
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
@@ -463,8 +360,6 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
-
-      {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
@@ -474,8 +369,6 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />
-
-      {/* Address Form */}
       <AddressFormModal
         open={addressOpen}
         onClose={() => setAddressOpen(false)}

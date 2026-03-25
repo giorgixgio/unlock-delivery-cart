@@ -3,11 +3,12 @@ import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
-import { generateProductProof } from "@/lib/socialProofEngine";
-import ProductMicroProof from "@/components/ProductMicroProof";
-import { Banknote, Truck, Shield, Package, ShoppingCart, ArrowLeft } from "lucide-react";
+import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import BundleSelector from "@/components/landing/BundleSelector";
+import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
+import LandingTrustRow from "@/components/landing/LandingTrustRow";
+import LandingReviews from "@/components/landing/LandingReviews";
+import LandingBulletDescription from "@/components/landing/LandingBulletDescription";
 import LandingSections from "@/components/landing/LandingSections";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
@@ -31,18 +32,11 @@ interface TailoredLandingProps {
 const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps) => {
   const navigate = useNavigate();
 
-  const bundleEnabled = config.bundle?.enabled ?? false;
-  const bundleOptions = config.bundle?.bundle_options ?? [{ qty: 1, label: `${product.title} × 1`, discount_pct: 0 }];
-  const defaultQty = config.bundle?.default_qty ?? 1;
-
-  const [selectedQty, setSelectedQty] = useState(defaultQty);
+  const [selectedQty, setSelectedQty] = useState(1);
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
-  const proof = useMemo(() => generateProductProof(product, 0, undefined, "landing"), [product.id]);
-
-  const selectedOption = bundleOptions.find((o) => o.qty === selectedQty) ?? bundleOptions[0];
-  const bundleDiscount = selectedOption?.discount_pct ?? 0;
+  const totalPrice = product.price * selectedQty;
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
@@ -54,19 +48,15 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent + landing_view on mount
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: "tailored" });
   }, [product.id]);
 
-  // Split sections: benefits before bundle, faq after bundle
   const benefitSections = (config.sections || []).filter((s) => s.type !== "faq");
   const faqSections = (config.sections || []).filter((s) => s.type === "faq");
 
-  const handleCTA = () => {
-    setCodOpen(true);
-  };
+  const handleCTA = () => setCodOpen(true);
 
   const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
     setPendingOrderId(orderId);
@@ -76,16 +66,8 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
     setConfirmOpen(true);
   };
 
-  const handleViewOffer = () => {
-    setConfirmOpen(false);
-    setUpsellOpen(true);
-  };
-
-  const handleSkipOffer = () => {
-    setConfirmOpen(false);
-    setDeliveryFee(5);
-    setAddressOpen(true);
-  };
+  const handleViewOffer = () => { setConfirmOpen(false); setUpsellOpen(true); };
+  const handleSkipOffer = () => { setConfirmOpen(false); setDeliveryFee(5); setAddressOpen(true); };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
@@ -94,16 +76,8 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
     setAddressOpen(true);
   };
 
-  const handleUpsellSkip = () => {
-    setDeliveryFee(5);
-    setUpsellOpen(false);
-    setAddressOpen(true);
-  };
-
-  const handleAddressComplete = () => {
-    setAddressOpen(false);
-    navigate(`/success?order=${pendingOrderNumber}`);
-  };
+  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
+  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
 
   return (
     <div className="min-h-screen bg-background pb-36">
@@ -119,7 +93,7 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
       </header>
 
       <div className="container max-w-lg mx-auto px-4 pt-4 space-y-5">
-        {/* Countdown timer */}
+        {/* Countdown */}
         <CountdownTimer minutes={19} />
 
         {/* Hero title */}
@@ -132,133 +106,70 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
           </div>
         )}
 
-        {/* Product image slider */}
+        {/* Product image */}
         <ProductImageSlider images={product.images || [product.image]} alt={product.title}>
           {discount > 0 && (
             <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-3 py-1.5 rounded-br-xl">
               ↓ {discount}% OFF
             </div>
           )}
-          {proof.badges.length > 0 && (
-            <div className="absolute top-10 left-2.5 z-10 flex flex-col gap-1.5">
-              {proof.badges.map((b, i) => (
-                <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ${
-                  b.color === "red" ? "bg-destructive text-destructive-foreground" :
-                  b.color === "green" ? "bg-success text-success-foreground" :
-                  b.color === "dark" ? "bg-foreground text-background" :
-                  b.color === "yellow" ? "bg-[hsl(45,90%,48%)] text-foreground" :
-                  "bg-secondary text-secondary-foreground"
-                }`}>
-                  {b.text}
-                </span>
-              ))}
-            </div>
-          )}
         </ProductImageSlider>
 
-        {/* Title + price (if no hero_title) */}
-        {!config.hero_title && (
-          <div>
-            <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
-            <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-              <span className="text-2xl font-extrabold text-primary">{product.price} ₾</span>
-              <span className="text-base text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
-              {discount > 0 && (
-                <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{discount}%</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* COD + Fast Shipping hero banners */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 p-3.5 bg-success/10 border-2 border-success/30 rounded-xl">
-            <div className="w-11 h-11 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
-              <Banknote className="w-6 h-6 text-success" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-foreground">💵 გადახდა მიტანისას</p>
-              <p className="text-xs text-muted-foreground">კურიერს გადაუხდი ადგილზე — წინასწარი გადახდა არ არის საჭირო</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3.5 bg-primary/10 border-2 border-primary/30 rounded-xl">
-            <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <Truck className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-extrabold text-foreground">🚚 სწრაფი მიტანა</p>
-              <p className="text-xs text-muted-foreground">შეკვეთა მიიღე 1-3 სამუშაო დღეში პირდაპირ კარამდე</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Trust strip */}
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { icon: Shield, text: "ხარისხის გარანტია" },
-            { icon: Package, text: "უსაფრთხო შეფუთვა" },
-          ].map(({ icon: Icon, text }, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 py-2.5 px-3 bg-card rounded-xl border border-border shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-[11px] font-semibold text-foreground leading-tight">{text}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Live social proof */}
-        <div className="space-y-2">
-          {proof.urgencyLine && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <span className="text-xs font-bold text-destructive">{proof.urgencyLine}</span>
-            </div>
+        {/* Title + price */}
+        <div>
+          {!config.hero_title && (
+            <h1 className="text-xl font-extrabold text-foreground leading-tight mb-2">{product.title}</h1>
           )}
-          <ProductMicroProof product={product} className="px-1" />
-          {proof.trustChip && (
-            <span className="inline-block text-[11px] font-bold text-success bg-success/10 px-3 py-1 rounded-full">
-              {proof.trustChip}
-            </span>
-          )}
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
+            <span className="text-lg text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
+            {discount > 0 && (
+              <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{discount}%</span>
+            )}
+          </div>
         </div>
+
+        {/* Trust row */}
+        <LandingTrustRow />
 
         {/* Benefits sections */}
         {benefitSections.length > 0 && <LandingSections sections={benefitSections} />}
 
-        {/* Bundle selector */}
-        {bundleEnabled && bundleOptions.length > 1 && (
-          <BundleSelector
-            options={bundleOptions}
-            selectedQty={selectedQty}
-            onSelect={setSelectedQty}
-            unitPrice={product.price}
-          />
+        {/* Description as bullets */}
+        {product.description && (
+          <LandingBulletDescription description={product.description} />
         )}
 
-        {/* FAQ sections (after bundle) */}
+        {/* Quantity selector */}
+        <LandingQuantitySelector
+          unitPrice={product.price}
+          selectedQty={selectedQty}
+          onSelect={setSelectedQty}
+          oldUnitPrice={oldPrice}
+        />
+
+        {/* Reviews */}
+        <LandingReviews />
+
+        {/* FAQ sections */}
         {faqSections.length > 0 && <LandingSections sections={faqSections} />}
 
-        {/* Description */}
-        {product.description && (
-          <div
-            className="text-sm text-muted-foreground leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: product.description }}
-          />
-        )}
-
-        {/* Photo gallery of this product */}
+        {/* Photo gallery */}
         <ProductPhotoGallery images={product.images || []} alt={product.title} />
       </div>
 
       {/* Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="container max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="container max-w-lg mx-auto flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
+            {selectedQty > 1 && (
+              <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+            )}
+          </div>
           <Button
             onClick={handleCTA}
-            className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+            className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
             size="lg"
           >
             <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
@@ -266,19 +177,17 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         </div>
       </div>
 
-      {/* Phone-Only COD Modal */}
+      {/* Modals */}
       <CODFormModal
         open={codOpen}
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={bundleDiscount}
+        discountPct={0}
         landingSlug={landingSlug}
         landingVariant="tailored"
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
-
-      {/* Order Confirmation Overlay */}
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
@@ -286,8 +195,6 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
-
-      {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
@@ -297,8 +204,6 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />
-
-      {/* Address Form */}
       <AddressFormModal
         open={addressOpen}
         onClose={() => setAddressOpen(false)}
