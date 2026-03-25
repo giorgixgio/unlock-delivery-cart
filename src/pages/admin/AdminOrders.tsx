@@ -11,6 +11,7 @@ import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import { useViewModifier } from "@/hooks/useViewModifier";
+import { normalizePhone } from "@/lib/phoneUtils";
 
 type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled" | "all";
 
