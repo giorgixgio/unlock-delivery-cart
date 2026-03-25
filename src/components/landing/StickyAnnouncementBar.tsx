@@ -36,95 +36,57 @@ const StickyAnnouncementBar = memo(() => {
         top: 0,
         zIndex: 60,
         width: "100%",
-        height: 44,
-        background: "#0a0a0a",
+        height: 46,
+        background: "linear-gradient(90deg, #ff6a00, #ffb300, #ff6a00)",
+        backgroundSize: "200% 100%",
+        animation: "announceGradient 3s ease infinite, barFlash 0.6s ease-in-out infinite",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 16px",
-        borderBottom: "1px solid rgba(255,69,0,0.3)",
-        boxShadow: "0 2px 12px rgba(255,69,0,0.15)",
+        borderBottom: "2px solid rgba(0,0,0,0.15)",
+        boxShadow: "0 3px 16px rgba(255,106,0,0.5)",
         fontFamily: "'Noto Sans Georgian', 'FiraGO', sans-serif",
       }}
     >
-      {/* Left: pulsing dot + text */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "#ff4500",
-            display: "inline-block",
-            animation: "announceDotPulse 1s ease-in-out infinite",
-          }}
-        />
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#cccccc",
-            whiteSpace: "nowrap",
-          }}
-        >
-          🏍️ გადახდა კურიერთან
-        </span>
-      </div>
-
-      {/* Divider */}
-      <div
+      {/* Left: lightning + text */}
+      <span
         style={{
-          width: 1,
-          height: 20,
-          background: "#333",
-          margin: "0 12px",
-          flexShrink: 0,
+          fontSize: 12,
+          fontWeight: 700,
+          color: "#fff",
+          whiteSpace: "nowrap",
         }}
-      />
+      >
+        ⚡ ფლეშ ფასი მოქმედებს მხოლოდ:
+      </span>
 
-      {/* Right: countdown timer */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+      {/* Right: timer + hourglass */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span
           style={{
             fontFamily: "'Courier New', monospace",
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#ff4500",
-            textShadow: "0 0 8px rgba(255,69,0,0.5)",
-            letterSpacing: 1,
+            fontSize: 20,
+            fontWeight: 900,
+            color: "#fff",
+            letterSpacing: 2,
+            textShadow: "0 0 10px rgba(255,255,255,0.8)",
           }}
         >
-          {mins}
+          {mins}:{secs}
         </span>
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#ff4500",
-            animation: "announceDotPulse 1s ease-in-out infinite",
-          }}
-        >
-          :
-        </span>
-        <span
-          style={{
-            fontFamily: "'Courier New', monospace",
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#ff4500",
-            textShadow: "0 0 8px rgba(255,69,0,0.5)",
-            letterSpacing: 1,
-          }}
-        >
-          {secs}
-        </span>
+        <span style={{ fontSize: 14, color: "#fff" }}>⏳</span>
       </div>
 
-      {/* Keyframes injected once */}
       <style>{`
-        @keyframes announceDotPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.85); }
+        @keyframes announceGradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes barFlash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.85; }
         }
       `}</style>
     </div>
