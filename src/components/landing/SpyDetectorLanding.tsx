@@ -66,10 +66,7 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
-const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
-  
-  const { openCart } = useCartOverlay();
-  const { addAndGate } = useCheckoutGate();
+const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant }: SpyDetectorLandingProps) => {
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
