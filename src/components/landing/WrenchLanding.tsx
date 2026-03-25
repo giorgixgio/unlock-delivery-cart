@@ -9,6 +9,7 @@ import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
 
 import { LandingConfig } from "@/hooks/useLandingConfig";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import CODFormModal from "@/components/landing/CODFormModal";
 import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
