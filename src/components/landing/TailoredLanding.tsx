@@ -37,7 +37,8 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
-  const totalPrice = product.price * selectedQty;
+  const totalPrice = getDiscountedTotal(product.price, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
