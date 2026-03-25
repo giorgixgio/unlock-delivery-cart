@@ -426,27 +426,50 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
             size="lg"
           >
             <span className="flex items-center gap-2 text-lg font-extrabold leading-tight">
-              <ShoppingCart className="w-5 h-5" /> შეუკვეთე 1 კლიკით
+              <ShoppingCart className="w-5 h-5" /> შეუკვეთე ახლა
             </span>
-            <span className="text-[11px] font-medium text-white/70 leading-tight">გადახდა კურიერთან</span>
+            <span className="text-[11px] font-medium text-white/70 leading-tight">მხოლოდ ტელეფონი</span>
           </Button>
         </div>
       </div>
 
-      {/* COD Form Modal */}
-      {useCodModal && (
-        <CODFormModal
-          open={codOpen}
-          onClose={() => setCodOpen(false)}
-          product={product}
-          quantity={selectedQty}
-          discountPct={bundleDiscount}
-          landingSlug={landingSlug}
-          landingVariant={landingVariant}
-          bumpEnabled={false}
-          onOrderCreated={handleOrderCreated}
-        />
-      )}
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={selectedQty}
+        discountPct={bundleDiscount}
+        landingSlug={landingSlug}
+        landingVariant={landingVariant}
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={selectedQty}
+        unitPrice={UNIT_PRICE}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };
