@@ -27,11 +27,8 @@ interface TailoredLandingProps {
   useCodModal: boolean;
 }
 
-const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
-  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
-  const { addAndGate } = useCheckoutGate();
-  const { openCart } = useCartOverlay();
-  const { handleCheckoutIntent } = useCheckoutGate();
+const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps) => {
+  const navigate = useNavigate();
 
   const bundleEnabled = config.bundle?.enabled ?? false;
   const bundleOptions = config.bundle?.bundle_options ?? [{ qty: 1, label: `${product.title} × 1`, discount_pct: 0 }];
@@ -43,7 +40,17 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   const discount = getDiscountPercent(product.price, oldPrice);
   const proof = useMemo(() => generateProductProof(product, 0, undefined, "landing"), [product.id]);
 
-  const quantity = getQuantity(product.id);
+  const selectedOption = bundleOptions.find((o) => o.qty === selectedQty) ?? bundleOptions[0];
+  const bundleDiscount = selectedOption?.discount_pct ?? 0;
+
+  // Funnel state
+  const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -55,25 +62,33 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   const faqSections = (config.sections || []).filter((s) => s.type === "faq");
 
   const handleCTA = () => {
-    // Add selected quantity to cart
-    for (let i = 0; i < selectedQty; i++) {
-      addAndGate(product, "landing_cta");
-    }
-    // If threshold met, open cart; otherwise show threshold messaging
-    if (isUnlocked || product.price * selectedQty + (itemCount > 0 ? 0 : 0) >= 19) {
-      // Small delay to let cart state update
-      setTimeout(() => openCart(), 100);
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+    setCodOpen(true);
   };
 
-  const handleCheckout = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   return (
