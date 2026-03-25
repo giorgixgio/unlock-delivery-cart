@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Loader2, User, Save,
   CheckCircle, AlertTriangle, ShieldAlert, GitMerge, Undo2, XCircle, PauseCircle, Sparkles,
+  Trash2,
 } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
+import { normalizePhone } from "@/lib/phoneUtils";
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
