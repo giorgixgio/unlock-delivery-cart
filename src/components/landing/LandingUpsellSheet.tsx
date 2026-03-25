@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Check, Gift, Truck, X } from "lucide-react";
+import { Check, Gift, Truck } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { addUpsellItems } from "@/lib/orderService";
