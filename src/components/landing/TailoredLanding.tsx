@@ -224,11 +224,6 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
           />
         )}
 
-        {/* Delivery progress bar */}
-        {itemCount > 0 && (
-          <DeliveryMissionBar />
-        )}
-
         {/* FAQ sections (after bundle) */}
         {faqSections.length > 0 && <LandingSections sections={faqSections} />}
 
@@ -247,33 +242,53 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="container max-w-lg mx-auto">
-          {quantity > 0 ? (
-            <Button
-              onClick={handleCheckout}
-              className={`w-full h-14 text-lg font-bold rounded-xl shadow-lg ${
-                isUnlocked
-                  ? "bg-success hover:bg-success/90 text-success-foreground animate-cta-pulse-success"
-                  : "bg-accent text-foreground"
-              }`}
-              size="lg"
-            >
-              {isUnlocked ? (
-                <><ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება</>
-              ) : (
-                `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleCTA}
-              className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
-              size="lg"
-            >
-              კალათაში დამატება — {product.price} ₾
-            </Button>
-          )}
+          <Button
+            onClick={handleCTA}
+            className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+            size="lg"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+          </Button>
         </div>
       </div>
+
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={selectedQty}
+        discountPct={bundleDiscount}
+        landingSlug={landingSlug}
+        landingVariant="tailored"
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={selectedQty}
+        unitPrice={product.price}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };
