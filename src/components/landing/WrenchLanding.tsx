@@ -6,6 +6,7 @@ import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknot
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
@@ -87,6 +88,7 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -108,7 +110,18 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    setConfirmOpen(true);
+  };
+
+  const handleViewOffer = () => {
+    setConfirmOpen(false);
     setUpsellOpen(true);
+  };
+
+  const handleSkipOffer = () => {
+    setConfirmOpen(false);
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
@@ -435,6 +448,14 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
         landingSlug={landingSlug}
         landingVariant="wrench"
         onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
       />
 
       {/* Upsell Sheet */}

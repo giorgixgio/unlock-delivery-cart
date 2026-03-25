@@ -11,6 +11,7 @@ import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoDa
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
@@ -110,6 +111,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -129,7 +131,18 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    setConfirmOpen(true);
+  };
+
+  const handleViewOffer = () => {
+    setConfirmOpen(false);
     setUpsellOpen(true);
+  };
+
+  const handleSkipOffer = () => {
+    setConfirmOpen(false);
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
@@ -241,6 +254,14 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         landingSlug={landingSlug}
         landingVariant="generic"
         onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
       />
 
       {/* Upsell Sheet */}

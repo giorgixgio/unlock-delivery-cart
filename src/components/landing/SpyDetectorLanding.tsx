@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
@@ -77,6 +78,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -106,7 +108,18 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    setConfirmOpen(true);
+  };
+
+  const handleViewOffer = () => {
+    setConfirmOpen(false);
     setUpsellOpen(true);
+  };
+
+  const handleSkipOffer = () => {
+    setConfirmOpen(false);
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
@@ -438,6 +451,14 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         landingSlug={landingSlug}
         landingVariant={landingVariant}
         onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
       />
 
       {/* Upsell Sheet */}
