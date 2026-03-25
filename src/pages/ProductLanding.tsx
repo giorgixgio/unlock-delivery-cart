@@ -248,7 +248,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="generic"
         onPhoneOrderCreated={handlePhoneOrderCreated}
