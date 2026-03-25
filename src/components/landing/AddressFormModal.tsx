@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,8 +6,7 @@ import { Loader2, MapPin } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { updateOrderAddress } from "@/lib/orderService";
-import { trackEvent } from "@/lib/analytics";
-import { trackPurchase } from "@/lib/metaPixel";
+import { trackAddressFormViewed, trackAddressSubmitted, trackAddressAbandoned } from "@/lib/funnelTracking";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -49,10 +48,13 @@ const AddressFormModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [historicalCities, setHistoricalCities] = useState<string[]>([]);
   const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
+  const submittedRef = useRef(false);
 
-  // Load saved info
+  // Track form view
   useEffect(() => {
     if (!open) return;
+    submittedRef.current = false;
+    trackAddressFormViewed(orderId);
     const saved = loadCustomerInfo();
     if (saved) {
       setForm((f) => ({
@@ -62,6 +64,14 @@ const AddressFormModal = ({
       }));
     }
   }, [open]);
+
+  // Track abandonment on close without submit
+  const handleClose = () => {
+    if (!submittedRef.current) {
+      trackAddressAbandoned(orderId);
+    }
+    onClose();
+  };
 
   // Fetch historical data
   useEffect(() => {
@@ -109,7 +119,6 @@ const AddressFormModal = ({
 
     setSubmitting(true);
     try {
-      // Save customer info
       const saved = loadCustomerInfo();
       saveCustomerInfo({ phone: saved?.phone || "", region: form.region, address: form.address });
 
@@ -122,20 +131,10 @@ const AddressFormModal = ({
         isTbilisi,
       });
 
-      // Fire Meta Purchase
-      trackPurchase({
-        value: orderTotal + deliveryFee,
-        orderId: orderNumber,
-        items: [{ id: productId, quantity, price: unitPrice }],
-      });
+      submittedRef.current = true;
 
-      trackEvent("order_completed", {
-        order_number: orderNumber,
-        order_total: orderTotal + deliveryFee,
-        delivery_fee: deliveryFee,
-        source: "landing_cod",
-        landing_slug: landingSlug,
-      }, true);
+      // Track address submitted (NO Meta Purchase here — already fired on phone submit)
+      trackAddressSubmitted(orderId, form.region);
 
       onComplete();
     } catch (err: any) {
@@ -149,7 +148,7 @@ const AddressFormModal = ({
   const finalTotal = orderTotal + deliveryFee;
 
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet open={open} onOpenChange={(o) => !o && handleClose()}>
       <SheetContent side="bottom" className="max-h-[92vh] rounded-t-2xl overflow-y-auto pb-8">
         <SheetTitle className="text-lg font-extrabold text-foreground mb-1">
           დაასრულე შეკვეთა

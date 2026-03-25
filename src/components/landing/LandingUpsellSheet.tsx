@@ -5,7 +5,13 @@ import { Product } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { getRelated } from "@/lib/rankingEngine";
 import { addUpsellItems } from "@/lib/orderService";
-import { trackEvent } from "@/lib/analytics";
+import {
+  trackUpsellViewed,
+  trackUpsellItemSelected,
+  trackUpsellItemDeselected,
+  trackUpsellCompleted,
+  trackUpsellSkipped,
+} from "@/lib/funnelTracking";
 
 interface LandingUpsellSheetProps {
   open: boolean;
@@ -40,11 +46,12 @@ const LandingUpsellSheet = ({
 
   useEffect(() => {
     if (open) {
-      trackEvent("upsell_viewed", {
-        order_id: orderId,
-        base_product_id: baseProduct.id,
-        available_count: upsellProducts.length,
-        recommended_ids: upsellProducts.slice(0, 10).map((p) => p.id),
+      trackUpsellViewed({
+        orderId,
+        originalProductId: baseProduct.id,
+        shownUpsellProductIds: upsellProducts.slice(0, 10).map((p) => p.id),
+        requiredBundleCount: MAX_SELECT,
+        bundlePrice: BUNDLE_PRICE,
       });
       setSelectedIds(new Set());
     }
@@ -55,10 +62,10 @@ const LandingUpsellSheet = ({
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        trackEvent("upsell_item_deselected", { order_id: orderId, product_id: id });
+        trackUpsellItemDeselected(orderId, id, next.size);
       } else if (next.size < MAX_SELECT) {
         next.add(id);
-        trackEvent("upsell_item_selected", { order_id: orderId, product_id: id });
+        trackUpsellItemSelected(orderId, id, next.size);
       }
       return next;
     });
@@ -71,7 +78,7 @@ const LandingUpsellSheet = ({
   const total = basePrice + upsellPrice + deliveryFee;
 
   const handleAccept = async () => {
-    if (!complete) return; // Only allow confirmation with full bundle
+    if (!complete) return;
     setSubmitting(true);
     try {
       const items = Array.from(selectedIds).map((id) => {
@@ -79,18 +86,10 @@ const LandingUpsellSheet = ({
         return { product: p, quantity: 1 };
       });
       await addUpsellItems(orderId, items, deliveryFee, total);
-      trackEvent("upsell_confirmed", {
-        order_id: orderId,
-        selected_count: items.length,
-        upsell_price: upsellPrice,
-        delivery_fee: deliveryFee,
-        new_total: total,
-        selected_ids: Array.from(selectedIds),
-      });
-      trackEvent("upsell_completed", {
-        order_id: orderId,
-        bundle_price: BUNDLE_PRICE,
-        free_shipping: true,
+      trackUpsellCompleted({
+        orderId,
+        selectedUpsellProductIds: Array.from(selectedIds),
+        upsellBundleValue: BUNDLE_PRICE,
       });
       onComplete(deliveryFee, total);
     } catch (err) {
@@ -102,7 +101,7 @@ const LandingUpsellSheet = ({
   };
 
   const handleSkip = () => {
-    trackEvent("upsell_skipped", { order_id: orderId, base_product_id: baseProduct.id });
+    trackUpsellSkipped(orderId, filled);
     onSkip();
   };
 
@@ -118,13 +117,11 @@ const LandingUpsellSheet = ({
 
         {/* ═══ ZONE 1: FIXED HEADER ═══ */}
         <div className="flex-shrink-0 bg-card border-b border-border">
-          {/* Drag handle */}
           <div className="flex justify-center pt-2 pb-1">
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
 
           <div className="px-4 pb-3">
-            {/* Title row */}
             <div className="flex items-start gap-3 pr-8 relative">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Gift className="w-5 h-5 text-primary" />
@@ -147,7 +144,6 @@ const LandingUpsellSheet = ({
               </button>
             </div>
 
-            {/* Progress bar */}
             <div className="mt-2.5 flex items-center gap-2">
               <div className="flex-1 flex gap-1.5">
                 {[0, 1].map((i) => (
@@ -170,7 +166,6 @@ const LandingUpsellSheet = ({
               )}
             </div>
 
-            {/* Deal banner */}
             <div className="mt-2 rounded-lg bg-primary/5 border border-primary/15 px-3 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base">🔥</span>
@@ -208,13 +203,11 @@ const LandingUpsellSheet = ({
               </div>
             )}
           </div>
-          {/* Scroll fade hint */}
           <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         </div>
 
         {/* ═══ ZONE 3: STICKY BOTTOM CTA ═══ */}
         <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {/* Benefit message */}
           {!complete && (
             <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 mb-2.5">
               <Truck className="w-4 h-4 text-primary flex-shrink-0" />
@@ -233,7 +226,6 @@ const LandingUpsellSheet = ({
             </div>
           )}
 
-          {/* CTA */}
           {complete ? (
             <button
               onClick={handleAccept}
@@ -290,14 +282,12 @@ function UpsellCard({
         ${disabled ? "opacity-30 pointer-events-none" : "active:scale-[0.97]"}
       `}
     >
-      {/* Checkmark badge */}
       {selected && (
         <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in-75 duration-200">
           <Check className="w-3 h-3 text-primary-foreground" />
         </div>
       )}
 
-      {/* Image */}
       <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={product.image}
@@ -307,7 +297,6 @@ function UpsellCard({
         />
       </div>
 
-      {/* Info */}
       <div className="px-2 py-1.5">
         <p className="text-[11px] font-semibold text-foreground line-clamp-3 leading-snug min-h-[3lh]">
           {product.title}
