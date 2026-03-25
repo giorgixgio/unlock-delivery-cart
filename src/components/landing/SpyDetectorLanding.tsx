@@ -79,7 +79,15 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const DISCOUNT_PCT = Math.round((1 - UNIT_PRICE / OLD_PRICE) * 100);
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
+  
+  // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   const bundleOptions = [
     { qty: 1, label: "1 ცალი", discount_pct: 0 },
@@ -95,18 +103,33 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   }, [product.id]);
 
   const handleCTA = () => {
-    if (useCodModal) {
-      setCodOpen(true);
-    } else {
-      for (let i = 0; i < selectedQty; i++) {
-        addAndGate(product, "landing_cod");
-      }
-      setTimeout(() => openCart(), 100);
-    }
+    setCodOpen(true);
   };
 
-  const handleOrderCreated = (orderId: string, orderNumber: string) => {
-    navigate(`/success?order=${orderNumber}`);
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
