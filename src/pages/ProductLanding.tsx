@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackLandingView } from "@/lib/funnelTracking";
 
 const ProductLanding = () => {
   const { slug } = useParams();
