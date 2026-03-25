@@ -3,6 +3,7 @@ import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
