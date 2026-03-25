@@ -97,36 +97,57 @@ const ProductLanding = () => {
   }
 
   // Generic landing (existing behavior)
-  return <GenericLanding product={product} />;
+  return <GenericLanding product={product} landingSlug={landingSlug || slug || ""} />;
 };
 
-/** Generic landing page — uses global cart + threshold logic */
-const GenericLanding = ({ product }: { product: Product }) => {
-  const { updateQuantity, getQuantity, isUnlocked, remaining } = useCart();
-  const { openCart } = useCartOverlay();
-  const { addAndGate } = useCheckoutGate();
+/** Generic landing page — phone-first funnel */
+const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlug: string }) => {
+  const navigate = useNavigate();
 
-  const quantity = getQuantity(product.id);
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
   const badges = getDemoBadges(product.id);
+
+  // Funnel state
+  const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
   }, [product.id]);
 
-  /** First tap: add to cart + open threshold sheet in one step */
-  const handleFirstAdd = () => addAndGate(product, "landing_cta");
-  const handleAdd = () => addAndGate(product, "landing_qty");
-  const handleMinus = () => updateQuantity(product.id, quantity - 1);
+  const handleCTA = () => setCodOpen(true);
 
-  const handleCTA = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      addAndGate(product, "landing_cta");
-    }
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   return (
@@ -199,46 +220,54 @@ const GenericLanding = ({ product }: { product: Product }) => {
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
-        <div className="container max-w-lg mx-auto space-y-2">
-          {quantity > 0 ? (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 flex-1">
-                  <Button onClick={handleMinus} variant="outline" size="icon" className="h-12 w-12 rounded-lg border-2">
-                    <Minus className="w-5 h-5" />
-                  </Button>
-                  <span className="text-xl font-extrabold text-foreground min-w-[2rem] text-center">{quantity}</span>
-                  <Button onClick={handleAdd} size="icon" className="h-12 w-12 rounded-lg">
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                </div>
-                <AttentionButton
-                  isBelowThreshold={!isUnlocked}
-                  onClick={handleCTA}
-                  className={`flex-1 h-12 text-base ${
-                    isUnlocked
-                      ? "bg-success hover:bg-success/90 text-success-foreground"
-                      : "bg-accent text-foreground"
-                  }`}
-                >
-                  {isUnlocked ? (
-                    <><ShoppingCart className="w-5 h-5 mr-1" /> შეკვეთა</>
-                  ) : (
-                    `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
-                  )}
-                </AttentionButton>
-              </div>
-            </>
-          ) : (
-            <Button onClick={handleFirstAdd} className="w-full h-14 text-lg font-bold rounded-xl" size="lg">
-              <span className="flex flex-col items-center leading-tight">
-                <span className="flex items-center gap-2"><Plus className="w-5 h-5" /> სწრაფი შეკვეთა</span>
-                <span className="text-[10px] font-medium opacity-80">გადახდა კურიერთან</span>
-              </span>
-            </Button>
-          )}
+        <div className="container max-w-lg mx-auto">
+          <Button
+            onClick={handleCTA}
+            className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg"
+            size="lg"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+          </Button>
         </div>
       </div>
+
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={1}
+        discountPct={0}
+        landingSlug={landingSlug}
+        landingVariant="generic"
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={1}
+        unitPrice={product.price}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };
