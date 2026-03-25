@@ -3,9 +3,9 @@ import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, Wifi, Eye, Clock, Truck, Banknote, ShoppingCart,
+  Wifi, Eye, Clock, ShoppingCart,
   Star, ChevronDown, ChevronUp, Radio, Scan, Battery, Smartphone,
-  AlertTriangle, CheckCircle2, MapPin, Car, Hotel, Lock
+  AlertTriangle, MapPin, Car, Hotel, Lock
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";

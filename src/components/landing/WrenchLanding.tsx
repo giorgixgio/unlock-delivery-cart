@@ -62,7 +62,7 @@ const LastOrderBadge = memo(() => {
 });
 LastOrderBadge.displayName = "LastOrderBadge";
 
-const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => {
+const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingProps) => {
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;

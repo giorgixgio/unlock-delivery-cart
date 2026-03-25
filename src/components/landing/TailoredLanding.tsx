@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
