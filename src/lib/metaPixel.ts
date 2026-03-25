@@ -64,7 +64,23 @@ export function trackInitiateCheckout(params: {
   debugLog("InitiateCheckout");
 }
 
+// ── Lead (secondary signal on phone submission) ──
+export function trackLead(params: {
+  value: number;
+  orderId?: string;
+  productId: string;
+}) {
+  window.fbq?.("track", "Lead", {
+    value: params.value,
+    currency: "GEL",
+    content_category: "phone_order",
+    ...(params.orderId && { eventID: params.orderId }),
+  });
+  debugLog("Lead");
+}
+
 // ── Purchase ──
+// NOW fires on phone submission (order creation), NOT address completion
 export function trackPurchase(params: {
   value: number;
   orderId?: string;
@@ -88,7 +104,33 @@ export function trackPurchase(params: {
     value: params.value,
     currency: "GEL",
     num_items: params.items.reduce((s, i) => s + i.quantity, 0),
-    ...(params.orderId && { order_id: params.orderId }),
+    ...(params.orderId && { eventID: params.orderId }),
   });
   debugLog("Purchase");
+}
+
+// ── Custom funnel events ──
+
+export function trackMetaUpsellView(orderId: string) {
+  window.fbq?.("trackCustom", "UpsellView", { order_id: orderId });
+  debugLog("UpsellView");
+}
+
+export function trackMetaUpsellAccepted(orderId: string, value: number) {
+  window.fbq?.("trackCustom", "UpsellAccepted", {
+    order_id: orderId,
+    value,
+    currency: "GEL",
+  });
+  debugLog("UpsellAccepted");
+}
+
+export function trackMetaUpsellSkipped(orderId: string) {
+  window.fbq?.("trackCustom", "UpsellSkipped", { order_id: orderId });
+  debugLog("UpsellSkipped");
+}
+
+export function trackMetaAddressSubmitted(orderId: string) {
+  window.fbq?.("trackCustom", "AddressSubmitted", { order_id: orderId });
+  debugLog("AddressSubmitted");
 }
