@@ -495,8 +495,128 @@ const AdminOrderDetail = () => {
     await refreshOrder();
     setSaving(false);
   };
+  // === DELETE SELECTED PREVIOUS ORDERS ===
+  const handleDeleteSelected = async () => {
+    if (!order || !id || selectedPrevIds.length === 0) return;
+    setSaving(true);
+    setDeleteConfirmOpen(false);
+    try {
+      for (const prevId of selectedPrevIds) {
+        // Delete order items first
+        await supabase.from("order_items").delete().eq("order_id", prevId);
+        // Delete order events
+        await supabase.from("order_events").delete().eq("order_id", prevId);
+        // Delete the order
+        await supabase.from("orders").delete().eq("id", prevId);
+        await logSystemEvent({
+          entityType: "order", entityId: prevId, eventType: "ORDER_DELETE" as any, actorId: actor,
+          payload: { deleted_from_customer_history: true, parent_order_id: id },
+        });
+      }
+      toast({ title: `${selectedPrevIds.length} order(s) deleted` });
+      setSelectedPrevIds([]);
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err?.message, variant: "destructive" });
+    }
+    await refreshOrder();
+    setSaving(false);
+  };
 
-  const needsReview = order && (
+  // === MERGE SELECTED INTO CURRENT ORDER ===
+  const handleMergeSelectedIntoCurrent = async () => {
+    if (!order || !id || selectedPrevIds.length === 0) return;
+    setSaving(true);
+    setMergeConfirmOpen(false);
+    try {
+      // Fetch items from selected orders
+      const { data: sourceItems } = await supabase
+        .from("order_items")
+        .select("*")
+        .in("order_id", selectedPrevIds);
+
+      if (sourceItems && sourceItems.length > 0) {
+        // Move items to current order, merging duplicates by SKU
+        const { data: currentItems } = await supabase
+          .from("order_items")
+          .select("*")
+          .eq("order_id", id);
+
+        const currentSkuMap = new Map((currentItems || []).map(i => [i.sku, i]));
+
+        for (const item of sourceItems) {
+          const existing = currentSkuMap.get(item.sku);
+          if (existing) {
+            // Update quantity on existing item
+            const newQty = existing.quantity + item.quantity;
+            const newTotal = newQty * existing.unit_price;
+            await supabase.from("order_items").update({
+              quantity: newQty,
+              line_total: newTotal,
+            }).eq("id", existing.id);
+          } else {
+            // Move item to current order
+            await supabase.from("order_items").update({
+              order_id: id,
+            }).eq("id", item.id);
+          }
+        }
+      }
+
+      // Mark source orders as merged
+      for (const prevId of selectedPrevIds) {
+        await supabase.from("orders").update({
+          status: "merged",
+          merged_into_order_id: id,
+          internal_note: `Merged into order ${order.public_order_number}`,
+        }).eq("id", prevId);
+
+        await supabase.from("order_events").insert({
+          order_id: prevId,
+          actor,
+          event_type: "merged_into",
+          payload: { merged_into_order_id: id, merged_into_order_number: order.public_order_number } as any,
+        });
+      }
+
+      // Update current order: recalculate totals
+      const { data: updatedItems } = await supabase
+        .from("order_items")
+        .select("line_total")
+        .eq("order_id", id);
+      const newSubtotal = (updatedItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
+      const newTotal = newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0);
+
+      const existingChildIds = order.merged_child_order_ids || [];
+      await supabase.from("orders").update({
+        subtotal: newSubtotal,
+        total: newTotal,
+        merged_child_order_ids: [...existingChildIds, ...selectedPrevIds],
+        tags: [...new Set([...(order.tags || []), "auto_merged"])],
+      }).eq("id", id);
+
+      await logEvent("customer_merge", {
+        merged_order_ids: selectedPrevIds,
+        new_subtotal: newSubtotal,
+        new_total: newTotal,
+      });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_MERGE" as any, actorId: actor,
+        payload: { merged_from: selectedPrevIds, merged_at: new Date().toISOString() },
+      });
+
+      toast({ title: `${selectedPrevIds.length} order(s) merged into current order` });
+      setSelectedPrevIds([]);
+    } catch (err: any) {
+      toast({ title: "Merge failed", description: err?.message, variant: "destructive" });
+    }
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  const togglePrevSelect = (prevId: string) => {
+    setSelectedPrevIds(prev => prev.includes(prevId) ? prev.filter(x => x !== prevId) : [...prev, prevId]);
+  };
+
     ["new", "on_hold"].includes(order.status) ||
     !order.is_confirmed ||
     order.review_required
