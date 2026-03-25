@@ -133,6 +133,9 @@ const AdminOrderDetail = () => {
   const [mergedChildren, setMergedChildren] = useState<MergedChildInfo[]>([]);
   const [previousOrders, setPreviousOrders] = useState<PreviousOrder[]>([]);
   const [undoMergeOpen, setUndoMergeOpen] = useState(false);
+  const [selectedPrevIds, setSelectedPrevIds] = useState<string[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
 
   const [status, setStatus] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
