@@ -15,6 +15,7 @@ import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
 
 interface SpyDetectorLandingProps {
