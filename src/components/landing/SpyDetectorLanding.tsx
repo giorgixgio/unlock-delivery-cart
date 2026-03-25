@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
