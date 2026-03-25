@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Download, AlertTriangle, Upload } from "lucide-react";
+import { Search, Loader2, Download, AlertTriangle, Upload, RefreshCw } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import OrdersExportModal from "@/components/admin/OrdersExportModal";
@@ -11,6 +11,7 @@ import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import { useViewModifier } from "@/hooks/useViewModifier";
+import { normalizePhone } from "@/lib/phoneUtils";
 
 type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled" | "all";
 
@@ -74,6 +75,33 @@ interface OrderRow {
   tags: string[];
   internal_note: string | null;
   order_items: { image_url: string; quantity: number }[];
+  /** Number of total orders from this customer (set by grouping) */
+  _customerOrderCount?: number;
+}
+
+/** Group orders by normalized phone, keeping only the latest per customer */
+function groupOrdersByPhone(orders: OrderRow[]): OrderRow[] {
+  const phoneMap = new Map<string, OrderRow[]>();
+
+  for (const order of orders) {
+    const key = normalizePhone(order.customer_phone);
+    if (!phoneMap.has(key)) {
+      phoneMap.set(key, []);
+    }
+    phoneMap.get(key)!.push(order);
+  }
+
+  const result: OrderRow[] = [];
+  for (const [, group] of phoneMap) {
+    // Sort by created_at desc, pick the latest
+    group.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const latest = { ...group[0], _customerOrderCount: group.length };
+    result.push(latest);
+  }
+
+  // Maintain original sort order (by created_at of the representative order)
+  result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return result;
 }
 
 const AdminOrders = () => {
@@ -83,6 +111,8 @@ const AdminOrders = () => {
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState<"all" | "tbilisi" | "region">("all");
@@ -125,8 +155,12 @@ const AdminOrders = () => {
     });
   }, [applyToCount]);
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
     let query = supabase
       .from("orders")
@@ -184,15 +218,20 @@ const AdminOrders = () => {
       );
     }
 
-    const { data } = await query.limit(200);
+    const { data } = await query.limit(500);
     let result = (data as unknown as OrderRow[]) || [];
     // If modifier is active, trim the visible list to match the modified count
     if (hasModifier) {
       const targetLen = applyToCount(result.length);
       result = result.slice(0, targetLen);
     }
-    setOrders(result);
+
+    // Group by normalized phone: show only latest order per customer, track duplicates
+    const grouped = groupOrdersByPhone(result);
+    setOrders(grouped);
     setLoading(false);
+    setRefreshing(false);
+    setLastRefreshed(new Date());
   }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount]);
 
   useEffect(() => {
@@ -226,9 +265,22 @@ const AdminOrders = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {lastRefreshed.toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+          <Button
+            onClick={() => { fetchOrders(true); fetchCounts(); }}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            განახლება
+          </Button>
           <Button onClick={() => setFulfillOpen(true)} variant="outline" className="gap-2">
             <Upload className="w-4 h-4" />
             Mass Fulfill
@@ -438,7 +490,14 @@ const AdminOrders = () => {
                     {new Date(order.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{order.customer_name}</div>
+                    <div className="font-medium">
+                      {order.customer_name}
+                      {(order._customerOrderCount ?? 0) > 1 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          {order._customerOrderCount} orders
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3">

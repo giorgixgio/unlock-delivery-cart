@@ -149,7 +149,11 @@ const AddressFormModal = ({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && handleClose()}>
-      <SheetContent side="bottom" className="max-h-[92vh] rounded-t-2xl overflow-y-auto pb-8">
+      <SheetContent
+        side="bottom"
+        className="max-h-[92vh] rounded-t-2xl overflow-y-auto pb-8"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <SheetTitle className="text-lg font-extrabold text-foreground mb-1">
           დაასრულე შეკვეთა
         </SheetTitle>

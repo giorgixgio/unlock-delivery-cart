@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Loader2, User, Save,
   CheckCircle, AlertTriangle, ShieldAlert, GitMerge, Undo2, XCircle, PauseCircle, Sparkles,
+  Trash2,
 } from "lucide-react";
 import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
+// normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
@@ -131,6 +133,9 @@ const AdminOrderDetail = () => {
   const [mergedChildren, setMergedChildren] = useState<MergedChildInfo[]>([]);
   const [previousOrders, setPreviousOrders] = useState<PreviousOrder[]>([]);
   const [undoMergeOpen, setUndoMergeOpen] = useState(false);
+  const [selectedPrevIds, setSelectedPrevIds] = useState<string[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
 
   const [status, setStatus] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -490,6 +495,127 @@ const AdminOrderDetail = () => {
     await refreshOrder();
     setSaving(false);
   };
+  // === DELETE SELECTED PREVIOUS ORDERS ===
+  const handleDeleteSelected = async () => {
+    if (!order || !id || selectedPrevIds.length === 0) return;
+    setSaving(true);
+    setDeleteConfirmOpen(false);
+    try {
+      for (const prevId of selectedPrevIds) {
+        // Delete order items first
+        await supabase.from("order_items").delete().eq("order_id", prevId);
+        // Delete order events
+        await supabase.from("order_events").delete().eq("order_id", prevId);
+        // Delete the order
+        await supabase.from("orders").delete().eq("id", prevId);
+        await logSystemEvent({
+          entityType: "order", entityId: prevId, eventType: "ORDER_DELETE" as any, actorId: actor,
+          payload: { deleted_from_customer_history: true, parent_order_id: id },
+        });
+      }
+      toast({ title: `${selectedPrevIds.length} order(s) deleted` });
+      setSelectedPrevIds([]);
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err?.message, variant: "destructive" });
+    }
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  // === MERGE SELECTED INTO CURRENT ORDER ===
+  const handleMergeSelectedIntoCurrent = async () => {
+    if (!order || !id || selectedPrevIds.length === 0) return;
+    setSaving(true);
+    setMergeConfirmOpen(false);
+    try {
+      // Fetch items from selected orders
+      const { data: sourceItems } = await supabase
+        .from("order_items")
+        .select("*")
+        .in("order_id", selectedPrevIds);
+
+      if (sourceItems && sourceItems.length > 0) {
+        // Move items to current order, merging duplicates by SKU
+        const { data: currentItems } = await supabase
+          .from("order_items")
+          .select("*")
+          .eq("order_id", id);
+
+        const currentSkuMap = new Map((currentItems || []).map(i => [i.sku, i]));
+
+        for (const item of sourceItems) {
+          const existing = currentSkuMap.get(item.sku);
+          if (existing) {
+            // Update quantity on existing item
+            const newQty = existing.quantity + item.quantity;
+            const newTotal = newQty * existing.unit_price;
+            await supabase.from("order_items").update({
+              quantity: newQty,
+              line_total: newTotal,
+            }).eq("id", existing.id);
+          } else {
+            // Move item to current order
+            await supabase.from("order_items").update({
+              order_id: id,
+            }).eq("id", item.id);
+          }
+        }
+      }
+
+      // Mark source orders as merged
+      for (const prevId of selectedPrevIds) {
+        await supabase.from("orders").update({
+          status: "merged",
+          merged_into_order_id: id,
+          internal_note: `Merged into order ${order.public_order_number}`,
+        }).eq("id", prevId);
+
+        await supabase.from("order_events").insert({
+          order_id: prevId,
+          actor,
+          event_type: "merged_into",
+          payload: { merged_into_order_id: id, merged_into_order_number: order.public_order_number } as any,
+        });
+      }
+
+      // Update current order: recalculate totals
+      const { data: updatedItems } = await supabase
+        .from("order_items")
+        .select("line_total")
+        .eq("order_id", id);
+      const newSubtotal = (updatedItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
+      const newTotal = newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0);
+
+      const existingChildIds = order.merged_child_order_ids || [];
+      await supabase.from("orders").update({
+        subtotal: newSubtotal,
+        total: newTotal,
+        merged_child_order_ids: [...existingChildIds, ...selectedPrevIds],
+        tags: [...new Set([...(order.tags || []), "auto_merged"])],
+      }).eq("id", id);
+
+      await logEvent("customer_merge", {
+        merged_order_ids: selectedPrevIds,
+        new_subtotal: newSubtotal,
+        new_total: newTotal,
+      });
+      await logSystemEvent({
+        entityType: "order", entityId: id, eventType: "ORDER_MERGE" as any, actorId: actor,
+        payload: { merged_from: selectedPrevIds, merged_at: new Date().toISOString() },
+      });
+
+      toast({ title: `${selectedPrevIds.length} order(s) merged into current order` });
+      setSelectedPrevIds([]);
+    } catch (err: any) {
+      toast({ title: "Merge failed", description: err?.message, variant: "destructive" });
+    }
+    await refreshOrder();
+    setSaving(false);
+  };
+
+  const togglePrevSelect = (prevId: string) => {
+    setSelectedPrevIds(prev => prev.includes(prevId) ? prev.filter(x => x !== prevId) : [...prev, prevId]);
+  };
 
   const needsReview = order && (
     ["new", "on_hold"].includes(order.status) ||
@@ -629,33 +755,75 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      {/* Previous orders */}
+      {/* Customer Order History */}
       {previousOrders.length > 0 && (
         <div className="bg-card rounded-lg p-4 border border-border space-y-3">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <User className="w-4 h-4 text-muted-foreground" /> Previous Orders from This Customer ({previousOrders.length})
-          </h3>
-          <div className="space-y-1.5">
-            {previousOrders.map((prev) => (
-              <div key={prev.id} className="flex items-center justify-between py-2 px-3 rounded bg-muted/30 border border-border text-sm">
-                <button className="font-bold text-primary hover:underline" onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}>
-                  #{prev.public_order_number}
-                </button>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
-                  {prev.status.replace("_", " ")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                  {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
-                </span>
-                <span className="font-medium">{Number(prev.total).toFixed(1)} ₾</span>
-                {prev.is_fulfilled && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">Fulfilled</span>
-                )}
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <User className="w-4 h-4 text-muted-foreground" /> Customer Order History ({previousOrders.length})
+            </h3>
+            {selectedPrevIds.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-primary border-primary/30 hover:bg-primary/5"
+                  onClick={() => setMergeConfirmOpen(true)}
+                  disabled={saving}
+                >
+                  <GitMerge className="w-3.5 h-3.5" /> Merge into Current ({selectedPrevIds.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPrevIds.length})
+                </Button>
               </div>
-            ))}
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {previousOrders.map((prev) => {
+              const isSelected = selectedPrevIds.includes(prev.id);
+              const isMerged = prev.status === "merged";
+              return (
+                <div
+                  key={prev.id}
+                  className={`flex items-center gap-3 py-2 px-3 rounded border text-sm transition-colors ${
+                    isSelected ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border"
+                  }`}
+                >
+                  {!isMerged && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => togglePrevSelect(prev.id)}
+                      className="accent-primary flex-shrink-0"
+                    />
+                  )}
+                  {isMerged && <div className="w-4" />}
+                  <button className="font-bold text-primary hover:underline flex-shrink-0" onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}>
+                    #{prev.public_order_number}
+                  </button>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize flex-shrink-0 ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
+                    {prev.status.replace("_", " ")}
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                    {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                    {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
+                  </span>
+                  <span className="font-medium flex-shrink-0">{Number(prev.total).toFixed(1)} ₾</span>
+                  {prev.is_fulfilled && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 flex-shrink-0">Fulfilled</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -813,6 +981,38 @@ const AdminOrderDetail = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleUndoMerge}>Undo Merge</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Orders</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedPrevIds.length} selected order(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Merge Confirmation Dialog */}
+      <AlertDialog open={mergeConfirmOpen} onOpenChange={setMergeConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge into Current Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will merge {selectedPrevIds.length} order(s) into the current order (#{order?.public_order_number}). Items will be combined and source orders will be marked as merged. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMergeSelectedIntoCurrent}>Merge Orders</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
