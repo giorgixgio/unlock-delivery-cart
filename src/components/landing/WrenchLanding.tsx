@@ -4,12 +4,12 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknote, ShoppingCart, ArrowLeft } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import { LandingConfig } from "@/hooks/useLandingConfig";
-import { useCart } from "@/contexts/CartContext";
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { useNavigate } from "react-router-dom";
 
 interface WrenchLandingProps {
   product: Product;
@@ -66,11 +66,8 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
-const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
-  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
-  const { addAndGate } = useCheckoutGate();
-  const { openCart } = useCartOverlay();
-  const { handleCheckoutIntent } = useCheckoutGate();
+const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => {
+  const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
   const OLD_PRICE = Math.round(UNIT_PRICE * 1.65 * 100) / 100;
@@ -87,7 +84,15 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   const totalPrice = UNIT_PRICE * selectedQty * (1 - bundleDiscount / 100);
 
   const [specsOpen, setSpecsOpen] = useState(false);
-  const quantity = getQuantity(product.id);
+
+  // Funnel state
+  const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -95,19 +100,33 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   }, [product.id]);
 
   const handleCTA = () => {
-    // Add selected quantity to cart
-    for (let i = 0; i < selectedQty; i++) {
-      addAndGate(product, "landing_cta");
-    }
-    setTimeout(() => openCart(), 100);
+    setCodOpen(true);
   };
 
-  const handleCheckout = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   return (
@@ -359,11 +378,6 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
           </div>
         </section>
 
-        {/* Delivery progress bar */}
-        {itemCount > 0 && (
-          <DeliveryMissionBar />
-        )}
-
         {/* ═══════════════════════════════════════════
             7️⃣  URGENCY BLOCK
         ═══════════════════════════════════════════ */}
@@ -401,33 +415,53 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
               <p className="text-[10px] text-muted-foreground line-through">{(UNIT_PRICE * selectedQty).toFixed(2)} ₾</p>
             )}
           </div>
-          {quantity > 0 ? (
-            <Button
-              onClick={handleCheckout}
-              className={`flex-1 h-14 text-lg font-extrabold rounded-xl shadow-lg ${
-                isUnlocked
-                  ? "bg-success hover:bg-success/90 text-success-foreground animate-cta-pulse-success"
-                  : "bg-accent text-foreground"
-              }`}
-              size="lg"
-            >
-              {isUnlocked ? (
-                <><ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთა</>
-              ) : (
-                `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleCTA}
-              className="flex-1 h-14 text-lg font-extrabold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
-              size="lg"
-            >
-              კალათაში დამატება
-            </Button>
-          )}
+          <Button
+            onClick={handleCTA}
+            className="flex-1 h-14 text-lg font-extrabold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+            size="lg"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+          </Button>
         </div>
       </div>
+
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={selectedQty}
+        discountPct={bundleDiscount}
+        landingSlug={landingSlug}
+        landingVariant="wrench"
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={selectedQty}
+        unitPrice={UNIT_PRICE}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };

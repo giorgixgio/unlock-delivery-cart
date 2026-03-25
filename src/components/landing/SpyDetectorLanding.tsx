@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { trackViewContent } from "@/lib/metaPixel";
 import { useNavigate } from "react-router-dom";
 
@@ -66,10 +66,7 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
-const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant, useCodModal }: SpyDetectorLandingProps) => {
-  
-  const { openCart } = useCartOverlay();
-  const { addAndGate } = useCheckoutGate();
+const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant }: SpyDetectorLandingProps) => {
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
@@ -77,7 +74,15 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const DISCOUNT_PCT = Math.round((1 - UNIT_PRICE / OLD_PRICE) * 100);
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
+  
+  // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   const bundleOptions = [
     { qty: 1, label: "1 ცალი", discount_pct: 0 },
@@ -93,18 +98,33 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   }, [product.id]);
 
   const handleCTA = () => {
-    if (useCodModal) {
-      setCodOpen(true);
-    } else {
-      for (let i = 0; i < selectedQty; i++) {
-        addAndGate(product, "landing_cod");
-      }
-      setTimeout(() => openCart(), 100);
-    }
+    setCodOpen(true);
   };
 
-  const handleOrderCreated = (orderId: string, orderNumber: string) => {
-    navigate(`/success?order=${orderNumber}`);
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
@@ -401,27 +421,50 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
             size="lg"
           >
             <span className="flex items-center gap-2 text-lg font-extrabold leading-tight">
-              <ShoppingCart className="w-5 h-5" /> შეუკვეთე 1 კლიკით
+              <ShoppingCart className="w-5 h-5" /> შეუკვეთე ახლა
             </span>
-            <span className="text-[11px] font-medium text-white/70 leading-tight">გადახდა კურიერთან</span>
+            <span className="text-[11px] font-medium text-white/70 leading-tight">მხოლოდ ტელეფონი</span>
           </Button>
         </div>
       </div>
 
-      {/* COD Form Modal */}
-      {useCodModal && (
-        <CODFormModal
-          open={codOpen}
-          onClose={() => setCodOpen(false)}
-          product={product}
-          quantity={selectedQty}
-          discountPct={bundleDiscount}
-          landingSlug={landingSlug}
-          landingVariant={landingVariant}
-          bumpEnabled={false}
-          onOrderCreated={handleOrderCreated}
-        />
-      )}
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={selectedQty}
+        discountPct={bundleDiscount}
+        landingSlug={landingSlug}
+        landingVariant={landingVariant}
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={selectedQty}
+        unitPrice={UNIT_PRICE}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };

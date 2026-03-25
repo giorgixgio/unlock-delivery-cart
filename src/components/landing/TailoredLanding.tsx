@@ -12,11 +12,11 @@ import LandingSections from "@/components/landing/LandingSections";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
-import { useCart } from "@/contexts/CartContext";
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { useNavigate } from "react-router-dom";
 
 interface TailoredLandingProps {
   product: Product;
@@ -26,11 +26,8 @@ interface TailoredLandingProps {
   useCodModal: boolean;
 }
 
-const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
-  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
-  const { addAndGate } = useCheckoutGate();
-  const { openCart } = useCartOverlay();
-  const { handleCheckoutIntent } = useCheckoutGate();
+const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps) => {
+  const navigate = useNavigate();
 
   const bundleEnabled = config.bundle?.enabled ?? false;
   const bundleOptions = config.bundle?.bundle_options ?? [{ qty: 1, label: `${product.title} × 1`, discount_pct: 0 }];
@@ -42,7 +39,17 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   const discount = getDiscountPercent(product.price, oldPrice);
   const proof = useMemo(() => generateProductProof(product, 0, undefined, "landing"), [product.id]);
 
-  const quantity = getQuantity(product.id);
+  const selectedOption = bundleOptions.find((o) => o.qty === selectedQty) ?? bundleOptions[0];
+  const bundleDiscount = selectedOption?.discount_pct ?? 0;
+
+  // Funnel state
+  const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -54,25 +61,33 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
   const faqSections = (config.sections || []).filter((s) => s.type === "faq");
 
   const handleCTA = () => {
-    // Add selected quantity to cart
-    for (let i = 0; i < selectedQty; i++) {
-      addAndGate(product, "landing_cta");
-    }
-    // If threshold met, open cart; otherwise show threshold messaging
-    if (isUnlocked || product.price * selectedQty + (itemCount > 0 ? 0 : 0) >= 19) {
-      // Small delay to let cart state update
-      setTimeout(() => openCart(), 100);
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+    setCodOpen(true);
   };
 
-  const handleCheckout = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   return (
@@ -208,11 +223,6 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
           />
         )}
 
-        {/* Delivery progress bar */}
-        {itemCount > 0 && (
-          <DeliveryMissionBar />
-        )}
-
         {/* FAQ sections (after bundle) */}
         {faqSections.length > 0 && <LandingSections sections={faqSections} />}
 
@@ -231,33 +241,53 @@ const TailoredLanding = ({ product, config }: TailoredLandingProps) => {
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="container max-w-lg mx-auto">
-          {quantity > 0 ? (
-            <Button
-              onClick={handleCheckout}
-              className={`w-full h-14 text-lg font-bold rounded-xl shadow-lg ${
-                isUnlocked
-                  ? "bg-success hover:bg-success/90 text-success-foreground animate-cta-pulse-success"
-                  : "bg-accent text-foreground"
-              }`}
-              size="lg"
-            >
-              {isUnlocked ? (
-                <><ShoppingCart className="w-5 h-5 mr-2" /> შეკვეთის დასრულება</>
-              ) : (
-                `🔓 დაამატე კიდევ ${remaining} პროდუქტი`
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleCTA}
-              className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
-              size="lg"
-            >
-              კალათაში დამატება — {product.price} ₾
-            </Button>
-          )}
+          <Button
+            onClick={handleCTA}
+            className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+            size="lg"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+          </Button>
         </div>
       </div>
+
+      {/* Phone-Only COD Modal */}
+      <CODFormModal
+        open={codOpen}
+        onClose={() => setCodOpen(false)}
+        product={product}
+        quantity={selectedQty}
+        discountPct={bundleDiscount}
+        landingSlug={landingSlug}
+        landingVariant="tailored"
+        onPhoneOrderCreated={handlePhoneOrderCreated}
+      />
+
+      {/* Upsell Sheet */}
+      <LandingUpsellSheet
+        open={upsellOpen}
+        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        orderId={pendingOrderId}
+        baseProduct={product}
+        basePrice={pendingOrderTotal}
+        onComplete={handleUpsellComplete}
+        onSkip={handleUpsellSkip}
+      />
+
+      {/* Address Form */}
+      <AddressFormModal
+        open={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        orderTotal={pendingOrderTotal}
+        deliveryFee={deliveryFee}
+        productId={product.id}
+        quantity={selectedQty}
+        unitPrice={product.price}
+        landingSlug={landingSlug}
+        onComplete={handleAddressComplete}
+      />
     </div>
   );
 };
