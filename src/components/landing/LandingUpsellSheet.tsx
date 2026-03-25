@@ -297,13 +297,13 @@ function UpsellCard({
     >
       {/* Checkmark badge */}
       {selected && (
-        <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in-75 duration-200">
-          <Check className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in-75 duration-200">
+          <Check className="w-3 h-3 text-primary-foreground" />
         </div>
       )}
 
       {/* Image */}
-      <div className="aspect-square overflow-hidden bg-muted">
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={product.image}
           alt={product.title}
@@ -313,15 +313,17 @@ function UpsellCard({
       </div>
 
       {/* Info */}
-      <div className="px-2.5 py-2">
-        <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight min-h-[2lh]">
+      <div className="px-2 py-1.5">
+        <p className="text-[11px] font-semibold text-foreground line-clamp-3 leading-snug min-h-[3lh]">
           {product.title}
         </p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[11px] text-muted-foreground line-through tabular-nums">
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[10px] text-muted-foreground line-through tabular-nums">
             {product.price}₾
           </span>
-          <span className="text-[11px] font-bold text-success">✓ შედის</span>
+          <span className={`text-[10px] font-bold ${selected ? "text-primary" : "text-muted-foreground"}`}>
+            {selected ? "✓ არჩეულია" : "აირჩიე"}
+          </span>
         </div>
       </div>
     </button>
