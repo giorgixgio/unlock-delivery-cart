@@ -1,21 +1,20 @@
-import { useMemo, useEffect, lazy, Suspense } from "react";
+import { useMemo, useEffect, useState, lazy, Suspense } from "react";
 import logoSrc from "@/assets/logo.png";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
-import { useCart } from "@/contexts/CartContext";
 import { useLandingPage } from "@/contexts/LandingPageContext";
 import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Truck, Banknote, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react";
-import AttentionButton from "@/components/AttentionButton";
+import { Truck, Banknote, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
+import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
