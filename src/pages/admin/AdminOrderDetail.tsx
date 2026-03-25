@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
-import { normalizePhone } from "@/lib/phoneUtils";
+// normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
 
