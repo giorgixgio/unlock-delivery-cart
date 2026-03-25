@@ -349,7 +349,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant={landingVariant}
         onPhoneOrderCreated={handlePhoneOrderCreated}

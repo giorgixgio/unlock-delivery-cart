@@ -311,7 +311,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="wrench"
         onPhoneOrderCreated={handlePhoneOrderCreated}
