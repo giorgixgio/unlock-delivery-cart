@@ -280,6 +280,7 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
