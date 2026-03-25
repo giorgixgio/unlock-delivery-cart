@@ -72,7 +72,8 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
 
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
-  const totalPrice = UNIT_PRICE * selectedQty;
+  const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
