@@ -147,7 +147,6 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
           unitPrice={product.price}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={oldPrice}
         />
 
         {/* Reviews */}
