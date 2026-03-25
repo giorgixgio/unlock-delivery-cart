@@ -154,7 +154,8 @@ const AddressFormModal = ({
         <SheetTitle className="text-lg font-extrabold text-foreground mb-1">
           დაასრულე შეკვეთა
         </SheetTitle>
-        <p className="text-sm text-muted-foreground mb-4">მიუთითე მიტანის მისამართი</p>
+        <p className="text-sm text-muted-foreground mb-1">მიუთითე მიტანის მისამართი</p>
+        <p className="text-xs text-muted-foreground mb-4">ოპერატორი დაგიკავშირდებათ შეკვეთის დასადასტურებლად</p>
 
         {/* Order total display */}
         <div className="flex items-center gap-2 bg-accent/40 rounded-xl px-4 py-3 mb-4">
