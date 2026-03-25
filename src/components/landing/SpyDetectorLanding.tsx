@@ -268,7 +268,6 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           unitPrice={UNIT_PRICE}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={OLD_PRICE}
           dark
         />
 
