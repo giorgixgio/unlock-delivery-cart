@@ -71,7 +71,7 @@ const LandingUpsellSheet = ({
   const total = basePrice + upsellPrice + deliveryFee;
 
   const handleAccept = async () => {
-    if (filled === 0) { handleSkip(); return; }
+    if (!complete) return; // Only allow confirmation with full bundle
     setSubmitting(true);
     try {
       const items = Array.from(selectedIds).map((id) => {
@@ -87,13 +87,11 @@ const LandingUpsellSheet = ({
         new_total: total,
         selected_ids: Array.from(selectedIds),
       });
-      if (complete) {
-        trackEvent("upsell_completed", {
-          order_id: orderId,
-          bundle_price: BUNDLE_PRICE,
-          free_shipping: true,
-        });
-      }
+      trackEvent("upsell_completed", {
+        order_id: orderId,
+        bundle_price: BUNDLE_PRICE,
+        free_shipping: true,
+      });
       onComplete(deliveryFee, total);
     } catch (err) {
       console.error("Upsell failed:", err);
@@ -186,14 +184,14 @@ const LandingUpsellSheet = ({
         </div>
 
         {/* ═══ ZONE 2: SCROLLABLE PRODUCT GRID ═══ */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-background">
-          <div className="px-3 py-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-background relative">
+          <div className="px-2.5 py-2">
             {upsellProducts.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-12">
                 პროდუქტები იტვირთება...
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {upsellProducts.map((p) => {
                   const isSelected = selectedIds.has(p.id);
                   const isMaxed = filled >= MAX_SELECT && !isSelected;
@@ -210,6 +208,8 @@ const LandingUpsellSheet = ({
               </div>
             )}
           </div>
+          {/* Scroll fade hint */}
+          <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         </div>
 
         {/* ═══ ZONE 3: STICKY BOTTOM SUMMARY + CTA ═══ */}
@@ -249,26 +249,21 @@ const LandingUpsellSheet = ({
             </button>
           ) : (
             <button
-              onClick={() => { if (filled > 0) handleAccept(); else handleSkip(); }}
-              disabled={submitting}
-              className={`w-full h-12 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 ${
-                filled > 0
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground border border-border"
-              }`}
+              disabled
+              className="w-full h-12 rounded-xl font-bold text-sm bg-muted text-muted-foreground border border-border opacity-60 cursor-not-allowed"
             >
-              {filled > 0 ? "დაამატე" : "გაფორმება 5₾ მიწოდებით"}
+              {filled === 0
+                ? "აირჩიე 2 პროდუქტი გასაგრძელებლად"
+                : "დაამატე კიდევ 1 პროდუქტი"}
             </button>
           )}
 
-          {!complete && filled === 0 && (
-            <button
-              onClick={handleSkip}
-              className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
-            >
-              არა, გავაგრძელებ დამატების გარეშე →
-            </button>
-          )}
+          <button
+            onClick={handleSkip}
+            className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
+          >
+            გაფორმება 5₾ მიწოდებით →
+          </button>
         </div>
       </SheetContent>
     </Sheet>
@@ -302,13 +297,13 @@ function UpsellCard({
     >
       {/* Checkmark badge */}
       {selected && (
-        <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in-75 duration-200">
-          <Check className="w-3.5 h-3.5 text-primary-foreground" />
+        <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in-75 duration-200">
+          <Check className="w-3 h-3 text-primary-foreground" />
         </div>
       )}
 
       {/* Image */}
-      <div className="aspect-square overflow-hidden bg-muted">
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={product.image}
           alt={product.title}
@@ -318,15 +313,17 @@ function UpsellCard({
       </div>
 
       {/* Info */}
-      <div className="px-2.5 py-2">
-        <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight min-h-[2lh]">
+      <div className="px-2 py-1.5">
+        <p className="text-[11px] font-semibold text-foreground line-clamp-3 leading-snug min-h-[3lh]">
           {product.title}
         </p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[11px] text-muted-foreground line-through tabular-nums">
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[10px] text-muted-foreground line-through tabular-nums">
             {product.price}₾
           </span>
-          <span className="text-[11px] font-bold text-success">✓ შედის</span>
+          <span className={`text-[10px] font-bold ${selected ? "text-primary" : "text-muted-foreground"}`}>
+            {selected ? "✓ არჩეულია" : "აირჩიე"}
+          </span>
         </div>
       </div>
     </button>
