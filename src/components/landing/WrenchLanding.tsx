@@ -67,11 +67,8 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 /* ─── Main Component ─── */
-const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
-  const { getQuantity, isUnlocked, remaining, itemCount } = useCart();
-  const { addAndGate } = useCheckoutGate();
-  const { openCart } = useCartOverlay();
-  const { handleCheckoutIntent } = useCheckoutGate();
+const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => {
+  const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
   const OLD_PRICE = Math.round(UNIT_PRICE * 1.65 * 100) / 100;
@@ -88,7 +85,15 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   const totalPrice = UNIT_PRICE * selectedQty * (1 - bundleDiscount / 100);
 
   const [specsOpen, setSpecsOpen] = useState(false);
-  const quantity = getQuantity(product.id);
+
+  // Funnel state
+  const [codOpen, setCodOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState("");
+  const [pendingOrderNumber, setPendingOrderNumber] = useState("");
+  const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -96,19 +101,33 @@ const WrenchLanding = ({ product, config }: WrenchLandingProps) => {
   }, [product.id]);
 
   const handleCTA = () => {
-    // Add selected quantity to cart
-    for (let i = 0; i < selectedQty; i++) {
-      addAndGate(product, "landing_cta");
-    }
-    setTimeout(() => openCart(), 100);
+    setCodOpen(true);
   };
 
-  const handleCheckout = () => {
-    if (isUnlocked) {
-      openCart();
-    } else {
-      handleCheckoutIntent("landing_cta");
-    }
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+    setPendingOrderId(orderId);
+    setPendingOrderNumber(orderNumber);
+    setPendingOrderTotal(orderTotal);
+    setCodOpen(false);
+    setUpsellOpen(true);
+  };
+
+  const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
+    setDeliveryFee(newDeliveryFee);
+    setPendingOrderTotal(newTotal - newDeliveryFee);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleUpsellSkip = () => {
+    setDeliveryFee(5);
+    setUpsellOpen(false);
+    setAddressOpen(true);
+  };
+
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    navigate(`/success?order=${pendingOrderNumber}`);
   };
 
   return (
