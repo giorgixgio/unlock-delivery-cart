@@ -617,6 +617,7 @@ const AdminOrderDetail = () => {
     setSelectedPrevIds(prev => prev.includes(prevId) ? prev.filter(x => x !== prevId) : [...prev, prevId]);
   };
 
+  const needsReview = order && (
     ["new", "on_hold"].includes(order.status) ||
     !order.is_confirmed ||
     order.review_required
