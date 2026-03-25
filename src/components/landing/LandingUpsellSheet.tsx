@@ -21,7 +21,7 @@ const UPSELL_BUNDLE_PRICE = 19;
 
 const LandingUpsellSheet = ({
   open,
-  onClose,
+  onClose: _onClose,
   orderId,
   baseProduct,
   basePrice,
