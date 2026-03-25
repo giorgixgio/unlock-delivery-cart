@@ -120,9 +120,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "generic" });
   }, [product.id]);
 
   const handleCTA = () => setCodOpen(true);
