@@ -4,7 +4,6 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknote, ShoppingCart, ArrowLeft } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";

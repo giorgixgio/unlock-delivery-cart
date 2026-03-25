@@ -12,7 +12,6 @@ import LandingSections from "@/components/landing/LandingSections";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
-import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
