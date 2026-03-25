@@ -71,7 +71,7 @@ const LandingUpsellSheet = ({
   const total = basePrice + upsellPrice + deliveryFee;
 
   const handleAccept = async () => {
-    if (filled === 0) { handleSkip(); return; }
+    if (!complete) return; // Only allow confirmation with full bundle
     setSubmitting(true);
     try {
       const items = Array.from(selectedIds).map((id) => {
@@ -87,13 +87,11 @@ const LandingUpsellSheet = ({
         new_total: total,
         selected_ids: Array.from(selectedIds),
       });
-      if (complete) {
-        trackEvent("upsell_completed", {
-          order_id: orderId,
-          bundle_price: BUNDLE_PRICE,
-          free_shipping: true,
-        });
-      }
+      trackEvent("upsell_completed", {
+        order_id: orderId,
+        bundle_price: BUNDLE_PRICE,
+        free_shipping: true,
+      });
       onComplete(deliveryFee, total);
     } catch (err) {
       console.error("Upsell failed:", err);
