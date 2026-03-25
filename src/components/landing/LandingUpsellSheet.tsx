@@ -249,26 +249,21 @@ const LandingUpsellSheet = ({
             </button>
           ) : (
             <button
-              onClick={() => { if (filled > 0) handleAccept(); else handleSkip(); }}
-              disabled={submitting}
-              className={`w-full h-12 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 ${
-                filled > 0
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground border border-border"
-              }`}
+              disabled
+              className="w-full h-12 rounded-xl font-bold text-sm bg-muted text-muted-foreground border border-border opacity-60 cursor-not-allowed"
             >
-              {filled > 0 ? "დაამატე" : "გაფორმება 5₾ მიწოდებით"}
+              {filled === 0
+                ? "აირჩიე 2 პროდუქტი გასაგრძელებლად"
+                : "დაამატე კიდევ 1 პროდუქტი"}
             </button>
           )}
 
-          {!complete && filled === 0 && (
-            <button
-              onClick={handleSkip}
-              className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
-            >
-              არა, გავაგრძელებ დამატების გარეშე →
-            </button>
-          )}
+          <button
+            onClick={handleSkip}
+            className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
+          >
+            გაფორმება 5₾ მიწოდებით →
+          </button>
         </div>
       </SheetContent>
     </Sheet>
