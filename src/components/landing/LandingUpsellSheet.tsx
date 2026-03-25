@@ -184,14 +184,14 @@ const LandingUpsellSheet = ({
         </div>
 
         {/* ═══ ZONE 2: SCROLLABLE PRODUCT GRID ═══ */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-background">
-          <div className="px-3 py-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-background relative">
+          <div className="px-2.5 py-2">
             {upsellProducts.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-12">
                 პროდუქტები იტვირთება...
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {upsellProducts.map((p) => {
                   const isSelected = selectedIds.has(p.id);
                   const isMaxed = filled >= MAX_SELECT && !isSelected;
@@ -208,6 +208,8 @@ const LandingUpsellSheet = ({
               </div>
             )}
           </div>
+          {/* Scroll fade hint */}
+          <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         </div>
 
         {/* ═══ ZONE 3: STICKY BOTTOM SUMMARY + CTA ═══ */}
