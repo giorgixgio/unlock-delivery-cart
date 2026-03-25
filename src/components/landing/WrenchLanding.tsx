@@ -454,6 +454,7 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
