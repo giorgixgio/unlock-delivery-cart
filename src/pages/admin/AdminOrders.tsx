@@ -75,6 +75,33 @@ interface OrderRow {
   tags: string[];
   internal_note: string | null;
   order_items: { image_url: string; quantity: number }[];
+  /** Number of total orders from this customer (set by grouping) */
+  _customerOrderCount?: number;
+}
+
+/** Group orders by normalized phone, keeping only the latest per customer */
+function groupOrdersByPhone(orders: OrderRow[]): OrderRow[] {
+  const phoneMap = new Map<string, OrderRow[]>();
+
+  for (const order of orders) {
+    const key = normalizePhone(order.customer_phone);
+    if (!phoneMap.has(key)) {
+      phoneMap.set(key, []);
+    }
+    phoneMap.get(key)!.push(order);
+  }
+
+  const result: OrderRow[] = [];
+  for (const [, group] of phoneMap) {
+    // Sort by created_at desc, pick the latest
+    group.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const latest = { ...group[0], _customerOrderCount: group.length };
+    result.push(latest);
+  }
+
+  // Maintain original sort order (by created_at of the representative order)
+  result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return result;
 }
 
 const AdminOrders = () => {
