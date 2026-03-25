@@ -457,6 +457,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
