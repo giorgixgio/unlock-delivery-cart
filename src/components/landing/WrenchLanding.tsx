@@ -234,7 +234,6 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
           unitPrice={UNIT_PRICE}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={OLD_PRICE}
         />
 
         {/* REVIEWS */}
