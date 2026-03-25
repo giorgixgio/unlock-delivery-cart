@@ -6,10 +6,11 @@ import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknot
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
 import { LandingConfig } from "@/hooks/useLandingConfig";
-import { useCart } from "@/contexts/CartContext";
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { useNavigate } from "react-router-dom";
 
 interface WrenchLandingProps {
   product: Product;
