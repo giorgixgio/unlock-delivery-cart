@@ -490,7 +490,14 @@ const AdminOrders = () => {
                     {new Date(order.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{order.customer_name}</div>
+                    <div className="font-medium">
+                      {order.customer_name}
+                      {(order._customerOrderCount ?? 0) > 1 && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          {order._customerOrderCount} orders
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3">
