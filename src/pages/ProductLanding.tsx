@@ -256,6 +256,14 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
 
+      {/* Order Confirmation Overlay */}
+      <OrderConfirmationOverlay
+        open={confirmOpen}
+        orderId={pendingOrderId}
+        onViewOffer={handleViewOffer}
+        onSkip={handleSkipOffer}
+      />
+
       {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}
