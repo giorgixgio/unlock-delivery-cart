@@ -17,6 +17,7 @@ import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOver
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
 
 interface TailoredLandingProps {
@@ -53,9 +54,10 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent on mount
+  // Track ViewContent + landing_view on mount
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "tailored" });
   }, [product.id]);
 
   // Split sections: benefits before bundle, faq after bundle
@@ -280,6 +282,7 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />

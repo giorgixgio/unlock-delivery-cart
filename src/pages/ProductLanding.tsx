@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackLandingView } from "@/lib/funnelTracking";
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -119,9 +120,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "generic" });
   }, [product.id]);
 
   const handleCTA = () => setCodOpen(true);
@@ -260,6 +261,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />

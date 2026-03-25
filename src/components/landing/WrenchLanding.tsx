@@ -10,6 +10,7 @@ import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOver
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
 
 interface WrenchLandingProps {
@@ -96,9 +97,9 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "wrench" });
   }, [product.id]);
 
   const handleCTA = () => {
@@ -454,6 +455,7 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
