@@ -87,7 +87,8 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  const totalPrice = UNIT_PRICE * selectedQty;
+  const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   useEffect(() => {
     trackViewContent(product);
