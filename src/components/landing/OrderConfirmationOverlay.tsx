@@ -1,6 +1,6 @@
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Gift, Truck, CheckCircle2 } from "lucide-react";
+import { Truck, CheckCircle2 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
 interface OrderConfirmationOverlayProps {
@@ -10,12 +10,38 @@ interface OrderConfirmationOverlayProps {
   onSkip: () => void;
 }
 
+const COUNTDOWN_SECONDS = 3 * 60; // 3 minutes
+
 const OrderConfirmationOverlay = ({
   open,
   orderId,
   onViewOffer,
   onSkip,
 }: OrderConfirmationOverlayProps) => {
+  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setSecondsLeft(COUNTDOWN_SECONDS);
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft((s) => {
+          if (s <= 1) {
+            clearInterval(intervalRef.current!);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [open]);
+
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+
   const handleViewOffer = () => {
     trackEvent("upsell_offer_accepted", { order_id: orderId });
     onViewOffer();
@@ -47,39 +73,35 @@ const OrderConfirmationOverlay = ({
         {/* Divider */}
         <div className="h-px bg-border mx-6" />
 
-        {/* Offer section */}
-        <div className="px-6 py-5">
-          <div className="rounded-xl bg-primary/5 border border-primary/15 p-4">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Gift className="w-4.5 h-4.5 text-primary" />
-              </div>
-              <span className="text-sm font-extrabold text-foreground leading-snug">
-                🔥 სპეციალური შეთავაზება მხოლოდ ახლა
+        {/* Offer section + CTA */}
+        <div className="px-6 pt-5 pb-6">
+          {/* Countdown */}
+          <div className="flex items-center justify-center gap-1.5 mb-3">
+            <span className="text-xs text-muted-foreground">შეთავაზება იწურება:</span>
+            <span className="text-sm font-extrabold text-destructive tabular-nums tracking-wide">
+              {mm}:{ss}
+            </span>
+          </div>
+
+          {/* Primary CTA — pulsing */}
+          <button
+            onClick={handleViewOffer}
+            className="group relative w-full rounded-xl bg-primary text-primary-foreground shadow-lg overflow-hidden animate-[ctaPulse_2s_ease-in-out_infinite]"
+          >
+            <div className="relative z-10 flex flex-col items-center py-4 px-4">
+              <span className="text-[15px] font-extrabold leading-tight">
+                აირჩიე 2 პროდუქტი 19₾-ად
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-foreground/80 mt-1">
+                <Truck className="w-3.5 h-3.5" />
+                მხოლოდ ახლა • უფასო მიწოდება
               </span>
             </div>
-            <p className="text-[13px] text-muted-foreground leading-relaxed">
-              აირჩიე ნებისმიერი <strong className="text-foreground">2 პროდუქტი 19₾-ად</strong> და მიიღე{" "}
-              <span className="inline-flex items-center gap-1 text-success font-bold">
-                <Truck className="w-3.5 h-3.5" />
-                უფასო მიწოდება
-              </span>
-            </p>
-          </div>
-        </div>
+          </button>
 
-        {/* Buttons */}
-        <div className="px-6 pb-6 space-y-2.5">
-          <Button
-            onClick={handleViewOffer}
-            className="w-full h-13 text-[15px] font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-            size="lg"
-          >
-            ნახვა შეთავაზების
-          </Button>
           <button
             onClick={handleSkip}
-            className="w-full text-center text-[13px] text-muted-foreground underline underline-offset-2 py-1.5 hover:text-foreground transition-colors"
+            className="w-full text-center text-[13px] text-muted-foreground underline underline-offset-2 py-2 mt-2 hover:text-foreground transition-colors"
           >
             გამოტოვება და გაგრძელება
           </button>

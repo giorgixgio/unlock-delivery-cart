@@ -212,31 +212,26 @@ const LandingUpsellSheet = ({
           <div className="sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         </div>
 
-        {/* ═══ ZONE 3: STICKY BOTTOM SUMMARY + CTA ═══ */}
+        {/* ═══ ZONE 3: STICKY BOTTOM CTA ═══ */}
         <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {/* Summary rows */}
-          <div className="space-y-1 text-xs mb-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground truncate max-w-[60%]">{baseProduct.title}</span>
-              <span className="font-semibold text-foreground tabular-nums">{basePrice.toFixed(0)} ₾</span>
-            </div>
-            {complete && (
-              <div className="flex justify-between items-center animate-in slide-in-from-top-1 duration-200">
-                <span className="text-muted-foreground">2 პროდუქტი (შეთავაზება)</span>
-                <span className="font-semibold text-primary tabular-nums">{BUNDLE_PRICE} ₾</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">მიწოდება</span>
-              <span className={`font-semibold tabular-nums ${complete ? "text-success" : "text-foreground"}`}>
-                {complete ? "უფასო" : "5 ₾"}
+          {/* Benefit message */}
+          {!complete && (
+            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 mb-2.5">
+              <Truck className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-[11px] font-semibold text-foreground leading-snug">
+                აირჩიე 2 პროდუქტი და მიტანა გახდება <span className="text-success font-bold">უფასო</span> — დაზოგე 5₾
               </span>
             </div>
-            <div className="flex justify-between items-center border-t border-border pt-1.5 mt-1">
-              <span className="font-bold text-foreground text-[13px]">ჯამი</span>
-              <span className="font-extrabold text-primary text-lg tabular-nums">{total.toFixed(0)} ₾</span>
+          )}
+          {complete && (
+            <div className="flex items-center justify-between rounded-lg bg-success/10 border border-success/20 px-3 py-2 mb-2.5 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-success flex-shrink-0" />
+                <span className="text-[11px] font-bold text-success">✅ მიტანა უფასოა</span>
+              </div>
+              <span className="text-xs font-extrabold text-primary tabular-nums">{BUNDLE_PRICE}₾</span>
             </div>
-          </div>
+          )}
 
           {/* CTA */}
           {complete ? (
