@@ -110,7 +110,18 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    setConfirmOpen(true);
+  };
+
+  const handleViewOffer = () => {
+    setConfirmOpen(false);
     setUpsellOpen(true);
+  };
+
+  const handleSkipOffer = () => {
+    setConfirmOpen(false);
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
