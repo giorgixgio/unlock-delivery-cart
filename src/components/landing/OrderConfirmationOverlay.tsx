@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Truck, CheckCircle2 } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { trackConfirmationViewed, trackConfirmationOfferClicked, trackConfirmationOfferSkipped } from "@/lib/funnelTracking";
 
 interface OrderConfirmationOverlayProps {
   open: boolean;
   orderId: string;
+  productId: string;
   onViewOffer: () => void;
   onSkip: () => void;
 }
@@ -15,6 +16,7 @@ const COUNTDOWN_SECONDS = 3 * 60; // 3 minutes
 const OrderConfirmationOverlay = ({
   open,
   orderId,
+  productId,
   onViewOffer,
   onSkip,
 }: OrderConfirmationOverlayProps) => {
@@ -24,6 +26,7 @@ const OrderConfirmationOverlay = ({
   useEffect(() => {
     if (open) {
       setSecondsLeft(COUNTDOWN_SECONDS);
+      trackConfirmationViewed(orderId, productId);
       intervalRef.current = setInterval(() => {
         setSecondsLeft((s) => {
           if (s <= 1) {
@@ -43,12 +46,12 @@ const OrderConfirmationOverlay = ({
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
   const handleViewOffer = () => {
-    trackEvent("upsell_offer_accepted", { order_id: orderId });
+    trackConfirmationOfferClicked(orderId, productId);
     onViewOffer();
   };
 
   const handleSkip = () => {
-    trackEvent("upsell_offer_skipped", { order_id: orderId });
+    trackConfirmationOfferSkipped(orderId, productId);
     onSkip();
   };
 

@@ -7,8 +7,8 @@ import { Loader2, Phone, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { Product } from "@/lib/constants";
 import { createOrder } from "@/lib/orderService";
-import { trackEvent } from "@/lib/analytics";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
+import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
 
 const phoneSchema = z.object({
   phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
@@ -43,7 +43,7 @@ const CODFormModal = ({
   const totalBefore = unitPrice * quantity;
   const totalAfter = totalBefore * (1 - discountPct / 100);
 
-  // Load saved phone
+  // Load saved phone + track form view
   useEffect(() => {
     if (!open) {
       setSuccess(false);
@@ -51,6 +51,7 @@ const CODFormModal = ({
     }
     const saved = loadCustomerInfo();
     if (saved?.phone) setPhone(saved.phone);
+    trackPhoneFormViewed(product.id);
   }, [open]);
 
   const handleSubmit = async () => {
@@ -78,13 +79,14 @@ const CODFormModal = ({
         status: "pending_details",
       });
 
-      trackEvent("phone_submitted", {
-        order_id: order.id,
-        order_number: order.public_order_number,
-        phone: phone.slice(-4),
-        product_id: product.id,
-        total: totalAfter,
-        landing_slug: landingSlug,
+      // ═══ MAIN CONVERSION: Fire Meta Purchase + PostHog phone_submitted ═══
+      trackPhoneSubmitted({
+        orderId: order.id,
+        orderNumber: order.public_order_number,
+        productId: product.id,
+        productName: product.title,
+        baseValue: totalAfter, // base product value only, no shipping
+        landingSlug,
       });
 
       // Show brief success flash
