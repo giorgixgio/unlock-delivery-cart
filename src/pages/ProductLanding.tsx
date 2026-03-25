@@ -261,6 +261,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
+        productId={product.id}
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />

@@ -97,9 +97,9 @@ const WrenchLanding = ({ product, config, landingSlug }: WrenchLandingProps) => 
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  // Track ViewContent on mount
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "wrench" });
   }, [product.id]);
 
   const handleCTA = () => {

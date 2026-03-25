@@ -98,6 +98,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
 
   useEffect(() => {
     trackViewContent(product);
+    trackLandingView({ productId: product.id, productName: product.title, landingType: "spy-detector" });
   }, [product.id]);
 
   const handleCTA = () => {
