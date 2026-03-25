@@ -13,6 +13,7 @@ import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
