@@ -13,10 +13,11 @@ import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 import DeliveryMissionBar from "@/components/DeliveryMissionBar";
-import { useCart } from "@/contexts/CartContext";
-import { useCartOverlay } from "@/contexts/CartOverlayContext";
-import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
+import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
+import { useNavigate } from "react-router-dom";
 
 interface TailoredLandingProps {
   product: Product;
