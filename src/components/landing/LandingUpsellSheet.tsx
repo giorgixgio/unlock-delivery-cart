@@ -123,67 +123,64 @@ const LandingUpsellSheet = ({
     <Sheet open={open} onOpenChange={(o) => { if (!o) handleSkip(); }}>
       <SheetContent
         side="bottom"
-        className="max-h-[95vh] rounded-t-3xl overflow-hidden p-0 flex flex-col [&>button]:hidden"
+        className="h-[100dvh] rounded-t-2xl overflow-hidden p-0 flex flex-col [&>button]:hidden"
       >
         <SheetTitle className="sr-only">შეთავაზება</SheetTitle>
 
-        {/* ── STICKY HEADER ── */}
-        <div className="relative flex-shrink-0 px-5 pt-5 pb-4 bg-card border-b border-border">
-          {/* Close button */}
+        {/* ── COMPACT HEADER ── */}
+        <div className="relative flex-shrink-0 px-4 pt-3 pb-2.5 bg-card border-b border-border">
           <button
             onClick={handleSkip}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors z-10"
+            className="absolute top-2.5 right-3 w-7 h-7 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors z-10"
           >
-            <X className="w-4 h-4 text-muted-foreground" />
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
 
-          {/* Offer banner */}
-          <div className="flex items-start gap-3 pr-8">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Gift className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-2.5 pr-8">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Gift className="w-4 h-4 text-primary" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-extrabold text-foreground leading-snug">
-                აირჩიე ნებისმიერი 2 დამატებითი პროდუქტი მხოლოდ {UPSELL_BUNDLE_PRICE}₾-ად
+              <h2 className="text-[13px] font-extrabold text-foreground leading-tight">
+                აირჩიე 2 პროდუქტი მხოლოდ {UPSELL_BUNDLE_PRICE}₾-ად
               </h2>
-              <p className="text-sm text-muted-foreground mt-1 leading-snug">
-                დაამატე ახლავე და მიიღე უფასო მიწოდება
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
+                დაამატე ახლავე → უფასო მიწოდება
               </p>
             </div>
           </div>
 
-          {/* Progress indicator */}
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
               {[0, 1].map((i) => (
                 <div
                   key={i}
-                  className={`w-8 h-2 rounded-full transition-colors duration-200 ${
+                  className={`w-7 h-1.5 rounded-full transition-colors duration-200 ${
                     selectedIds.size > i ? "bg-primary" : "bg-border"
                   }`}
                 />
               ))}
-              <span className="text-xs font-semibold text-muted-foreground ml-1">
+              <span className="text-[10px] font-semibold text-muted-foreground ml-1">
                 {selectedIds.size}/{MAX_SELECT}
               </span>
             </div>
             {hasTwoSelected && (
-              <span className="flex items-center gap-1 text-xs font-bold text-success animate-in fade-in duration-300">
-                <Truck className="w-3.5 h-3.5" />
-                უფასო მიწოდება გააქტიურდა ✅
+              <span className="flex items-center gap-1 text-[10px] font-bold text-success animate-in fade-in duration-300">
+                <Truck className="w-3 h-3" />
+                უფასო მიწოდება ✅
               </span>
             )}
           </div>
         </div>
 
         {/* ── SCROLLABLE PRODUCT GRID ── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+        <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
           {upsellProducts.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">
               პროდუქტები იტვირთება...
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {upsellProducts.map((p) => {
                 const isSelected = selectedIds.has(p.id);
                 const isDisabled = selectedIds.size >= MAX_SELECT && !isSelected;
@@ -192,7 +189,7 @@ const LandingUpsellSheet = ({
                     key={p.id}
                     onClick={() => !isDisabled && toggleProduct(p.id)}
                     className={`
-                      relative rounded-2xl border-2 text-left transition-all duration-200 overflow-hidden
+                      relative rounded-xl border-2 text-left transition-all duration-200 overflow-hidden
                       ${isSelected
                         ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/20"
                         : "border-border bg-card hover:border-primary/30"
@@ -200,15 +197,13 @@ const LandingUpsellSheet = ({
                       ${isDisabled ? "opacity-35 pointer-events-none" : ""}
                     `}
                   >
-                    {/* Selection badge */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in duration-200">
-                        <Check className="w-4 h-4 text-primary-foreground" />
+                      <div className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm animate-in zoom-in duration-200">
+                        <Check className="w-3.5 h-3.5 text-primary-foreground" />
                       </div>
                     )}
 
-                    {/* Product image */}
-                    <div className="aspect-square overflow-hidden bg-muted">
+                    <div className="aspect-[4/3] overflow-hidden bg-muted">
                       <img
                         src={p.image}
                         alt={p.title}
@@ -217,12 +212,11 @@ const LandingUpsellSheet = ({
                       />
                     </div>
 
-                    {/* Product info */}
-                    <div className="p-2.5">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2 leading-tight min-h-[2.25rem]">
+                    <div className="px-2 py-1.5">
+                      <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight min-h-[2rem]">
                         {p.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">{p.price} ₾</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{p.price} ₾</p>
                     </div>
                   </button>
                 );
@@ -231,12 +225,11 @@ const LandingUpsellSheet = ({
           )}
         </div>
 
-        {/* ── STICKY BOTTOM: SUMMARY + CTA ── */}
-        <div className="flex-shrink-0 bg-card border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {/* Price breakdown */}
-          <div className="space-y-1.5 text-sm mb-3">
+        {/* ── COMPACT STICKY BOTTOM ── */}
+        <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="space-y-1 text-xs mb-2">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground truncate max-w-[60%]">{baseProduct.title}</span>
+              <span className="text-muted-foreground truncate max-w-[55%]">{baseProduct.title}</span>
               <span className="font-semibold text-foreground tabular-nums">{basePrice.toFixed(2)} ₾</span>
             </div>
             {hasTwoSelected && (
@@ -251,18 +244,17 @@ const LandingUpsellSheet = ({
                 {hasTwoSelected ? "უფასო" : "5 ₾"}
               </span>
             </div>
-            <div className="flex justify-between items-center border-t border-border pt-1.5">
-              <span className="font-bold text-foreground">ჯამი</span>
-              <span className="font-extrabold text-primary text-lg tabular-nums">{totalPrice.toFixed(2)} ₾</span>
+            <div className="flex justify-between items-center border-t border-border pt-1">
+              <span className="font-bold text-foreground text-sm">ჯამი</span>
+              <span className="font-extrabold text-primary text-base tabular-nums">{totalPrice.toFixed(2)} ₾</span>
             </div>
           </div>
 
-          {/* CTA */}
           {hasTwoSelected ? (
             <Button
               onClick={handleAccept}
               disabled={submitting}
-              className="w-full h-13 text-base font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
+              className="w-full h-11 text-sm font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
               size="lg"
             >
               დაამატე 2 პროდუქტი {UPSELL_BUNDLE_PRICE}₾-ად
@@ -271,30 +263,18 @@ const LandingUpsellSheet = ({
             <Button
               onClick={() => { if (selectedIds.size > 0) handleAccept(); else handleSkip(); }}
               disabled={submitting}
-              className="w-full h-13 text-base font-bold rounded-xl"
+              className="w-full h-11 text-sm font-bold rounded-xl"
               size="lg"
               variant={selectedIds.size > 0 ? "default" : "outline"}
             >
-              {selectedIds.size > 0
-                ? "დაამატე"
-                : "გაფორმება 5₾ მიწოდებით"
-              }
+              {selectedIds.size > 0 ? "დაამატე" : "გაფორმება 5₾ მიწოდებით"}
             </Button>
           )}
 
-          {/* Helper text */}
-          <p className="text-[11px] text-muted-foreground text-center mt-2 leading-snug">
-            {hasTwoSelected
-              ? ""
-              : "თუ არაფერს დაამატებ, შეკვეთა მაინც გაფორმდება და მიწოდება იქნება 5₾"
-            }
-          </p>
-
-          {/* Skip link */}
           {!hasTwoSelected && selectedIds.size === 0 && (
             <button
               onClick={handleSkip}
-              className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-1.5 transition-colors mt-1"
+              className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground py-1 transition-colors"
             >
               არა, გაგრძელება დამატების გარეშე →
             </button>
