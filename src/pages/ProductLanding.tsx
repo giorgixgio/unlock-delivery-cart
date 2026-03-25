@@ -11,6 +11,7 @@ import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoDa
 import { MicroBenefitStacked } from "@/components/MicroBenefits";
 import DeliveryInfoRow from "@/components/DeliveryInfoRow";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
