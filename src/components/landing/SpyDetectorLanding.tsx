@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import CODFormModal from "@/components/landing/CODFormModal";
+import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import AddressFormModal from "@/components/landing/AddressFormModal";
 
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
