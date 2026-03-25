@@ -84,6 +84,8 @@ const AdminOrders = () => {
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState<"all" | "tbilisi" | "region">("all");
