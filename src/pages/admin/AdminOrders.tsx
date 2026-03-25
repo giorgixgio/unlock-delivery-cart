@@ -128,8 +128,12 @@ const AdminOrders = () => {
     });
   }, [applyToCount]);
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
     let query = supabase
       .from("orders")
@@ -187,15 +191,20 @@ const AdminOrders = () => {
       );
     }
 
-    const { data } = await query.limit(200);
+    const { data } = await query.limit(500);
     let result = (data as unknown as OrderRow[]) || [];
     // If modifier is active, trim the visible list to match the modified count
     if (hasModifier) {
       const targetLen = applyToCount(result.length);
       result = result.slice(0, targetLen);
     }
-    setOrders(result);
+
+    // Group by normalized phone: show only latest order per customer, track duplicates
+    const grouped = groupOrdersByPhone(result);
+    setOrders(grouped);
     setLoading(false);
+    setRefreshing(false);
+    setLastRefreshed(new Date());
   }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount]);
 
   useEffect(() => {
