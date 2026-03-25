@@ -8,6 +8,7 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import StickyAnnouncementBar from "@/components/landing/StickyAnnouncementBar";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
@@ -115,7 +116,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
   const badges = getDemoBadges(product.id);
 
   const [selectedQty, setSelectedQty] = useState(1);
-  const totalPrice = product.price * selectedQty;
+  const totalPrice = getDiscountedTotal(product.price, selectedQty);
+  const originalTotal = getOriginalTotal(product.price, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
