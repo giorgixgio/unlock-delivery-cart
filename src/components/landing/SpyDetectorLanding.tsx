@@ -16,6 +16,7 @@ import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOver
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { LandingConfig } from "@/hooks/useLandingConfig";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
