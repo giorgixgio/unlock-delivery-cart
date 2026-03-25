@@ -1,6 +1,6 @@
 // Demo/simulated data generators — session-based, NOT linked to real inventory
 
-const BADGE_OPTIONS = ["Flash deal", "Fast delivery", "Trending today", "Popular choice"] as const;
+const BADGE_OPTIONS = ["⚡ ფლეშ ფასი", "🚚 სწრაფი მიტანა", "🔥 ტრენდული", "❤️ პოპულარული"] as const;
 const TIMER_DURATIONS = [45 * 60, 60 * 60, 2 * 60 * 60, 3 * 60 * 60]; // seconds
 
 // Session stores

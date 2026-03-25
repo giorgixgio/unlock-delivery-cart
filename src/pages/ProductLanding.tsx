@@ -8,6 +8,8 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import StickyAnnouncementBar from "@/components/landing/StickyAnnouncementBar";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
 import LandingBulletDescription from "@/components/landing/LandingBulletDescription";
@@ -155,7 +157,8 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
 
   return (
     <div className="min-h-screen bg-background pb-36">
-      <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
+      <StickyAnnouncementBar />
+      <header className="sticky top-[44px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -166,12 +169,11 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
       </header>
 
       <div className="container max-w-lg mx-auto px-4 pt-4 space-y-5">
-        {/* Product image */}
-        <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-          <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+        {/* Product image slider */}
+        <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title}>
           {discount > 0 && (
             <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
-              ↓ {discount}% OFF
+              ↓ {discount}% ფასდაკლება
             </div>
           )}
           {badges.length > 0 && (
@@ -183,9 +185,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
               ))}
             </div>
           )}
-        </div>
+        </ProductImageSlider>
 
-        {/* Title + price */}
+
         <div>
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
