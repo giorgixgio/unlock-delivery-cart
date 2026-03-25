@@ -185,8 +185,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
               ))}
             </div>
           )}
+        </ProductImageSlider>
 
-        {/* Title + price */}
+
         <div>
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
