@@ -6,6 +6,7 @@ import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, Truck, Banknot
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import CODFormModal from "@/components/landing/CODFormModal";
+import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
