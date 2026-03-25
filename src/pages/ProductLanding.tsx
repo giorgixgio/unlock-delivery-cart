@@ -6,10 +6,12 @@ import { useLandingPage } from "@/contexts/LandingPageContext";
 import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Truck, Banknote, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react";
+import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
-import { MicroBenefitStacked } from "@/components/MicroBenefits";
-import DeliveryInfoRow from "@/components/DeliveryInfoRow";
+import LandingTrustRow from "@/components/landing/LandingTrustRow";
+import LandingReviews from "@/components/landing/LandingReviews";
+import LandingBulletDescription from "@/components/landing/LandingBulletDescription";
+import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import CODFormModal from "@/components/landing/CODFormModal";
 import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
@@ -110,6 +112,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
   const discount = getDiscountPercent(product.price, oldPrice);
   const badges = getDemoBadges(product.id);
 
+  const [selectedQty, setSelectedQty] = useState(1);
+  const totalPrice = product.price * selectedQty;
+
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -135,16 +140,8 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
     setConfirmOpen(true);
   };
 
-  const handleViewOffer = () => {
-    setConfirmOpen(false);
-    setUpsellOpen(true);
-  };
-
-  const handleSkipOffer = () => {
-    setConfirmOpen(false);
-    setDeliveryFee(5);
-    setAddressOpen(true);
-  };
+  const handleViewOffer = () => { setConfirmOpen(false); setUpsellOpen(true); };
+  const handleSkipOffer = () => { setConfirmOpen(false); setDeliveryFee(5); setAddressOpen(true); };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
@@ -153,19 +150,11 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
     setAddressOpen(true);
   };
 
-  const handleUpsellSkip = () => {
-    setDeliveryFee(5);
-    setUpsellOpen(false);
-    setAddressOpen(true);
-  };
-
-  const handleAddressComplete = () => {
-    setAddressOpen(false);
-    navigate(`/success?order=${pendingOrderNumber}`);
-  };
+  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
+  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
 
   return (
-    <div className="min-h-screen bg-background pb-48">
+    <div className="min-h-screen bg-background pb-36">
       <header className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -176,7 +165,8 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         </div>
       </header>
 
-      <div className="container max-w-lg mx-auto px-4 pt-4 space-y-4">
+      <div className="container max-w-lg mx-auto px-4 pt-4 space-y-5">
+        {/* Product image */}
         <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
           <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
           {discount > 0 && (
@@ -195,49 +185,50 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
           )}
         </div>
 
+        {/* Title + price */}
         <div>
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
-          <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-            <span className="text-2xl font-extrabold text-primary">{product.price} ₾</span>
-            <span className="text-base text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+          <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
+            <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
+            <span className="text-base text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
             {discount > 0 && (
               <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{discount}%</span>
             )}
           </div>
         </div>
 
-        <MicroBenefitStacked />
-        <DeliveryInfoRow />
+        {/* Trust row */}
+        <LandingTrustRow />
 
-        <div className="flex items-center justify-around py-3 border-y border-border bg-accent/30 rounded-lg">
-          <div className="flex flex-col items-center gap-1">
-            <Banknote className="w-5 h-5 text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">გადახდა მიტანისას</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <Truck className="w-5 h-5 text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">კურიერით მიტანა</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <ShoppingBag className="w-5 h-5 text-primary" />
-            <span className="text-[11px] font-semibold text-foreground">მარტივი შეკვეთა</span>
-          </div>
-        </div>
-
+        {/* Description as bullets */}
         {product.description && (
-          <div
-            className="text-sm text-muted-foreground leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: product.description }}
-          />
+          <LandingBulletDescription description={product.description} />
         )}
+
+        {/* Quantity selector */}
+        <LandingQuantitySelector
+          unitPrice={product.price}
+          selectedQty={selectedQty}
+          onSelect={setSelectedQty}
+          oldUnitPrice={oldPrice}
+        />
+
+        {/* Reviews */}
+        <LandingReviews />
       </div>
 
       {/* Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border p-4 shadow-lg">
-        <div className="container max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="container max-w-lg mx-auto flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
+            {selectedQty > 1 && (
+              <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+            )}
+          </div>
           <Button
             onClick={handleCTA}
-            className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg"
+            className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
             size="lg"
           >
             <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
@@ -245,19 +236,17 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         </div>
       </div>
 
-      {/* Phone-Only COD Modal */}
+      {/* Modals */}
       <CODFormModal
         open={codOpen}
         onClose={() => setCodOpen(false)}
         product={product}
-        quantity={1}
+        quantity={selectedQty}
         discountPct={0}
         landingSlug={landingSlug}
         landingVariant="generic"
         onPhoneOrderCreated={handlePhoneOrderCreated}
       />
-
-      {/* Order Confirmation Overlay */}
       <OrderConfirmationOverlay
         open={confirmOpen}
         orderId={pendingOrderId}
@@ -265,8 +254,6 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         onViewOffer={handleViewOffer}
         onSkip={handleSkipOffer}
       />
-
-      {/* Upsell Sheet */}
       <LandingUpsellSheet
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
@@ -276,8 +263,6 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />
-
-      {/* Address Form */}
       <AddressFormModal
         open={addressOpen}
         onClose={() => setAddressOpen(false)}
@@ -286,7 +271,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         orderTotal={pendingOrderTotal}
         deliveryFee={deliveryFee}
         productId={product.id}
-        quantity={1}
+        quantity={selectedQty}
         unitPrice={product.price}
         landingSlug={landingSlug}
         onComplete={handleAddressComplete}
