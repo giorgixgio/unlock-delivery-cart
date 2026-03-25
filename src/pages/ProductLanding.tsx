@@ -117,7 +117,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
 
   const [selectedQty, setSelectedQty] = useState(1);
   const totalPrice = getDiscountedTotal(product.price, selectedQty);
-  const originalTotal = getOriginalTotal(product.price, selectedQty);
+  
   const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
