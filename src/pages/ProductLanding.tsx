@@ -217,7 +217,6 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
           unitPrice={product.price}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={oldPrice}
         />
 
         {/* Reviews */}
