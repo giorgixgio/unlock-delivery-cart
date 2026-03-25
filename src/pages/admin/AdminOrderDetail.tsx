@@ -755,33 +755,75 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      {/* Previous orders */}
+      {/* Customer Order History */}
       {previousOrders.length > 0 && (
         <div className="bg-card rounded-lg p-4 border border-border space-y-3">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <User className="w-4 h-4 text-muted-foreground" /> Previous Orders from This Customer ({previousOrders.length})
-          </h3>
-          <div className="space-y-1.5">
-            {previousOrders.map((prev) => (
-              <div key={prev.id} className="flex items-center justify-between py-2 px-3 rounded bg-muted/30 border border-border text-sm">
-                <button className="font-bold text-primary hover:underline" onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}>
-                  #{prev.public_order_number}
-                </button>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
-                  {prev.status.replace("_", " ")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                </span>
-                <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                  {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
-                </span>
-                <span className="font-medium">{Number(prev.total).toFixed(1)} ₾</span>
-                {prev.is_fulfilled && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">Fulfilled</span>
-                )}
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <User className="w-4 h-4 text-muted-foreground" /> Customer Order History ({previousOrders.length})
+            </h3>
+            {selectedPrevIds.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-primary border-primary/30 hover:bg-primary/5"
+                  onClick={() => setMergeConfirmOpen(true)}
+                  disabled={saving}
+                >
+                  <GitMerge className="w-3.5 h-3.5" /> Merge into Current ({selectedPrevIds.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={saving}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPrevIds.length})
+                </Button>
               </div>
-            ))}
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {previousOrders.map((prev) => {
+              const isSelected = selectedPrevIds.includes(prev.id);
+              const isMerged = prev.status === "merged";
+              return (
+                <div
+                  key={prev.id}
+                  className={`flex items-center gap-3 py-2 px-3 rounded border text-sm transition-colors ${
+                    isSelected ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border"
+                  }`}
+                >
+                  {!isMerged && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => togglePrevSelect(prev.id)}
+                      className="accent-primary flex-shrink-0"
+                    />
+                  )}
+                  {isMerged && <div className="w-4" />}
+                  <button className="font-bold text-primary hover:underline flex-shrink-0" onClick={() => navigate(`/admin/orders/${prev.id}?from=${fromTab}`)}>
+                    #{prev.public_order_number}
+                  </button>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize flex-shrink-0 ${statusColor[prev.status] || "bg-muted text-foreground"}`}>
+                    {prev.status.replace("_", " ")}
+                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                    {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                    {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
+                  </span>
+                  <span className="font-medium flex-shrink-0">{Number(prev.total).toFixed(1)} ₾</span>
+                  {prev.is_fulfilled && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 flex-shrink-0">Fulfilled</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
