@@ -8,6 +8,7 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import StickyAnnouncementBar from "@/components/landing/StickyAnnouncementBar";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
@@ -115,7 +116,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
   const badges = getDemoBadges(product.id);
 
   const [selectedQty, setSelectedQty] = useState(1);
-  const totalPrice = product.price * selectedQty;
+  const totalPrice = getDiscountedTotal(product.price, selectedQty);
+  
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
@@ -192,9 +195,11 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
             <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
-            <span className="text-base text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
-            {discount > 0 && (
-              <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{discount}%</span>
+            {(qtyDiscountPct > 0 || discount > 0) && (
+              <span className="text-base text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
+            )}
+            {qtyDiscountPct > 0 && (
+              <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{qtyDiscountPct}%</span>
             )}
           </div>
         </div>
@@ -212,7 +217,6 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
           unitPrice={product.price}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={oldPrice}
         />
 
         {/* Reviews */}
@@ -244,7 +248,7 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="generic"
         onPhoneOrderCreated={handlePhoneOrderCreated}

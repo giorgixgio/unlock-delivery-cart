@@ -9,6 +9,7 @@ import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
 
 import { LandingConfig } from "@/hooks/useLandingConfig";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import CODFormModal from "@/components/landing/CODFormModal";
 import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
@@ -71,7 +72,8 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
 
   const [selectedQty, setSelectedQty] = useState(1);
   const [specsOpen, setSpecsOpen] = useState(false);
-  const totalPrice = UNIT_PRICE * selectedQty;
+  const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
@@ -232,7 +234,6 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
           unitPrice={UNIT_PRICE}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={OLD_PRICE}
         />
 
         {/* REVIEWS */}
@@ -310,7 +311,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="wrench"
         onPhoneOrderCreated={handlePhoneOrderCreated}

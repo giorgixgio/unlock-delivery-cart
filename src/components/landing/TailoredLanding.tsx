@@ -3,6 +3,7 @@ import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
@@ -36,7 +37,8 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
-  const totalPrice = product.price * selectedQty;
+  const totalPrice = getDiscountedTotal(product.price, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
@@ -145,7 +147,6 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
           unitPrice={product.price}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={oldPrice}
         />
 
         {/* Reviews */}
@@ -183,7 +184,7 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="tailored"
         onPhoneOrderCreated={handlePhoneOrderCreated}

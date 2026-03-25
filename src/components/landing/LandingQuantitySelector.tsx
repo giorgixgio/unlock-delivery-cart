@@ -1,11 +1,10 @@
 import { Flame, Diamond } from "lucide-react";
+import { getQtyDiscountPct, getDiscountedTotal, getOriginalTotal } from "@/lib/landingDiscounts";
 
 interface LandingQuantitySelectorProps {
   unitPrice: number;
   selectedQty: number;
   onSelect: (qty: number) => void;
-  /** Optional: override compare-at price for strikethrough */
-  oldUnitPrice?: number;
   /** Dark mode variant for spy-detector style pages */
   dark?: boolean;
 }
@@ -20,7 +19,6 @@ const LandingQuantitySelector = ({
   unitPrice,
   selectedQty,
   onSelect,
-  oldUnitPrice,
   dark = false,
 }: LandingQuantitySelectorProps) => {
   return (
@@ -31,9 +29,11 @@ const LandingQuantitySelector = ({
       <div className="space-y-2">
         {OPTIONS.map((opt) => {
           const isSelected = selectedQty === opt.qty;
-          const total = unitPrice * opt.qty;
-          const oldTotal = oldUnitPrice ? oldUnitPrice * opt.qty : undefined;
-          const perUnit = opt.qty > 1 ? `${unitPrice.toFixed(0)}₾ ცალი` : undefined;
+          const discountPct = getQtyDiscountPct(opt.qty);
+          const discountedTotal = getDiscountedTotal(unitPrice, opt.qty);
+          const originalTotal = getOriginalTotal(unitPrice, opt.qty);
+          const hasDiscount = discountPct > 0;
+          const perUnit = opt.qty > 1 ? `${Math.round(discountedTotal / opt.qty)}₾ / ცალი` : undefined;
 
           return (
             <button
@@ -91,14 +91,14 @@ const LandingQuantitySelector = ({
               </div>
 
               {/* Right: price */}
-              <div className="text-right">
-                {oldTotal && (
+              <div className="text-right flex items-baseline gap-1.5">
+                {hasDiscount && (
                   <span
-                    className={`text-xs line-through mr-2 ${
+                    className={`text-xs line-through ${
                       dark ? "text-white/30" : "text-muted-foreground"
                     }`}
                   >
-                    {oldTotal.toFixed(0)}₾
+                    {originalTotal.toFixed(0)}₾
                   </span>
                 )}
                 <span
@@ -106,8 +106,13 @@ const LandingQuantitySelector = ({
                     dark ? "text-red-400" : "text-primary"
                   }`}
                 >
-                  {total.toFixed(0)}₾
+                  {discountedTotal.toFixed(0)}₾
                 </span>
+                {hasDiscount && (
+                  <span className="text-[10px] font-bold text-white bg-red-500 rounded px-1 py-0.5">
+                    -{discountPct}%
+                  </span>
+                )}
               </div>
 
               {/* Tag badge */}

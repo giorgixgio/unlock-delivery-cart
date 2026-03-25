@@ -16,6 +16,7 @@ import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOver
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { LandingConfig } from "@/hooks/useLandingConfig";
+import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
@@ -86,7 +87,8 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
 
-  const totalPrice = UNIT_PRICE * selectedQty;
+  const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
+  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
 
   useEffect(() => {
     trackViewContent(product);
@@ -266,7 +268,6 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
           unitPrice={UNIT_PRICE}
           selectedQty={selectedQty}
           onSelect={setSelectedQty}
-          oldUnitPrice={OLD_PRICE}
           dark
         />
 
@@ -348,7 +349,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
         onClose={() => setCodOpen(false)}
         product={product}
         quantity={selectedQty}
-        discountPct={0}
+        discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant={landingVariant}
         onPhoneOrderCreated={handlePhoneOrderCreated}
