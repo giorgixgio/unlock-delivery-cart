@@ -45,6 +45,7 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
