@@ -1,0 +1,108 @@
+
+-- Clean up old 8 SKU batches
+DELETE FROM batch_order_items_snapshot WHERE batch_id IN (
+  'bb0d49a4-2698-417b-9fc4-015640cabdfa',
+  'c4a4cb10-79ab-49c4-8a55-f99e21831512',
+  '031b8e63-0f16-41c6-9145-8d49712ec777',
+  'cd10c66c-2aad-450a-83a4-0c174edabbd7',
+  'd0045762-74e4-46ef-ad26-69c0e9c2706e',
+  'dd70d5cf-2f21-481f-ac1b-e2c9600e7be2',
+  '305d9926-0dae-4787-938b-d5b698859c9c',
+  '4ba1b4cd-85fc-4c1f-9382-6ffebf8f2c33'
+);
+
+DELETE FROM batch_orders WHERE batch_id IN (
+  'bb0d49a4-2698-417b-9fc4-015640cabdfa',
+  'c4a4cb10-79ab-49c4-8a55-f99e21831512',
+  '031b8e63-0f16-41c6-9145-8d49712ec777',
+  'cd10c66c-2aad-450a-83a4-0c174edabbd7',
+  'd0045762-74e4-46ef-ad26-69c0e9c2706e',
+  'dd70d5cf-2f21-481f-ac1b-e2c9600e7be2',
+  '305d9926-0dae-4787-938b-d5b698859c9c',
+  '4ba1b4cd-85fc-4c1f-9382-6ffebf8f2c33'
+);
+
+DELETE FROM batch_events WHERE batch_id IN (
+  'bb0d49a4-2698-417b-9fc4-015640cabdfa',
+  'c4a4cb10-79ab-49c4-8a55-f99e21831512',
+  '031b8e63-0f16-41c6-9145-8d49712ec777',
+  'cd10c66c-2aad-450a-83a4-0c174edabbd7',
+  'd0045762-74e4-46ef-ad26-69c0e9c2706e',
+  'dd70d5cf-2f21-481f-ac1b-e2c9600e7be2',
+  '305d9926-0dae-4787-938b-d5b698859c9c',
+  '4ba1b4cd-85fc-4c1f-9382-6ffebf8f2c33'
+);
+
+DELETE FROM batch_print_jobs WHERE batch_id IN (
+  'bb0d49a4-2698-417b-9fc4-015640cabdfa',
+  'c4a4cb10-79ab-49c4-8a55-f99e21831512',
+  '031b8e63-0f16-41c6-9145-8d49712ec777',
+  'cd10c66c-2aad-450a-83a4-0c174edabbd7',
+  'd0045762-74e4-46ef-ad26-69c0e9c2706e',
+  'dd70d5cf-2f21-481f-ac1b-e2c9600e7be2',
+  '305d9926-0dae-4787-938b-d5b698859c9c',
+  '4ba1b4cd-85fc-4c1f-9382-6ffebf8f2c33'
+);
+
+-- Delete old batch entries
+DELETE FROM batches WHERE id IN (
+  'bb0d49a4-2698-417b-9fc4-015640cabdfa',
+  'c4a4cb10-79ab-49c4-8a55-f99e21831512',
+  '031b8e63-0f16-41c6-9145-8d49712ec777',
+  'cd10c66c-2aad-450a-83a4-0c174edabbd7',
+  'd0045762-74e4-46ef-ad26-69c0e9c2706e',
+  'dd70d5cf-2f21-481f-ac1b-e2c9600e7be2',
+  '305d9926-0dae-4787-938b-d5b698859c9c',
+  '4ba1b4cd-85fc-4c1f-9382-6ffebf8f2c33'
+);
+
+-- Update orders to point to new 3 batches
+-- Batch A: SKU 339/447/255 — 42 orders
+UPDATE orders SET batch_id = '976ab104-33cf-4f3c-ae1a-ba7e8e48b44d' WHERE id IN (
+  'a604cf8c-d3c0-4eef-9513-90fcb445786a','02b31c08-1102-45c9-9344-ebb532472852','0c2647d3-556c-4c13-b1e5-d7440e7be0c6',
+  '18fb7573-e113-4e20-bc35-6b04ae153e0c','22ea0c19-f535-46c8-93a8-052b30fc3f76','26adfa45-4c8d-4e82-81be-4808ef49fc60',
+  '329a9af0-7307-4e1f-8318-b87ec607e102','38c594ed-296c-448f-803d-365a51d873f0','39412a36-f6f0-40a2-8f66-52227de163e1',
+  '4786a7a9-8255-483b-a185-e7607b9debca','614d3e56-0132-43ee-89af-dc75fd1ff8bc','67234e08-c5ff-408a-8820-4cdfffe81290',
+  '69700315-9667-4c9f-b965-c5735420289a','7969f497-e4c2-48c6-b40d-e591fee9ab29','7ff148ec-7956-4441-bc8c-b3aaddb0b7d4',
+  '961669ac-0b04-439e-a8b0-decedccd7053','9944d8aa-4202-4af1-8c03-1d3eadcabb40','a726d5f4-0aeb-41b3-a384-61a412dc4758',
+  'afb24afd-cd08-4f95-b230-98c1b45ec8ec','b84a7aa3-3523-4a2d-83c2-18b78fd9cb61','badd1700-7a40-4889-a114-0eb6d6fed012',
+  'd483b12f-1a55-438c-98fb-821d2d5cc226','d51b3a95-59e2-4c88-8272-d354fa11de6c',
+  '4bfae6dc-6372-45d0-9d3a-2106527d6283','402a7c63-66c3-42a2-b015-fe8d7f658f8f','304283fc-a484-425f-9fe3-dd58c2a80dc8',
+  'a6f2dbc9-55ce-4720-855a-0de72c57d1f1','00f3d3d1-011e-4b70-8929-5638c18208af','27d7713a-e1ef-463f-acbc-b1a383e5db17',
+  'd071d049-0d9b-4be5-94d8-1c44411eec0a','139f2272-4f6d-4bfa-ab7f-648c56c9b52f','605c1b51-f066-4368-a4ad-eb493f2c9c28',
+  '5c559029-e83a-46f4-afd8-737ad5162ddc','507d24ae-453f-459c-8e34-9ba1be5f9d7d','11a1acfc-8f87-4c34-848a-4dd494618ca1',
+  '199214e5-b999-4505-9488-13f5848f8cc3','45995488-73a3-43ff-903f-4e2b8b80ce61','0089e715-6cf7-4a94-8d1f-7568c83f4f0a',
+  '29ec9fc2-a8af-458c-a4d0-1fa169d411ed','09b4639d-5a2e-4901-a06c-41818f018a0c','2f33411b-f431-4ba3-ba96-94e86c7dc2cc',
+  '07dff94d-1ec2-47b9-b20d-809ce9453062','7a2e0661-c474-42ce-87e4-ce592a97fc8e'
+);
+
+-- Batch B: SKU 198/149/36/65/rest — 50 orders
+UPDATE orders SET batch_id = 'c212c9d1-65db-40aa-8873-4a07820fc2ee' WHERE id IN (
+  '0dac05bf-3c6b-4db3-96ce-13aa733e1635','3e240656-98b7-4686-9206-4971ca189aa3','3fbee80e-f41b-4ebe-b914-5b33dfe953a7',
+  '8f78eaac-b25b-47ca-b328-3b7b5de0eb67','45d7e0d9-a4d5-4b94-8087-f5d4e5cb8e1b','e35eeffd-ba58-47b3-a664-bb619640ff82',
+  '133874da-4d5b-4d8c-b6d2-56c7e87f1195','e2dd2a3e-b565-4064-aa80-4406e4864f79','d9f385b2-e030-4b34-9e38-2f9336ca565f',
+  'd6099728-45e9-41ba-ad30-44157a944638','21b748c1-93c7-42b3-9c6a-a20103e265cf','02f9fdbc-5dc4-4e12-9ac4-983b061a25cf',
+  '61cb79db-ce7c-4b2a-8f7b-cb10a8628228','d49730ee-2482-4e54-9784-f2fd66ee753e','86d7858a-5598-4a77-86f2-36dafbc4021b',
+  '00f77391-120d-482b-b1ea-e787f33a88e3','2dd3e969-28ad-4b4b-8573-fae6705e2a5b','2f3eb5ca-1c2e-44ca-8b6a-7d2869814c4b',
+  '2fb25fa8-7e30-4d64-978c-a27dd735047d','819bd95d-51cb-4939-be75-4ff86898f245','ec525442-ce17-4cf3-a5c8-915c8edf0896',
+  '8f16999c-6ef4-4447-8e0a-d25edbbb431f','99c619af-9256-458f-b84f-a25967310963',
+  '76ca46f4-a446-4b1f-8958-dbb6f3de1a1d','c5a7e151-9ac5-4426-ba3c-e4cdbd246557','9c8cc8b7-e57a-4500-8fc3-120ee662fe8a',
+  '972b6733-ef80-4040-ba11-bc85aeaab34b',
+  '39e5bde7-a7ba-4ff6-939b-929027f59817','086e969b-2837-4bb5-b0ae-27184d99bf14','603bb79a-0b7b-4ac8-b2f4-73c5b482723a',
+  '270767b7-c2cb-418b-b370-a1d8f5a50a93','9e47a9c2-5567-46fb-aacd-a1e7a806ef02','8a615081-2a5c-4c48-a334-903a6a827982',
+  '77b511e1-e9d7-4f6e-8342-8a9cc06a5c48','4d64259d-9ba1-4c0b-b73a-7f90968f30b9',
+  '49eccf2c-282b-4f37-9bfa-b700b40ca25e',
+  'fee19286-ba52-47fb-91cc-432b25398fd4','fd5d0447-5d69-4564-9b25-a446eb43eb08','398ed88b-44a2-4e0c-bc4e-506391a73368',
+  '1daed127-1e6f-4567-9eb9-58baceeed7aa',
+  'c71cae71-04a3-4fba-b1e3-1df72e6e5789','3ead7f90-ae1e-47f4-8de7-7fb9f36e5e81','cf78ec89-8c39-4fbd-b1be-66e25ca14f56',
+  '8b7a32e5-a5c3-4c15-91d4-e69dbb57caab','0a5b4561-38a9-40c3-8d0f-37a4dded2e5f','04b6bffa-56c1-4820-8bbb-b6e5b2b2f5e3',
+  '8fcfac43-a6d0-4dba-8e11-5e519d009e6d','7bab28e1-adcf-401b-9b52-7fad8e6c919f','b6b3f025-c07e-4b0f-9c87-17cbb2e00e3f',
+  'a1cd8c69-4f3a-4c5f-ade7-ec7fd2cc19a3'
+);
+
+-- Batch C: Mixed SKU — 7 orders
+UPDATE orders SET batch_id = 'f1b8b9e9-591b-49d6-aded-883a03808b57' WHERE id IN (
+  '3162e897-db4a-4cfe-8987-56e6d62d1f11','f83d39d8-6dd5-47d4-a200-b2d4230dc86f','952f5e64-c21d-42c3-88fd-d2bc0fd057ec',
+  'e3780366-51ec-4ebf-9ec9-0d6367f61771','ab26a38c-2a93-469b-b566-524be9fd8d04','fa2cf1e6-0673-4842-a7da-b2fce0a78109',
+  '59791136-b999-48eb-88cf-b617b91b6c05'
+);
