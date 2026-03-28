@@ -190,10 +190,20 @@ const AdminBatchDetail = () => {
       const xlsxRows: string[][] = [];
       xlsxRows.push(sortedCols);
 
+      const dataRows: string[][] = [];
+      // Find the SKU column index for sorting
+      const skuColIdx = sortedCols.findIndex(col => dynamicMap[col] === "item_skus");
+
       for (const ord of orders) {
         const orderItems = snapshot.filter(s => s.order_id === ord.id);
         const totalQty = orderItems.reduce((s, i) => s + i.qty, 0);
         const skus = orderItems.map(i => i.sku).join(", ");
+        // Build trimmed product name from order snapshot (max 30 chars)
+        const itemName = orderItems
+          .map(i => i.product_name || "")
+          .filter(Boolean)
+          .join(", ");
+        const trimmedName = itemName.length > 30 ? itemName.slice(0, 28) + ".." : itemName;
 
         const row: string[] = sortedCols.map(col => {
           if (fixedMap[col] !== undefined) return fixedMap[col];
@@ -206,14 +216,20 @@ const AdminBatchDetail = () => {
             case "customer_phone": return ord.customer_phone || "";
             case "item_quantities": return singleQtyMode ? "1" : String(totalQty);
             case "order_id": return ord.public_order_number || "";
-            case "item_skus": return singleQtyMode ? `${skus} / ${ord.public_order_number}` : skus;
+            case "item_skus": return singleQtyMode ? `${skus} - ${trimmedName}` : skus;
             case "total": return String(ord.total || 0);
             case "notes": return ord.notes_customer || "";
             default: return "";
           }
         });
-        xlsxRows.push(row);
+        dataRows.push(row);
       }
+
+      // Sort by SKU column ascending
+      if (skuColIdx !== -1) {
+        dataRows.sort((a, b) => a[skuColIdx].localeCompare(b[skuColIdx]));
+      }
+      xlsxRows.push(...dataRows);
 
       // Generate XLSX
       const ws = XLSX.utils.aoa_to_sheet(xlsxRows);
