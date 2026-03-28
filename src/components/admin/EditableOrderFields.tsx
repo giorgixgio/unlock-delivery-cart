@@ -128,6 +128,12 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
     }
 
     if (Object.keys(updates).length > 0) {
+      // Auto-compute is_tbilisi from the city field
+      const effectiveCity = (updates.city as string) ?? city;
+      const cityLower = effectiveCity.trim().toLowerCase();
+      const isTbilisi = cityLower === "თბილისი" || cityLower === "tbilisi";
+      (updates as any).is_tbilisi = isTbilisi;
+
       await supabase.from("orders").update(updates).eq("id", orderId);
       await supabase.from("order_events").insert({
         order_id: orderId,

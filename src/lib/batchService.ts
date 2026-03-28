@@ -128,6 +128,7 @@ export async function fetchEligibleOrderCount() {
     .select("id", { count: "exact", head: true })
     .eq("status", "confirmed")
     .eq("is_confirmed", true)
+    .eq("is_fulfilled", false)
     .is("batch_id", null)
     .is("released_at", null);
   if (eErr) throw eErr;
@@ -178,6 +179,7 @@ export async function createBatch(actorEmail: string) {
     .select("id")
     .eq("status", "confirmed")
     .eq("is_confirmed", true)
+    .eq("is_fulfilled", false)
     .is("batch_id", null)
     .is("released_at", null)
     .neq("status", "merged")
