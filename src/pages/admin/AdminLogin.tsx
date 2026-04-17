@@ -22,6 +22,7 @@ const AdminLogin = () => {
     const { error } = await signIn(email, password);
     if (error) setError(error);
     setLoading(false);
+    // Redirect handled by AdminLoginGuard once auth state updates.
   };
 
   const handleSignup = async (e: React.FormEvent) => {
