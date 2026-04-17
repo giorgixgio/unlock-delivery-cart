@@ -5,7 +5,6 @@ import { setDemoMode, wrapSupabaseForDemo } from "@/lib/demoMode";
 import {
   setPresentationMode,
   wrapSupabaseForPresentation,
-  getPresentationMultiplier,
 } from "@/lib/presentationMode";
 
 // Install client wrappers exactly once at module load.

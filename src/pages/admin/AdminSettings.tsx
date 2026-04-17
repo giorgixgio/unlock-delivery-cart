@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import PresentationSettingsPanel from "@/components/admin/PresentationSettingsPanel";
 
 interface AdminUser {
   id: string;
@@ -15,6 +17,8 @@ interface AdminUser {
 }
 
 const AdminSettings = () => {
+  const { user } = useAdminAuth();
+  const isSuperAdmin = user?.email?.toLowerCase() === "info@bigmart.ge";
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [newEmail, setNewEmail] = useState("");
@@ -89,6 +93,8 @@ const AdminSettings = () => {
     <div className="p-6 space-y-6 max-w-3xl">
       <h1 className="text-2xl font-extrabold text-foreground">Settings</h1>
 
+      {/* Super-admin only: presentation mode controls */}
+      {isSuperAdmin && <PresentationSettingsPanel />}
       {/* Minimum product quantity */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
         <h3 className="font-bold text-sm">მინიმალური პროდუქტების რაოდენობა</h3>
