@@ -35,12 +35,7 @@ const AdminLayout = () => {
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
           Admin
-          {isPresentation && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-800 border border-violet-300">
-              PRESENTATION {Math.round(presentationMultiplier * 100)}%
-            </span>
-          )}
-          {!isPresentation && isDemo && (
+          {isDemo && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
               DEMO
             </span>
