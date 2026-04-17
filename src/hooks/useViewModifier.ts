@@ -4,17 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 interface ViewModifier {
   revenueMultiplier: number;
   orderCountMultiplier: number;
+  hideBeforeDate: Date | null;
 }
 
 /**
  * Fetches dashboard view modifier for the current user.
  * Returns multipliers of 1.0 if no modifier exists (normal view).
- * This is completely invisible to target users.
+ * `hideBeforeDate` (if set) hides all orders created before that timestamp.
+ * Completely invisible to target users.
  */
 export function useViewModifier() {
   const [modifier, setModifier] = useState<ViewModifier>({
     revenueMultiplier: 1,
     orderCountMultiplier: 1,
+    hideBeforeDate: null,
   });
   const [loaded, setLoaded] = useState(false);
 
@@ -26,14 +29,16 @@ export function useViewModifier() {
 
         const { data } = await supabase
           .from("dashboard_view_modifiers" as any)
-          .select("revenue_multiplier, order_count_multiplier")
+          .select("revenue_multiplier, order_count_multiplier, hide_before_date")
           .eq("target_email", user.email)
           .maybeSingle();
 
         if (data) {
+          const d = data as any;
           setModifier({
-            revenueMultiplier: Number((data as any).revenue_multiplier) || 1,
-            orderCountMultiplier: Number((data as any).order_count_multiplier) || 1,
+            revenueMultiplier: Number(d.revenue_multiplier) || 1,
+            orderCountMultiplier: Number(d.order_count_multiplier) || 1,
+            hideBeforeDate: d.hide_before_date ? new Date(d.hide_before_date) : null,
           });
         }
       } catch {
@@ -53,9 +58,19 @@ export function useViewModifier() {
     [modifier.orderCountMultiplier]
   );
   const hasModifier = useMemo(
-    () => modifier.revenueMultiplier !== 1 || modifier.orderCountMultiplier !== 1,
-    [modifier.revenueMultiplier, modifier.orderCountMultiplier]
+    () =>
+      modifier.revenueMultiplier !== 1 ||
+      modifier.orderCountMultiplier !== 1 ||
+      modifier.hideBeforeDate !== null,
+    [modifier.revenueMultiplier, modifier.orderCountMultiplier, modifier.hideBeforeDate]
   );
 
-  return { modifier, loaded, applyToRevenue, applyToCount, hasModifier };
+  return {
+    modifier,
+    loaded,
+    applyToRevenue,
+    applyToCount,
+    hasModifier,
+    hideBeforeDate: modifier.hideBeforeDate,
+  };
 }

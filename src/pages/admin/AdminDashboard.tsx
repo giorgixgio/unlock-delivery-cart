@@ -43,7 +43,7 @@ const AdminDashboard = () => {
   const [spinning, setSpinning] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("today");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { applyToRevenue, applyToCount } = useViewModifier();
+  const { applyToRevenue, applyToCount, hideBeforeDate, loaded: modifierLoaded } = useViewModifier();
 
   const fetchStats = useCallback(async () => {
     setSpinning(true);
@@ -57,6 +57,11 @@ const AdminDashboard = () => {
         query = query
           .gte("created_at", startOfDay(day).toISOString())
           .lte("created_at", endOfDay(day).toISOString());
+      }
+
+      // Hidden history cutoff for restricted accounts (e.g. data-masked admins)
+      if (hideBeforeDate) {
+        query = query.gte("created_at", hideBeforeDate.toISOString());
       }
 
       const { data: orders, error } = await query;
@@ -112,12 +117,13 @@ const AdminDashboard = () => {
       setLoading(false);
       setTimeout(() => setSpinning(false), 500);
     }
-  }, [dateMode, selectedDate]);
+  }, [dateMode, selectedDate, hideBeforeDate]);
 
   useEffect(() => {
+    if (!modifierLoaded) return;
     setLoading(true);
     fetchStats();
-  }, [fetchStats]);
+  }, [fetchStats, modifierLoaded]);
 
   const gel = (n: number) => `₾${n.toFixed(0)}`;
 
