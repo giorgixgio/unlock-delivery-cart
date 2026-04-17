@@ -1,0 +1,1 @@
+ALTER TABLE public.dashboard_view_modifiers ADD COLUMN IF NOT EXISTS hide_before_date timestamptz;
