@@ -27,6 +27,24 @@ export function useViewModifier() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user?.email) { setLoaded(true); return; }
 
+        // 1. Demo-mode flag on admin_users — hard zero everything
+        const { data: adminRow } = await supabase
+          .from("admin_users")
+          .select("is_demo" as any)
+          .eq("email", user.email)
+          .maybeSingle();
+
+        if (adminRow && (adminRow as any).is_demo === true) {
+          setModifier({
+            revenueMultiplier: 0,
+            orderCountMultiplier: 0,
+            hideBeforeDate: new Date("2099-01-01T00:00:00Z"),
+          });
+          setLoaded(true);
+          return;
+        }
+
+        // 2. Optional fine-grained multipliers
         const { data } = await supabase
           .from("dashboard_view_modifiers" as any)
           .select("revenue_multiplier, order_count_multiplier, hide_before_date")
