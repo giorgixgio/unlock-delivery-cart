@@ -2,15 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setDemoMode, wrapSupabaseForDemo } from "@/lib/demoMode";
+import {
+  setPresentationMode,
+  wrapSupabaseForPresentation,
+  getPresentationMultiplier,
+} from "@/lib/presentationMode";
 
-// Install the demo-mode wrapper exactly once at module load.
+// Install client wrappers exactly once at module load.
 wrapSupabaseForDemo(supabase);
+wrapSupabaseForPresentation(supabase);
 
 interface AdminAuthContextType {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
   isDemo: boolean;
+  /** True when this signed-in admin has presentation mode active. */
+  isPresentation: boolean;
+  /** Multiplier (0–1) currently applied to displayed revenue. */
+  presentationMultiplier: number;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
