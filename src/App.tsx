@@ -124,7 +124,6 @@ const App = () => (
                     >
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                       <Route path="dashboard" element={<AdminDashboard />} />
-                      <Route path="demo-dashboard" element={<AdminDemoDashboard />} />
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />
