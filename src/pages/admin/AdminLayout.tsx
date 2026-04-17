@@ -20,7 +20,7 @@ const navItems = [
 ];
 
 const AdminLayout = () => {
-  const { user, signOut, isDemo, isPresentation, presentationMultiplier } = useAdminAuth();
+  const { user, signOut, isDemo } = useAdminAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
