@@ -19,38 +19,67 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+  const resolveAdminState = async (nextSession: Session | null) => {
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
 
-      if (newSession?.user?.email) {
-        // Use setTimeout to avoid Supabase auth deadlock
-        setTimeout(async () => {
-          try {
-            const { data } = await supabase
-              .from("admin_users")
-              .select("is_active")
-              .eq("email", newSession.user!.email!)
-              .maybeSingle();
-            setIsAdmin(data?.is_active === true);
-          } catch {
-            setIsAdmin(false);
-          }
-          setLoading(false);
-        }, 0);
-      } else {
-        setIsAdmin(false);
-        setLoading(false);
-      }
+    if (!nextSession?.user?.id) {
+      setIsAdmin(false);
+      setLoading(false);
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc("is_active_admin", {
+        user_id: nextSession.user.id,
+      });
+
+      if (error) throw error;
+
+      const adminActive = data === true;
+      setIsAdmin(adminActive);
+      setLoading(false);
+      return adminActive;
+    } catch {
+      setIsAdmin(false);
+      setLoading(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setLoading(true);
+      void resolveAdminState(newSession);
     });
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      await resolveAdminState(data.session);
+    })();
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (error) {
+      setLoading(false);
+      return { error: error.message };
+    }
+
+    const adminActive = await resolveAdminState(data.session);
+    if (!adminActive) {
+      await supabase.auth.signOut();
+      return { error: "This account does not have admin access." };
+    }
+
     return { error: null };
   };
 
