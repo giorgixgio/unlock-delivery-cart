@@ -20,7 +20,7 @@ const navItems = [
 ];
 
 const AdminLayout = () => {
-  const { user, signOut } = useAdminAuth();
+  const { user, signOut, isDemo } = useAdminAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -33,7 +33,14 @@ const AdminLayout = () => {
   const navContent = (
     <>
       <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-extrabold text-foreground">Admin</h2>
+        <h2 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+          Admin
+          {isDemo && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              DEMO
+            </span>
+          )}
+        </h2>
         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
       </div>
       <nav className="flex-1 p-2 space-y-1">
