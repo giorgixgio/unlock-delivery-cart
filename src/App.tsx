@@ -26,6 +26,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminSystemEvents from "./pages/admin/AdminSystemEvents";
 import CourierExportSettings from "./pages/admin/CourierExportSettings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDemoDashboard from "./pages/admin/AdminDemoDashboard";
 import AdminBatches from "./pages/admin/AdminBatches";
 import AdminBatchDetail from "./pages/admin/AdminBatchDetail";
 import Shop from "./pages/Shop";
@@ -53,10 +54,18 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const DEMO_EMAIL = "lado@bigmart.ge";
+
 const AdminLoginGuard = () => {
-  const { loading, isAdmin, session } = useAdminAuth();
+  const { loading, isAdmin, session, user } = useAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (session && isAdmin) return <Navigate to="/admin/orders" replace />;
+  if (session && isAdmin) {
+    const dest =
+      user?.email?.toLowerCase() === DEMO_EMAIL
+        ? "/admin/demo-dashboard"
+        : "/admin/orders";
+    return <Navigate to={dest} replace />;
+  }
   return <AdminLogin />;
 };
 
@@ -124,6 +133,7 @@ const App = () => (
                     >
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                       <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="demo-dashboard" element={<AdminDemoDashboard />} />
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />
