@@ -2,15 +2,24 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setDemoMode, wrapSupabaseForDemo } from "@/lib/demoMode";
+import {
+  setPresentationMode,
+  wrapSupabaseForPresentation,
+} from "@/lib/presentationMode";
 
-// Install the demo-mode wrapper exactly once at module load.
+// Install client wrappers exactly once at module load.
 wrapSupabaseForDemo(supabase);
+wrapSupabaseForPresentation(supabase);
 
 interface AdminAuthContextType {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
   isDemo: boolean;
+  /** True when this signed-in admin has presentation mode active. */
+  isPresentation: boolean;
+  /** Multiplier (0–1) currently applied to displayed revenue. */
+  presentationMultiplier: number;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -23,6 +32,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [isPresentation, setIsPresentation] = useState(false);
+  const [presentationMultiplier, setPresentationMultiplierState] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const resolveAdminState = async (nextSession: Session | null) => {
@@ -33,6 +44,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsAdmin(false);
       setIsDemo(false);
       setDemoMode(false);
+      setIsPresentation(false);
+      setPresentationMultiplierState(1);
+      setPresentationMode(null);
       setLoading(false);
       return false;
     }
@@ -47,19 +61,38 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const adminActive = data === true;
       setIsAdmin(adminActive);
 
-      // Look up the demo flag via the user's own admin row (RLS allows
-      // each authenticated user to read their own row).
+      const email = nextSession.user.email?.toLowerCase() ?? null;
+
+      // Demo flag (legacy — leaves real data intact, just labels the UI)
       let demoActive = false;
-      if (adminActive && nextSession.user.email) {
+      if (adminActive && email) {
         const { data: row } = await supabase
           .from("admin_users")
           .select("is_demo")
-          .eq("email", nextSession.user.email.toLowerCase())
+          .eq("email", email)
           .maybeSingle();
         demoActive = (row as any)?.is_demo === true;
       }
       setIsDemo(demoActive);
       setDemoMode(demoActive);
+
+      // Presentation mode — load this user's row (RLS allows own-row read)
+      let pres = false;
+      let mult = 1;
+      if (adminActive && email) {
+        const { data: pRow } = await supabase
+          .from("presentation_settings")
+          .select("is_active, revenue_multiplier")
+          .eq("target_email", email)
+          .maybeSingle();
+        if ((pRow as any)?.is_active === true) {
+          pres = true;
+          mult = Number((pRow as any).revenue_multiplier) || 0;
+        }
+      }
+      setIsPresentation(pres);
+      setPresentationMultiplierState(mult);
+      setPresentationMode(pres && email ? { email, multiplier: mult } : null);
 
       setLoading(false);
       return adminActive;
@@ -67,6 +100,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsAdmin(false);
       setIsDemo(false);
       setDemoMode(false);
+      setIsPresentation(false);
+      setPresentationMultiplierState(1);
+      setPresentationMode(null);
       setLoading(false);
       return false;
     }
@@ -115,10 +151,25 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsAdmin(false);
     setIsDemo(false);
     setDemoMode(false);
+    setIsPresentation(false);
+    setPresentationMultiplierState(1);
+    setPresentationMode(null);
   };
 
   return (
-    <AdminAuthContext.Provider value={{ session, user, isAdmin, isDemo, loading, signIn, signOut }}>
+    <AdminAuthContext.Provider
+      value={{
+        session,
+        user,
+        isAdmin,
+        isDemo,
+        isPresentation,
+        presentationMultiplier,
+        loading,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AdminAuthContext.Provider>
   );

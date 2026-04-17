@@ -777,6 +777,33 @@ export type Database = {
         }
         Relationships: []
       }
+      presentation_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          revenue_multiplier: number
+          target_email: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          revenue_multiplier?: number
+          target_email: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          revenue_multiplier?: number
+          target_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_landing_config: {
         Row: {
           created_at: string
