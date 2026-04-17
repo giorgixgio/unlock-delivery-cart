@@ -265,6 +265,7 @@ export type Database = {
       dashboard_view_modifiers: {
         Row: {
           created_at: string
+          hide_before_date: string | null
           id: string
           order_count_multiplier: number
           revenue_multiplier: number
@@ -273,6 +274,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          hide_before_date?: string | null
           id?: string
           order_count_multiplier?: number
           revenue_multiplier?: number
@@ -281,6 +283,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          hide_before_date?: string | null
           id?: string
           order_count_multiplier?: number
           revenue_multiplier?: number
