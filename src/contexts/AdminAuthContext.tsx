@@ -1,11 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { setDemoMode, wrapSupabaseForDemo } from "@/lib/demoMode";
+
+// Install the demo-mode wrapper exactly once at module load.
+wrapSupabaseForDemo(supabase);
 
 interface AdminAuthContextType {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
+  isDemo: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -17,6 +22,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const resolveAdminState = async (nextSession: Session | null) => {
@@ -25,6 +31,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     if (!nextSession?.user?.id) {
       setIsAdmin(false);
+      setIsDemo(false);
+      setDemoMode(false);
       setLoading(false);
       return false;
     }
@@ -38,10 +46,27 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const adminActive = data === true;
       setIsAdmin(adminActive);
+
+      // Look up the demo flag via the user's own admin row (RLS allows
+      // each authenticated user to read their own row).
+      let demoActive = false;
+      if (adminActive && nextSession.user.email) {
+        const { data: row } = await supabase
+          .from("admin_users")
+          .select("is_demo")
+          .eq("email", nextSession.user.email.toLowerCase())
+          .maybeSingle();
+        demoActive = (row as any)?.is_demo === true;
+      }
+      setIsDemo(demoActive);
+      setDemoMode(demoActive);
+
       setLoading(false);
       return adminActive;
     } catch {
       setIsAdmin(false);
+      setIsDemo(false);
+      setDemoMode(false);
       setLoading(false);
       return false;
     }
@@ -88,10 +113,12 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSession(null);
     setUser(null);
     setIsAdmin(false);
+    setIsDemo(false);
+    setDemoMode(false);
   };
 
   return (
-    <AdminAuthContext.Provider value={{ session, user, isAdmin, loading, signIn, signOut }}>
+    <AdminAuthContext.Provider value={{ session, user, isAdmin, isDemo, loading, signIn, signOut }}>
       {children}
     </AdminAuthContext.Provider>
   );
