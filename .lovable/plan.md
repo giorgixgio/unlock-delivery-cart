@@ -1,97 +1,38 @@
 
 
-# Phone-First Landing Order Flow
+## Goal
+Replace the 10 Shopify-hosted gallery images for **მეტალის მილების საჭრელი** with the 2 uploaded reference images (compressed to WebP), so the product detail page and landing page show only those two photos.
 
-## Overview
+## What gets done
 
-Replace the current full-form checkout on landing pages with a 4-step funnel:
-**Landing → Phone popup → Upsell popup → Address popup → Order complete**
+1. **Compress & host the 2 uploaded images locally**
+   - Convert both uploaded JPEGs to WebP at quality ~82 (visually lossless, ~70-80% smaller).
+   - Save them to `public/images/` with both full-size and `_400x` / `_800x` responsive variants (matching the existing convention used for `spy-detector-hero`, `tile-cutter-holder`).
+   - File names:
+     - `pipe-cutter-perfect-cut.webp` + `_400x.webp` + `_800x.webp`
+     - `pipe-cutter-labor-saving.webp` + `_400x.webp` + `_800x.webp`
+   - Target size: ~80–150 KB for the full-size, ~25 KB for `_400x`.
 
-This captures the customer's phone immediately (low friction), creates the order, then upsells, then collects delivery details.
+2. **Update the database row** for product id `10068777959719` (`handle: მეტალის-მილების-საჭრელი`):
+   - `image` → `/images/pipe-cutter-perfect-cut.webp` (hero, used as the first slide and in product cards)
+   - `images` → `["/images/pipe-cutter-perfect-cut.webp", "/images/pipe-cutter-labor-saving.webp"]`
+   - Done via a Supabase migration so it's tracked and re-runnable.
 
-## Architecture
+3. **Protect the override from Shopify re-sync**
+   - The `sync-products` edge function currently overwrites `image` and `images` from Shopify on every run, which would revert this change.
+   - Add a small guard: if `products.image` starts with `/images/` (i.e. is a locally-hosted override), the sync function skips overwriting `image` and `images` for that row but still updates price, title, stock, etc.
+   - This makes the local override sticky for any product, not just this one.
 
-```text
-Step 1: Phone-Only Popup (modified CODFormModal)
-  → Creates order in DB with status "pending_details"
-  → phone only, no city/address
-  
-Step 2: Upsell Popup (new LandingUpsellSheet)
-  → "Pick 2 items for 19₾ + free shipping"
-  → User selects 0-2 items
-  → Updates order_items + shipping_fee in DB
-  
-Step 3: Address Popup (new AddressFormModal)  
-  → Collects city + address
-  → Updates order with delivery info
-  → Fires tracking events (Purchase, order_submitted)
-  → Navigates to /success
+## Files touched
 
-Skip/close at step 2 → goes to step 3 with deliveryFee=5
-```
+| File | Change |
+|---|---|
+| `public/images/pipe-cutter-perfect-cut.webp` (+ `_400x`, `_800x`) | New (generated from upload 1) |
+| `public/images/pipe-cutter-labor-saving.webp` (+ `_400x`, `_800x`) | New (generated from upload 2) |
+| `supabase/migrations/<timestamp>_pipe_cutter_images.sql` | New — `UPDATE products SET image=..., images='[...]'::jsonb WHERE id='10068777959719';` |
+| `supabase/functions/sync-products/index.ts` | Small change: when upserting, if existing row's `image` starts with `/images/`, preserve its `image` and `images` fields. |
 
-## Files to Modify
-
-### 1. `src/lib/orderService.ts`
-- Make `city`, `region`, `addressLine1` optional in `OrderInput`
-- Add new `updateOrderAddress()` function to patch city/address later
-- Add `addUpsellItems()` function to insert additional order_items and update total/shipping
-
-### 2. `src/components/landing/CODFormModal.tsx` — Phone-Only Step
-- Remove city and address fields entirely
-- Change title to "შეუკვეთე 1 წუთში", subtext "მხოლოდ ტელეფონის ნომერი"
-- Button text: "შეუკვეთე"
-- On submit: call `createOrder()` with phone only (city/address empty), status `pending_details`
-- Show "✔️ შეკვეთა დაფიქსირდა" success flash
-- Fire `phone_submitted` tracking event
-- Callback: pass order ID to parent → open upsell popup
-
-### 3. New `src/components/landing/LandingUpsellSheet.tsx`
-- Bottom sheet/drawer showing product grid
-- Hero banner: "აირჩიე ნებისმიერი 2 პროდუქტი მხოლოდ 19₾-ად და მიიღე უფასო მიწოდება"
-- Subtext: "დაამატე ახლა და დაზოგე 5₾ მიწოდებაზე"
-- Reuses `useProducts()` for catalog, excludes the base product
-- Selection state: max 2 items, toggle on/off
-- Dynamic total display: base price + upsell items + delivery fee
-- If 2 selected: delivery = 0₾ (free), upsell price = 19₾ flat
-- Skip button: "შეთავაზების გარეშე გაგრძელება"
-- On accept/skip: fire `upsell_accepted`/`upsell_skipped`, call `addUpsellItems()` on DB, then open address popup
-
-### 4. New `src/components/landing/AddressFormModal.tsx`
-- Bottom sheet with city + address fields (reuse PredictiveInput, historical data fetch)
-- Title: "დაასრულე შეკვეთა"
-- Shows order summary with final total
-- On submit: call `updateOrderAddress()`, fire Purchase + order_submitted events
-- Navigate to `/success`
-
-### 5. Landing page CTAs (all 4 variants)
-- **GenericLanding** (`src/pages/ProductLanding.tsx`): Change sticky CTA to open phone-only popup. Text: "შეუკვეთე ახლა"
-- **TailoredLanding**: Same — CTA opens phone popup instead of addAndGate
-- **WrenchLanding**: Same pattern
-- **SpyDetectorLanding**: Already uses CODFormModal — just wired through new flow
-
-Each landing manages local state: `codOpen`, `upsellOpen`, `addressOpen`, `pendingOrderId`, `pendingOrderNumber`, `upsellItems`, `deliveryFee`.
-
-### 6. Price display changes
-- Remove "Free Shipping" / "უფასო მიტანა" badges from landing pages
-- Show base price only; free shipping is earned via upsell
-
-### 7. Tracking events
-Add to `trackEvent` calls at each step:
-- `phone_submitted` — after phone popup submit
-- `upsell_viewed` — when upsell sheet opens
-- `upsell_accepted` — with selected items + saved amount
-- `upsell_skipped` — when user dismisses
-- `order_completed` — after address submit (fires Purchase pixel too)
-
-## Technical Details
-
-**Order creation flow in DB:**
-1. Phone step: `INSERT orders` with `status='pending_details'`, empty city/address, `shipping_fee=5`
-2. Upsell step: `INSERT order_items` for upsell products, `UPDATE orders SET shipping_fee=0, total=new_total` if 2 items selected
-3. Address step: `UPDATE orders SET city=..., address=..., status='new'`
-
-**No new DB tables needed** — uses existing `orders` + `order_items` tables. The `pending_details` status is just a string value in the existing status column.
-
-**No new contexts needed** — all state is local to each landing page component, passed down via props to the 3 popup components.
+## Out of scope
+- No changes to Shopify itself (the original 10 images stay in Shopify, just no longer referenced by the storefront).
+- No edits to `ProductImageSlider` or `ProductPhotoGallery` — they already handle a 2-image gallery correctly.
 
