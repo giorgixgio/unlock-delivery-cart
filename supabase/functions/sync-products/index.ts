@@ -63,6 +63,16 @@ serve(async (req) => {
       page++;
     }
 
+    // Fetch existing image overrides so we don't overwrite locally-hosted images
+    const { data: existingRows } = await supabase
+      .from("products")
+      .select("id, image");
+    const localOverrideIds = new Set(
+      (existingRows || [])
+        .filter((r: any) => typeof r.image === "string" && r.image.startsWith("/images/"))
+        .map((r: any) => String(r.id))
+    );
+
     // Map and upsert
     let upserted = 0;
     const batchSize = 50;
@@ -71,8 +81,10 @@ serve(async (req) => {
       const batch = allProducts.slice(i, i + batchSize).map((p: any) => {
         const variant = p.variants?.[0] || {};
         const tags = p.tags || [];
-        return {
-          id: String(p.id),
+        const id = String(p.id);
+        const hasLocalOverride = localOverrideIds.has(id);
+        const row: any = {
+          id,
           title: p.title || "",
           handle: p.handle || "",
           description: p.body_html || "",
@@ -82,13 +94,17 @@ serve(async (req) => {
           compare_at_price: variant.compare_at_price
             ? parseFloat(variant.compare_at_price)
             : null,
-          image: p.images?.[0]?.src || "/placeholder.svg",
-          images: (p.images || []).map((img: any) => img.src),
           category: categorizeByTags(tags, p.title || ""),
           tags,
           available: variant.available ?? true,
           synced_at: new Date().toISOString(),
         };
+        // Only set image fields from Shopify if there's no local override
+        if (!hasLocalOverride) {
+          row.image = p.images?.[0]?.src || "/placeholder.svg";
+          row.images = (p.images || []).map((img: any) => img.src);
+        }
+        return row;
       });
 
       const { error } = await supabase
