@@ -124,6 +124,9 @@ const AdminProducts = () => {
   const [editPriceValue, setEditPriceValue] = useState("");
   const [editingCompare, setEditingCompare] = useState<string | null>(null);
   const [editCompareValue, setEditCompareValue] = useState("");
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [editTitleValue, setEditTitleValue] = useState("");
+  const [imageManagerProduct, setImageManagerProduct] = useState<VariantRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
@@ -134,6 +137,11 @@ const AdminProducts = () => {
   const [reassignSku, setReassignSku] = useState<{ sku: string; fromProductId: string; fromTitle: string } | null>(null);
   const [reassignSearch, setReassignSearch] = useState("");
   const [reassigning, setReassigning] = useState(false);
+
+  const refreshProducts = () => {
+    localStorage.removeItem("bigmart-products-v4");
+    window.location.reload();
+  };
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
     await setStockOverride(productId, !currentlyAvailable);
