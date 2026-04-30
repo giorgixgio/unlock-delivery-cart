@@ -1108,6 +1108,18 @@ const AdminProducts = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {imageManagerProduct && (
+        <ProductImageManager
+          open={!!imageManagerProduct}
+          onClose={() => setImageManagerProduct(null)}
+          productId={imageManagerProduct.productId}
+          productTitle={imageManagerProduct.title}
+          currentImage={imageManagerProduct.image}
+          currentImages={(products || []).find((p) => p.id === imageManagerProduct.productId)?.images || []}
+          onSaved={refreshProducts}
+        />
+      )}
     </div>
   );
 };
