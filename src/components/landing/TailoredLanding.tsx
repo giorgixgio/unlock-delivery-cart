@@ -120,7 +120,10 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
         {/* Title + price */}
         <div>
           {!config.hero_title && (
-            <h1 className="text-xl font-extrabold text-foreground leading-tight mb-2">{product.title}</h1>
+            <h1 className="text-xl font-extrabold text-foreground leading-tight mb-1">{product.title}</h1>
+            {product.sku && (
+              <p className="text-[11px] text-muted-foreground font-mono mb-2">SKU: {product.sku}</p>
+            )}
           )}
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
