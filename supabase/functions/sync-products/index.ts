@@ -69,7 +69,11 @@ serve(async (req) => {
       .select("id, image");
     const localOverrideIds = new Set(
       (existingRows || [])
-        .filter((r: any) => typeof r.image === "string" && r.image.startsWith("/images/"))
+        .filter((r: any) => {
+          const img = typeof r.image === "string" ? r.image : "";
+          // Local /images/ assets OR images uploaded to our Supabase storage bucket
+          return img.startsWith("/images/") || img.includes("/storage/v1/object/public/product-images/");
+        })
         .map((r: any) => String(r.id))
     );
 
