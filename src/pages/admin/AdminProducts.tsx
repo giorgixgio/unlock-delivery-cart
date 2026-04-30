@@ -557,16 +557,50 @@ const AdminProducts = () => {
             return (
               <tr key={row.productId} className={`border-t border-border hover:bg-muted/30 transition-colors ${row.skuConflict ? "bg-orange-50/50" : ""}`}>
                 <td className="px-3 py-2">
-                  <div className="w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+                  <button
+                    className="relative w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center group/img"
+                    title="Manage images"
+                    onClick={() => setImageManagerProduct(row)}
+                  >
                     {row.image && row.image !== "/placeholder.svg" ? (
                       <img src={row.image} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
                     )}
-                  </div>
+                    <span className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                      <Images className="w-4 h-4" />
+                    </span>
+                  </button>
                 </td>
                 <td className="px-3 py-2">
-                  <p className="font-medium text-sm line-clamp-2 max-w-[220px]">{row.title}</p>
+                  {editingTitle === row.productId ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editTitleValue}
+                        onChange={(e) => setEditTitleValue(e.target.value)}
+                        className="h-8 text-sm w-[260px]"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") setEditingTitle(null); }}
+                      />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600" onClick={handleTitleSave}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingTitle(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1 group">
+                      <p className="font-medium text-sm line-clamp-2 max-w-[220px]">{row.title}</p>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 mt-0.5"
+                        title="Edit title (URL stays the same)"
+                        onClick={() => { setEditingTitle(row.productId); setEditTitleValue(row.title); }}
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
+                  )}
                   {row.skuConflict && activeTab !== "conflicts" && (
                     <Badge variant="destructive" className="mt-1 text-[10px] gap-1">
                       <AlertTriangle className="w-3 h-3" /> SKU Conflict
@@ -576,9 +610,9 @@ const AdminProducts = () => {
                 <td className="px-1 py-2">
                   <button
                     className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    title="Copy product link"
+                    title="Copy landing page link"
                     onClick={() => {
-                      const url = `${window.location.origin}/shop?product_id=${row.handle || row.productId}`;
+                      const url = `${window.location.origin}/p/${row.handle || row.productId}`;
                       navigator.clipboard.writeText(url);
                       toast({ title: "Link copied!", description: url });
                     }}
