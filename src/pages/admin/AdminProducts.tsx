@@ -9,10 +9,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
+import ProductImageManager from "@/components/admin/ProductImageManager";
 
 interface VariantRow {
   productId: string;
