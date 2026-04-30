@@ -246,6 +246,26 @@ const AdminProducts = () => {
     localStorage.removeItem("bigmart-products-v4");
   };
 
+  // Title edit — handle stays unchanged so URLs don't break
+  const handleTitleSave = async () => {
+    const trimmed = editTitleValue.trim();
+    if (!trimmed) {
+      toast({ title: "Title cannot be empty", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase
+      .from("products")
+      .update({ title: trimmed })
+      .eq("id", editingTitle!);
+    if (error) {
+      toast({ title: "Failed to update title", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Title updated", description: "Product URL/handle unchanged" });
+    setEditingTitle(null);
+    localStorage.removeItem("bigmart-products-v4");
+  };
+
   // Bulk CSV upload
   interface BulkRow {
     rowNum: number;
