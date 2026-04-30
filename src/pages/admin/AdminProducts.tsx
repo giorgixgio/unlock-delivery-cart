@@ -9,10 +9,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
+import ProductImageManager from "@/components/admin/ProductImageManager";
 
 interface VariantRow {
   productId: string;
@@ -123,6 +124,9 @@ const AdminProducts = () => {
   const [editPriceValue, setEditPriceValue] = useState("");
   const [editingCompare, setEditingCompare] = useState<string | null>(null);
   const [editCompareValue, setEditCompareValue] = useState("");
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [editTitleValue, setEditTitleValue] = useState("");
+  const [imageManagerProduct, setImageManagerProduct] = useState<VariantRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
@@ -133,6 +137,11 @@ const AdminProducts = () => {
   const [reassignSku, setReassignSku] = useState<{ sku: string; fromProductId: string; fromTitle: string } | null>(null);
   const [reassignSearch, setReassignSearch] = useState("");
   const [reassigning, setReassigning] = useState(false);
+
+  const refreshProducts = () => {
+    localStorage.removeItem("bigmart-products-v4");
+    window.location.reload();
+  };
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
     await setStockOverride(productId, !currentlyAvailable);
@@ -234,6 +243,26 @@ const AdminProducts = () => {
     toast({ title: "SKU updated" });
     setEditingSku(null);
     // Clear cache so products refetch
+    localStorage.removeItem("bigmart-products-v4");
+  };
+
+  // Title edit — handle stays unchanged so URLs don't break
+  const handleTitleSave = async () => {
+    const trimmed = editTitleValue.trim();
+    if (!trimmed) {
+      toast({ title: "Title cannot be empty", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase
+      .from("products")
+      .update({ title: trimmed })
+      .eq("id", editingTitle!);
+    if (error) {
+      toast({ title: "Failed to update title", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Title updated", description: "Product URL/handle unchanged" });
+    setEditingTitle(null);
     localStorage.removeItem("bigmart-products-v4");
   };
 
@@ -528,16 +557,50 @@ const AdminProducts = () => {
             return (
               <tr key={row.productId} className={`border-t border-border hover:bg-muted/30 transition-colors ${row.skuConflict ? "bg-orange-50/50" : ""}`}>
                 <td className="px-3 py-2">
-                  <div className="w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center">
+                  <button
+                    className="relative w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center group/img"
+                    title="Manage images"
+                    onClick={() => setImageManagerProduct(row)}
+                  >
                     {row.image && row.image !== "/placeholder.svg" ? (
                       <img src={row.image} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
                     )}
-                  </div>
+                    <span className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                      <Images className="w-4 h-4" />
+                    </span>
+                  </button>
                 </td>
                 <td className="px-3 py-2">
-                  <p className="font-medium text-sm line-clamp-2 max-w-[220px]">{row.title}</p>
+                  {editingTitle === row.productId ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editTitleValue}
+                        onChange={(e) => setEditTitleValue(e.target.value)}
+                        className="h-8 text-sm w-[260px]"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") handleTitleSave(); if (e.key === "Escape") setEditingTitle(null); }}
+                      />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600" onClick={handleTitleSave}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingTitle(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1 group">
+                      <p className="font-medium text-sm line-clamp-2 max-w-[220px]">{row.title}</p>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 mt-0.5"
+                        title="Edit title (URL stays the same)"
+                        onClick={() => { setEditingTitle(row.productId); setEditTitleValue(row.title); }}
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
+                  )}
                   {row.skuConflict && activeTab !== "conflicts" && (
                     <Badge variant="destructive" className="mt-1 text-[10px] gap-1">
                       <AlertTriangle className="w-3 h-3" /> SKU Conflict
@@ -547,9 +610,9 @@ const AdminProducts = () => {
                 <td className="px-1 py-2">
                   <button
                     className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    title="Copy product link"
+                    title="Copy landing page link"
                     onClick={() => {
-                      const url = `${window.location.origin}/shop?product_id=${row.handle || row.productId}`;
+                      const url = `${window.location.origin}/p/${row.handle || row.productId}`;
                       navigator.clipboard.writeText(url);
                       toast({ title: "Link copied!", description: url });
                     }}
@@ -1045,6 +1108,18 @@ const AdminProducts = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {imageManagerProduct && (
+        <ProductImageManager
+          open={!!imageManagerProduct}
+          onClose={() => setImageManagerProduct(null)}
+          productId={imageManagerProduct.productId}
+          productTitle={imageManagerProduct.title}
+          currentImage={imageManagerProduct.image}
+          currentImages={(products || []).find((p) => p.id === imageManagerProduct.productId)?.images || []}
+          onSaved={refreshProducts}
+        />
+      )}
     </div>
   );
 };

@@ -193,6 +193,9 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
 
         <div>
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
+          {product.sku && (
+            <p className="text-[11px] text-muted-foreground font-mono mt-1">SKU: {product.sku}</p>
+          )}
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
             <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
             {(qtyDiscountPct > 0 || discount > 0) && (
