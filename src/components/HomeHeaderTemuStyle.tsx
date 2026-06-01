@@ -219,7 +219,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex-shrink-0"
             >
-              <img src={logoSrc} alt="BigMart" className="h-7 w-auto" />
+              <img src={logoSrc} alt="TrendMart" className="h-10 md:h-12 w-auto" />
             </button>
 
             <button
