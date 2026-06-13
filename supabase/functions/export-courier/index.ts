@@ -92,9 +92,15 @@ Deno.serve(async (req) => {
 
     for (const order of (orders || [])) {
       const items = order.order_items || [];
-      const totalQuantity = items.reduce((sum: number, i: any) => sum + Number(i.quantity || 1), 0);
-      const skus = items.map((i: any) => i.sku).join(",");
+      // Courier-export rule: Quantity column is always "1".
+      // Real quantity is moved into the SKU column formatted as "SKU - QTY"
+      // (comma-separated when an order has multiple items).
+      const skuWithQty = items
+        .map((i: any) => `${i.sku ?? ""} - ${Number(i.quantity || 1)}`)
+        .join(", ");
       const titles = items.map((i: any) => i.title).join(", ");
+      const quantityColumn = "1";
+
 
       const notes: string[] = [];
       if (order.notes_customer) notes.push(order.notes_customer);
