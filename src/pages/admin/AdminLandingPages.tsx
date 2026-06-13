@@ -70,6 +70,7 @@ const EditDialog = ({
   const [heroSubtitle, setHeroSubtitle] = useState(cfg.hero_subtitle || "");
   const [useCod, setUseCod] = useState(row.landing_use_cod_modal);
   const [bypassMin, setBypassMin] = useState(row.landing_bypass_min_cart);
+  const [upsellOverride, setUpsellOverride] = useState<boolean>(row.landing_upsell_enabled === true);
   const [variant, setVariant] = useState(row.landing_variant);
 
   // Sections
