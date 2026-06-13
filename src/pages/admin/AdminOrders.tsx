@@ -595,6 +595,15 @@ const AdminOrders = () => {
         onClose={() => setMergeOpen(false)}
         onComplete={() => { setSelectedIds([]); fetchOrders(); fetchCounts(); }}
       />
+      <OrderQuickReviewModal
+        orderId={activeOrderId}
+        onClose={() => setActiveOrderId(null)}
+        onPrev={goPrev}
+        onNext={goNext}
+        hasPrev={activeIndex > 0}
+        hasNext={activeIndex >= 0 && activeIndex < orders.length - 1}
+        onOrderUpdated={handleOrderUpdated}
+      />
     </div>
   );
 };
