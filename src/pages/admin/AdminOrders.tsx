@@ -125,6 +125,7 @@ const AdminOrders = () => {
   const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { applyToCount, hasModifier } = useViewModifier();
 
   const fetchCounts = useCallback(async () => {
