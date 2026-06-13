@@ -552,6 +552,15 @@ const AdminOrders = () => {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize w-fit ${statusColor[order.status] || "bg-muted text-foreground"}`}>
                         {order.status.replace("_", " ")}
                       </span>
+                      {(() => {
+                        const oc = order.call_outcome || order.operator_review_status;
+                        if (!oc || !OUTCOME_LABEL[oc]) return null;
+                        return (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border w-fit ${OUTCOME_BADGE_CLS[oc]}`}>
+                            {OUTCOME_LABEL[oc]}
+                          </span>
+                        );
+                      })()}
                       {order.review_required && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 w-fit">
                           Review needed
