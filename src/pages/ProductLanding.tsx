@@ -115,8 +115,18 @@ const ProductLanding = () => {
 };
 
 /** Generic landing page — phone-first funnel */
-const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlug: string }) => {
+const GenericLanding = ({
+  product,
+  landingSlug,
+  upsellOverride,
+}: {
+  product: Product;
+  landingSlug: string;
+  upsellOverride: boolean | null;
+}) => {
   const navigate = useNavigate();
+  const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
+  const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
@@ -149,6 +159,12 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    // Skip the confirmation + upsell sheets entirely when upsells are disabled.
+    if (!upsellsActive) {
+      setDeliveryFee(5);
+      setAddressOpen(true);
+      return;
+    }
     setConfirmOpen(true);
   };
 
