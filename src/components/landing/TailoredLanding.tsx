@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import logoSrc from "@/assets/logo.png";
 import { Product } from "@/lib/constants";
+import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
