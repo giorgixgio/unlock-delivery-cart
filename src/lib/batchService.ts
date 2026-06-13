@@ -533,12 +533,14 @@ export async function importTrackingForBatch(
     toUpdate.push({ order_id: orderId, tracking_number: newTracking });
   }
 
-  // Apply updates
-  for (const row of toUpdate) {
-    await supabase
-      .from("orders")
-      .update({ tracking_number: row.tracking_number })
-      .eq("id", row.order_id);
+  // Apply updates in bulk via RPC (chunked for safety on huge files)
+  const CHUNK_SIZE = 500;
+  for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
+    const chunk = toUpdate.slice(i, i + CHUNK_SIZE);
+    const { error: rpcErr } = await supabase.rpc("bulk_update_tracking", {
+      rows: chunk as any,
+    });
+    if (rpcErr) throw rpcErr;
   }
 
   await logBatchEvent(batchId, actorEmail, "TRACKING_IMPORTED", {
