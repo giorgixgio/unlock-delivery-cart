@@ -42,6 +42,8 @@ export interface ProductLandingConfig {
   landing_config: LandingConfig | null;
   landing_use_cod_modal: boolean;
   landing_bypass_min_cart: boolean;
+  /** Per-product upsell override. TRUE forces ON even when global is OFF. */
+  landing_upsell_enabled: boolean | null;
 }
 
 export function useLandingConfig(handle: string | undefined) {
