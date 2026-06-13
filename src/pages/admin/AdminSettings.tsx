@@ -30,6 +30,11 @@ const AdminSettings = () => {
   const [quantityLoading, setQuantityLoading] = useState(true);
   const [quantitySaving, setQuantitySaving] = useState(false);
 
+  // Global landing-page upsells toggle
+  const [upsellsEnabled, setUpsellsEnabled] = useState(true);
+  const [upsellsLoading, setUpsellsLoading] = useState(true);
+  const [upsellsSaving, setUpsellsSaving] = useState(false);
+
   const fetchUsers = async () => {
     const { data } = await supabase.from("admin_users").select("*").order("created_at");
     setUsers((data as unknown as AdminUser[]) || []);
@@ -46,10 +51,41 @@ const AdminSettings = () => {
     setQuantityLoading(false);
   };
 
+  const fetchUpsells = async () => {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "landing_upsells_enabled")
+      .maybeSingle();
+    const v = String(data?.value ?? "true").toLowerCase().trim();
+    setUpsellsEnabled(v !== "false" && v !== "0" && v !== "off");
+    setUpsellsLoading(false);
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchMinQuantity();
+    fetchUpsells();
   }, []);
+
+  const saveUpsells = async (next: boolean) => {
+    setUpsellsSaving(true);
+    setUpsellsEnabled(next);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({
+        key: "landing_upsells_enabled",
+        value: next ? "true" : "false",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "key" });
+    if (error) {
+      toast.error("შენახვა ვერ მოხერხდა");
+      setUpsellsEnabled(!next);
+    } else {
+      toast.success(next ? "Upsells turned ON globally" : "Upsells turned OFF globally");
+    }
+    setUpsellsSaving(false);
+  };
 
   const saveMinQuantity = async () => {
     const val = parseInt(minQuantity, 10);
