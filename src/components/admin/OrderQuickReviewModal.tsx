@@ -221,6 +221,11 @@ export default function OrderQuickReviewModal({
         setAdvRawAddr(o.raw_address || "");
         setAdvNormAddr(o.normalized_address || "");
 
+        // Always log a per-session "order_opened" event for operator stats
+        supabase.from("order_events").insert({
+          order_id: o.id, actor, event_type: "order_opened", payload: {} as any,
+        });
+
         if (!o.operator_viewed_at) {
           const patch: Record<string, unknown> = {
             operator_viewed_at: new Date().toISOString(),
