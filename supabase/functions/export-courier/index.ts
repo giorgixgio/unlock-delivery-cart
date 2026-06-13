@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
           order.normalized_address || order.raw_address || order.address_line1 || "", // 12 მიმღების მისამართი
           "",                                                            // 13 მიმღები გაცემის პუნქტი
           fixedMap["trackings_weight"] || "1",                           // 14 წონა
-          String(totalQuantity),                                         // 15 ნივთების რაოდენობა
+          quantityColumn,                                                // 15 ნივთების რაოდენობა (always "1")
           String(Number(order.total || 0)),                              // 16 COD
           fixedMap["trackings_cod_commission_payer"] || "გამგზავნი",    // 17 COD საკომისიოს გადაიხდის
           "",                                                            // 18 ექსპრეს სერვისი
