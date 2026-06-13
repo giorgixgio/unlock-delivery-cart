@@ -70,11 +70,19 @@ Deno.serve(async (req) => {
         earliest: orders?.length ? orders[0].created_at : null,
         latest: orders?.length ? orders[orders.length - 1].created_at : null,
         totalSum: (orders || []).reduce((sum: number, o: any) => sum + Number(o.total || 0), 0),
+        orders: (orders || []).map((o: any) => ({
+          id: o.id,
+          public_order_number: o.public_order_number,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          city: o.normalized_city || o.raw_city || o.city || "",
+        })),
       };
       return new Response(JSON.stringify(summary), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // action === "download"
     const { data: template } = await supabase
@@ -92,9 +100,15 @@ Deno.serve(async (req) => {
 
     for (const order of (orders || [])) {
       const items = order.order_items || [];
-      const totalQuantity = items.reduce((sum: number, i: any) => sum + Number(i.quantity || 1), 0);
-      const skus = items.map((i: any) => i.sku).join(",");
+      // Courier-export rule: Quantity column is always "1".
+      // Real quantity is moved into the SKU column formatted as "SKU - QTY"
+      // (comma-separated when an order has multiple items).
+      const skuWithQty = items
+        .map((i: any) => `${i.sku ?? ""} - ${Number(i.quantity || 1)}`)
+        .join(", ");
       const titles = items.map((i: any) => i.title).join(", ");
+      const quantityColumn = "1";
+
 
       const notes: string[] = [];
       if (order.notes_customer) notes.push(order.notes_customer);
@@ -122,7 +136,7 @@ Deno.serve(async (req) => {
           order.normalized_address || order.raw_address || order.address_line1 || "", // 12 მიმღების მისამართი
           "",                                                            // 13 მიმღები გაცემის პუნქტი
           fixedMap["trackings_weight"] || "1",                           // 14 წონა
-          String(totalQuantity),                                         // 15 ნივთების რაოდენობა
+          quantityColumn,                                                // 15 ნივთების რაოდენობა (always "1")
           String(Number(order.total || 0)),                              // 16 COD
           fixedMap["trackings_cod_commission_payer"] || "გამგზავნი",    // 17 COD საკომისიოს გადაიხდის
           "",                                                            // 18 ექსპრეს სერვისი
@@ -136,7 +150,7 @@ Deno.serve(async (req) => {
           fixedMap["trackings_payment_type"] || "ქეში",                 // 26 ანგარიშწორების ტიპი
           order.public_order_number,                                     // 27 შეკვეთის ნომერი
           String(Number(order.total || 0)),                              // 28 პროდუქციის ფასი
-          `${titles} [${skus}]`,                                         // 29 პროდუქციის აღწერა
+          `${titles} [${skuWithQty}]`,                                   // 29 პროდუქციის აღწერა
         ];
         rows.push(row);
       } else {
@@ -146,9 +160,10 @@ Deno.serve(async (req) => {
           B: order.normalized_address || order.raw_address || order.address_line1 || "",
           C: order.normalized_city || order.raw_city || order.city || "",
           E: order.customer_phone || "",
-          G: String(totalQuantity),
+          G: quantityColumn,
           H: order.public_order_number,
-          I: skus,
+          I: skuWithQty,
+
           K: String(Number(order.total || 0)),
           O: notes.join(" | "),
         };
