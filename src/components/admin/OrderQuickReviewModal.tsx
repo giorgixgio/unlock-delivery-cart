@@ -14,6 +14,7 @@ import {
   Search, Plus, Minus, Trash2, AlertTriangle, UserX, Files, Check,
 } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
+import OrderActivityLog from "@/components/admin/OrderActivityLog";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
@@ -220,6 +221,11 @@ export default function OrderQuickReviewModal({
         setAdvNormCity(o.normalized_city || "");
         setAdvRawAddr(o.raw_address || "");
         setAdvNormAddr(o.normalized_address || "");
+
+        // Always log a per-session "order_opened" event for operator stats
+        supabase.from("order_events").insert({
+          order_id: o.id, actor, event_type: "order_opened", payload: {} as any,
+        });
 
         if (!o.operator_viewed_at) {
           const patch: Record<string, unknown> = {
@@ -454,7 +460,7 @@ export default function OrderQuickReviewModal({
       if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
       await supabase.from("order_events").insert({
         order_id: order.id, actor, event_type: "item_added",
-        payload: { product_id: p.id, sku: p.sku, title: p.title } as any,
+        payload: { product_id: p.id, sku: p.sku, title: p.title, quantity: 1, unit_price: Number(p.price), added_revenue: Number(p.price) } as any,
       });
       await refreshItemsAndTotals();
       toast({ title: `დაემატა: ${p.title}` });
@@ -717,6 +723,9 @@ export default function OrderQuickReviewModal({
                   placeholder="მაგ: დაურეკე 2 საათში, სთხოვა გადადება..."
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[70px]" />
               </section>
+
+              {/* Activity log */}
+              <OrderActivityLog orderId={order.id} refreshKey={saving ? 0 : 1} />
             </div>
           )}
         </div>
