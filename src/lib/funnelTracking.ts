@@ -178,6 +178,10 @@ export function trackAddressFormViewed(orderId: string) {
   trackEvent("address_form_viewed", { order_id: orderId });
 }
 
+export function trackAddressPopupOpened(orderId: string) {
+  trackEvent("address_popup_opened", { order_id: orderId });
+}
+
 export function trackAddressSubmitted(orderId: string, city: string) {
   trackEvent("address_submitted", {
     order_id: orderId,
@@ -187,6 +191,23 @@ export function trackAddressSubmitted(orderId: string, city: string) {
   trackMetaAddressSubmitted(orderId);
 }
 
+export function trackAddressCompleted(orderId: string, city: string) {
+  trackEvent("address_completed", { order_id: orderId, city });
+}
+
+export function trackAddressPartialCompleted(orderId: string, city: string) {
+  trackEvent("address_partial_completed", { order_id: orderId, city });
+}
+
+export function trackAddressSkipped(orderId: string) {
+  trackEvent("address_skipped", { order_id: orderId });
+}
+
+export function trackAddressPopupClosed(orderId: string, reason: "x_button" | "outside" | "back") {
+  trackEvent("address_popup_closed", { order_id: orderId, reason });
+}
+
 export function trackAddressAbandoned(orderId: string) {
   trackEvent("address_skipped_or_abandoned", { order_id: orderId });
 }
+
