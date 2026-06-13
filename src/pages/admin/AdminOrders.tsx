@@ -487,11 +487,15 @@ const AdminOrders = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {orders.map((order) => {
+                const isUnviewed = isReviewTab && !order.operator_viewed_at;
+                return (
                 <tr
                   key={order.id}
-                  onClick={() => goToOrder(order.id)}
-                  className={`border-t border-border hover:bg-muted/30 cursor-pointer transition-colors ${selectedIds.includes(order.id) ? "bg-primary/5" : ""}`}
+                  onClick={() => openOrder(order.id)}
+                  className={`border-t border-border hover:bg-muted/30 cursor-pointer transition-colors ${
+                    selectedIds.includes(order.id) ? "bg-primary/5" : ""
+                  } ${isUnviewed ? "bg-amber-50/40 dark:bg-amber-950/10 border-l-4 border-l-amber-400" : ""}`}
                 >
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -503,6 +507,9 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-bold text-primary">{order.public_order_number}</span>
+                    {isUnviewed && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">ახალი</span>
+                    )}
                     {order.tags?.includes("auto_merged") && (
                       <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">Merged</span>
                     )}
