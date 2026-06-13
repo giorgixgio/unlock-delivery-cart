@@ -161,6 +161,34 @@ const AdminSettings = () => {
         )}
       </div>
 
+      {/* Global landing-page upsells toggle */}
+      <div className="bg-card rounded-lg p-4 border border-border space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-sm">Landing-page upsells (global)</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md">
+              Controls the bundle/upsell sheet shown after the COD phone confirmation on every product landing page.
+              Individual landing pages with their own "upsell enabled" override will still show even when this is OFF.
+            </p>
+          </div>
+          {upsellsLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-xs font-bold ${upsellsEnabled ? "text-success" : "text-muted-foreground"}`}>
+                {upsellsEnabled ? "ON" : "OFF"}
+              </span>
+              <Switch
+                checked={upsellsEnabled}
+                onCheckedChange={saveUpsells}
+                disabled={upsellsSaving}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+
       {/* Add user */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
         <h3 className="font-bold text-sm">Add Admin User</h3>
