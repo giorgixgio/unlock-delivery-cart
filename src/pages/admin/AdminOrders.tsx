@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import OrdersExportModal from "@/components/admin/OrdersExportModal";
 import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
+import OrderQuickReviewModal from "@/components/admin/OrderQuickReviewModal";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
 
@@ -74,6 +75,8 @@ interface OrderRow {
   auto_confirmed: boolean;
   tags: string[];
   internal_note: string | null;
+  operator_viewed_at: string | null;
+  operator_review_status: string | null;
   order_items: { image_url: string; quantity: number }[];
   /** Number of total orders from this customer (set by grouping) */
   _customerOrderCount?: number;
@@ -105,7 +108,7 @@ function groupOrdersByPhone(orders: OrderRow[]): OrderRow[] {
 }
 
 const AdminOrders = () => {
-  const navigate = useNavigate();
+  // navigation no longer used — orders open in OrderQuickReviewModal
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab) || "review";
 
@@ -122,6 +125,7 @@ const AdminOrders = () => {
   const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { applyToCount, hasModifier } = useViewModifier();
 
   const fetchCounts = useCallback(async () => {
@@ -164,7 +168,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
@@ -245,9 +249,29 @@ const AdminOrders = () => {
     setSelectedIds([]);
   };
 
-  const goToOrder = (orderId: string) => {
-    navigate(`/admin/orders/${orderId}?from=${activeTab}`);
+  const openOrder = (orderId: string) => {
+    setActiveOrderId(orderId);
   };
+
+  const activeIndex = useMemo(
+    () => (activeOrderId ? orders.findIndex((o) => o.id === activeOrderId) : -1),
+    [activeOrderId, orders]
+  );
+
+  const goPrev = () => {
+    if (activeIndex > 0) setActiveOrderId(orders[activeIndex - 1].id);
+  };
+  const goNext = () => {
+    if (activeIndex >= 0 && activeIndex < orders.length - 1) setActiveOrderId(orders[activeIndex + 1].id);
+  };
+
+  const handleOrderUpdated = useCallback((orderId: string, patch: Record<string, unknown>) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? ({ ...o, ...(patch as Partial<OrderRow>) } as OrderRow) : o
+      )
+    );
+  }, []);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -463,11 +487,15 @@ const AdminOrders = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {orders.map((order) => {
+                const isUnviewed = isReviewTab && !order.operator_viewed_at;
+                return (
                 <tr
                   key={order.id}
-                  onClick={() => goToOrder(order.id)}
-                  className={`border-t border-border hover:bg-muted/30 cursor-pointer transition-colors ${selectedIds.includes(order.id) ? "bg-primary/5" : ""}`}
+                  onClick={() => openOrder(order.id)}
+                  className={`border-t border-border hover:bg-muted/30 cursor-pointer transition-colors ${
+                    selectedIds.includes(order.id) ? "bg-primary/5" : ""
+                  } ${isUnviewed ? "bg-amber-50/40 dark:bg-amber-950/10 border-l-4 border-l-amber-400" : ""}`}
                 >
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -479,6 +507,9 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-bold text-primary">{order.public_order_number}</span>
+                    {isUnviewed && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">ახალი</span>
+                    )}
                     {order.tags?.includes("auto_merged") && (
                       <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">Merged</span>
                     )}
@@ -545,7 +576,8 @@ const AdminOrders = () => {
                     <FulfillmentBadge isConfirmed={order.is_confirmed} isFulfilled={order.is_fulfilled} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -562,6 +594,15 @@ const AdminOrders = () => {
         orderIds={selectedIds}
         onClose={() => setMergeOpen(false)}
         onComplete={() => { setSelectedIds([]); fetchOrders(); fetchCounts(); }}
+      />
+      <OrderQuickReviewModal
+        orderId={activeOrderId}
+        onClose={() => setActiveOrderId(null)}
+        onPrev={goPrev}
+        onNext={goNext}
+        hasPrev={activeIndex > 0}
+        hasNext={activeIndex >= 0 && activeIndex < orders.length - 1}
+        onOrderUpdated={handleOrderUpdated}
       />
     </div>
   );
