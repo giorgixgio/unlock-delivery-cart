@@ -77,6 +77,7 @@ interface OrderRow {
   internal_note: string | null;
   operator_viewed_at: string | null;
   operator_review_status: string | null;
+  call_outcome: string | null;
   order_items: { image_url: string; quantity: number }[];
   /** Number of total orders from this customer (set by grouping) */
   _customerOrderCount?: number;
