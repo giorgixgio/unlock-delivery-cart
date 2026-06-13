@@ -20,9 +20,9 @@ import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 
-const cityOnlySchema = z.object({
-  region: z.string().trim().min(1, "ქალაქი აუცილებელია").max(100),
-  address: z.string().trim().max(300).optional().or(z.literal("")),
+const schema = z.object({
+  region: z.string().trim().max(100),
+  address: z.string().trim().max(300),
 });
 
 interface AddressFormModalProps {
@@ -41,6 +41,13 @@ interface AddressFormModalProps {
 
 type View = "form" | "skip_confirm" | "success";
 
+// Sticky orange announcement bar height + safe area + breathing room
+const TOP_SAFE_PADDING = "calc(46px + env(safe-area-inset-top) + 18px)";
+const BOTTOM_SAFE_PADDING = "calc(24px + env(safe-area-inset-bottom))";
+
+const inputClass =
+  "h-[58px] !text-[17px] rounded-2xl border-[1.5px] border-border px-[18px] focus-visible:ring-2 focus-visible:ring-success/40 focus-visible:border-success";
+
 const AddressFormModal = ({
   open,
   onClose,
@@ -57,6 +64,7 @@ const AddressFormModal = ({
   const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
   const [view, setView] = useState<View>("form");
   const [partialWarning, setPartialWarning] = useState(false);
+  const [emptyWarning, setEmptyWarning] = useState(false);
   const submittedRef = useRef(false);
 
   useEffect(() => {
@@ -64,6 +72,7 @@ const AddressFormModal = ({
     submittedRef.current = false;
     setView("form");
     setPartialWarning(false);
+    setEmptyWarning(false);
     trackAddressFormViewed(orderId);
     trackAddressPopupOpened(orderId);
     const saved = loadCustomerInfo();
@@ -93,6 +102,7 @@ const AddressFormModal = ({
   const handleChange = (field: string, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: "" }));
+    if (value.trim()) setEmptyWarning(false);
     if (field === "address" && value.trim()) setPartialWarning(false);
   };
 
@@ -106,31 +116,34 @@ const AddressFormModal = ({
   };
 
   const handleSkipConfirm = async () => {
-    try {
-      await markOrderAddressSkipped(orderId);
-    } catch (e) {
-      console.warn("markOrderAddressSkipped failed:", e);
-    }
+    try { await markOrderAddressSkipped(orderId); } catch {}
     trackAddressSkipped(orderId);
     trackAddressAbandoned(orderId);
     onClose();
   };
 
   const handleSubmit = async () => {
-    const result = cityOnlySchema.safeParse(form);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((e) => {
-        if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
-      });
-      setErrors(fieldErrors);
+    const parsed = schema.safeParse(form);
+    if (!parsed.success) {
+      const fe: Record<string, string> = {};
+      parsed.error.errors.forEach((e) => { if (e.path[0]) fe[e.path[0] as string] = e.message; });
+      setErrors(fe);
       return;
     }
 
-    const hasFullAddress = !!form.address.trim();
+    const region = form.region.trim();
+    const addressLine = form.address.trim();
 
-    // Gentle warning on first attempt with only city
-    if (!hasFullAddress && !partialWarning) {
+    // Both empty → gentle nudge, no hard error
+    if (!region && !addressLine) {
+      setEmptyWarning(true);
+      return;
+    }
+
+    const hasFullAddress = !!region && !!addressLine;
+
+    // Only city → gentle warning first, allow on second tap
+    if (!hasFullAddress && !!region && !addressLine && !partialWarning) {
       setPartialWarning(true);
       return;
     }
@@ -138,26 +151,26 @@ const AddressFormModal = ({
     setSubmitting(true);
     try {
       const saved = loadCustomerInfo();
-      saveCustomerInfo({ phone: saved?.phone || "", region: form.region, address: form.address });
+      saveCustomerInfo({ phone: saved?.phone || "", region, address: addressLine });
 
-      const isTbilisi = ["თბილისი", "tbilisi"].includes(form.region.trim().toLowerCase());
+      const isTbilisi = ["თბილისი", "tbilisi"].includes(region.toLowerCase());
 
       await updateOrderAddress(orderId, {
-        city: form.region,
-        region: form.region,
-        addressLine1: form.address,
+        city: region,
+        region: region,
+        addressLine1: addressLine,
         isTbilisi,
         addressStatus: hasFullAddress ? "completed" : "partial",
       });
 
       submittedRef.current = true;
 
-      trackAddressSubmitted(orderId, form.region);
-      if (hasFullAddress) trackAddressCompleted(orderId, form.region);
-      else trackAddressPartialCompleted(orderId, form.region);
+      trackAddressSubmitted(orderId, region);
+      if (hasFullAddress) trackAddressCompleted(orderId, region);
+      else trackAddressPartialCompleted(orderId, region);
 
       setView("success");
-      setTimeout(() => onComplete(), 1800);
+      setTimeout(() => onComplete(), 1900);
     } catch (err: any) {
       console.error("Address update failed:", err);
       setErrors({ _form: "მისამართის შენახვა ვერ მოხერხდა. სცადეთ თავიდან." });
@@ -172,168 +185,235 @@ const AddressFormModal = ({
     <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
       <SheetContent
         side="bottom"
-        className="max-h-[94vh] rounded-t-3xl overflow-y-auto pb-8 px-5 [&>button.absolute]:hidden"
+        className="h-[100dvh] max-h-[100dvh] rounded-t-3xl p-0 overflow-hidden [&>button.absolute]:hidden border-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        style={{ overflowY: "auto" }}
       >
-
-        {/* ----- Soft X close (top-right) ----- */}
+        {/* Soft close (X) */}
         {view !== "success" && (
           <button
             onClick={requestClose}
             aria-label="დახურვა"
-            className="absolute top-3 right-3 w-7 h-7 rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/60 flex items-center justify-center transition-colors"
+            className="fixed z-[2] w-9 h-9 rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-muted/70 flex items-center justify-center transition-colors bg-background/80 backdrop-blur-sm"
+            style={{
+              top: "calc(46px + env(safe-area-inset-top) + 10px)",
+              right: "14px",
+            }}
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
-        {view === "form" && (
-          <>
-            {/* Step indicator + progress */}
-            <div className="pt-2 pb-3">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                ნაბიჯი 2/2 — მიწოდების მისამართი
+        {/* Scroll container with safe-area padding */}
+        <div
+          className="mx-auto w-full"
+          style={{
+            maxWidth: 480,
+            paddingTop: TOP_SAFE_PADDING,
+            paddingBottom: BOTTOM_SAFE_PADDING,
+            paddingLeft: 20,
+            paddingRight: 20,
+            boxSizing: "border-box",
+            overflowX: "hidden",
+          }}
+        >
+          {view === "form" && (
+            <>
+              {/* Step label + progress bar */}
+              <div className="pb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  ნაბიჯი 2/2
+                </p>
+                <div className="mt-2 h-[5px] w-full rounded-full bg-muted overflow-hidden relative">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 relative overflow-hidden"
+                    style={{ width: "83%" }}
+                  >
+                    <span className="absolute inset-y-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent animate-shine" />
+                  </div>
+                </div>
+              </div>
+
+              <SheetTitle
+                className="font-extrabold text-foreground mt-2 leading-[1.18] flex items-center gap-2 flex-wrap"
+                style={{ fontSize: "clamp(22px, 5.6vw, 30px)" }}
+              >
+                შეკვეთა მიღებულია <span className="text-emerald-500">✅</span>
+              </SheetTitle>
+              <p
+                className="text-muted-foreground mt-2"
+                style={{ fontSize: "clamp(14px, 3.8vw, 16px)", lineHeight: 1.35 }}
+              >
+                მისამართის დამატება აჩქარებს მიწოდებას. ჩაწერე ქალაქი და მისამართი, რომ ოპერატორმა უფრო სწრაფად დაადასტუროს შეკვეთა.
               </p>
-              <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden relative">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 relative overflow-hidden"
-                  style={{ width: "82%" }}
-                >
-                  <span className="absolute inset-y-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent animate-[shine_1.8s_ease-in-out_infinite]" />
+
+              {/* Order summary card */}
+              <div
+                className="mt-4 rounded-[20px] bg-card"
+                style={{
+                  border: "1px solid hsl(var(--border))",
+                  padding: "18px 20px",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground text-[15px]">შეკვეთა #{orderNumber}</span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700">COD</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-[14px] text-muted-foreground">
+                    <span>ჯამი</span>
+                    <span className="text-foreground font-semibold">{orderTotal.toFixed(2)} ₾</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[14px] text-muted-foreground">
+                    <span>მიწოდება</span>
+                    <span className="text-foreground font-semibold">
+                      {deliveryFee > 0 ? `${deliveryFee.toFixed(2)} ₾` : "უფასო"}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                  <span className="font-bold text-foreground text-[15px]">გადასახდელია</span>
+                  <span className="font-extrabold text-[20px]" style={{ color: "#ff6a00" }}>
+                    {finalTotal.toFixed(2)} ₾
+                  </span>
                 </div>
               </div>
-            </div>
 
-            <SheetTitle className="text-xl font-extrabold text-foreground mt-1 flex items-center gap-2">
-              შეკვეთა მიღებულია <span className="text-emerald-500">✅</span>
-            </SheetTitle>
-            <p className="text-sm text-muted-foreground mt-1 leading-snug">
-              მისამართის დამატება აჩქარებს მიწოდებას. ჩაწერე ქალაქი და მისამართი, რომ ოპერატორმა უფრო სწრაფად დაადასტუროს შეკვეთა.
-            </p>
-
-            {/* Order summary card */}
-            <div className="mt-4 rounded-2xl border border-border bg-accent/40 px-4 py-3 space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-foreground">შეკვეთა #{orderNumber}</span>
-                <span className="text-xs text-muted-foreground">COD</span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>ჯამი</span>
-                <span>{orderTotal.toFixed(2)} ₾</span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>მიწოდება</span>
-                <span>{deliveryFee > 0 ? `${deliveryFee.toFixed(2)} ₾` : "უფასო"}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm pt-1 border-t border-border/60 mt-1">
-                <span className="font-bold text-foreground">გადასახდელია</span>
-                <span className="font-extrabold text-primary">{finalTotal.toFixed(2)} ₾</span>
-              </div>
-            </div>
-
-            {/* Fields */}
-            <div className="space-y-3 mt-4">
-              <div>
-                <Label className="text-sm font-bold text-foreground">ქალაქი / რეგიონი</Label>
-                <div className="mt-1">
-                  <PredictiveInput
-                    value={form.region}
-                    onChange={(val) => handleChange("region", val)}
-                    onSelect={(s) => handleChange("region", s.text)}
-                    getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
-                    placeholder="მაგ: თბილისი / ქუთაისი / ზუგდიდი"
-                    error={errors.region}
-                  />
+              {/* Fields */}
+              <div className="space-y-4 mt-5">
+                <div>
+                  <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
+                  <div className="mt-1.5">
+                    <PredictiveInput
+                      value={form.region}
+                      onChange={(val) => handleChange("region", val)}
+                      onSelect={(s) => handleChange("region", s.text)}
+                      getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
+                      placeholder="მაგ: თბილისი / ქუთაისი / ზუგდიდი"
+                      error={errors.region}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[14px] font-bold text-foreground">მისამართი</Label>
+                  <div className="mt-1.5">
+                    <PredictiveInput
+                      value={form.address}
+                      onChange={(val) => handleChange("address", val)}
+                      onSelect={(s) => handleChange("address", s.text)}
+                      getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
+                      placeholder="ქუჩა, კორპუსი, ბინა ან სოფელი"
+                      error={errors.address}
+                      className={inputClass}
+                    />
+                  </div>
+                  <p
+                    className="mt-2 flex items-start gap-1.5"
+                    style={{ fontSize: 14, color: "#777", lineHeight: 1.3 }}
+                  >
+                    <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-[1px]" />
+                    <span>მისამართის დამატებით შეკვეთა უფრო სწრაფად მუშავდება</span>
+                  </p>
                 </div>
               </div>
-              <div>
-                <Label className="text-sm font-bold text-foreground">მისამართი</Label>
-                <div className="mt-1">
-                  <PredictiveInput
-                    value={form.address}
-                    onChange={(val) => handleChange("address", val)}
-                    onSelect={(s) => handleChange("address", s.text)}
-                    getSuggestions={(input) => getAddressSuggestions(input, form.region, historicalAddresses)}
-                    placeholder="ქუჩა, კორპუსი, ბინა ან სოფელი"
-                    error={errors.address}
-                  />
+
+              {emptyWarning && (
+                <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-300 leading-snug">
+                  ჩაწერე ქალაქი ან მისამართი, რომ შეკვეთა უფრო სწრაფად დამუშავდეს.
                 </div>
-              </div>
-            </div>
-
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              მისამართის დამატებით შეკვეთა უფრო სწრაფად მუშავდება
-            </p>
-
-            {partialWarning && (
-              <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                სრული მისამართი მიწოდებას უფრო აჩქარებს. გსურს გაგრძელება მხოლოდ ქალაქით? დააჭირე ღილაკს კიდევ ერთხელ.
-              </div>
-            )}
-
-            {errors._form && (
-              <p className="text-sm text-destructive mt-3 text-center">{errors._form}</p>
-            )}
-
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full h-14 text-base font-bold rounded-2xl mt-4 bg-success hover:bg-success/90 text-success-foreground"
-              size="lg"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  იგზავნება...
-                </>
-              ) : (
-                <span className="leading-tight text-center">
-                  მისამართის დამატება და შეკვეთის დასრულება — {finalTotal.toFixed(2)} ₾
-                </span>
               )}
-            </Button>
-          </>
-        )}
+              {partialWarning && (
+                <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-300 leading-snug">
+                  სრული მისამართი მიწოდებას უფრო აჩქარებს. გსურს გაგრძელება მხოლოდ ქალაქით? დააჭირე ღილაკს კიდევ ერთხელ.
+                </div>
+              )}
+              {errors._form && (
+                <p className="text-sm text-destructive mt-3 text-center">{errors._form}</p>
+              )}
 
-        {view === "skip_confirm" && (
-          <div className="py-6 text-center space-y-4 animate-fade-in">
-            <SheetTitle className="text-xl font-extrabold text-foreground">გამოტოვება გსურს?</SheetTitle>
-            <p className="text-sm text-muted-foreground leading-snug px-2">
-              მისამართის დამატება აჩქარებს მიწოდებას, თუმცა ოპერატორი მაინც დაგიკავშირდება დასადასტურებლად.
-            </p>
-            <div className="space-y-2 pt-2">
+              {/* Primary CTA */}
               <Button
-                onClick={() => setView("form")}
-                className="w-full h-13 rounded-2xl font-bold bg-success hover:bg-success/90 text-success-foreground"
-                size="lg"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full mt-5 font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground"
+                style={{
+                  minHeight: 66,
+                  height: "auto",
+                  padding: "10px 18px",
+                  fontSize: "clamp(16px, 4.4vw, 20px)",
+                  lineHeight: 1.15,
+                  whiteSpace: "normal",
+                  overflowWrap: "anywhere",
+                  textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxSizing: "border-box",
+                }}
               >
-                მისამართის დამატება
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    იგზავნება...
+                  </>
+                ) : (
+                  <span>მისამართის დამატება და დასრულება</span>
+                )}
               </Button>
-              <Button
-                onClick={handleSkipConfirm}
-                variant="ghost"
-                className="w-full h-11 text-sm text-muted-foreground"
-              >
-                გამოტოვება
-              </Button>
-            </div>
-          </div>
-        )}
 
-        {view === "success" && (
-          <div className="py-10 text-center space-y-3 animate-fade-in">
-            <div className="mx-auto w-16 h-16 rounded-full bg-success/15 flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10 text-success" />
+              {/* Secondary skip */}
+              <button
+                type="button"
+                onClick={requestClose}
+                className="block mx-auto mt-3 text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              >
+                გამოტოვება — ოპერატორი დაგიკავშირდებათ
+              </button>
+            </>
+          )}
+
+          {view === "skip_confirm" && (
+            <div className="py-8 text-center space-y-4 animate-fade-in">
+              <SheetTitle className="text-[22px] font-extrabold text-foreground">
+                მისამართის გარეშე გააგრძელო?
+              </SheetTitle>
+              <p className="text-[15px] text-muted-foreground leading-snug px-2">
+                მისამართის დამატება მიწოდებას აჩქარებს, თუმცა ოპერატორი მაინც დაგიკავშირდება დასადასტურებლად.
+              </p>
+              <div className="space-y-2 pt-2">
+                <Button
+                  onClick={() => setView("form")}
+                  className="w-full font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground"
+                  style={{ minHeight: 64, fontSize: "clamp(16px, 4.4vw, 20px)" }}
+                >
+                  მისამართის დამატება
+                </Button>
+                <Button
+                  onClick={handleSkipConfirm}
+                  variant="ghost"
+                  className="w-full h-11 text-[14px] text-muted-foreground"
+                >
+                  გამოტოვება
+                </Button>
+              </div>
             </div>
-            <SheetTitle className="text-xl font-extrabold text-foreground">
-              მადლობა! შეკვეთა დასრულებულია ✅
-            </SheetTitle>
-            <p className="text-sm text-muted-foreground px-4">
-              ოპერატორი მალე დაგიკავშირდებათ დასადასტურებლად.
-            </p>
-          </div>
-        )}
+          )}
+
+          {view === "success" && (
+            <div className="py-14 text-center space-y-3 animate-fade-in">
+              <div className="mx-auto w-16 h-16 rounded-full bg-success/15 flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-success" />
+              </div>
+              <SheetTitle className="text-[22px] font-extrabold text-foreground">
+                მისამართი დამატებულია ✅
+              </SheetTitle>
+              <p className="text-[15px] text-muted-foreground px-4 leading-snug">
+                შეკვეთა სწრაფად დამუშავდება და ოპერატორი მალე დაგიკავშირდებათ.
+              </p>
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
