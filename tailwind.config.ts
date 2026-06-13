@@ -99,13 +99,19 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(4px)" },
         },
+        shine: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(400%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "checkout-bounce": "checkout-bounce 0.5s ease-out",
         "bounce-slow": "bounce-slow 1.5s ease-in-out infinite",
+        shine: "shine 1.8s ease-in-out infinite",
       },
+
     },
   },
   plugins: [require("tailwindcss-animate")],

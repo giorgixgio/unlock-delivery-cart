@@ -196,7 +196,8 @@ export async function addUpsellItems(
   if (updateError) throw updateError;
 }
 
-/** Update order with address details and finalize status */
+/** Update order with address details and finalize status.
+ *  `addressStatus`: 'completed' when both city + address are present, 'partial' when only city. */
 export async function updateOrderAddress(
   orderId: string,
   data: {
@@ -204,8 +205,10 @@ export async function updateOrderAddress(
     region: string;
     addressLine1: string;
     isTbilisi: boolean;
+    addressStatus?: "completed" | "partial";
   }
 ) {
+  const status = data.addressStatus || (data.addressLine1.trim() ? "completed" : "partial");
   const { error } = await supabase
     .from("orders")
     .update({
@@ -216,12 +219,14 @@ export async function updateOrderAddress(
       raw_address: data.addressLine1,
       is_tbilisi: data.isTbilisi,
       status: "new",
+      address_status: status,
+      address_added_at: new Date().toISOString(),
+      skipped_address: false,
     } as any)
     .eq("id", orderId);
 
   if (error) throw error;
 
-  // Fire normalize-and-score now that we have address
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -238,3 +243,16 @@ export async function updateOrderAddress(
     console.warn("normalize-and-score call failed:", e);
   }
 }
+
+/** Mark that the customer explicitly skipped the address popup. Does not delete the order. */
+export async function markOrderAddressSkipped(orderId: string) {
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      skipped_address: true,
+      address_status: "missing",
+    } as any)
+    .eq("id", orderId);
+  if (error) throw error;
+}
+
