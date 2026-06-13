@@ -10,7 +10,7 @@ import OrdersExportModal from "@/components/admin/OrdersExportModal";
 import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
-import OrderQuickReviewModal from "@/components/admin/OrderQuickReviewModal";
+import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
 
@@ -77,6 +77,7 @@ interface OrderRow {
   internal_note: string | null;
   operator_viewed_at: string | null;
   operator_review_status: string | null;
+  call_outcome: string | null;
   order_items: { image_url: string; quantity: number }[];
   /** Number of total orders from this customer (set by grouping) */
   _customerOrderCount?: number;
@@ -168,7 +169,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
@@ -551,6 +552,15 @@ const AdminOrders = () => {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize w-fit ${statusColor[order.status] || "bg-muted text-foreground"}`}>
                         {order.status.replace("_", " ")}
                       </span>
+                      {(() => {
+                        const oc = order.call_outcome || order.operator_review_status;
+                        if (!oc || !OUTCOME_LABEL[oc]) return null;
+                        return (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border w-fit ${OUTCOME_BADGE_CLS[oc]}`}>
+                            {OUTCOME_LABEL[oc]}
+                          </span>
+                        );
+                      })()}
                       {order.review_required && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 w-fit">
                           Review needed

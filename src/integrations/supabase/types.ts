@@ -622,6 +622,9 @@ export type Database = {
           auto_confirm_reason: string | null
           auto_confirmed: boolean | null
           batch_id: string | null
+          call_outcome: string | null
+          call_outcome_updated_at: string | null
+          call_outcome_updated_by: string | null
           channel: string
           city: string
           cookie_id_hash: string | null
@@ -682,6 +685,9 @@ export type Database = {
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
           batch_id?: string | null
+          call_outcome?: string | null
+          call_outcome_updated_at?: string | null
+          call_outcome_updated_by?: string | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -742,6 +748,9 @@ export type Database = {
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
           batch_id?: string | null
+          call_outcome?: string | null
+          call_outcome_updated_at?: string | null
+          call_outcome_updated_by?: string | null
           channel?: string
           city?: string
           cookie_id_hash?: string | null
