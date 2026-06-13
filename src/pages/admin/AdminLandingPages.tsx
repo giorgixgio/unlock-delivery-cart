@@ -194,7 +194,17 @@ const EditDialog = ({
                 <option value="tailored">tailored</option>
               </select>
             </div>
+            <div className="col-span-3 flex items-start gap-2 pt-2 border-t border-border/60 mt-1">
+              <Switch id="upsell-override" checked={upsellOverride} onCheckedChange={setUpsellOverride} />
+              <div>
+                <Label htmlFor="upsell-override" className="text-xs font-bold">Force upsell ON for this page</Label>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                  Overrides the global upsell OFF switch. Leave off to follow the global setting.
+                </p>
+              </div>
+            </div>
           </div>
+
 
           {/* Hero */}
           <div className="space-y-2">
