@@ -70,11 +70,19 @@ Deno.serve(async (req) => {
         earliest: orders?.length ? orders[0].created_at : null,
         latest: orders?.length ? orders[orders.length - 1].created_at : null,
         totalSum: (orders || []).reduce((sum: number, o: any) => sum + Number(o.total || 0), 0),
+        orders: (orders || []).map((o: any) => ({
+          id: o.id,
+          public_order_number: o.public_order_number,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          city: o.normalized_city || o.raw_city || o.city || "",
+        })),
       };
       return new Response(JSON.stringify(summary), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // action === "download"
     const { data: template } = await supabase
