@@ -108,7 +108,7 @@ function groupOrdersByPhone(orders: OrderRow[]): OrderRow[] {
 }
 
 const AdminOrders = () => {
-  const navigate = useNavigate();
+  // navigation no longer used — orders open in OrderQuickReviewModal
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as Tab) || "review";
 
