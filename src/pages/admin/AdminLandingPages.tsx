@@ -104,6 +104,7 @@ const EditDialog = ({
         landing_config: newConfig as any,
         landing_use_cod_modal: useCod,
         landing_bypass_min_cart: bypassMin,
+        landing_upsell_enabled: upsellOverride ? true : null,
         landing_variant: variant,
         updated_at: new Date().toISOString(),
       })
