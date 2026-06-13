@@ -29,10 +29,14 @@ interface TailoredLandingProps {
   landingSlug: string;
   landingVariant: string;
   useCodModal: boolean;
+  /** Per-product upsell override. TRUE forces ON even when global is OFF. */
+  upsellOverride?: boolean | null;
 }
 
-const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps) => {
+const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }: TailoredLandingProps) => {
   const navigate = useNavigate();
+  const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
+  const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
 
   const [selectedQty, setSelectedQty] = useState(1);
 
@@ -66,6 +70,12 @@ const TailoredLanding = ({ product, config, landingSlug }: TailoredLandingProps)
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    // Skip confirmation + upsell sheets entirely when upsells are disabled.
+    if (!upsellsActive) {
+      setDeliveryFee(5);
+      setAddressOpen(true);
+      return;
+    }
     setConfirmOpen(true);
   };
 
