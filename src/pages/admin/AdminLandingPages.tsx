@@ -22,6 +22,7 @@ interface LandingRow {
   landing_variant: string;
   landing_use_cod_modal: boolean;
   landing_bypass_min_cart: boolean;
+  landing_upsell_enabled: boolean | null;
   landing_config: LandingConfig | null;
   updated_at: string;
 }
