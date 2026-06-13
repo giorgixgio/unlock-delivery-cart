@@ -167,7 +167,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
