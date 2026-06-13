@@ -722,6 +722,9 @@ export default function OrderQuickReviewModal({
                   placeholder="მაგ: დაურეკე 2 საათში, სთხოვა გადადება..."
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[70px]" />
               </section>
+
+              {/* Activity log */}
+              <OrderActivityLog orderId={order.id} refreshKey={saving ? 0 : 1} />
             </div>
           )}
         </div>
