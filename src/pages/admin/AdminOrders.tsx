@@ -576,7 +576,8 @@ const AdminOrders = () => {
                     <FulfillmentBadge isConfirmed={order.is_confirmed} isFulfilled={order.is_fulfilled} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
