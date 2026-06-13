@@ -99,12 +99,19 @@ const ProductLanding = () => {
         landingSlug={landingSlug || slug || ""}
         landingVariant={landingConfig.landing_variant}
         useCodModal={landingConfig.landing_use_cod_modal}
+        upsellOverride={landingConfig.landing_upsell_enabled}
       />
     );
   }
 
   // Generic landing (existing behavior)
-  return <GenericLanding product={product} landingSlug={landingSlug || slug || ""} />;
+  return (
+    <GenericLanding
+      product={product}
+      landingSlug={landingSlug || slug || ""}
+      upsellOverride={landingConfig?.landing_upsell_enabled ?? null}
+    />
+  );
 };
 
 /** Generic landing page — phone-first funnel */
