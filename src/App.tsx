@@ -33,6 +33,7 @@ import ProductLanding from "./pages/ProductLanding";
 import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
 import AdminPackingList from "./pages/admin/AdminPackingList";
+import AdminOperatorStats from "./pages/admin/AdminOperatorStats";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
