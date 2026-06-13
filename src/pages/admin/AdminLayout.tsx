@@ -9,6 +9,7 @@ import { useState } from "react";
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/admin/operator-stats", label: "Operator Stats", icon: BarChart3 },
   { to: "/admin/batches", label: "Batches", icon: Layers },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/products", label: "Products", icon: Package },
