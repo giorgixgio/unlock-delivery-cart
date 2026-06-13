@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
           fixedMap["trackings_payment_type"] || "ქეში",                 // 26 ანგარიშწორების ტიპი
           order.public_order_number,                                     // 27 შეკვეთის ნომერი
           String(Number(order.total || 0)),                              // 28 პროდუქციის ფასი
-          `${titles} [${skus}]`,                                         // 29 პროდუქციის აღწერა
+          `${titles} [${skuWithQty}]`,                                   // 29 პროდუქციის აღწერა
         ];
         rows.push(row);
       } else {
