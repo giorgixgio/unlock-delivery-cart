@@ -249,9 +249,29 @@ const AdminOrders = () => {
     setSelectedIds([]);
   };
 
-  const goToOrder = (orderId: string) => {
-    navigate(`/admin/orders/${orderId}?from=${activeTab}`);
+  const openOrder = (orderId: string) => {
+    setActiveOrderId(orderId);
   };
+
+  const activeIndex = useMemo(
+    () => (activeOrderId ? orders.findIndex((o) => o.id === activeOrderId) : -1),
+    [activeOrderId, orders]
+  );
+
+  const goPrev = () => {
+    if (activeIndex > 0) setActiveOrderId(orders[activeIndex - 1].id);
+  };
+  const goNext = () => {
+    if (activeIndex >= 0 && activeIndex < orders.length - 1) setActiveOrderId(orders[activeIndex + 1].id);
+  };
+
+  const handleOrderUpdated = useCallback((orderId: string, patch: Record<string, unknown>) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? ({ ...o, ...(patch as Partial<OrderRow>) } as OrderRow) : o
+      )
+    );
+  }, []);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
