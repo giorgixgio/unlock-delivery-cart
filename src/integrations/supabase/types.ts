@@ -614,8 +614,10 @@ export type Database = {
       }
       orders: {
         Row: {
+          address_added_at: string | null
           address_line1: string
           address_line2: string | null
+          address_status: string
           assigned_to: string | null
           auto_confirm_reason: string | null
           auto_confirmed: boolean | null
@@ -656,6 +658,7 @@ export type Database = {
           risk_score: number
           shipping_fee: number
           shopify_order_id: string | null
+          skipped_address: boolean
           source: string
           status: string
           subtotal: number
@@ -668,8 +671,10 @@ export type Database = {
           version: number
         }
         Insert: {
+          address_added_at?: string | null
           address_line1?: string
           address_line2?: string | null
+          address_status?: string
           assigned_to?: string | null
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
@@ -710,6 +715,7 @@ export type Database = {
           risk_score?: number
           shipping_fee?: number
           shopify_order_id?: string | null
+          skipped_address?: boolean
           source?: string
           status?: string
           subtotal?: number
@@ -722,8 +728,10 @@ export type Database = {
           version?: number
         }
         Update: {
+          address_added_at?: string | null
           address_line1?: string
           address_line2?: string | null
+          address_status?: string
           assigned_to?: string | null
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
@@ -764,6 +772,7 @@ export type Database = {
           risk_score?: number
           shipping_fee?: number
           shopify_order_id?: string | null
+          skipped_address?: boolean
           source?: string
           status?: string
           subtotal?: number
