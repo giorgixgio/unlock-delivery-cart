@@ -885,7 +885,42 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
+      {/* Address status surface */}
+      {(() => {
+        const o: any = order;
+        const status: "completed" | "partial" | "missing" = o.address_status || (o.address_line1 ? "completed" : (o.city || o.raw_city ? "partial" : "missing"));
+        const skipped = !!o.skipped_address;
+        const badgeCls = status === "completed"
+          ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+          : status === "partial"
+            ? "bg-amber-100 text-amber-700 border-amber-200"
+            : "bg-red-100 text-red-700 border-red-200";
+        const label = status === "completed" ? "Address: completed" : status === "partial" ? "Address: partial (city only)" : "Address: missing";
+        return (
+          <div className="bg-card rounded-lg p-4 border border-border space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs font-bold px-2 py-1 rounded border ${badgeCls}`}>{label}</span>
+              {skipped && (
+                <span className="text-xs font-bold px-2 py-1 rounded border bg-muted text-muted-foreground border-border">
+                  Customer skipped popup
+                </span>
+              )}
+              {o.address_added_at && (
+                <span className="text-[11px] text-muted-foreground">
+                  added {new Date(o.address_added_at).toLocaleString("ka-GE")}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-muted-foreground">City/Region:</span> <span className="font-semibold">{o.city || o.raw_city || "—"}</span></div>
+              <div><span className="text-muted-foreground">Address:</span> <span className="font-semibold">{o.address_line1 || o.raw_address || "—"}</span></div>
+            </div>
+          </div>
+        );
+      })()}
+
       <EditableOrderFields orderId={id!} order={order} actor={actor} onSaved={refreshOrder} />
+
 
       {/* Editable Items */}
       <div className="bg-card rounded-lg p-4 border border-border">
