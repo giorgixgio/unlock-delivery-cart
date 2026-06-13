@@ -454,7 +454,7 @@ export default function OrderQuickReviewModal({
       if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
       await supabase.from("order_events").insert({
         order_id: order.id, actor, event_type: "item_added",
-        payload: { product_id: p.id, sku: p.sku, title: p.title } as any,
+        payload: { product_id: p.id, sku: p.sku, title: p.title, quantity: 1, unit_price: Number(p.price), added_revenue: Number(p.price) } as any,
       });
       await refreshItemsAndTotals();
       toast({ title: `დაემატა: ${p.title}` });
