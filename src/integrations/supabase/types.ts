@@ -810,6 +810,7 @@ export type Database = {
           id: string
           landing_bypass_min_cart: boolean
           landing_config: Json | null
+          landing_upsell_enabled: boolean | null
           landing_use_cod_modal: boolean
           landing_variant: string
           product_handle: string
@@ -820,6 +821,7 @@ export type Database = {
           id?: string
           landing_bypass_min_cart?: boolean
           landing_config?: Json | null
+          landing_upsell_enabled?: boolean | null
           landing_use_cod_modal?: boolean
           landing_variant?: string
           product_handle: string
@@ -830,6 +832,7 @@ export type Database = {
           id?: string
           landing_bypass_min_cart?: boolean
           landing_config?: Json | null
+          landing_upsell_enabled?: boolean | null
           landing_use_cod_modal?: boolean
           landing_variant?: string
           product_handle?: string
