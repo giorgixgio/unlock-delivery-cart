@@ -152,9 +152,10 @@ Deno.serve(async (req) => {
           B: order.normalized_address || order.raw_address || order.address_line1 || "",
           C: order.normalized_city || order.raw_city || order.city || "",
           E: order.customer_phone || "",
-          G: String(totalQuantity),
+          G: quantityColumn,
           H: order.public_order_number,
-          I: skus,
+          I: skuWithQty,
+
           K: String(Number(order.total || 0)),
           O: notes.join(" | "),
         };
