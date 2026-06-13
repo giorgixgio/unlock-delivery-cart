@@ -1034,6 +1034,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_update_tracking: {
+        Args: { rows: Json }
+        Returns: {
+          missing_order_ids: string[]
+          updated_count: number
+        }[]
+      }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {

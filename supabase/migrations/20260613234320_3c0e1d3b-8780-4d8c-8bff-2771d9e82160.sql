@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.bulk_update_tracking(jsonb) FROM PUBLIC, anon;
