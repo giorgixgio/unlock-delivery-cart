@@ -172,10 +172,10 @@ const AddressFormModal = ({
     <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
       <SheetContent
         side="bottom"
-        className="max-h-[94vh] rounded-t-3xl overflow-y-auto pb-8 px-5"
+        className="max-h-[94vh] rounded-t-3xl overflow-y-auto pb-8 px-5 [&>button.absolute]:hidden"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        hideClose
       >
+
         {/* ----- Soft X close (top-right) ----- */}
         {view !== "success" && (
           <button
