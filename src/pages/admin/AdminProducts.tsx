@@ -116,6 +116,7 @@ const SyncButton = () => {
 
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -139,9 +140,20 @@ const AdminProducts = () => {
   const [reassignSearch, setReassignSearch] = useState("");
   const [reassigning, setReassigning] = useState(false);
 
+  // Apply an in-place update to the cached products list so edits show
+  // instantly without a hard reload (which is what was causing edits to
+  // "sometimes not update").
+  const patchProductCache = useCallback((productId: string, patch: Partial<Product>) => {
+    localStorage.removeItem("bigmart-products-v4");
+    queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
+      prev ? prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)) : prev
+    );
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
+  }, [queryClient]);
+
   const refreshProducts = () => {
     localStorage.removeItem("bigmart-products-v4");
-    window.location.reload();
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
   };
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
