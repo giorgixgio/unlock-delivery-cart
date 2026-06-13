@@ -14,6 +14,7 @@ import {
   Search, Plus, Minus, Trash2, AlertTriangle, UserX, Files, Check,
 } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
+import OrderActivityLog from "@/components/admin/OrderActivityLog";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
