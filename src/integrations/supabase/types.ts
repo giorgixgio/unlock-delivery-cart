@@ -646,6 +646,9 @@ export type Database = {
           normalized_address: string | null
           normalized_city: string | null
           notes_customer: string | null
+          operator_review_status: string | null
+          operator_viewed_at: string | null
+          operator_viewed_by: string | null
           payment_method: string
           public_order_number: string
           raw_address: string | null
@@ -703,6 +706,9 @@ export type Database = {
           normalized_address?: string | null
           normalized_city?: string | null
           notes_customer?: string | null
+          operator_review_status?: string | null
+          operator_viewed_at?: string | null
+          operator_viewed_by?: string | null
           payment_method?: string
           public_order_number: string
           raw_address?: string | null
@@ -760,6 +766,9 @@ export type Database = {
           normalized_address?: string | null
           normalized_city?: string | null
           notes_customer?: string | null
+          operator_review_status?: string | null
+          operator_viewed_at?: string | null
+          operator_viewed_by?: string | null
           payment_method?: string
           public_order_number?: string
           raw_address?: string | null
