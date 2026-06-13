@@ -22,6 +22,7 @@ interface LandingRow {
   landing_variant: string;
   landing_use_cod_modal: boolean;
   landing_bypass_min_cart: boolean;
+  landing_upsell_enabled: boolean | null;
   landing_config: LandingConfig | null;
   updated_at: string;
 }
@@ -69,6 +70,7 @@ const EditDialog = ({
   const [heroSubtitle, setHeroSubtitle] = useState(cfg.hero_subtitle || "");
   const [useCod, setUseCod] = useState(row.landing_use_cod_modal);
   const [bypassMin, setBypassMin] = useState(row.landing_bypass_min_cart);
+  const [upsellOverride, setUpsellOverride] = useState<boolean>(row.landing_upsell_enabled === true);
   const [variant, setVariant] = useState(row.landing_variant);
 
   // Sections
@@ -102,6 +104,7 @@ const EditDialog = ({
         landing_config: newConfig as any,
         landing_use_cod_modal: useCod,
         landing_bypass_min_cart: bypassMin,
+        landing_upsell_enabled: upsellOverride ? true : null,
         landing_variant: variant,
         updated_at: new Date().toISOString(),
       })
@@ -191,7 +194,17 @@ const EditDialog = ({
                 <option value="tailored">tailored</option>
               </select>
             </div>
+            <div className="col-span-3 flex items-start gap-2 pt-2 border-t border-border/60 mt-1">
+              <Switch id="upsell-override" checked={upsellOverride} onCheckedChange={setUpsellOverride} />
+              <div>
+                <Label htmlFor="upsell-override" className="text-xs font-bold">Force upsell ON for this page</Label>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                  Overrides the global upsell OFF switch. Leave off to follow the global setting.
+                </p>
+              </div>
+            </div>
           </div>
+
 
           {/* Hero */}
           <div className="space-y-2">

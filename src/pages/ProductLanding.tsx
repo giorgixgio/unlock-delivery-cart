@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useLandingPage } from "@/contexts/LandingPageContext";
 import { useLandingConfig } from "@/hooks/useLandingConfig";
+import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
@@ -99,17 +100,34 @@ const ProductLanding = () => {
         landingSlug={landingSlug || slug || ""}
         landingVariant={landingConfig.landing_variant}
         useCodModal={landingConfig.landing_use_cod_modal}
+        upsellOverride={landingConfig.landing_upsell_enabled}
       />
     );
   }
 
   // Generic landing (existing behavior)
-  return <GenericLanding product={product} landingSlug={landingSlug || slug || ""} />;
+  return (
+    <GenericLanding
+      product={product}
+      landingSlug={landingSlug || slug || ""}
+      upsellOverride={landingConfig?.landing_upsell_enabled ?? null}
+    />
+  );
 };
 
 /** Generic landing page — phone-first funnel */
-const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlug: string }) => {
+const GenericLanding = ({
+  product,
+  landingSlug,
+  upsellOverride,
+}: {
+  product: Product;
+  landingSlug: string;
+  upsellOverride: boolean | null;
+}) => {
   const navigate = useNavigate();
+  const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
+  const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
@@ -142,6 +160,12 @@ const GenericLanding = ({ product, landingSlug }: { product: Product; landingSlu
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
+    // Skip the confirmation + upsell sheets entirely when upsells are disabled.
+    if (!upsellsActive) {
+      setDeliveryFee(5);
+      setAddressOpen(true);
+      return;
+    }
     setConfirmOpen(true);
   };
 

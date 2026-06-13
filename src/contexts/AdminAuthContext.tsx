@@ -109,13 +109,28 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setLoading(true);
+    let hasInitialSession = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Only show the global loading screen for real sign-in / sign-out events.
+      // TOKEN_REFRESHED (which fires when you switch tabs / unminimize) must NOT
+      // remount AdminGuard children, otherwise the dashboard "restarts".
+      const isAuthChange =
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "USER_UPDATED" ||
+        event === "PASSWORD_RECOVERY";
+
+      if (isAuthChange && !hasInitialSession) {
+        setLoading(true);
+      }
+      hasInitialSession = true;
       void resolveAdminState(newSession);
     });
 
     void (async () => {
       const { data } = await supabase.auth.getSession();
+      hasInitialSession = true;
       await resolveAdminState(data.session);
     })();
 

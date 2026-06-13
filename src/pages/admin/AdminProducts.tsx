@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/useProducts";
 import { setStockOverride, getStockOverrides } from "@/lib/stockOverrideStore";
 import { Product } from "@/lib/constants";
@@ -115,6 +116,7 @@ const SyncButton = () => {
 
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -138,9 +140,20 @@ const AdminProducts = () => {
   const [reassignSearch, setReassignSearch] = useState("");
   const [reassigning, setReassigning] = useState(false);
 
+  // Apply an in-place update to the cached products list so edits show
+  // instantly without a hard reload (which is what was causing edits to
+  // "sometimes not update").
+  const patchProductCache = useCallback((productId: string, patch: Partial<Product>) => {
+    localStorage.removeItem("bigmart-products-v4");
+    queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
+      prev ? prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)) : prev
+    );
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
+  }, [queryClient]);
+
   const refreshProducts = () => {
     localStorage.removeItem("bigmart-products-v4");
-    window.location.reload();
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
   };
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
@@ -197,14 +210,15 @@ const AdminProducts = () => {
       toast({ title: "Invalid price", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("products").update({ price: val }).eq("id", editingPrice!);
+    const targetId = editingPrice!;
+    const { error } = await supabase.from("products").update({ price: val }).eq("id", targetId);
     if (error) {
       toast({ title: "Failed to update price", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "Price updated" });
     setEditingPrice(null);
-    localStorage.removeItem("bigmart-products-v4");
+    patchProductCache(targetId, { price: val });
   };
 
   const handleCompareSave = async () => {
@@ -214,14 +228,15 @@ const AdminProducts = () => {
       toast({ title: "Invalid compare price", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("products").update({ compare_at_price: val }).eq("id", editingCompare!);
+    const targetId = editingCompare!;
+    const { error } = await supabase.from("products").update({ compare_at_price: val }).eq("id", targetId);
     if (error) {
       toast({ title: "Failed to update compare price", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "Compare price updated" });
     setEditingCompare(null);
-    localStorage.removeItem("bigmart-products-v4");
+    patchProductCache(targetId, { compareAtPrice: val });
   };
 
   const handleSkuSave = async () => {
@@ -235,15 +250,15 @@ const AdminProducts = () => {
       toast({ title: "Duplicate SKU", description: `SKU "${trimmed}" already exists on "${duplicate.title}"`, variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("products").update({ sku: trimmed }).eq("id", editingSku!);
+    const targetId = editingSku!;
+    const { error } = await supabase.from("products").update({ sku: trimmed }).eq("id", targetId);
     if (error) {
       toast({ title: "Failed to update SKU", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "SKU updated" });
     setEditingSku(null);
-    // Clear cache so products refetch
-    localStorage.removeItem("bigmart-products-v4");
+    patchProductCache(targetId, { sku: trimmed });
   };
 
   // Title edit — handle stays unchanged so URLs don't break
@@ -253,17 +268,18 @@ const AdminProducts = () => {
       toast({ title: "Title cannot be empty", variant: "destructive" });
       return;
     }
+    const targetId = editingTitle!;
     const { error } = await supabase
       .from("products")
       .update({ title: trimmed })
-      .eq("id", editingTitle!);
+      .eq("id", targetId);
     if (error) {
       toast({ title: "Failed to update title", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "Title updated", description: "Product URL/handle unchanged" });
     setEditingTitle(null);
-    localStorage.removeItem("bigmart-products-v4");
+    patchProductCache(targetId, { title: trimmed });
   };
 
   // Bulk CSV upload

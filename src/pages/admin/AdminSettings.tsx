@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -30,6 +31,11 @@ const AdminSettings = () => {
   const [quantityLoading, setQuantityLoading] = useState(true);
   const [quantitySaving, setQuantitySaving] = useState(false);
 
+  // Global landing-page upsells toggle
+  const [upsellsEnabled, setUpsellsEnabled] = useState(true);
+  const [upsellsLoading, setUpsellsLoading] = useState(true);
+  const [upsellsSaving, setUpsellsSaving] = useState(false);
+
   const fetchUsers = async () => {
     const { data } = await supabase.from("admin_users").select("*").order("created_at");
     setUsers((data as unknown as AdminUser[]) || []);
@@ -46,10 +52,41 @@ const AdminSettings = () => {
     setQuantityLoading(false);
   };
 
+  const fetchUpsells = async () => {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "landing_upsells_enabled")
+      .maybeSingle();
+    const v = String(data?.value ?? "true").toLowerCase().trim();
+    setUpsellsEnabled(v !== "false" && v !== "0" && v !== "off");
+    setUpsellsLoading(false);
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchMinQuantity();
+    fetchUpsells();
   }, []);
+
+  const saveUpsells = async (next: boolean) => {
+    setUpsellsSaving(true);
+    setUpsellsEnabled(next);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({
+        key: "landing_upsells_enabled",
+        value: next ? "true" : "false",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "key" });
+    if (error) {
+      toast.error("შენახვა ვერ მოხერხდა");
+      setUpsellsEnabled(!next);
+    } else {
+      toast.success(next ? "Upsells turned ON globally" : "Upsells turned OFF globally");
+    }
+    setUpsellsSaving(false);
+  };
 
   const saveMinQuantity = async () => {
     const val = parseInt(minQuantity, 10);
@@ -123,6 +160,34 @@ const AdminSettings = () => {
           </div>
         )}
       </div>
+
+      {/* Global landing-page upsells toggle */}
+      <div className="bg-card rounded-lg p-4 border border-border space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-sm">Landing-page upsells (global)</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md">
+              Controls the bundle/upsell sheet shown after the COD phone confirmation on every product landing page.
+              Individual landing pages with their own "upsell enabled" override will still show even when this is OFF.
+            </p>
+          </div>
+          {upsellsLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-xs font-bold ${upsellsEnabled ? "text-success" : "text-muted-foreground"}`}>
+                {upsellsEnabled ? "ON" : "OFF"}
+              </span>
+              <Switch
+                checked={upsellsEnabled}
+                onCheckedChange={saveUpsells}
+                disabled={upsellsSaving}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
 
       {/* Add user */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
