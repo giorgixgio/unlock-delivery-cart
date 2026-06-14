@@ -40,6 +40,7 @@ const AdminPackingWaveDetail = () => {
   const [wave, setWave] = useState<PackingWave | null>(null);
   const [orders, setOrders] = useState<WaveOrderRow[]>([]);
   const [runs, setRuns] = useState<PackingRun[]>([]);
+  const [waveSlots, setWaveSlots] = useState<RunSlot[]>([]);
   const [skuSummary, setSkuSummary] = useState<{ sku: string; title: string; parcels: number; qty: number }[]>([]);
   const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -51,10 +52,13 @@ const AdminPackingWaveDetail = () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [w, wo, r] = await Promise.all([fetchWave(id), fetchWaveOrders(id), fetchRuns(id)]);
+      const [w, wo, r, ws] = await Promise.all([
+        fetchWave(id), fetchWaveOrders(id), fetchRuns(id), fetchWaveRunSlots(id),
+      ]);
       setWave(w);
       setOrders(wo);
       setRuns(r);
+      setWaveSlots(ws);
       // Load order_items for SKU summary
       const orderIds = wo.map((o) => o.order_id);
       if (orderIds.length) {
