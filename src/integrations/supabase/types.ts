@@ -652,6 +652,10 @@ export type Database = {
           operator_review_status: string | null
           operator_viewed_at: string | null
           operator_viewed_by: string | null
+          packed_at: string | null
+          packed_by: string | null
+          packing_status: string
+          packing_wave_id: string | null
           payment_method: string
           public_order_number: string
           raw_address: string | null
@@ -715,6 +719,10 @@ export type Database = {
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          packing_wave_id?: string | null
           payment_method?: string
           public_order_number: string
           raw_address?: string | null
@@ -778,6 +786,10 @@ export type Database = {
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          packing_wave_id?: string | null
           payment_method?: string
           public_order_number?: string
           raw_address?: string | null
@@ -801,6 +813,251 @@ export type Database = {
           updated_at?: string
           user_agent?: string | null
           version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_packing_wave_id_fkey"
+            columns: ["packing_wave_id"]
+            isOneToOne: false
+            referencedRelation: "packing_waves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packing_run_slots: {
+        Row: {
+          created_at: string
+          id: string
+          issue_note: string | null
+          issue_type: string | null
+          order_id: string
+          packed_at: string | null
+          packed_by: string | null
+          packing_status: string
+          run_id: string
+          slot_number: number
+          tracking_number_snapshot: string | null
+          wave_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_note?: string | null
+          issue_type?: string | null
+          order_id: string
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          run_id: string
+          slot_number: number
+          tracking_number_snapshot?: string | null
+          wave_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_note?: string | null
+          issue_type?: string | null
+          order_id?: string
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          run_id?: string
+          slot_number?: number
+          tracking_number_snapshot?: string | null
+          wave_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packing_run_slots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packing_run_slots_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "packing_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packing_run_slots_wave_id_fkey"
+            columns: ["wave_id"]
+            isOneToOne: false
+            referencedRelation: "packing_waves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packing_runs: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          run_number: number
+          slot_count: number
+          status: string
+          wave_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          run_number: number
+          slot_count: number
+          status?: string
+          wave_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          run_number?: number
+          slot_count?: number
+          status?: string
+          wave_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packing_runs_wave_id_fkey"
+            columns: ["wave_id"]
+            isOneToOne: false
+            referencedRelation: "packing_waves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packing_wave_orders: {
+        Row: {
+          classification: string
+          created_at: string
+          id: string
+          issue_note: string | null
+          issue_type: string | null
+          order_id: string
+          packed_at: string | null
+          packed_by: string | null
+          packing_status: string
+          primary_sku: string | null
+          sku_count: number
+          total_qty: number
+          wave_id: string
+        }
+        Insert: {
+          classification: string
+          created_at?: string
+          id?: string
+          issue_note?: string | null
+          issue_type?: string | null
+          order_id: string
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          primary_sku?: string | null
+          sku_count?: number
+          total_qty?: number
+          wave_id: string
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          id?: string
+          issue_note?: string | null
+          issue_type?: string | null
+          order_id?: string
+          packed_at?: string | null
+          packed_by?: string | null
+          packing_status?: string
+          primary_sku?: string | null
+          sku_count?: number
+          total_qty?: number
+          wave_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packing_wave_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packing_wave_orders_wave_id_fkey"
+            columns: ["wave_id"]
+            isOneToOne: false
+            referencedRelation: "packing_waves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packing_waves: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          export_filename: string | null
+          exported_at: string | null
+          exported_by: string | null
+          exported_order_count: number
+          id: string
+          name: string | null
+          notes: string | null
+          status: string
+          stickers_printed_at: string | null
+          stickers_printed_by: string | null
+          tracking_imported_at: string | null
+          tracking_imported_by: string | null
+          updated_at: string
+          wave_number: number
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          export_filename?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          exported_order_count?: number
+          id?: string
+          name?: string | null
+          notes?: string | null
+          status?: string
+          stickers_printed_at?: string | null
+          stickers_printed_by?: string | null
+          tracking_imported_at?: string | null
+          tracking_imported_by?: string | null
+          updated_at?: string
+          wave_number?: number
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          export_filename?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          exported_order_count?: number
+          id?: string
+          name?: string | null
+          notes?: string | null
+          status?: string
+          stickers_printed_at?: string | null
+          stickers_printed_by?: string | null
+          tracking_imported_at?: string | null
+          tracking_imported_by?: string | null
+          updated_at?: string
+          wave_number?: number
         }
         Relationships: []
       }
@@ -1034,11 +1291,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_packing_run_slots: {
+        Args: { actor: string; p_slot_count: number; p_wave_id: string }
+        Returns: {
+          assigned: number
+          run_id: string
+          run_number: number
+        }[]
+      }
       bulk_update_tracking: {
         Args: { rows: Json }
         Returns: {
           missing_order_ids: string[]
           updated_count: number
+        }[]
+      }
+      complete_packing_wave: {
+        Args: { actor: string; p_force: boolean; p_wave_id: string }
+        Returns: {
+          completed: boolean
+          unpacked: number
+        }[]
+      }
+      create_packing_wave: {
+        Args: { actor: string }
+        Returns: {
+          multi_sku: number
+          single_sku: number
+          total: number
+          wave_id: string
+          wave_number: number
         }[]
       }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
