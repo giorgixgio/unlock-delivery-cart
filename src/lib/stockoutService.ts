@@ -46,6 +46,9 @@ export interface RecordStockoutInput {
   source?: string;
   landingPageUrl?: string;
   sessionId?: string;
+  blockedReason?: "out_of_stock"; // only allowed value — guarded server-side too
+  stockAtAttempt?: number | null;
+  stockStatusAtAttempt?: string | null;
 }
 
 export async function recordStockoutAttempt(input: RecordStockoutInput) {
@@ -59,6 +62,9 @@ export async function recordStockoutAttempt(input: RecordStockoutInput) {
     source: input.source ?? "landing",
     user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
     session_id: input.sessionId,
+    blocked_reason: input.blockedReason ?? "out_of_stock",
+    stock_at_attempt: input.stockAtAttempt ?? undefined,
+    stock_status_at_attempt: input.stockStatusAtAttempt ?? "out_of_stock",
     ...attr,
   };
 
@@ -117,6 +123,7 @@ export async function fetchStockoutAttempts(sinceDays = 7) {
   const { data, error } = await (supabase as any)
     .from("stockout_attempts")
     .select("*")
+    .eq("blocked_reason", "out_of_stock") // dashboard only ever shows true OOS
     .gte("last_attempt_at", since)
     .order("last_attempt_at", { ascending: false })
     .limit(1000);
