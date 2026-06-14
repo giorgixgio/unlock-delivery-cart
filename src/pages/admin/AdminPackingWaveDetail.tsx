@@ -35,7 +35,7 @@ const ONWAY_HEADERS: Record<string, string> = {
 const AdminPackingWaveDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAdminAuth();
-  const navigate = useNavigate();
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [wave, setWave] = useState<PackingWave | null>(null);
   const [orders, setOrders] = useState<WaveOrderRow[]>([]);
