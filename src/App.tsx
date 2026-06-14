@@ -34,6 +34,9 @@ import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
 import AdminPackingList from "./pages/admin/AdminPackingList";
 import AdminOperatorStats from "./pages/admin/AdminOperatorStats";
+import AdminPackingWaves from "./pages/admin/AdminPackingWaves";
+import AdminPackingWaveDetail from "./pages/admin/AdminPackingWaveDetail";
+import AdminPackingRun from "./pages/admin/AdminPackingRun";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
