@@ -144,7 +144,18 @@ const CODFormModal = ({
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="max-h-[80vh] rounded-t-2xl overflow-y-auto pb-8">
-        {success ? (
+        {showStockout ? (
+          <>
+            <SheetTitle className="sr-only">მარაგი ამოწურულია</SheetTitle>
+            <StockoutMessageView
+              attemptId={stockoutAttemptId}
+              onClose={() => {
+                onClose();
+                navigate("/");
+              }}
+            />
+          </>
+        ) : success ? (
           <div className="flex flex-col items-center justify-center py-10 gap-3">
             <CheckCircle2 className="w-14 h-14 text-success animate-bounce" />
             <p className="text-lg font-extrabold text-foreground">✔️ შეკვეთა დაფიქსირდა</p>
