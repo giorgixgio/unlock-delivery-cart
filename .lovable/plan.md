@@ -1,124 +1,125 @@
-# Packing Waves System
+# Stockout Demand Tracking
 
-A new admin feature that groups orders into time-bounded "waves" for courier export, tracking import, and warehouse packing — with special trolley/slot support for multi-SKU orders.
+Capture phone-submit attempts on out-of-stock products as a separate signal — no real order, no Purchase pixel, but full attribution preserved so I can find Meta ads still running on sold-out SKUs.
 
-## Scope guarantees (won't break)
+## 1. Database
 
-- Existing order creation, order IDs, address normalization untouched
-- Existing courier export columns and SKU field format (`"237 - 1"`) unchanged — only row sort order changes
-- Existing tracking import logic (`bulk_update_tracking` RPC) reused as-is
-- Existing Batches page kept intact (Waves is a new parallel system; we won't delete Batches)
-- No "MULTI" text injected anywhere into SKU
+New table `public.stockout_attempts`:
 
-## Database (one migration)
+- `id`, `created_at`
+- `product_id`, `sku`, `product_name`, `variant_id`
+- `phone_number`, `phone_normalized` (for dedup)
+- `quantity_attempted` (default 1)
+- `landing_page_url`, `source` (`landing`/`shop`/`product_sheet`)
+- `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`
+- `meta_campaign_id`, `meta_adset_id`, `meta_ad_id`, `fbclid`
+- `user_agent`, `session_id`, `ip_country` (best-effort, nullable)
+- `attempt_count` (int, default 1 — incremented on dedup hit)
+- `last_attempt_at`
+- `status` enum: `unresolved` | `reviewed` | `ad_turned_off` | `restock_needed` | `ignored`
+- `reviewed_by`, `reviewed_at`, `note`
+- `waitlist_requested` boolean
 
-New tables (all in `public`, with GRANTs to `authenticated` + `service_role`, RLS via `is_active_admin`):
+Indexes: `(product_id, last_attempt_at desc)`, `(status, last_attempt_at desc)`, `(phone_normalized, product_id, last_attempt_at)`.
 
-1. **`packing_waves`** — wave_number (auto seq), name, status (`draft|exported|tracking_imported|packing|completed|issue`), created_by, exported_at/by, exported_order_count, tracking_imported_at, stickers_printed_at/by, completed_at/by, notes
-2. **`packing_wave_orders`** — wave_id, order_id (unique), classification (`single_sku|multi_sku`), primary_sku, sku_count, total_qty, packing_status (`not_packed|packing|packed|issue`), packed_at/by, issue_type, issue_note. **Unique constraint on order_id** prevents an order living in two waves.
-3. **`packing_runs`** — wave_id, run_number (per wave), slot_count, status (`created|picking|packed|issue`), created_by, completed_at
-4. **`packing_run_slots`** — run_id, slot_number, order_id, tracking_number_snapshot, packing_status, packed_at/by, issue_type/note. Unique `(run_id, slot_number)` and unique `(run_id, order_id)`.
+RLS + GRANTs:
+- `anon` + `authenticated`: `INSERT` only (the landing-page submit comes through publishable key).
+- Admin reads/updates via `is_active_admin(auth.uid())` policy.
+- `service_role`: ALL.
 
-Add to `orders` (nullable, additive only): `packing_wave_id uuid`, `packing_status text` default `'not_packed'`, `packed_at timestamptz`, `packed_by text`. No triggers altered.
+RPC `record_stockout_attempt(p_product_id, p_sku, p_phone, p_payload jsonb)`:
+- Normalizes phone, looks for row with same `(phone_normalized, product_id)` in last 24h.
+- If found → `UPDATE` set `attempt_count = attempt_count + 1`, `last_attempt_at = now()`, merge missing attribution fields.
+- Else → `INSERT` new row.
+- Returns `{id, deduped: bool, attempt_count}`.
+- `SECURITY DEFINER`, callable by anon/authenticated.
 
-Sequence: `packing_wave_number_seq` for human-friendly `#38, #39, …`.
+## 2. Landing-page submit flow
 
-RPCs (SECURITY DEFINER):
-- `create_packing_wave(actor text)` — atomically selects eligible orders (confirmed, not canceled, not fulfilled, `packing_wave_id IS NULL`, has ≥1 order_item, has phone), inserts wave, inserts `packing_wave_orders` with classification computed from `order_items` (distinct SKU count), and stamps `orders.packing_wave_id`. Returns `{wave_id, total, single, multi}`.
-- `assign_packing_run_slots(wave_id, slot_count, actor)` — picks next N unpacked multi-SKU orders in this wave (ordered by `created_at`), creates run, inserts slots 1..N. Idempotent on conflict.
-- `complete_packing_wave(wave_id, force boolean, actor)` — guards on unpacked count unless `force=true`.
+In `CODFormModal.handleSubmit` (and the matching path in `TailoredLanding` / `SpyDetectorLanding` / `WrenchLanding` if they don't go through CODFormModal), before `createOrder`:
 
-## Frontend
+1. Read stock via existing `stockOverrideStore` + product availability.
+2. If **in stock** → unchanged: `createOrder(...)`, fire Lead/Purchase as today.
+3. If **out of stock**:
+   - Collect attribution from URL params (`utm_*`, `fbclid`) + `sessionStorage` (already stored by funnel tracking).
+   - Call `record_stockout_attempt` RPC.
+   - Fire **only** `OutOfStockAttempt` custom Meta event (no Purchase, no Lead).
+   - Replace success/upsell flow with a `StockoutMessageView` overlay inside the same modal:
+     - Title `მარაგი დროებით ამოიწურა`
+     - Body `მადლობა ინტერესისთვის...`
+     - Buttons: `სხვა პროდუქტების ნახვა` (→ `/`) and `შეტყობინება მარაგის დაბრუნებისას` (toggles `waitlist_requested=true` via small update RPC).
+   - Do NOT navigate to OrderSuccess; do NOT open upsell sheet.
 
-### New route `/admin/packing-waves` (`AdminPackingWaves.tsx`)
+No changes to `createOrder`, `orders` table, courier export, or revenue math.
 
-- Top: "Ready for next wave: **X orders**" counter + **Create Packing Wave** button
-- Table of waves: Wave #, Created, By, Total / Single / Multi, Tracking imported (n/total), Packed (n/total), Status badge, Open button
-- Status badges color-coded matching the spec
+## 3. Meta pixel
 
-### New route `/admin/packing-waves/:id` (`AdminPackingWaveDetail.tsx`)
+In `src/lib/metaPixel.ts` add `trackStockoutAttempt(payload)` that calls `fbq('trackCustom', 'OutOfStockAttempt', {...})`. Used only by the stockout branch.
 
-- Summary cards: Total / Single-SKU / Multi-SKU / Tracking imported / Packed / Remaining / Status
-- Actions row: **Download Courier CSV**, **Import Tracking CSV**, **Mark Stickers Printed**, **Mark Wave Completed**
-- "Single-SKU summary" table: SKU | Product name | Parcels | Total qty (read-only, info)
-- "Multi-SKU Packing" section: counts + list of runs + **Create Pack Run** (slot picker 12/24/30/custom)
-- Each run card → opens run detail
+## 4. Admin: Stockout Demand page
 
-### New route `/admin/packing-waves/:waveId/runs/:runId` (`AdminPackingRun.tsx`)
+New route `/admin/stockout-demand` (sidebar entry under Operations).
 
-- Print buttons: **Slot Setup Sheet**, **Pick-to-Slot Sheet**, **Final Check Sheet** (each opens print-friendly view in new tab)
-- Slot grid: Slot # (large) · Order ID · Tracking · Items (SKU × qty) · Mark Packed · Issue
-- **Mark run packed** button
+Top cards (today):
+- Total attempts
+- Unique phones
+- Distinct products
+- Top stockout product
+- Estimated lost revenue = `Σ unique_attempts_per_product × product.price`
 
-### Print views (new components, plain semantic HTML + `window.print()`):
+Table (one row per product, aggregated):
+- Image, name, SKU, current stock
+- Attempts today / unique phones today
+- Attempts last 7 days
+- Estimated lost revenue
+- Last attempt time
+- Top UTM/campaign (most common `meta_campaign_id` or `utm_campaign`)
+- Status (worst-of among unresolved rows)
+- Actions: Mark reviewed / Ad turned off / Restock needed / Ignore / Open product / Copy SKU
 
-- `SlotSetupSheet.tsx` — Slot # | Order ID | Tracking | COD | Item count | City
-- `PickToSlotSheet.tsx` — grouped by SKU asc: `SKU 237 — Mini Vacuum — Total 8 → Slot 1, 3, 7, 12; Slot 18 ×2`
-- `FinalCheckSheet.tsx` — Slot # | Order ID | Tracking | Expected items (SKU × qty) | ☐
+Row click → drawer with raw attempts (phone masked last 4, full attribution per attempt).
 
-### Courier export sorting update
+## 5. Alert logic
 
-In `supabase/functions/export-courier/index.ts` (and any client-side wave export helper):
+Threshold: ≥3 unique phones in 1h OR ≥5 unique phones in 24h, against a SKU whose current stock = 0.
 
-- Accept optional `wave_id` param; when present, filter strictly to wave orders
-- New sort: classify each order, then sort
-  1. `single_sku` rows first, ordered by `(primary_sku ASC, created_at ASC)`
-  2. `multi_sku` rows at the end, ordered by `created_at ASC`
-- SKU cell format unchanged (`"237 - 2"`); no "MULTI" tag added
-- After successful download, client updates wave: `status='exported'`, `exported_at`, `exported_by`, `exported_order_count`
+- Computed client-side from the same query that feeds the table.
+- Main `AdminDashboard` gets a small warning card **Stockout Demand Alerts** (amber) showing count of SKUs over threshold; click → `/admin/stockout-demand?filter=alerts`.
+- Inside the page, alert rows pinned to top with red border + the suggested-action copy.
 
-### Tracking import inside wave
+## 6. Product detail integration
 
-Reuse `bulk_update_tracking` RPC. New wrapper `importTrackingForWave(waveId, rows, actor)`:
-- Filters incoming rows to orders inside the wave
-- Calls existing RPC
-- Reports: updated / missing-in-db / belongs-to-other-wave / skipped-empty
-- Updates wave `tracking_imported_at`, `status='tracking_imported'`
+On admin product page, add a small "Stockout signal" block:
+- Attempts today, attempts last 7d, est. lost revenue, last attempt timestamp.
 
-### Orders page badge
+## 7. What stays unchanged
 
-In `AdminOrders.tsx` row, when `packing_wave_id` set, render small badge: `Wave #38 · packed/not_packed/issue` — read-only, no behavior change.
+- `orders` table, RLS, revenue calculations, courier export, packing waves.
+- Existing stock display on the landing page (still doesn't show sold-out upfront).
+- Phone submit flow when product is in stock (Lead + Purchase fire as today).
+- `createOrder`, `addUpsellItems`, address flow.
 
-### Navigation
+## Out of scope for this pass
 
-Add `Packing Waves` to `AdminLayout` nav between Batches and Shipping.
+- Server-side IP geolocation (we'll leave `ip_country` nullable; can fill from an edge function later).
+- Email/SMS waitlist notifications — we only store `waitlist_requested=true`.
+- Backfill of historical attempts.
 
 ## Files
 
 **New**
-- `supabase/migrations/<ts>_packing_waves.sql`
-- `src/lib/packingWaveService.ts` (CRUD + RPC wrappers)
-- `src/pages/admin/AdminPackingWaves.tsx`
-- `src/pages/admin/AdminPackingWaveDetail.tsx`
-- `src/pages/admin/AdminPackingRun.tsx`
-- `src/components/admin/packing/CreateWaveButton.tsx`
-- `src/components/admin/packing/CreateRunModal.tsx`
-- `src/components/admin/packing/SlotSetupSheet.tsx`
-- `src/components/admin/packing/PickToSlotSheet.tsx`
-- `src/components/admin/packing/FinalCheckSheet.tsx`
-- `src/components/admin/packing/WaveBadge.tsx`
+- `supabase/migrations/<ts>_stockout_attempts.sql`
+- `src/lib/stockoutService.ts` (RPC wrappers + dedup helpers)
+- `src/components/landing/StockoutMessageView.tsx`
+- `src/pages/admin/AdminStockoutDemand.tsx`
+- `src/components/admin/StockoutAlertCard.tsx` (used on AdminDashboard)
 
 **Edited**
-- `src/App.tsx` — 3 new routes
-- `src/pages/admin/AdminLayout.tsx` — nav entry
-- `src/pages/admin/AdminOrders.tsx` — Wave badge in row
-- `supabase/functions/export-courier/index.ts` — optional `wave_id` filter + new sort
-- `src/integrations/supabase/types.ts` — regenerated after migration
+- `src/components/landing/CODFormModal.tsx` — branch on stock check before `createOrder`.
+- `src/lib/metaPixel.ts` — add `trackStockoutAttempt`.
+- `src/App.tsx` — route.
+- `src/pages/admin/AdminLayout.tsx` — sidebar entry.
+- `src/pages/admin/AdminDashboard.tsx` — alert card.
+- `src/pages/admin/AdminProducts.tsx` (or product detail) — small signal block.
 
-## Phasing (single PR, but logical order)
-
-1. Migration + types
-2. Service layer + Waves list + Create Wave
-3. Wave detail + courier export (wave-scoped, new sort)
-4. Tracking import in wave + Stickers printed checkpoint + Orders badge
-5. Multi-SKU runs + slot assignment + 3 print sheets
-6. Wave completion guard
-
-## Out of scope (explicit)
-
-- No mobile-optimized warehouse scanner UI — desktop print-first workflow per spec
-- No automatic wave creation on schedule — always manual button
-- No barcode scanning input — visual checkboxes only
-- Existing Batches system is **not** removed or migrated; Waves runs alongside
-
-Ready to build on approval.
+After approval I'll start with the migration, then wire the landing flow, then the admin UI.

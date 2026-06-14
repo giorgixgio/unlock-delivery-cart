@@ -1250,6 +1250,105 @@ export type Database = {
         }
         Relationships: []
       }
+      stockout_attempts: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          fbclid: string | null
+          id: string
+          ip_country: string | null
+          landing_page_url: string | null
+          last_attempt_at: string
+          meta_ad_id: string | null
+          meta_adset_id: string | null
+          meta_campaign_id: string | null
+          note: string | null
+          phone_normalized: string | null
+          phone_number: string | null
+          product_id: string | null
+          product_name: string | null
+          quantity_attempted: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string | null
+          sku: string | null
+          source: string | null
+          status: string
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          variant_id: string | null
+          waitlist_requested: boolean
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          fbclid?: string | null
+          id?: string
+          ip_country?: string | null
+          landing_page_url?: string | null
+          last_attempt_at?: string
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          note?: string | null
+          phone_normalized?: string | null
+          phone_number?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          quantity_attempted?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          sku?: string | null
+          source?: string | null
+          status?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          variant_id?: string | null
+          waitlist_requested?: boolean
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          fbclid?: string | null
+          id?: string
+          ip_country?: string | null
+          landing_page_url?: string | null
+          last_attempt_at?: string
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          note?: string | null
+          phone_normalized?: string | null
+          phone_number?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          quantity_attempted?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          sku?: string | null
+          source?: string | null
+          status?: string
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          variant_id?: string | null
+          waitlist_requested?: boolean
+        }
+        Relationships: []
+      }
       system_events: {
         Row: {
           actor_id: string | null
@@ -1324,6 +1423,23 @@ export type Database = {
         }[]
       }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
+      mark_stockout_waitlist: {
+        Args: { p_attempt_id: string }
+        Returns: undefined
+      }
+      record_stockout_attempt: {
+        Args: {
+          p_payload: Json
+          p_phone: string
+          p_product_id: string
+          p_sku: string
+        }
+        Returns: {
+          attempt_count: number
+          deduped: boolean
+          id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
