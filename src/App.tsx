@@ -34,6 +34,9 @@ import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
 import AdminPackingList from "./pages/admin/AdminPackingList";
 import AdminOperatorStats from "./pages/admin/AdminOperatorStats";
+import AdminPackingWaves from "./pages/admin/AdminPackingWaves";
+import AdminPackingWaveDetail from "./pages/admin/AdminPackingWaveDetail";
+import AdminPackingRun from "./pages/admin/AdminPackingRun";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -130,6 +133,9 @@ const App = () => (
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />
                       <Route path="batches/:id" element={<AdminBatchDetail />} />
+                      <Route path="packing-waves" element={<AdminPackingWaves />} />
+                      <Route path="packing-waves/:id" element={<AdminPackingWaveDetail />} />
+                      <Route path="packing-waves/:waveId/runs/:runId" element={<AdminPackingRun />} />
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="landing-pages" element={<AdminLandingPages />} />
