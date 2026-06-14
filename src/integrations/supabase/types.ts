@@ -518,6 +518,63 @@ export type Database = {
           },
         ]
       }
+      operator_order_sessions: {
+        Row: {
+          actions_count: number
+          active_duration_seconds: number | null
+          capped_duration_seconds: number | null
+          created_at: string
+          end_reason: string | null
+          had_meaningful_action: boolean
+          id: string
+          meta: Json
+          operator: string
+          order_id: string
+          outcome: string | null
+          raw_duration_seconds: number | null
+          session_ended_at: string | null
+          session_started_at: string
+          updated_at: string
+          was_abandoned: boolean
+        }
+        Insert: {
+          actions_count?: number
+          active_duration_seconds?: number | null
+          capped_duration_seconds?: number | null
+          created_at?: string
+          end_reason?: string | null
+          had_meaningful_action?: boolean
+          id?: string
+          meta?: Json
+          operator: string
+          order_id: string
+          outcome?: string | null
+          raw_duration_seconds?: number | null
+          session_ended_at?: string | null
+          session_started_at?: string
+          updated_at?: string
+          was_abandoned?: boolean
+        }
+        Update: {
+          actions_count?: number
+          active_duration_seconds?: number | null
+          capped_duration_seconds?: number | null
+          created_at?: string
+          end_reason?: string | null
+          had_meaningful_action?: boolean
+          id?: string
+          meta?: Json
+          operator?: string
+          order_id?: string
+          outcome?: string | null
+          raw_duration_seconds?: number | null
+          session_ended_at?: string | null
+          session_started_at?: string
+          updated_at?: string
+          was_abandoned?: boolean
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor: string
