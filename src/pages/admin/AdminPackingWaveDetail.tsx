@@ -403,15 +403,24 @@ const AdminPackingWaveDetail = () => {
       {/* Multi-SKU runs */}
       <div className="bg-card border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="font-semibold">Multi-SKU Packing</div>
+          <div>
+            <div className="font-semibold">Multi-SKU Packing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Multi-SKU orders: <b>{totals.multi}</b> · Assigned: <b>{assignedOrderIds.size}</b> · Unassigned: <b>{unassignedMulti.length}</b> · Runs created: <b>{runs.length}</b>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <select value={slotCount} onChange={(e) => setSlotCount(Number(e.target.value))} className="h-9 px-2 border rounded text-sm">
-              {[12, 24, 30].map((n) => <option key={n} value={n}>{n} slots</option>)}
+              {[12, 20, 24, 30].map((n) => <option key={n} value={n}>{n} slots</option>)}
             </select>
-            <input type="number" min={1} max={200} value={slotCount} onChange={(e) => setSlotCount(Math.max(1, Number(e.target.value)))}
-                   className="h-9 w-20 px-2 border rounded text-sm" />
-            <Button onClick={handleCreateRun} disabled={busy || totals.multi === 0} size="sm">
-              <Plus className="w-4 h-4 mr-1" />Create Pack Run
+            <input
+              type="number" min={1} max={200} value={slotCount}
+              onChange={(e) => setSlotCount(Math.max(1, Number(e.target.value)))}
+              className="h-9 w-20 px-2 border rounded text-sm" title="Custom slot count"
+            />
+            <Button onClick={handleCreateRuns} disabled={busy || unassignedMulti.length === 0} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Create {unassignedMulti.length > 0 ? Math.ceil(unassignedMulti.length / slotCount) : 0} Run(s)
             </Button>
           </div>
         </div>
@@ -419,16 +428,39 @@ const AdminPackingWaveDetail = () => {
           <p className="text-sm text-muted-foreground">No runs yet.</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {runs.map((r) => (
-              <Link key={r.id} to={`/admin/packing-waves/${wave.id}/runs/${r.id}`}
-                    className="border rounded-lg p-3 hover:bg-muted/30 transition">
-                <div className="font-bold">Run #{r.run_number}</div>
-                <div className="text-xs text-muted-foreground">
-                  {r.slot_count} slots · {new Date(r.created_at).toLocaleString("ka-GE")}
+            {runs.map((r) => {
+              const slotsOfRun = waveSlots.filter((s) => s.run_id === r.id);
+              const packed = slotsOfRun.filter((s) => s.packing_status === "packed").length;
+              const total = slotsOfRun.length;
+              const isPacked = r.status === "packed";
+              return (
+                <div key={r.id} className={`border rounded-lg p-3 space-y-2 ${isPacked ? "bg-emerald-50 border-emerald-300" : "bg-card"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold">Run #{r.run_number}</div>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isPacked ? "bg-emerald-200 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
+                      {r.status}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {total}/{r.slot_count} orders · packed {packed}/{total}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(r.created_at).toLocaleString("ka-GE")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <Link to={`/admin/packing-waves/${wave.id}/runs/${r.id}`} className="col-span-2">
+                      <Button size="sm" variant="default" className="w-full">Open Run</Button>
+                    </Link>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "slot-setup")}>Slot Setup</Button>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "pick-to-slot")}>Pick-to-Slot</Button>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "final-check")}>Final Check</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleMarkRunPacked(r.id)} disabled={busy || isPacked}>
+                      {isPacked ? "✓ Packed" : "Mark Packed"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-xs mt-1">Status: <span className="font-semibold">{r.status}</span></div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
