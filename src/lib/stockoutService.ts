@@ -37,6 +37,7 @@ export function collectAttribution() {
 
 export interface RecordStockoutInput {
   productId: string;
+  productHandle?: string | null;
   sku?: string | null;
   productName?: string;
   variantId?: string | null;
@@ -50,6 +51,7 @@ export interface RecordStockoutInput {
 export async function recordStockoutAttempt(input: RecordStockoutInput) {
   const attr = collectAttribution();
   const payload = {
+    product_handle: input.productHandle ?? undefined,
     product_name: input.productName,
     variant_id: input.variantId ?? undefined,
     quantity_attempted: input.quantity ?? 1,
@@ -62,6 +64,7 @@ export async function recordStockoutAttempt(input: RecordStockoutInput) {
 
   const { data, error } = await (supabase as any).rpc("record_stockout_attempt", {
     p_product_id: input.productId,
+    p_product_handle: input.productHandle ?? null,
     p_sku: input.sku ?? null,
     p_phone: input.phone,
     p_payload: payload,
@@ -84,6 +87,7 @@ export interface StockoutAttemptRow {
   created_at: string;
   last_attempt_at: string;
   product_id: string | null;
+  product_handle: string | null;
   sku: string | null;
   product_name: string | null;
   phone_number: string | null;
