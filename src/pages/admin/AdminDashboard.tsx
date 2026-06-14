@@ -86,11 +86,12 @@ const AdminDashboard = () => {
       const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
       const onHold = live.filter((o) => o.status === "on_hold");
 
-      // Revenue = all live orders (non-merged, non-canceled) — these are all real sales
+      // Revenue = all live orders (non-merged, non-canceled).
+      // `total` already includes shipping_fee — never add it again.
       const revenueOrders = live;
-      const productRevenue = revenueOrders.reduce((s, o) => s + Number(o.total), 0);
-      const deliveryRevenue = revenueOrders.length * DELIVERY_FEE;
-      const totalRevenue = productRevenue + deliveryRevenue;
+      const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
+      const productRevenue = totalRevenue - deliveryRevenue;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
       setStats({
