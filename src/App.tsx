@@ -133,6 +133,9 @@ const App = () => (
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />
                       <Route path="batches/:id" element={<AdminBatchDetail />} />
+                      <Route path="packing-waves" element={<AdminPackingWaves />} />
+                      <Route path="packing-waves/:id" element={<AdminPackingWaveDetail />} />
+                      <Route path="packing-waves/:waveId/runs/:runId" element={<AdminPackingRun />} />
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="landing-pages" element={<AdminLandingPages />} />
