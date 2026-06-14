@@ -11,6 +11,7 @@ const navItems = [
   { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { to: "/admin/operator-stats", label: "Operator Stats", icon: BarChart3 },
   { to: "/admin/batches", label: "Batches", icon: Layers },
+  { to: "/admin/packing-waves", label: "Packing Waves", icon: Waves },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/landing-pages", label: "Landing Pages", icon: LayoutTemplate },
