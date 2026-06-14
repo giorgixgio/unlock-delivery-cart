@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
-interface ProductInfo { id: string; title: string; price: number; image?: string | null; }
+interface ProductInfo { id: string; title: string; price: number; image?: string | null; available?: boolean | null; }
 
 const STATUS_OPTIONS = [
   { key: "reviewed", label: "Mark reviewed", color: "bg-blue-100 text-blue-800" },
@@ -41,9 +41,9 @@ const AdminStockoutDemand = () => {
 
       const ids = Array.from(new Set(data.map((r) => r.product_id).filter(Boolean))) as string[];
       if (ids.length) {
-        const { data: prods } = await supabase
+          const { data: prods } = await supabase
           .from("products")
-          .select("id, title, price, image")
+            .select("id, title, price, image, available")
           .in("id", ids);
         const map: Record<string, ProductInfo> = {};
         (prods || []).forEach((p: any) => (map[p.id] = p));
@@ -54,6 +54,9 @@ const AdminStockoutDemand = () => {
           .select("product_id, available")
           .in("product_id", ids);
         const sm: Record<string, boolean> = {};
+        Object.values(map).forEach((p) => {
+          sm[p.id] = p.available !== false;
+        });
         (overrides || []).forEach((o: any) => (sm[o.product_id] = o.available !== false));
         setStockMap(sm);
       }

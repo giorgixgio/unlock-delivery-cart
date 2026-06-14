@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CartItem, Product } from "@/lib/constants";
 import { getCookieIdHash, getUserAgent } from "@/lib/identitySignals";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
+import { recordStockoutAttempt, type RecordStockoutInput } from "@/lib/stockoutService";
 
 interface OrderInput {
   customerName: string;
@@ -17,6 +18,20 @@ interface OrderInput {
   source?: string;
   landingSlug?: string;
   status?: string;
+}
+
+interface SubmitOrderInput {
+  order: OrderInput;
+  stockout?: RecordStockoutInput;
+  debugLabel?: string;
+}
+
+type SubmitOrderResult =
+  | { kind: "order"; order: Awaited<ReturnType<typeof createOrder>> }
+  | { kind: "stockout"; attemptId: string | null; recorded: boolean; originalError: unknown; recordError?: unknown };
+
+function isOutOfStockError(err: unknown): err is Error {
+  return err instanceof Error && err.message.startsWith("OUT_OF_STOCK");
 }
 
 /** Server-side OOS check: verify all items are in stock before creating order.
@@ -165,6 +180,42 @@ export async function createOrder(input: OrderInput) {
       payload: { customer_phone: input.customerPhone, total: input.total },
     });
     throw err;
+  }
+}
+
+export async function submitCustomerOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
+  try {
+    const order = await createOrder(input.order);
+    return { kind: "order", order };
+  } catch (err) {
+    if (!isOutOfStockError(err) || !input.stockout) throw err;
+
+    console.log(`${input.debugLabel || "Order submit"}: Stock is zero, creating stockout attempt`, {
+      productId: input.stockout.productId,
+      productHandle: input.stockout.productHandle,
+      sku: input.stockout.sku,
+      phone: input.stockout.phone,
+    });
+
+    try {
+      const attempt = await recordStockoutAttempt(input.stockout);
+      console.log(`${input.debugLabel || "Order submit"}: Stockout attempt insert success`, attempt);
+      return {
+        kind: "stockout",
+        attemptId: attempt.id,
+        recorded: true,
+        originalError: err,
+      };
+    } catch (recordError) {
+      console.error(`${input.debugLabel || "Order submit"}: Stockout attempt insert failed:`, recordError);
+      return {
+        kind: "stockout",
+        attemptId: null,
+        recorded: false,
+        originalError: err,
+        recordError,
+      };
+    }
   }
 }
 

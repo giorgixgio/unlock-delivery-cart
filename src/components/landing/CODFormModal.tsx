@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Phone, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { Product } from "@/lib/constants";
-import { createOrder } from "@/lib/orderService";
+import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
-import { recordStockoutAttempt } from "@/lib/stockoutService";
 import { trackStockoutAttempt } from "@/lib/metaPixel";
 import StockoutMessageView from "./StockoutMessageView";
 
@@ -63,22 +62,10 @@ const CODFormModal = ({
     trackPhoneFormViewed(product.id);
   }, [open]);
 
-  const handleStockoutBranch = async () => {
-    console.log("[stockout] OOS detected, recording attempt", { productId: product.id, phone });
-    try {
-      const res = await recordStockoutAttempt({
-        productId: product.id,
-        sku: (product as any).sku ?? null,
-        productName: product.title,
-        phone,
-        quantity,
-        source: "landing_cod",
-        landingPageUrl: window.location.href,
-      });
-      console.log("[stockout] attempt recorded", res);
-      setStockoutAttemptId(res.id);
-    } catch (e) {
-      console.error("[stockout] record failed", e);
+  const handleStockoutBranch = async (attemptId?: string | null) => {
+    if (attemptId) {
+      console.log("[stockout] inserted row id", attemptId);
+      setStockoutAttemptId(attemptId);
     }
     // Fire OutOfStockAttempt custom event ONLY — never Purchase/Lead.
     trackStockoutAttempt({
@@ -100,20 +87,54 @@ const CODFormModal = ({
     setSubmitting(true);
     setError("");
     try {
+      console.log("Landing page order submit started", {
+        route: window.location.pathname,
+        productHandle: product.handle,
+        productId: product.id,
+        sku: product.sku,
+        quantity,
+      });
+      console.log("Resolved product:", {
+        product_id: product.id,
+        handle: product.handle,
+        sku: product.sku,
+        stock: product.available,
+      });
+
       saveCustomerInfo({ phone, region: "", address: "" });
 
       // Create order with status pending_details (phone only, no address)
-      const order = await createOrder({
-        customerName: phone,
-        customerPhone: phone,
-        items: [{ product, quantity }],
-        subtotal: totalAfter,
-        total: totalAfter + 5, // default delivery fee
-        shippingFee: 5,
-        source: "landing_cod",
-        landingSlug,
-        status: "pending_details",
+      const result = await submitCustomerOrder({
+        debugLabel: "Landing page order submit",
+        order: {
+          customerName: phone,
+          customerPhone: phone,
+          items: [{ product, quantity }],
+          subtotal: totalAfter,
+          total: totalAfter + 5,
+          shippingFee: 5,
+          source: "landing_cod",
+          landingSlug,
+          status: "pending_details",
+        },
+        stockout: {
+          productId: product.id,
+          productHandle: product.handle ?? null,
+          sku: (product as any).sku ?? null,
+          productName: product.title,
+          phone,
+          quantity,
+          source: "landing_cod",
+          landingPageUrl: window.location.href,
+        },
       });
+
+      if (result.kind === "stockout") {
+        await handleStockoutBranch(result.attemptId);
+        return;
+      }
+
+      const { order } = result;
 
       // ═══ MAIN CONVERSION: Fire Meta Purchase + PostHog phone_submitted ═══
       trackPhoneSubmitted({
@@ -132,12 +153,7 @@ const CODFormModal = ({
       }, 600);
     } catch (err: any) {
       console.error("Phone order failed:", err);
-      if (err?.message?.startsWith("OUT_OF_STOCK")) {
-        // Do NOT create a real order. Capture as stockout demand signal.
-        await handleStockoutBranch();
-      } else {
-        setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");
-      }
+      setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");
     } finally {
       setSubmitting(false);
     }
