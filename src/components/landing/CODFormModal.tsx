@@ -42,6 +42,9 @@ const CODFormModal = ({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [stockoutAttemptId, setStockoutAttemptId] = useState<string | null>(null);
+  const [showStockout, setShowStockout] = useState(false);
+  const navigate = useNavigate();
 
   const unitPrice = product.price;
   const totalBefore = unitPrice * quantity;
@@ -51,12 +54,39 @@ const CODFormModal = ({
   useEffect(() => {
     if (!open) {
       setSuccess(false);
+      setShowStockout(false);
+      setStockoutAttemptId(null);
       return;
     }
     const saved = loadCustomerInfo();
     if (saved?.phone) setPhone(saved.phone);
     trackPhoneFormViewed(product.id);
   }, [open]);
+
+  const handleStockoutBranch = async () => {
+    try {
+      const res = await recordStockoutAttempt({
+        productId: product.id,
+        sku: (product as any).sku ?? null,
+        productName: product.title,
+        phone,
+        quantity,
+        source: "landing_cod",
+        landingPageUrl: window.location.href,
+      });
+      setStockoutAttemptId(res.id);
+    } catch (e) {
+      console.warn("stockout record failed", e);
+    }
+    // Fire OutOfStockAttempt custom event ONLY — never Purchase/Lead.
+    trackStockoutAttempt({
+      productId: product.id,
+      productName: product.title,
+      sku: (product as any).sku ?? null,
+      value: totalAfter,
+    });
+    setShowStockout(true);
+  };
 
   const handleSubmit = async () => {
     const result = phoneSchema.safeParse({ phone });
@@ -101,7 +131,8 @@ const CODFormModal = ({
     } catch (err: any) {
       console.error("Phone order failed:", err);
       if (err?.message?.startsWith("OUT_OF_STOCK")) {
-        setError("პროდუქტი ამჟამად არ არის ხელმისაწვდომი.");
+        // Do NOT create a real order. Capture as stockout demand signal.
+        await handleStockoutBranch();
       } else {
         setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");
       }
