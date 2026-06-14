@@ -50,7 +50,7 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at");
+        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at");
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
@@ -86,11 +86,12 @@ const AdminDashboard = () => {
       const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
       const onHold = live.filter((o) => o.status === "on_hold");
 
-      // Revenue = all live orders (non-merged, non-canceled) — these are all real sales
+      // Revenue = all live orders (non-merged, non-canceled).
+      // `total` already includes shipping_fee — never add it again.
       const revenueOrders = live;
-      const productRevenue = revenueOrders.reduce((s, o) => s + Number(o.total), 0);
-      const deliveryRevenue = revenueOrders.length * DELIVERY_FEE;
-      const totalRevenue = productRevenue + deliveryRevenue;
+      const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
+      const productRevenue = totalRevenue - deliveryRevenue;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
       setStats({
@@ -228,7 +229,7 @@ const AdminDashboard = () => {
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
           <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.totalOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.totalOrders) : 0)} accent="text-blue-500" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label={`Delivery (${applyToCount(stats.totalOrders)}×₾${DELIVERY_FEE})`} value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
+          <MetricCard icon={TruckIcon} label="Delivery Revenue" value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
         </div>
       </section>
 
