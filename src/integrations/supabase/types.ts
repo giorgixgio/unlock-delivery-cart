@@ -1253,6 +1253,7 @@ export type Database = {
       stockout_attempts: {
         Row: {
           attempt_count: number
+          blocked_reason: string | null
           created_at: string
           fbclid: string | null
           id: string
@@ -1275,6 +1276,8 @@ export type Database = {
           sku: string | null
           source: string | null
           status: string
+          stock_at_attempt: number | null
+          stock_status_at_attempt: string | null
           user_agent: string | null
           utm_campaign: string | null
           utm_content: string | null
@@ -1286,6 +1289,7 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          blocked_reason?: string | null
           created_at?: string
           fbclid?: string | null
           id?: string
@@ -1308,6 +1312,8 @@ export type Database = {
           sku?: string | null
           source?: string | null
           status?: string
+          stock_at_attempt?: number | null
+          stock_status_at_attempt?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
@@ -1319,6 +1325,7 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          blocked_reason?: string | null
           created_at?: string
           fbclid?: string | null
           id?: string
@@ -1341,6 +1348,8 @@ export type Database = {
           sku?: string | null
           source?: string | null
           status?: string
+          stock_at_attempt?: number | null
+          stock_status_at_attempt?: string | null
           user_agent?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
@@ -1430,34 +1439,20 @@ export type Database = {
         Args: { p_attempt_id: string }
         Returns: undefined
       }
-      record_stockout_attempt:
-        | {
-            Args: {
-              p_payload: Json
-              p_phone: string
-              p_product_handle: string
-              p_product_id: string
-              p_sku: string
-            }
-            Returns: {
-              attempt_count: number
-              deduped: boolean
-              id: string
-            }[]
-          }
-        | {
-            Args: {
-              p_payload: Json
-              p_phone: string
-              p_product_id: string
-              p_sku: string
-            }
-            Returns: {
-              attempt_count: number
-              deduped: boolean
-              id: string
-            }[]
-          }
+      record_stockout_attempt: {
+        Args: {
+          p_payload: Json
+          p_phone: string
+          p_product_handle: string
+          p_product_id: string
+          p_sku: string
+        }
+        Returns: {
+          attempt_count: number
+          deduped: boolean
+          id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
