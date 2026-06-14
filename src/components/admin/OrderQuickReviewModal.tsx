@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
+import { startSession, markAction, endSession } from "@/lib/operatorSession";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
