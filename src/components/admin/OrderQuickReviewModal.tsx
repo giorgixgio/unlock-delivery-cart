@@ -421,6 +421,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "item_quantity_change",
       payload: { item_id: item.id, sku: item.sku, from: item.quantity, to: nextQty } as any,
     });
+    markAction("item_quantity_change");
     await refreshItemsAndTotals();
   };
 
@@ -433,6 +434,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "item_removed",
       payload: { item_id: item.id, sku: item.sku, title: item.title } as any,
     });
+    markAction("item_removed");
     await refreshItemsAndTotals();
     toast({ title: "წაიშალა" });
   };
