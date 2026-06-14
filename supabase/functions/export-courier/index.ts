@@ -50,19 +50,47 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "preview";
     const courier = url.searchParams.get("courier") || "onway";
+    const waveId = url.searchParams.get("wave_id");
 
-    // Fetch eligible orders
-    const { data: orders, error: ordersErr } = await supabase
+    let query = supabase
       .from("orders")
       .select("*, order_items(sku, quantity, title)")
-      .eq("is_confirmed", true)
-      .eq("is_fulfilled", false)
-      .eq("status", "confirmed")
       .order("created_at", { ascending: true });
+
+    if (waveId) {
+      query = query.eq("packing_wave_id", waveId);
+    } else {
+      query = query
+        .eq("is_confirmed", true)
+        .eq("is_fulfilled", false)
+        .eq("status", "confirmed");
+    }
+
+    const { data: ordersRaw, error: ordersErr } = await query;
 
     if (ordersErr) {
       return new Response(JSON.stringify({ error: ordersErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // Sort: single-SKU first (primary SKU asc, then created_at), multi-SKU at the end (created_at asc).
+    const classify = (o: any) => {
+      const items = o.order_items || [];
+      const skus = new Set(items.map((i: any) => String(i.sku || "")));
+      const sorted = [...items].sort((x: any, y: any) =>
+        String(x.sku || "").localeCompare(String(y.sku || ""), undefined, { numeric: true })
+      );
+      return { multi: skus.size > 1, primary: String(sorted[0]?.sku || "") };
+    };
+    const orders = [...(ordersRaw || [])].sort((a: any, b: any) => {
+      const ca = classify(a);
+      const cb = classify(b);
+      if (ca.multi !== cb.multi) return ca.multi ? 1 : -1;
+      if (!ca.multi) {
+        const c = ca.primary.localeCompare(cb.primary, undefined, { numeric: true });
+        if (c !== 0) return c;
+      }
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
 
     if (action === "preview") {
       const summary = {
