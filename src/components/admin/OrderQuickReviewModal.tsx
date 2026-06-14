@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
+import { startSession, markAction, endSession } from "@/lib/operatorSession";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
@@ -227,6 +228,9 @@ export default function OrderQuickReviewModal({
           order_id: o.id, actor, event_type: "order_opened", payload: {} as any,
         });
 
+        // Begin a fresh operator session — switching orders ends the previous one.
+        void startSession(o.id, actor);
+
         if (!o.operator_viewed_at) {
           const patch: Record<string, unknown> = {
             operator_viewed_at: new Date().toISOString(),
@@ -251,6 +255,11 @@ export default function OrderQuickReviewModal({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  // End session when the modal is unmounted or the user closes it without switching
+  useEffect(() => {
+    return () => { void endSession("unmounted"); };
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -310,6 +319,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "manual_edit",
       payload: { section: "quick_review", changed: Object.keys(updates) } as any,
     });
+    markAction("manual_edit");
     if (updates.city !== undefined || updates.address_line1 !== undefined) callNormalize(order.id);
     onOrderUpdated(order.id, updates);
     setOrder({ ...order, ...(updates as Partial<OrderFull>) });
@@ -329,6 +339,9 @@ export default function OrderQuickReviewModal({
   const saveAndNext = async () => {
     const ok = await saveSimple();
     if (!ok) return;
+    // saveSimple already markActions through persistUpdates if there were changes;
+    // ensure session ends cleanly here regardless.
+    void endSession("save_and_next");
     if (hasNext) goNext(); else onClose();
   };
 
@@ -352,6 +365,8 @@ export default function OrderQuickReviewModal({
     const ok = await persistUpdates(updates);
     if (!ok) { setSaving(false); return; }
 
+    markAction("outcome");
+
     await logSystemEvent({
       entityType: "order", entityId: order.id,
       eventType: "ORDER_CALL_OUTCOME" as any, actorId: actor,
@@ -360,6 +375,9 @@ export default function OrderQuickReviewModal({
 
     setSaving(false);
     toast({ title: `${def.label} — შენახულია` });
+
+    // End session with outcome so handling time + outcome are recorded.
+    void endSession("outcome", outcome);
 
     if (hasNext) {
       // small feedback delay so operator sees selected state before advancing
@@ -403,6 +421,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "item_quantity_change",
       payload: { item_id: item.id, sku: item.sku, from: item.quantity, to: nextQty } as any,
     });
+    markAction("item_quantity_change");
     await refreshItemsAndTotals();
   };
 
@@ -415,6 +434,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "item_removed",
       payload: { item_id: item.id, sku: item.sku, title: item.title } as any,
     });
+    markAction("item_removed");
     await refreshItemsAndTotals();
     toast({ title: "წაიშალა" });
   };
@@ -462,6 +482,7 @@ export default function OrderQuickReviewModal({
         order_id: order.id, actor, event_type: "item_added",
         payload: { product_id: p.id, sku: p.sku, title: p.title, quantity: 1, unit_price: Number(p.price), added_revenue: Number(p.price) } as any,
       });
+      markAction("item_added");
       await refreshItemsAndTotals();
       toast({ title: `დაემატა: ${p.title}` });
     }
