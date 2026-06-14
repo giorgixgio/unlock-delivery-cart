@@ -123,6 +123,7 @@ export async function fetchStockoutAttempts(sinceDays = 7) {
   const { data, error } = await (supabase as any)
     .from("stockout_attempts")
     .select("*")
+    .eq("blocked_reason", "out_of_stock") // dashboard only ever shows true OOS
     .gte("last_attempt_at", since)
     .order("last_attempt_at", { ascending: false })
     .limit(1000);
