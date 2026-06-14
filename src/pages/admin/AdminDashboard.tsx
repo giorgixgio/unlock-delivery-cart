@@ -229,7 +229,7 @@ const AdminDashboard = () => {
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
           <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.totalOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.totalOrders) : 0)} accent="text-blue-500" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label={`Delivery (${applyToCount(stats.totalOrders)}×₾${DELIVERY_FEE})`} value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
+          <MetricCard icon={TruckIcon} label="Delivery Revenue" value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
         </div>
       </section>
 
