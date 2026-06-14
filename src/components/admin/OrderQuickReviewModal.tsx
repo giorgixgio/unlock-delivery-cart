@@ -482,6 +482,7 @@ export default function OrderQuickReviewModal({
         order_id: order.id, actor, event_type: "item_added",
         payload: { product_id: p.id, sku: p.sku, title: p.title, quantity: 1, unit_price: Number(p.price), added_revenue: Number(p.price) } as any,
       });
+      markAction("item_added");
       await refreshItemsAndTotals();
       toast({ title: `დაემატა: ${p.title}` });
     }
