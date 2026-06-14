@@ -19,23 +19,34 @@ interface OrderInput {
   status?: string;
 }
 
-/** Server-side OOS check: verify all items are in stock before creating order */
+/** Server-side OOS check: verify all items are in stock before creating order.
+ * Considers BOTH the override table and the products.available flag so a product
+ * marked unavailable directly on the catalog row is also blocked + tracked. */
 async function checkStockAvailability(items: CartItem[]): Promise<string[]> {
   const productIds = items.map((i) => i.product.id);
-  
-  const { data: overrides } = await supabase
-    .from("product_stock_overrides")
-    .select("product_id, available")
-    .in("product_id", productIds);
+  if (productIds.length === 0) return [];
 
-  if (!overrides) return [];
-  
-  return overrides
-    .filter((o) => o.available === false)
-    .map((o) => {
-      const item = items.find((i) => i.product.id === o.product_id);
-      return item?.product.title || o.product_id;
-    });
+  const [{ data: overrides }, { data: products }] = await Promise.all([
+    supabase.from("product_stock_overrides").select("product_id, available").in("product_id", productIds),
+    supabase.from("products").select("id, title, available").in("id", productIds),
+  ]);
+
+  const oos = new Set<string>();
+  const titleById = new Map<string, string>();
+  for (const p of products || []) {
+    titleById.set(p.id, p.title);
+    if (p.available === false) oos.add(p.id);
+  }
+  for (const o of overrides || []) {
+    if (o.available === false) oos.add(o.product_id);
+    // explicit override=true wins over a stale products.available=false
+    if (o.available === true) oos.delete(o.product_id);
+  }
+
+  return Array.from(oos).map((id) => {
+    const item = items.find((i) => i.product.id === id);
+    return item?.product.title || titleById.get(id) || id;
+  });
 }
 
 export async function createOrder(input: OrderInput) {
