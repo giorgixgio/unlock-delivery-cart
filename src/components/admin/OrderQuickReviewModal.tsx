@@ -228,6 +228,9 @@ export default function OrderQuickReviewModal({
           order_id: o.id, actor, event_type: "order_opened", payload: {} as any,
         });
 
+        // Begin a fresh operator session — switching orders ends the previous one.
+        void startSession(o.id, actor);
+
         if (!o.operator_viewed_at) {
           const patch: Record<string, unknown> = {
             operator_viewed_at: new Date().toISOString(),
@@ -252,6 +255,11 @@ export default function OrderQuickReviewModal({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  // End session when the modal is unmounted or the user closes it without switching
+  useEffect(() => {
+    return () => { void endSession("unmounted"); };
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
