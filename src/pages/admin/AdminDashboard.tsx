@@ -329,9 +329,10 @@ interface MetricCardProps {
   accent: string;
   size?: "sm" | "lg";
   highlight?: boolean;
+  subtext?: string;
 }
 
-const MetricCard = ({ icon: Icon, label, value, accent, size = "sm", highlight }: MetricCardProps) => (
+const MetricCard = ({ icon: Icon, label, value, accent, size = "sm", highlight, subtext }: MetricCardProps) => (
   <Card className={`transition-shadow hover:shadow-md ${highlight ? "ring-2 ring-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10" : ""}`}>
     <CardContent className="p-3 sm:p-4">
       <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
@@ -339,6 +340,7 @@ const MetricCard = ({ icon: Icon, label, value, accent, size = "sm", highlight }
         <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">{label}</span>
       </div>
       <p className={`font-bold ${accent} ${size === "lg" ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{value}</p>
+      {subtext && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{subtext}</p>}
     </CardContent>
   </Card>
 );
