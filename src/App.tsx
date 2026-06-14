@@ -142,6 +142,7 @@ const App = () => (
                       <Route path="landing-pages" element={<AdminLandingPages />} />
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
+                      <Route path="stockout-demand" element={<AdminStockoutDemand />} />
                       
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
