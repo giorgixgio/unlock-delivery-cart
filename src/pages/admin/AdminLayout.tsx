@@ -16,6 +16,7 @@ const navItems = [
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/landing-pages", label: "Landing Pages", icon: LayoutTemplate },
   { to: "/admin/products-import", label: "AI Import", icon: Wand2 },
+  { to: "/admin/stockout-demand", label: "Stockout Demand", icon: PackageX },
   { to: "/admin/system-events", label: "System Events", icon: Activity },
   { to: "/admin/settings", label: "Settings", icon: Settings },
   { to: "/admin/settings/courier-export", label: "Export Template", icon: FileSpreadsheet },
