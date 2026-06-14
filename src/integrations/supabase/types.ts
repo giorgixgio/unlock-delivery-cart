@@ -1265,6 +1265,7 @@ export type Database = {
           note: string | null
           phone_normalized: string | null
           phone_number: string | null
+          product_handle: string | null
           product_id: string | null
           product_name: string | null
           quantity_attempted: number
@@ -1297,6 +1298,7 @@ export type Database = {
           note?: string | null
           phone_normalized?: string | null
           phone_number?: string | null
+          product_handle?: string | null
           product_id?: string | null
           product_name?: string | null
           quantity_attempted?: number
@@ -1329,6 +1331,7 @@ export type Database = {
           note?: string | null
           phone_normalized?: string | null
           phone_number?: string | null
+          product_handle?: string | null
           product_id?: string | null
           product_name?: string | null
           quantity_attempted?: number
@@ -1427,19 +1430,34 @@ export type Database = {
         Args: { p_attempt_id: string }
         Returns: undefined
       }
-      record_stockout_attempt: {
-        Args: {
-          p_payload: Json
-          p_phone: string
-          p_product_id: string
-          p_sku: string
-        }
-        Returns: {
-          attempt_count: number
-          deduped: boolean
-          id: string
-        }[]
-      }
+      record_stockout_attempt:
+        | {
+            Args: {
+              p_payload: Json
+              p_phone: string
+              p_product_handle: string
+              p_product_id: string
+              p_sku: string
+            }
+            Returns: {
+              attempt_count: number
+              deduped: boolean
+              id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_payload: Json
+              p_phone: string
+              p_product_id: string
+              p_sku: string
+            }
+            Returns: {
+              attempt_count: number
+              deduped: boolean
+              id: string
+            }[]
+          }
     }
     Enums: {
       [_ in never]: never
