@@ -235,18 +235,77 @@ const AdminDashboard = () => {
 
       <Separator />
 
-      {/* Order Pipeline */}
+      {/* Order Status & Flags */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Order Pipeline
-        </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          <MetricCard icon={AlertTriangle} label="Needs Review" value={applyToCount(stats.needsReview)} accent="text-amber-500" highlight={stats.needsReview > 0} />
-          <MetricCard icon={AlertTriangle} label="On Hold" value={applyToCount(stats.onHold)} accent="text-orange-500" />
+        <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Order Status & Flags
+          </h2>
+          <span className="text-[10px] text-muted-foreground italic">Flags may overlap with statuses</span>
+        </div>
+
+        {/* Main statuses (mutually exclusive) */}
+        <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Statuses</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard icon={CheckCircle} label="Confirmed" value={applyToCount(stats.confirmed)} accent="text-emerald-500" />
           <MetricCard icon={Package} label="Fulfilled" value={applyToCount(stats.fulfilled)} accent="text-emerald-600" />
           <MetricCard icon={XCircle} label="Canceled" value={applyToCount(stats.canceled)} accent="text-red-400" />
           <MetricCard icon={Merge} label="Merged" value={applyToCount(stats.merged)} accent="text-muted-foreground" />
+        </div>
+
+        {/* Operational flags (can overlap) */}
+        <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Operational Flags</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <MetricCard
+            icon={AlertTriangle}
+            label="Needs Operator Action"
+            value={applyToCount(stats.needsReview)}
+            accent="text-amber-600"
+            highlight={stats.needsReview > 0}
+            subtext={`Needs Review: ${applyToCount(stats.needsReview)} · On Hold: ${applyToCount(stats.onHold)} · flags may overlap`}
+          />
+          <MetricCard
+            icon={AlertTriangle}
+            label="Needs Review"
+            value={applyToCount(stats.needsReview)}
+            accent="text-amber-500"
+            subtext="Includes on-hold orders"
+          />
+          <MetricCard
+            icon={AlertTriangle}
+            label="On Hold"
+            value={applyToCount(stats.onHold)}
+            accent="text-orange-500"
+            subtext="Can also be Needs Review"
+          />
+        </div>
+
+        {/* Derived */}
+        <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {(() => {
+            const activeOrders = stats.totalOrders - stats.canceled;
+            const confirmedLike = stats.confirmed + stats.fulfilled;
+            const confirmedRate = activeOrders > 0 ? confirmedLike / activeOrders : 0;
+            return (
+              <>
+                <MetricCard
+                  icon={ShoppingCart}
+                  label="Active Orders"
+                  value={applyToCount(activeOrders)}
+                  accent="text-blue-500"
+                  subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled`}
+                />
+                <MetricCard
+                  icon={CheckCircle}
+                  label="Confirmed Rate"
+                  value={`${(confirmedRate * 100).toFixed(1)}%`}
+                  accent="text-emerald-500"
+                  subtext={`${applyToCount(confirmedLike)} / ${applyToCount(activeOrders)} active`}
+                />
+              </>
+            );
+          })()}
         </div>
       </section>
 
