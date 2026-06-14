@@ -197,20 +197,125 @@ const AdminPackingWaveDetail = () => {
     finally { setBusy(false); }
   };
 
-  const handleCreateRun = async () => {
+  // Count multi-SKU orders that are not yet assigned to any run AND not packed
+  const assignedOrderIds = new Set(waveSlots.map((s) => s.order_id));
+  const unassignedMulti = orders.filter(
+    (o) => o.classification === "multi_sku" && !assignedOrderIds.has(o.order_id) && o.packing_status !== "packed"
+  );
+
+  const handleCreateRuns = async () => {
     if (!wave) return;
+    if (unassignedMulti.length === 0) {
+      toast.info("No multi-SKU orders left to assign");
+      return;
+    }
+    if (slotCount < 1) { toast.error("Slot count must be ≥ 1"); return; }
+    const expectedRuns = Math.ceil(unassignedMulti.length / slotCount);
     setBusy(true);
+    let createdRuns = 0;
+    let firstRunId: string | null = null;
     try {
-      const res = await createRun(wave.id, slotCount, user?.email || "admin");
-      if (res.assigned === 0) {
+      // Loop until no more unassigned multi-SKU orders remain. Each call to the
+      // RPC creates exactly one run with up to `slotCount` slots — we keep
+      // calling until it reports 0 assignments.
+      // Safety cap (expected + 2) prevents infinite loops on unexpected state.
+      const maxCalls = expectedRuns + 2;
+      for (let i = 0; i < maxCalls; i++) {
+        const res = await createRun(wave.id, slotCount, user?.email || "admin");
+        if (!res || res.assigned === 0) break;
+        createdRuns++;
+        if (!firstRunId) firstRunId = res.run_id;
+      }
+      if (createdRuns === 0) {
         toast.info("No multi-SKU orders left to assign");
       } else {
-        toast.success(`Run #${res.run_number} created — ${res.assigned} slots`);
-        navigate(`/admin/packing-waves/${wave.id}/runs/${res.run_id}`);
+        toast.success(`Created ${createdRuns} run(s) for ${unassignedMulti.length} multi-SKU orders`);
       }
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+      await load();
+    } finally { setBusy(false); }
+  };
+
+  const handleMarkRunPacked = async (runId: string) => {
+    setBusy(true);
+    try {
+      await markRunPacked(runId, user?.email || "admin");
+      toast.success("Run marked packed");
       load();
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
+  };
+
+  // Open a printable sheet for a specific run (per-run, not wave-wide)
+  const printRunSheet = async (
+    runId: string,
+    runNumber: number,
+    which: "slot-setup" | "pick-to-slot" | "final-check"
+  ) => {
+    try {
+      const slots = waveSlots.filter((s) => s.run_id === runId).sort((a, b) => a.slot_number - b.slot_number);
+      const oids = slots.map((s) => s.order_id);
+      const [{ data: ords }, { data: its }] = await Promise.all([
+        (supabase as any).from("orders")
+          .select("id, public_order_number, total, normalized_city, raw_city, city, tracking_number")
+          .in("id", oids),
+        (supabase as any).from("order_items").select("order_id, sku, title, quantity").in("order_id", oids),
+      ]);
+      const om: Record<string, any> = {};
+      for (const o of (ords || []) as any[]) om[o.id] = o;
+      const im: Record<string, any[]> = {};
+      for (const it of (its || []) as any[]) (im[it.order_id] ||= []).push(it);
+
+      const win = window.open("", "_blank", "width=800,height=900");
+      if (!win) return;
+      const styles = `<style>body{font-family:Arial,sans-serif;padding:16px;color:#000}h1{font-size:18px;margin:0 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee}.slot{font-weight:bold}.ck{width:18px;height:18px;border:1.5px solid #000;display:inline-block}</style>`;
+      let body = "";
+      if (which === "slot-setup") {
+        body = `<h1>Slot Setup Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Items</th><th>COD</th><th>City</th></tr></thead><tbody>${
+          slots.map((s) => {
+            const o = om[s.order_id]; const items = im[s.order_id] || [];
+            const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
+            const city = o?.normalized_city || o?.raw_city || o?.city || "";
+            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || s.order_id.slice(0,8)}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${cnt}</td><td>${o?.total ?? ""} ₾</td><td>${city}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      } else if (which === "pick-to-slot") {
+        const map = new Map<string, { title: string; slots: Map<number, number> }>();
+        for (const s of slots) {
+          for (const it of im[s.order_id] || []) {
+            const k = it.sku || "";
+            if (!map.has(k)) map.set(k, { title: it.title || "", slots: new Map() });
+            const e = map.get(k)!;
+            e.slots.set(s.slot_number, (e.slots.get(s.slot_number) || 0) + (it.quantity || 0));
+          }
+        }
+        const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+        body = `<h1>Pick-to-Slot Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>SKU</th><th>Product</th><th>Total</th><th>Slot instructions</th></tr></thead><tbody>${
+          groups.map(([sku, v]) => {
+            const total = Array.from(v.slots.values()).reduce((a, b) => a + b, 0);
+            const inst = Array.from(v.slots.entries()).sort((a, b) => a[0] - b[0])
+              .map(([slot, q]) => q > 1 ? `Slot ${slot} ×${q}` : `Slot ${slot}`).join(", ");
+            return `<tr><td><b>${sku}</b></td><td>${v.title}</td><td>${total}</td><td>${inst}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      } else {
+        body = `<h1>Final Check Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Expected items</th><th>Count</th><th>Packed</th></tr></thead><tbody>${
+          slots.map((s) => {
+            const o = om[s.order_id]; const items = im[s.order_id] || [];
+            const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
+            const ex = items.map((i: any) => `${i.sku} × ${i.quantity}`).join("<br/>");
+            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || ""}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${ex}</td><td>${cnt}</td><td><span class="ck"></span></td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      }
+      win.document.write(`<!doctype html><html><head><title>Sheet</title>${styles}</head><body>${body}<script>setTimeout(()=>window.print(),300)</script></body></html>`);
+      win.document.close();
+    } catch (e: any) { toast.error(e.message); }
   };
 
   if (loading || !wave) {
