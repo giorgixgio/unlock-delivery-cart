@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,9 @@ import { Product } from "@/lib/constants";
 import { createOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
+import { recordStockoutAttempt } from "@/lib/stockoutService";
+import { trackStockoutAttempt } from "@/lib/metaPixel";
+import StockoutMessageView from "./StockoutMessageView";
 
 const phoneSchema = z.object({
   phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
