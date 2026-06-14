@@ -64,10 +64,29 @@ const CODFormModal = ({
   }, [open]);
 
   const handleStockoutBranch = async () => {
-    console.log("[stockout] OOS detected, recording attempt", { productId: product.id, phone });
+    console.log("Landing page order submit started", {
+      route: window.location.pathname,
+      productHandle: product.handle,
+      productId: product.id,
+      sku: product.sku,
+      quantity,
+    });
+    console.log("Resolved product:", {
+      product_id: product.id,
+      handle: product.handle,
+      sku: product.sku,
+      stock: product.available,
+    });
+    console.log("Stock is zero, creating stockout attempt", {
+      productId: product.id,
+      productHandle: product.handle,
+      sku: product.sku,
+      phone,
+    });
     try {
       const res = await recordStockoutAttempt({
         productId: product.id,
+        productHandle: product.handle ?? null,
         sku: (product as any).sku ?? null,
         productName: product.title,
         phone,
@@ -75,10 +94,11 @@ const CODFormModal = ({
         source: "landing_cod",
         landingPageUrl: window.location.href,
       });
-      console.log("[stockout] attempt recorded", res);
+      console.log("Stockout attempt insert success", res);
+      console.log("[stockout] inserted row id", res.id);
       setStockoutAttemptId(res.id);
     } catch (e) {
-      console.error("[stockout] record failed", e);
+      console.error("Stockout attempt insert failed:", e);
     }
     // Fire OutOfStockAttempt custom event ONLY — never Purchase/Lead.
     trackStockoutAttempt({
@@ -100,6 +120,20 @@ const CODFormModal = ({
     setSubmitting(true);
     setError("");
     try {
+      console.log("Landing page order submit started", {
+        route: window.location.pathname,
+        productHandle: product.handle,
+        productId: product.id,
+        sku: product.sku,
+        quantity,
+      });
+      console.log("Resolved product:", {
+        product_id: product.id,
+        handle: product.handle,
+        sku: product.sku,
+        stock: product.available,
+      });
+
       saveCustomerInfo({ phone, region: "", address: "" });
 
       // Create order with status pending_details (phone only, no address)
