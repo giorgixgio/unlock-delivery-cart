@@ -183,6 +183,26 @@ export async function createOrder(input: OrderInput) {
   }
 }
 
+/** Re-check live stock for a single product. Used as a hard guard so we never
+ *  insert a stockout_attempt for a product that is actually in stock. */
+async function isProductCurrentlyOutOfStock(productId: string): Promise<{
+  oos: boolean;
+  productAvailable: boolean | null;
+  overrideAvailable: boolean | null;
+}> {
+  const [{ data: p }, { data: o }] = await Promise.all([
+    supabase.from("products").select("available").eq("id", productId).maybeSingle(),
+    supabase.from("product_stock_overrides").select("available").eq("product_id", productId).maybeSingle(),
+  ]);
+  const productAvailable = (p?.available ?? null) as boolean | null;
+  const overrideAvailable = (o?.available ?? null) as boolean | null;
+  let oos = false;
+  if (productAvailable === false) oos = true;
+  if (overrideAvailable === false) oos = true;
+  if (overrideAvailable === true) oos = false; // explicit override wins
+  return { oos, productAvailable, overrideAvailable };
+}
+
 export async function submitCustomerOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
   try {
     const order = await createOrder(input.order);
@@ -190,16 +210,39 @@ export async function submitCustomerOrder(input: SubmitOrderInput): Promise<Subm
   } catch (err) {
     if (!isOutOfStockError(err) || !input.stockout) throw err;
 
-    console.log(`${input.debugLabel || "Order submit"}: Stock is zero, creating stockout attempt`, {
-      productId: input.stockout.productId,
-      productHandle: input.stockout.productHandle,
+    const label = input.debugLabel || "Order submit";
+    const productId = input.stockout.productId;
+
+    // HARD GUARD: re-verify the product is actually out of stock right now.
+    // Without this check a stale error, race, or unrelated failure could pollute
+    // the Stockout Demand dashboard with in-stock products.
+    const stock = await isProductCurrentlyOutOfStock(productId);
+    const stockStatus = stock.oos ? "out_of_stock" : "in_stock";
+
+    console.log(`[stockout-guard] ${label}`, {
+      productId,
+      handle: input.stockout.productHandle,
       sku: input.stockout.sku,
-      phone: input.stockout.phone,
+      productAvailable: stock.productAvailable,
+      overrideAvailable: stock.overrideAvailable,
+      isOutOfStock: stock.oos,
+      action: stock.oos ? "insert" : "skip",
     });
 
+    if (!stock.oos) {
+      console.warn(
+        `[stockout-guard] ${label}: OUT_OF_STOCK error raised but product is currently in stock — skipping stockout_attempt insert and re-throwing.`,
+      );
+      throw err;
+    }
+
     try {
-      const attempt = await recordStockoutAttempt(input.stockout);
-      console.log(`${input.debugLabel || "Order submit"}: Stockout attempt insert success`, attempt);
+      const attempt = await recordStockoutAttempt({
+        ...input.stockout,
+        blockedReason: "out_of_stock",
+        stockStatusAtAttempt: stockStatus,
+      });
+      console.log(`[stockout-guard] ${label}: stockout_attempt insert success`, attempt);
       return {
         kind: "stockout",
         attemptId: attempt.id,
@@ -207,7 +250,7 @@ export async function submitCustomerOrder(input: SubmitOrderInput): Promise<Subm
         originalError: err,
       };
     } catch (recordError) {
-      console.error(`${input.debugLabel || "Order submit"}: Stockout attempt insert failed:`, recordError);
+      console.error(`[stockout-guard] ${label}: stockout_attempt insert failed:`, recordError);
       return {
         kind: "stockout",
         attemptId: null,
