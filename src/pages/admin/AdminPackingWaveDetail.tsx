@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { ArrowLeft, Download, Loader2, Sticker, Upload, CheckCircle2, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
-  fetchWave, fetchWaveOrders, fetchRuns,
+  fetchWave, fetchWaveOrders, fetchRuns, fetchWaveRunSlots,
   markStickersPrinted, markWaveExported, completeWave,
-  createRun, importTrackingForWave,
-  type PackingWave, type WaveOrderRow, type PackingRun,
+  createRun, importTrackingForWave, markRunPacked,
+  type PackingWave, type WaveOrderRow, type PackingRun, type RunSlot,
 } from "@/lib/packingWaveService";
 import { supabase } from "@/integrations/supabase/client";
 
