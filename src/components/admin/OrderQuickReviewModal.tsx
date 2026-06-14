@@ -339,6 +339,9 @@ export default function OrderQuickReviewModal({
   const saveAndNext = async () => {
     const ok = await saveSimple();
     if (!ok) return;
+    // saveSimple already markActions through persistUpdates if there were changes;
+    // ensure session ends cleanly here regardless.
+    void endSession("save_and_next");
     if (hasNext) goNext(); else onClose();
   };
 
@@ -362,6 +365,8 @@ export default function OrderQuickReviewModal({
     const ok = await persistUpdates(updates);
     if (!ok) { setSaving(false); return; }
 
+    markAction("outcome");
+
     await logSystemEvent({
       entityType: "order", entityId: order.id,
       eventType: "ORDER_CALL_OUTCOME" as any, actorId: actor,
@@ -370,6 +375,9 @@ export default function OrderQuickReviewModal({
 
     setSaving(false);
     toast({ title: `${def.label} — შენახულია` });
+
+    // End session with outcome so handling time + outcome are recorded.
+    void endSession("outcome", outcome);
 
     if (hasNext) {
       // small feedback delay so operator sees selected state before advancing
