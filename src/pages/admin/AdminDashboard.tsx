@@ -221,6 +221,8 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      <StockoutAlertCard />
+
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
