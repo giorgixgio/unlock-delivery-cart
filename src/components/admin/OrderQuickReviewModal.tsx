@@ -319,6 +319,7 @@ export default function OrderQuickReviewModal({
       order_id: order.id, actor, event_type: "manual_edit",
       payload: { section: "quick_review", changed: Object.keys(updates) } as any,
     });
+    markAction("manual_edit");
     if (updates.city !== undefined || updates.address_line1 !== undefined) callNormalize(order.id);
     onOrderUpdated(order.id, updates);
     setOrder({ ...order, ...(updates as Partial<OrderFull>) });
