@@ -1,69 +1,124 @@
-# Plan: Operator Quick-Review Modal
+# Packing Waves System
 
-Big-picture: introduce an **operator quick-review modal** on top of the orders list. Reuse the existing save logic from `AdminOrderDetail` / `orderService` / `EditableOrderFields` so courier export, normalization, and DB shape stay identical. The current full order page remains and is reachable via an "Open full details" link.
+A new admin feature that groups orders into time-bounded "waves" for courier export, tracking import, and warehouse packing — with special trolley/slot support for multi-SKU orders.
 
-## 1. Schema additions (small, safe migration)
-Add to `public.orders`:
-- `operator_viewed_at timestamptz NULL`
-- `operator_viewed_by text NULL`
-- `operator_review_status text NULL` — free text, allowed values used by UI: `unviewed | viewed | confirmed | no_answer | needs_callback | cancelled`
-- `operator_note text NULL` *(only if not already present — will check before adding)*
+## Scope guarantees (won't break)
 
-No existing columns renamed/removed. No changes to `city`, `raw_city`, `normalized_city`, `address_line1`, `address_line2`, `raw_address`, `normalized_address`.
+- Existing order creation, order IDs, address normalization untouched
+- Existing courier export columns and SKU field format (`"237 - 1"`) unchanged — only row sort order changes
+- Existing tracking import logic (`bulk_update_tracking` RPC) reused as-is
+- Existing Batches page kept intact (Waves is a new parallel system; we won't delete Batches)
+- No "MULTI" text injected anywhere into SKU
 
-## 2. New file: `src/components/admin/OrderQuickReviewModal.tsx`
-Centered Dialog on desktop, full-screen Sheet on mobile (`useIsMobile`). Width ~820px.
+## Database (one migration)
 
-Structure:
-- **Sticky header**: `შეკვეთა #<public_order_number>` · phone · COD · total · status badge · created time · prev/next arrows · "Open full details" link → `/admin/orders/:id` · close X.
-- **Customer card**: phone (large), `Call` (`tel:`) + `Copy` buttons.
-- **Address card (operator simple view)**:
-  - `ქალაქი / რეგიონი` — single input
-  - `მისამართი` — single input
-  - `კომენტარი კურიერისთვის` — textarea
-  - `<Collapsible>` "Advanced address fields" reveals the existing 7 fields (read-only by default with an "Edit raw" toggle) so power users can still inspect/override.
-- **Quick status buttons**: დადასტურდა / არ პასუხობს / გადასარეკია / გაუქმდა → updates `operator_review_status` (+ existing `status`/`is_confirmed` where it already maps in AdminOrderDetail).
-- **Items list**: compact thumbnails/SKU/qty/price (read-only here; edits stay on full page).
-- **Operator note**: textarea bound to `operator_note`.
-- **Sticky footer**: `შენახვა` (primary), `შენახვა და შემდეგი` (secondary).
+New tables (all in `public`, with GRANTs to `authenticated` + `service_role`, RLS via `is_active_admin`):
 
-### Data mapping when operator types in simple fields
-Reuse the existing save path from `AdminOrderDetail`/`orderService.updateOrderAddress` so behavior is identical to the full page:
-- City input → writes `city` **and** `raw_city`. Then attempt existing normalization (whatever path the full page already uses, e.g. the `normalize-and-score` edge function or local util — invoked exactly the same way). On success, write `normalized_city`. On failure, leave `normalized_city` untouched.
-- Address input → writes `address_line1` **and** `raw_address`. Normalize same way → `normalized_address` on success only.
-- Courier comment → writes `address_line2`.
-- Never null-out an existing normalized field; only overwrite on successful re-normalization.
+1. **`packing_waves`** — wave_number (auto seq), name, status (`draft|exported|tracking_imported|packing|completed|issue`), created_by, exported_at/by, exported_order_count, tracking_imported_at, stickers_printed_at/by, completed_at/by, notes
+2. **`packing_wave_orders`** — wave_id, order_id (unique), classification (`single_sku|multi_sku`), primary_sku, sku_count, total_qty, packing_status (`not_packed|packing|packed|issue`), packed_at/by, issue_type, issue_note. **Unique constraint on order_id** prevents an order living in two waves.
+3. **`packing_runs`** — wave_id, run_number (per wave), slot_count, status (`created|picking|packed|issue`), created_by, completed_at
+4. **`packing_run_slots`** — run_id, slot_number, order_id, tracking_number_snapshot, packing_status, packed_at/by, issue_type/note. Unique `(run_id, slot_number)` and unique `(run_id, order_id)`.
 
-## 3. Orders list integration (`src/pages/admin/AdminOrders.tsx`)
-- Row click opens the modal instead of navigating. Keep right-click / cmd-click on the "open full" link working for the old page.
-- Maintain `currentList: Order[]` (the filtered list already in state) and `activeIndex` to power prev/next.
-- On open / prev / next: optimistically set `operator_viewed_at = now()`, `operator_viewed_by = current admin email`, `operator_review_status = 'viewed'` (only if currently null/`unviewed`), then persist via a single `supabase.from('orders').update(...)`.
-- Row visuals:
-  - **Unviewed** (`operator_viewed_at IS NULL`) in Needs Review tab: subtle `bg-amber-50/40 dark:bg-amber-950/10` + `border-l-4 border-amber-400` + small "ახალი" badge.
-  - **Viewed**: default styling, no badge.
-- After modal save/close, patch the row in local state so the list updates without a refetch.
+Add to `orders` (nullable, additive only): `packing_wave_id uuid`, `packing_status text` default `'not_packed'`, `packed_at timestamptz`, `packed_by text`. No triggers altered.
 
-## 4. Reuse, don't rewrite
-- `OrderQuickReviewModal` imports the same mutation helpers `AdminOrderDetail` uses (`updateOrderAddress`, status mutators, note save). If a helper is page-local, lift it into `src/lib/orderService.ts` first, then call it from both places — no duplicated SQL, no new export field touched.
-- `export-courier` edge function and `normalize-and-score` are untouched.
+Sequence: `packing_wave_number_seq` for human-friendly `#38, #39, …`.
 
-## 5. Files
+RPCs (SECURITY DEFINER):
+- `create_packing_wave(actor text)` — atomically selects eligible orders (confirmed, not canceled, not fulfilled, `packing_wave_id IS NULL`, has ≥1 order_item, has phone), inserts wave, inserts `packing_wave_orders` with classification computed from `order_items` (distinct SKU count), and stamps `orders.packing_wave_id`. Returns `{wave_id, total, single, multi}`.
+- `assign_packing_run_slots(wave_id, slot_count, actor)` — picks next N unpacked multi-SKU orders in this wave (ordered by `created_at`), creates run, inserts slots 1..N. Idempotent on conflict.
+- `complete_packing_wave(wave_id, force boolean, actor)` — guards on unpacked count unless `force=true`.
 
-```text
-NEW   src/components/admin/OrderQuickReviewModal.tsx
-EDIT  src/pages/admin/AdminOrders.tsx          // open modal, viewed highlighting, prev/next list
-EDIT  src/lib/orderService.ts                  // lift any inline save helpers + markOrderViewed()
-EDIT  src/integrations/supabase/types.ts       // regenerated after migration
-NEW   supabase/migrations/<ts>_operator_review.sql
-```
+## Frontend
 
-`AdminOrderDetail.tsx` is **not** rewritten — still reachable via "Open full details".
+### New route `/admin/packing-waves` (`AdminPackingWaves.tsx`)
 
-## 6. Risks & mitigations
-- **Breaking existing save** → reuse exact same mutation functions; no parallel SQL.
-- **Erasing normalized values** → only write `normalized_*` on successful normalization; never write empty strings.
-- **Duplicate orders** → all writes are `UPDATE` by `id`, never INSERT.
-- **Courier export** → field names untouched; mapping verified to match what `export-courier` reads (`normalized_city || city`, `normalized_address || address_line1`, `address_line2`).
-- **Migration risk** → only additive nullable columns; safe to roll out.
+- Top: "Ready for next wave: **X orders**" counter + **Create Packing Wave** button
+- Table of waves: Wave #, Created, By, Total / Single / Multi, Tracking imported (n/total), Packed (n/total), Status badge, Open button
+- Status badges color-coded matching the spec
 
-Proceed?
+### New route `/admin/packing-waves/:id` (`AdminPackingWaveDetail.tsx`)
+
+- Summary cards: Total / Single-SKU / Multi-SKU / Tracking imported / Packed / Remaining / Status
+- Actions row: **Download Courier CSV**, **Import Tracking CSV**, **Mark Stickers Printed**, **Mark Wave Completed**
+- "Single-SKU summary" table: SKU | Product name | Parcels | Total qty (read-only, info)
+- "Multi-SKU Packing" section: counts + list of runs + **Create Pack Run** (slot picker 12/24/30/custom)
+- Each run card → opens run detail
+
+### New route `/admin/packing-waves/:waveId/runs/:runId` (`AdminPackingRun.tsx`)
+
+- Print buttons: **Slot Setup Sheet**, **Pick-to-Slot Sheet**, **Final Check Sheet** (each opens print-friendly view in new tab)
+- Slot grid: Slot # (large) · Order ID · Tracking · Items (SKU × qty) · Mark Packed · Issue
+- **Mark run packed** button
+
+### Print views (new components, plain semantic HTML + `window.print()`):
+
+- `SlotSetupSheet.tsx` — Slot # | Order ID | Tracking | COD | Item count | City
+- `PickToSlotSheet.tsx` — grouped by SKU asc: `SKU 237 — Mini Vacuum — Total 8 → Slot 1, 3, 7, 12; Slot 18 ×2`
+- `FinalCheckSheet.tsx` — Slot # | Order ID | Tracking | Expected items (SKU × qty) | ☐
+
+### Courier export sorting update
+
+In `supabase/functions/export-courier/index.ts` (and any client-side wave export helper):
+
+- Accept optional `wave_id` param; when present, filter strictly to wave orders
+- New sort: classify each order, then sort
+  1. `single_sku` rows first, ordered by `(primary_sku ASC, created_at ASC)`
+  2. `multi_sku` rows at the end, ordered by `created_at ASC`
+- SKU cell format unchanged (`"237 - 2"`); no "MULTI" tag added
+- After successful download, client updates wave: `status='exported'`, `exported_at`, `exported_by`, `exported_order_count`
+
+### Tracking import inside wave
+
+Reuse `bulk_update_tracking` RPC. New wrapper `importTrackingForWave(waveId, rows, actor)`:
+- Filters incoming rows to orders inside the wave
+- Calls existing RPC
+- Reports: updated / missing-in-db / belongs-to-other-wave / skipped-empty
+- Updates wave `tracking_imported_at`, `status='tracking_imported'`
+
+### Orders page badge
+
+In `AdminOrders.tsx` row, when `packing_wave_id` set, render small badge: `Wave #38 · packed/not_packed/issue` — read-only, no behavior change.
+
+### Navigation
+
+Add `Packing Waves` to `AdminLayout` nav between Batches and Shipping.
+
+## Files
+
+**New**
+- `supabase/migrations/<ts>_packing_waves.sql`
+- `src/lib/packingWaveService.ts` (CRUD + RPC wrappers)
+- `src/pages/admin/AdminPackingWaves.tsx`
+- `src/pages/admin/AdminPackingWaveDetail.tsx`
+- `src/pages/admin/AdminPackingRun.tsx`
+- `src/components/admin/packing/CreateWaveButton.tsx`
+- `src/components/admin/packing/CreateRunModal.tsx`
+- `src/components/admin/packing/SlotSetupSheet.tsx`
+- `src/components/admin/packing/PickToSlotSheet.tsx`
+- `src/components/admin/packing/FinalCheckSheet.tsx`
+- `src/components/admin/packing/WaveBadge.tsx`
+
+**Edited**
+- `src/App.tsx` — 3 new routes
+- `src/pages/admin/AdminLayout.tsx` — nav entry
+- `src/pages/admin/AdminOrders.tsx` — Wave badge in row
+- `supabase/functions/export-courier/index.ts` — optional `wave_id` filter + new sort
+- `src/integrations/supabase/types.ts` — regenerated after migration
+
+## Phasing (single PR, but logical order)
+
+1. Migration + types
+2. Service layer + Waves list + Create Wave
+3. Wave detail + courier export (wave-scoped, new sort)
+4. Tracking import in wave + Stickers printed checkpoint + Orders badge
+5. Multi-SKU runs + slot assignment + 3 print sheets
+6. Wave completion guard
+
+## Out of scope (explicit)
+
+- No mobile-optimized warehouse scanner UI — desktop print-first workflow per spec
+- No automatic wave creation on schedule — always manual button
+- No barcode scanning input — visual checkboxes only
+- Existing Batches system is **not** removed or migrated; Waves runs alongside
+
+Ready to build on approval.
