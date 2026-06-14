@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Loader2, Sticker, Upload, CheckCircle2, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
-  fetchWave, fetchWaveOrders, fetchRuns,
+  fetchWave, fetchWaveOrders, fetchRuns, fetchWaveRunSlots,
   markStickersPrinted, markWaveExported, completeWave,
-  createRun, importTrackingForWave,
-  type PackingWave, type WaveOrderRow, type PackingRun,
+  createRun, importTrackingForWave, markRunPacked,
+  type PackingWave, type WaveOrderRow, type PackingRun, type RunSlot,
 } from "@/lib/packingWaveService";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,11 +35,12 @@ const ONWAY_HEADERS: Record<string, string> = {
 const AdminPackingWaveDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAdminAuth();
-  const navigate = useNavigate();
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [wave, setWave] = useState<PackingWave | null>(null);
   const [orders, setOrders] = useState<WaveOrderRow[]>([]);
   const [runs, setRuns] = useState<PackingRun[]>([]);
+  const [waveSlots, setWaveSlots] = useState<RunSlot[]>([]);
   const [skuSummary, setSkuSummary] = useState<{ sku: string; title: string; parcels: number; qty: number }[]>([]);
   const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -51,10 +52,13 @@ const AdminPackingWaveDetail = () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [w, wo, r] = await Promise.all([fetchWave(id), fetchWaveOrders(id), fetchRuns(id)]);
+      const [w, wo, r, ws] = await Promise.all([
+        fetchWave(id), fetchWaveOrders(id), fetchRuns(id), fetchWaveRunSlots(id),
+      ]);
       setWave(w);
       setOrders(wo);
       setRuns(r);
+      setWaveSlots(ws);
       // Load order_items for SKU summary
       const orderIds = wo.map((o) => o.order_id);
       if (orderIds.length) {
@@ -193,20 +197,125 @@ const AdminPackingWaveDetail = () => {
     finally { setBusy(false); }
   };
 
-  const handleCreateRun = async () => {
+  // Count multi-SKU orders that are not yet assigned to any run AND not packed
+  const assignedOrderIds = new Set(waveSlots.map((s) => s.order_id));
+  const unassignedMulti = orders.filter(
+    (o) => o.classification === "multi_sku" && !assignedOrderIds.has(o.order_id) && o.packing_status !== "packed"
+  );
+
+  const handleCreateRuns = async () => {
     if (!wave) return;
+    if (unassignedMulti.length === 0) {
+      toast.info("No multi-SKU orders left to assign");
+      return;
+    }
+    if (slotCount < 1) { toast.error("Slot count must be ≥ 1"); return; }
+    const expectedRuns = Math.ceil(unassignedMulti.length / slotCount);
     setBusy(true);
+    let createdRuns = 0;
+    let firstRunId: string | null = null;
     try {
-      const res = await createRun(wave.id, slotCount, user?.email || "admin");
-      if (res.assigned === 0) {
+      // Loop until no more unassigned multi-SKU orders remain. Each call to the
+      // RPC creates exactly one run with up to `slotCount` slots — we keep
+      // calling until it reports 0 assignments.
+      // Safety cap (expected + 2) prevents infinite loops on unexpected state.
+      const maxCalls = expectedRuns + 2;
+      for (let i = 0; i < maxCalls; i++) {
+        const res = await createRun(wave.id, slotCount, user?.email || "admin");
+        if (!res || res.assigned === 0) break;
+        createdRuns++;
+        if (!firstRunId) firstRunId = res.run_id;
+      }
+      if (createdRuns === 0) {
         toast.info("No multi-SKU orders left to assign");
       } else {
-        toast.success(`Run #${res.run_number} created — ${res.assigned} slots`);
-        navigate(`/admin/packing-waves/${wave.id}/runs/${res.run_id}`);
+        toast.success(`Created ${createdRuns} run(s) for ${unassignedMulti.length} multi-SKU orders`);
       }
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+      await load();
+    } finally { setBusy(false); }
+  };
+
+  const handleMarkRunPacked = async (runId: string) => {
+    setBusy(true);
+    try {
+      await markRunPacked(runId, user?.email || "admin");
+      toast.success("Run marked packed");
       load();
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
+  };
+
+  // Open a printable sheet for a specific run (per-run, not wave-wide)
+  const printRunSheet = async (
+    runId: string,
+    runNumber: number,
+    which: "slot-setup" | "pick-to-slot" | "final-check"
+  ) => {
+    try {
+      const slots = waveSlots.filter((s) => s.run_id === runId).sort((a, b) => a.slot_number - b.slot_number);
+      const oids = slots.map((s) => s.order_id);
+      const [{ data: ords }, { data: its }] = await Promise.all([
+        (supabase as any).from("orders")
+          .select("id, public_order_number, total, normalized_city, raw_city, city, tracking_number")
+          .in("id", oids),
+        (supabase as any).from("order_items").select("order_id, sku, title, quantity").in("order_id", oids),
+      ]);
+      const om: Record<string, any> = {};
+      for (const o of (ords || []) as any[]) om[o.id] = o;
+      const im: Record<string, any[]> = {};
+      for (const it of (its || []) as any[]) (im[it.order_id] ||= []).push(it);
+
+      const win = window.open("", "_blank", "width=800,height=900");
+      if (!win) return;
+      const styles = `<style>body{font-family:Arial,sans-serif;padding:16px;color:#000}h1{font-size:18px;margin:0 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee}.slot{font-weight:bold}.ck{width:18px;height:18px;border:1.5px solid #000;display:inline-block}</style>`;
+      let body = "";
+      if (which === "slot-setup") {
+        body = `<h1>Slot Setup Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Items</th><th>COD</th><th>City</th></tr></thead><tbody>${
+          slots.map((s) => {
+            const o = om[s.order_id]; const items = im[s.order_id] || [];
+            const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
+            const city = o?.normalized_city || o?.raw_city || o?.city || "";
+            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || s.order_id.slice(0,8)}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${cnt}</td><td>${o?.total ?? ""} ₾</td><td>${city}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      } else if (which === "pick-to-slot") {
+        const map = new Map<string, { title: string; slots: Map<number, number> }>();
+        for (const s of slots) {
+          for (const it of im[s.order_id] || []) {
+            const k = it.sku || "";
+            if (!map.has(k)) map.set(k, { title: it.title || "", slots: new Map() });
+            const e = map.get(k)!;
+            e.slots.set(s.slot_number, (e.slots.get(s.slot_number) || 0) + (it.quantity || 0));
+          }
+        }
+        const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+        body = `<h1>Pick-to-Slot Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>SKU</th><th>Product</th><th>Total</th><th>Slot instructions</th></tr></thead><tbody>${
+          groups.map(([sku, v]) => {
+            const total = Array.from(v.slots.values()).reduce((a, b) => a + b, 0);
+            const inst = Array.from(v.slots.entries()).sort((a, b) => a[0] - b[0])
+              .map(([slot, q]) => q > 1 ? `Slot ${slot} ×${q}` : `Slot ${slot}`).join(", ");
+            return `<tr><td><b>${sku}</b></td><td>${v.title}</td><td>${total}</td><td>${inst}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      } else {
+        body = `<h1>Final Check Sheet — Run #${runNumber}</h1>
+          <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Expected items</th><th>Count</th><th>Packed</th></tr></thead><tbody>${
+          slots.map((s) => {
+            const o = om[s.order_id]; const items = im[s.order_id] || [];
+            const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
+            const ex = items.map((i: any) => `${i.sku} × ${i.quantity}`).join("<br/>");
+            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || ""}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${ex}</td><td>${cnt}</td><td><span class="ck"></span></td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      }
+      win.document.write(`<!doctype html><html><head><title>Sheet</title>${styles}</head><body>${body}<script>setTimeout(()=>window.print(),300)</script></body></html>`);
+      win.document.close();
+    } catch (e: any) { toast.error(e.message); }
   };
 
   if (loading || !wave) {
@@ -294,15 +403,24 @@ const AdminPackingWaveDetail = () => {
       {/* Multi-SKU runs */}
       <div className="bg-card border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="font-semibold">Multi-SKU Packing</div>
+          <div>
+            <div className="font-semibold">Multi-SKU Packing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Multi-SKU orders: <b>{totals.multi}</b> · Assigned: <b>{assignedOrderIds.size}</b> · Unassigned: <b>{unassignedMulti.length}</b> · Runs created: <b>{runs.length}</b>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <select value={slotCount} onChange={(e) => setSlotCount(Number(e.target.value))} className="h-9 px-2 border rounded text-sm">
-              {[12, 24, 30].map((n) => <option key={n} value={n}>{n} slots</option>)}
+              {[12, 20, 24, 30].map((n) => <option key={n} value={n}>{n} slots</option>)}
             </select>
-            <input type="number" min={1} max={200} value={slotCount} onChange={(e) => setSlotCount(Math.max(1, Number(e.target.value)))}
-                   className="h-9 w-20 px-2 border rounded text-sm" />
-            <Button onClick={handleCreateRun} disabled={busy || totals.multi === 0} size="sm">
-              <Plus className="w-4 h-4 mr-1" />Create Pack Run
+            <input
+              type="number" min={1} max={200} value={slotCount}
+              onChange={(e) => setSlotCount(Math.max(1, Number(e.target.value)))}
+              className="h-9 w-20 px-2 border rounded text-sm" title="Custom slot count"
+            />
+            <Button onClick={handleCreateRuns} disabled={busy || unassignedMulti.length === 0} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Create {unassignedMulti.length > 0 ? Math.ceil(unassignedMulti.length / slotCount) : 0} Run(s)
             </Button>
           </div>
         </div>
@@ -310,16 +428,39 @@ const AdminPackingWaveDetail = () => {
           <p className="text-sm text-muted-foreground">No runs yet.</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {runs.map((r) => (
-              <Link key={r.id} to={`/admin/packing-waves/${wave.id}/runs/${r.id}`}
-                    className="border rounded-lg p-3 hover:bg-muted/30 transition">
-                <div className="font-bold">Run #{r.run_number}</div>
-                <div className="text-xs text-muted-foreground">
-                  {r.slot_count} slots · {new Date(r.created_at).toLocaleString("ka-GE")}
+            {runs.map((r) => {
+              const slotsOfRun = waveSlots.filter((s) => s.run_id === r.id);
+              const packed = slotsOfRun.filter((s) => s.packing_status === "packed").length;
+              const total = slotsOfRun.length;
+              const isPacked = r.status === "packed";
+              return (
+                <div key={r.id} className={`border rounded-lg p-3 space-y-2 ${isPacked ? "bg-emerald-50 border-emerald-300" : "bg-card"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold">Run #{r.run_number}</div>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isPacked ? "bg-emerald-200 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
+                      {r.status}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {total}/{r.slot_count} orders · packed {packed}/{total}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(r.created_at).toLocaleString("ka-GE")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <Link to={`/admin/packing-waves/${wave.id}/runs/${r.id}`} className="col-span-2">
+                      <Button size="sm" variant="default" className="w-full">Open Run</Button>
+                    </Link>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "slot-setup")}>Slot Setup</Button>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "pick-to-slot")}>Pick-to-Slot</Button>
+                    <Button size="sm" variant="outline" onClick={() => printRunSheet(r.id, r.run_number, "final-check")}>Final Check</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleMarkRunPacked(r.id)} disabled={busy || isPacked}>
+                      {isPacked ? "✓ Packed" : "Mark Packed"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-xs mt-1">Status: <span className="font-semibold">{r.status}</span></div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

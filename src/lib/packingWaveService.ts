@@ -165,6 +165,33 @@ export async function fetchRunSlots(runId: string): Promise<RunSlot[]> {
   return (data || []) as RunSlot[];
 }
 
+export async function fetchWaveRunSlots(waveId: string): Promise<RunSlot[]> {
+  const { data, error } = await sb.from("packing_run_slots").select("*").eq("wave_id", waveId);
+  if (error) throw error;
+  return (data || []) as RunSlot[];
+}
+
+export async function markRunPacked(runId: string, actor: string) {
+  const now = new Date().toISOString();
+  const { data: slots } = await sb.from("packing_run_slots").select("id, order_id, wave_id").eq("run_id", runId);
+  const orderIds = ((slots || []) as any[]).map((s) => s.order_id);
+  const waveId = ((slots || []) as any[])[0]?.wave_id;
+  await sb.from("packing_run_slots")
+    .update({ packing_status: "packed", packed_at: now, packed_by: actor })
+    .eq("run_id", runId).neq("packing_status", "packed");
+  if (orderIds.length) {
+    await sb.from("packing_wave_orders")
+      .update({ packing_status: "packed", packed_at: now, packed_by: actor })
+      .eq("wave_id", waveId).in("order_id", orderIds).neq("packing_status", "packed");
+    await sb.from("orders")
+      .update({ packing_status: "packed", packed_at: now, packed_by: actor })
+      .in("id", orderIds).neq("packing_status", "packed");
+  }
+  await sb.from("packing_runs")
+    .update({ status: "packed", completed_at: now, completed_by: actor })
+    .eq("id", runId);
+}
+
 export async function createRun(waveId: string, slotCount: number, actor: string) {
   const { data, error } = await sb.rpc("assign_packing_run_slots", {
     p_wave_id: waveId,
