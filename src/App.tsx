@@ -37,6 +37,7 @@ import AdminOperatorStats from "./pages/admin/AdminOperatorStats";
 import AdminPackingWaves from "./pages/admin/AdminPackingWaves";
 import AdminPackingWaveDetail from "./pages/admin/AdminPackingWaveDetail";
 import AdminPackingRun from "./pages/admin/AdminPackingRun";
+import AdminStockoutDemand from "./pages/admin/AdminStockoutDemand";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -141,6 +142,7 @@ const App = () => (
                       <Route path="landing-pages" element={<AdminLandingPages />} />
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
+                      <Route path="stockout-demand" element={<AdminStockoutDemand />} />
                       
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />

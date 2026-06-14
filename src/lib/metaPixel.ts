@@ -134,3 +134,22 @@ export function trackMetaAddressSubmitted(orderId: string) {
   window.fbq?.("trackCustom", "AddressSubmitted", { order_id: orderId });
   debugLog("AddressSubmitted");
 }
+
+// ── Stockout (out-of-stock buyer intent) ──
+// Fires INSTEAD OF Purchase/Lead when the product is sold out at submit time.
+export function trackStockoutAttempt(params: {
+  productId: string;
+  productName?: string;
+  sku?: string | null;
+  value?: number;
+}) {
+  window.fbq?.("trackCustom", "OutOfStockAttempt", {
+    content_ids: [params.productId],
+    content_name: params.productName,
+    content_type: "product",
+    sku: params.sku,
+    value: params.value ?? 0,
+    currency: "GEL",
+  });
+  debugLog("OutOfStockAttempt");
+}

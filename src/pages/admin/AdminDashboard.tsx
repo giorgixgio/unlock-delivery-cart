@@ -12,6 +12,7 @@ import {
   TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
 } from "lucide-react";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
+import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
 
 const DELIVERY_FEE = 6.5;
@@ -219,6 +220,8 @@ const AdminDashboard = () => {
           <DeliveryZoneList />
         </div>
       </div>
+
+      <StockoutAlertCard />
 
       {/* Revenue — all live orders (review + confirmed) */}
       <section>

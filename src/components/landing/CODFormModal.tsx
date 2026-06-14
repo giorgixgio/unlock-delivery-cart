@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,9 @@ import { Product } from "@/lib/constants";
 import { createOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
+import { recordStockoutAttempt } from "@/lib/stockoutService";
+import { trackStockoutAttempt } from "@/lib/metaPixel";
+import StockoutMessageView from "./StockoutMessageView";
 
 const phoneSchema = z.object({
   phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
@@ -38,6 +42,9 @@ const CODFormModal = ({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [stockoutAttemptId, setStockoutAttemptId] = useState<string | null>(null);
+  const [showStockout, setShowStockout] = useState(false);
+  const navigate = useNavigate();
 
   const unitPrice = product.price;
   const totalBefore = unitPrice * quantity;
@@ -47,12 +54,39 @@ const CODFormModal = ({
   useEffect(() => {
     if (!open) {
       setSuccess(false);
+      setShowStockout(false);
+      setStockoutAttemptId(null);
       return;
     }
     const saved = loadCustomerInfo();
     if (saved?.phone) setPhone(saved.phone);
     trackPhoneFormViewed(product.id);
   }, [open]);
+
+  const handleStockoutBranch = async () => {
+    try {
+      const res = await recordStockoutAttempt({
+        productId: product.id,
+        sku: (product as any).sku ?? null,
+        productName: product.title,
+        phone,
+        quantity,
+        source: "landing_cod",
+        landingPageUrl: window.location.href,
+      });
+      setStockoutAttemptId(res.id);
+    } catch (e) {
+      console.warn("stockout record failed", e);
+    }
+    // Fire OutOfStockAttempt custom event ONLY — never Purchase/Lead.
+    trackStockoutAttempt({
+      productId: product.id,
+      productName: product.title,
+      sku: (product as any).sku ?? null,
+      value: totalAfter,
+    });
+    setShowStockout(true);
+  };
 
   const handleSubmit = async () => {
     const result = phoneSchema.safeParse({ phone });
@@ -97,7 +131,8 @@ const CODFormModal = ({
     } catch (err: any) {
       console.error("Phone order failed:", err);
       if (err?.message?.startsWith("OUT_OF_STOCK")) {
-        setError("პროდუქტი ამჟამად არ არის ხელმისაწვდომი.");
+        // Do NOT create a real order. Capture as stockout demand signal.
+        await handleStockoutBranch();
       } else {
         setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");
       }
@@ -109,7 +144,18 @@ const CODFormModal = ({
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="max-h-[80vh] rounded-t-2xl overflow-y-auto pb-8">
-        {success ? (
+        {showStockout ? (
+          <>
+            <SheetTitle className="sr-only">მარაგი ამოწურულია</SheetTitle>
+            <StockoutMessageView
+              attemptId={stockoutAttemptId}
+              onClose={() => {
+                onClose();
+                navigate("/");
+              }}
+            />
+          </>
+        ) : success ? (
           <div className="flex flex-col items-center justify-center py-10 gap-3">
             <CheckCircle2 className="w-14 h-14 text-success animate-bounce" />
             <p className="text-lg font-extrabold text-foreground">✔️ შეკვეთა დაფიქსირდა</p>
