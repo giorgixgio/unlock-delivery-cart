@@ -64,6 +64,7 @@ const CODFormModal = ({
   }, [open]);
 
   const handleStockoutBranch = async () => {
+    console.log("[stockout] OOS detected, recording attempt", { productId: product.id, phone });
     try {
       const res = await recordStockoutAttempt({
         productId: product.id,
@@ -74,9 +75,10 @@ const CODFormModal = ({
         source: "landing_cod",
         landingPageUrl: window.location.href,
       });
+      console.log("[stockout] attempt recorded", res);
       setStockoutAttemptId(res.id);
     } catch (e) {
-      console.warn("stockout record failed", e);
+      console.error("[stockout] record failed", e);
     }
     // Fire OutOfStockAttempt custom event ONLY — never Purchase/Lead.
     trackStockoutAttempt({
