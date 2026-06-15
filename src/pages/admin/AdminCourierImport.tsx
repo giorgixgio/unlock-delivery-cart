@@ -239,6 +239,19 @@ export default function AdminCourierImport() {
             )}
           </div>
           <p className="text-xs text-muted-foreground">იგივე ფაილის ხელახლა ატვირთვა უსაფრთხოა — დუბლიკატები არ შეიქმნება.</p>
+          {(parsing || uploading) && stage !== "idle" && stage !== "done" && (
+            <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded p-3">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="font-semibold">{stageLabel[stage]}</span>
+            </div>
+          )}
+          {stage === "done" && lastSummary && (
+            <Alert className="border-green-300 bg-green-50">
+              <CheckCircle2 className="w-4 h-4 text-green-700" />
+              <AlertTitle className="text-green-900">იმპორტი დასრულდა</AlertTitle>
+              <AlertDescription className="text-green-900 text-sm">{lastSummary}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
