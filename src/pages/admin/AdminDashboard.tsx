@@ -239,11 +239,11 @@ const AdminDashboard = () => {
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({applyToCount(stats.totalOrders)} orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
+          Revenue <span className="text-foreground">({applyToCount(stats.activeOrders)} active orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.totalOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.totalOrders) : 0)} accent="text-blue-500" size="lg" />
+          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.activeOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.activeOrders) : 0)} accent="text-blue-500" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
           <MetricCard icon={TruckIcon} label="Delivery Revenue" value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
         </div>
