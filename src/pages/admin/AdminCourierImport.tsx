@@ -71,6 +71,8 @@ export default function AdminCourierImport() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [parsing, setParsing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
+  const [lastSummary, setLastSummary] = useState<string | null>(null);
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [serverError, setServerError] = useState<{ message: string; details?: any } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
