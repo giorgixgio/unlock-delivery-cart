@@ -9,8 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, DollarSign, ShoppingCart, AlertTriangle, CheckCircle,
-  TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
+  TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon, PhoneOff,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CANCEL_REASON_LABEL } from "@/lib/cancelReasons";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
@@ -42,6 +44,9 @@ interface Stats {
   merged: number;
   tbilisiCount: number;
   regionCount: number;
+  eodRemaining: number;
+  retryNeeded: number;
+  cancelReasonBreakdown: Array<{ reason: string; count: number }>;
 }
 
 const AdminDashboard = () => {
@@ -57,7 +62,7 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at");
+        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason");
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
