@@ -265,6 +265,209 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_import_batches: {
+        Row: {
+          auto_linked_returns: number
+          created_at: string
+          error_rows: number
+          errors: Json
+          file_hash: string | null
+          file_name: string
+          id: string
+          new_history_rows: number
+          new_shipments: number
+          possible_returns: number
+          status: string
+          successful_rows: number
+          total_rows: number
+          updated_at: string
+          updated_shipments: number
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          auto_linked_returns?: number
+          created_at?: string
+          error_rows?: number
+          errors?: Json
+          file_hash?: string | null
+          file_name: string
+          id?: string
+          new_history_rows?: number
+          new_shipments?: number
+          possible_returns?: number
+          status?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          updated_shipments?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          auto_linked_returns?: number
+          created_at?: string
+          error_rows?: number
+          errors?: Json
+          file_hash?: string | null
+          file_name?: string
+          id?: string
+          new_history_rows?: number
+          new_shipments?: number
+          possible_returns?: number
+          status?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          updated_shipments?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      courier_shipments: {
+        Row: {
+          address: string | null
+          city: string | null
+          cod_amount: number | null
+          company_receives: number | null
+          created_at: string
+          current_courier_status: string | null
+          customer_name: string | null
+          derived_status: string | null
+          first_seen_at: string | null
+          id: string
+          last_seen_at: string | null
+          latest_status_date: string | null
+          linked_original_tracking_number: string | null
+          linked_return_tracking_number: string | null
+          order_number: string | null
+          original_order_id: string | null
+          phone: string | null
+          phone_normalized: string | null
+          quantity: number | null
+          shipment_type: string | null
+          sku: string | null
+          tracking_number: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          cod_amount?: number | null
+          company_receives?: number | null
+          created_at?: string
+          current_courier_status?: string | null
+          customer_name?: string | null
+          derived_status?: string | null
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          latest_status_date?: string | null
+          linked_original_tracking_number?: string | null
+          linked_return_tracking_number?: string | null
+          order_number?: string | null
+          original_order_id?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
+          quantity?: number | null
+          shipment_type?: string | null
+          sku?: string | null
+          tracking_number: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          cod_amount?: number | null
+          company_receives?: number | null
+          created_at?: string
+          current_courier_status?: string | null
+          customer_name?: string | null
+          derived_status?: string | null
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          latest_status_date?: string | null
+          linked_original_tracking_number?: string | null
+          linked_return_tracking_number?: string | null
+          order_number?: string | null
+          original_order_id?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
+          quantity?: number | null
+          shipment_type?: string | null
+          sku?: string | null
+          tracking_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_shipments_original_order_id_fkey"
+            columns: ["original_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_status_history: {
+        Row: {
+          cod_amount: number | null
+          company_receives: number | null
+          courier_shipment_id: string
+          courier_status: string | null
+          created_at: string
+          derived_status: string | null
+          id: string
+          import_batch_id: string | null
+          raw_row_json: Json | null
+          status_date: string | null
+          tracking_number: string | null
+        }
+        Insert: {
+          cod_amount?: number | null
+          company_receives?: number | null
+          courier_shipment_id: string
+          courier_status?: string | null
+          created_at?: string
+          derived_status?: string | null
+          id?: string
+          import_batch_id?: string | null
+          raw_row_json?: Json | null
+          status_date?: string | null
+          tracking_number?: string | null
+        }
+        Update: {
+          cod_amount?: number | null
+          company_receives?: number | null
+          courier_shipment_id?: string
+          courier_status?: string | null
+          created_at?: string
+          derived_status?: string | null
+          id?: string
+          import_batch_id?: string | null
+          raw_row_json?: Json | null
+          status_date?: string | null
+          tracking_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_status_history_courier_shipment_id_fkey"
+            columns: ["courier_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "courier_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_status_history_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "courier_import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_view_modifiers: {
         Row: {
           created_at: string
@@ -1312,6 +1515,54 @@ export type Database = {
           vendor?: string
         }
         Relationships: []
+      }
+      return_matches: {
+        Row: {
+          confidence_score: number
+          created_at: string
+          created_by: string | null
+          id: string
+          match_reason: string | null
+          matched_by: string
+          original_shipment_id: string
+          return_shipment_id: string
+        }
+        Insert: {
+          confidence_score?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_reason?: string | null
+          matched_by?: string
+          original_shipment_id: string
+          return_shipment_id: string
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_reason?: string | null
+          matched_by?: string
+          original_shipment_id?: string
+          return_shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_matches_original_shipment_id_fkey"
+            columns: ["original_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "courier_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_matches_return_shipment_id_fkey"
+            columns: ["return_shipment_id"]
+            isOneToOne: true
+            referencedRelation: "courier_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
