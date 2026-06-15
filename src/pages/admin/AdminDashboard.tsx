@@ -72,27 +72,34 @@ const AdminDashboard = () => {
       if (error) throw error;
       const all = orders || [];
 
-      // Exclude merged — they're not real orders
-      const active = all.filter((o) => o.status !== "merged");
-      // "Live" orders = exclude merged + canceled/returned
-      const live = active.filter((o) => o.status !== "canceled" && o.status !== "returned");
+      // Mutually-exclusive main status buckets
+      const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
+      const merged = all.filter((o) => o.status === "merged");
+      // Active = not canceled, not merged. This is the canonical denominator.
+      const active = all.filter(
+        (o) => o.status !== "canceled" && o.status !== "returned" && o.status !== "merged"
+      );
 
-      const needsReview = live.filter(
+      const needsReview = active.filter(
         (o) =>
           o.status === "new" || o.status === "on_hold" || o.status === "pending_bump" || !o.is_confirmed || o.review_required
       );
 
-      const confirmedOrders = live.filter((o) => o.is_confirmed && !o.is_fulfilled);
-      const fulfilled = live.filter((o) => o.is_fulfilled);
+      const confirmedOrders = active.filter((o) => o.is_confirmed && !o.is_fulfilled);
+      const fulfilled = active.filter((o) => o.is_fulfilled);
       const shipped = active.filter((o) => o.status === "shipped");
-      const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
-      const merged = all.filter((o) => o.status === "merged");
-      const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
-      const onHold = live.filter((o) => o.status === "on_hold");
+      const newOrders = active.filter((o) => o.status === "new" && !o.is_confirmed);
+      const onHold = active.filter((o) => o.status === "on_hold");
 
-      // Revenue = all live orders (non-merged, non-canceled).
+      // Raw confirmed across ALL orders (incl. canceled/merged) — used only to warn
+      // when an admin has confirmed orders that later got canceled/merged.
+      const rawConfirmedAll = all.filter((o) => o.is_confirmed).length;
+      // Confirmed-valid = confirmed AND active (same filter as denominator).
+      const confirmedValid = active.filter((o) => o.is_confirmed).length;
+
+      // Revenue = active orders only (excludes canceled + merged).
       // `total` already includes shipping_fee — never add it again.
-      const revenueOrders = live;
+      const revenueOrders = active;
       const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
       const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
       const productRevenue = totalRevenue - deliveryRevenue;
@@ -104,17 +111,20 @@ const AdminDashboard = () => {
         productRevenue,
         aov,
         confirmedCount: revenueOrders.length,
-        totalOrders: live.length,
+        totalOrders: all.length,
+        activeOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
+        confirmedValid,
+        rawConfirmed: rawConfirmedAll,
         fulfilled: fulfilled.length,
         shipped: shipped.length,
         newOrders: newOrders.length,
         onHold: onHold.length,
         canceled: canceled.length,
         merged: merged.length,
-        tbilisiCount: live.filter((o) => o.is_tbilisi).length,
-        regionCount: live.filter((o) => !o.is_tbilisi).length,
+        tbilisiCount: active.filter((o) => o.is_tbilisi).length,
+        regionCount: active.filter((o) => !o.is_tbilisi).length,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
