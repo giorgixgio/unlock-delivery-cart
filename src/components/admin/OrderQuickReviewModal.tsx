@@ -902,7 +902,24 @@ export default function OrderQuickReviewModal({
           </Button>
         </div>
       </div>
+
+      <CancelReasonModal
+        open={cancelOpen}
+        orderNumber={order?.public_order_number}
+        callAttemptCount={Number(order?.call_attempt_count || 0)}
+        preselect={cancelPreselect}
+        submitting={saving}
+        onCancel={() => { setCancelOpen(false); setCancelPreselect(null); }}
+        onConfirm={handleCancelConfirm}
+      />
+      <CallbackPickerModal
+        open={callbackOpen}
+        submitting={saving}
+        onCancel={() => setCallbackOpen(false)}
+        onConfirm={handleCallbackConfirm}
+      />
     </div>
+
   );
 }
 
