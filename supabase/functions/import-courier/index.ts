@@ -14,16 +14,17 @@ type Field =
   | "tracking_number" | "courier_status" | "status_date" | "cod_amount" | "company_receives"
   | "phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number";
 
-const HEADER_ALIASES: Record<Field, string[]> = {
-  tracking_number: ["შტრიხკოდი", "ნომერი", "tracking", "tracking_number", "barcode", "ზედნადები"],
+// Fallback aliases only used if DB mapping is missing for a field.
+const FALLBACK_ALIASES: Record<Field, string[]> = {
+  tracking_number: ["თრექინგი", "შტრიხკოდი", "ნომერი", "tracking", "barcode"],
   courier_status: ["სტატუსი", "მიმდინარე სტატუსი", "status"],
-  status_date: ["სტატუსის თარიღი", "თარიღი", "date", "სტატუსი თარიღი"],
-  cod_amount: ["თანხა", "გადასახდელი", "cod", "cod_amount", "ღირებულება"],
-  company_receives: ["კომპანია იღებს", "ჩასარიცხი", "company_receives", "ჩარიცხვა"],
-  phone: ["ტელეფონი", "მობილური", "phone", "ნომერი ტელეფონი"],
-  customer_name: ["სახელი", "მიმღები", "მყიდველი", "name", "customer"],
-  city: ["ქალაქი", "city"],
-  address: ["მისამართი", "address"],
+  status_date: ["დას. თარიღი", "სტატუსის თარიღი", "თარიღი", "date"],
+  cod_amount: ["cod - გადახდა კურიერთან", "cod", "თანხა", "გადასახდელი"],
+  company_receives: ["კომპანიას ერიცხება", "კომპანია იღებს", "ჩასარიცხი"],
+  phone: ["მიმღ. ტელეფონი", "ტელეფონი", "მობილური", "phone"],
+  customer_name: ["მიმღ. სახელი, გვარი", "მიმღები", "სახელი", "name"],
+  city: ["მიმღ. ქალაქი", "ქალაქი", "city"],
+  address: ["მიმღ. მისამართი", "მისამართი", "address"],
   sku: ["sku", "არტიკული", "კოდი"],
   quantity: ["რაოდენობა", "ცალი", "qty", "quantity"],
   order_number: ["შეკვეთის ნომერი", "order", "order_number"],
@@ -33,19 +34,58 @@ function normHeader(s: any): string {
   return String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function buildHeaderMap(headers: string[]): Partial<Record<Field, number>> {
+type MappingRow = { target_field: string; source_header: string | null; occurrence: number };
+
+function buildHeaderMap(
+  headers: string[],
+  mappings: MappingRow[],
+): Partial<Record<Field, number>> {
   const map: Partial<Record<Field, number>> = {};
   const normalized = headers.map(normHeader);
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES) as [Field, string[]][]) {
-    for (let i = 0; i < normalized.length; i++) {
-      if (map[field] !== undefined) break;
-      const h = normalized[i];
-      if (aliases.some((a) => h === a.toLowerCase() || h.includes(a.toLowerCase()))) {
-        map[field] = i;
+  const fields: Field[] = [
+    "tracking_number","courier_status","status_date","cod_amount","company_receives",
+    "phone","customer_name","city","address","sku","quantity","order_number",
+  ];
+  for (const field of fields) {
+    const dbRows = mappings
+      .filter((m) => m.target_field === field && m.source_header)
+      .sort((a, b) => (a.occurrence || 1) - (b.occurrence || 1));
+    let found = false;
+    for (const m of dbRows) {
+      const want = normHeader(m.source_header);
+      let seen = 0;
+      for (let i = 0; i < normalized.length; i++) {
+        if (normalized[i] === want) {
+          seen++;
+          if (seen === (m.occurrence || 1)) { map[field] = i; found = true; break; }
+        }
       }
+      if (found) break;
+    }
+    if (found) continue;
+    for (const alias of FALLBACK_ALIASES[field]) {
+      const a = alias.toLowerCase();
+      const idx = normalized.findIndex((h) => h === a || h.includes(a));
+      if (idx >= 0) { map[field] = idx; break; }
     }
   }
   return map;
+}
+
+// Some courier files start with a title row. Find the actual header row by
+// scanning the first 15 rows for the configured tracking-number header.
+function findHeaderRow(rows: any[][], mappings: MappingRow[]): number {
+  const tn = mappings.find((m) => m.target_field === "tracking_number")?.source_header;
+  const wanted = new Set([
+    tn ? normHeader(tn) : "თრექინგი",
+    "თრექინგი", "შტრიხკოდი", "tracking", "tracking_number",
+  ]);
+  const limit = Math.min(rows.length, 15);
+  for (let i = 0; i < limit; i++) {
+    const row = (rows[i] || []).map(normHeader);
+    if (row.some((c) => wanted.has(c))) return i;
+  }
+  return 0;
 }
 
 // ---------- Derived status ----------
