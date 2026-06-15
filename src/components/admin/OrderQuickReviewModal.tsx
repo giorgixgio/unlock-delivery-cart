@@ -203,6 +203,11 @@ export default function OrderQuickReviewModal({
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Cancel + callback modals
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
+  const [callbackOpen, setCallbackOpen] = useState(false);
+
   const actor = user?.email || "admin";
 
   // Load order whenever id changes & mark viewed
