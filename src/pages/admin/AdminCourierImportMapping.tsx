@@ -68,12 +68,15 @@ export default function AdminCourierImportMapping() {
       const wb = XLSX.read(new Uint8Array(buf), { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const all: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
-      // find header row (looks for თრექინგი)
-      let idx = 0;
+      const known = ["თრექინგი", "შტრიხკოდი", "სტატუსი", "მიმღ. ქალაქი", "მიმღ. მისამართი", "მიმღ. ტელეფონი", "კომპანიას ერიცხება", "cod - გადახდა კურიერთან"];
+      let idx = -1, best = 0;
       for (let i = 0; i < Math.min(all.length, 15); i++) {
-        const r = (all[i] || []).map((c) => String(c ?? "").toLowerCase().trim());
-        if (r.some((c) => c === "თრექინგი" || c.includes("tracking") || c === "შტრიხკოდი")) { idx = i; break; }
+        const cells = (all[i] || []).map((c) => String(c ?? "").toLowerCase().trim()).filter(Boolean);
+        if (cells.length < 3) continue;
+        const s = cells.reduce((acc, c) => acc + (known.some((k) => c === k.toLowerCase() || c.includes(k.toLowerCase())) ? 1 : 0), 0);
+        if (s > best) { best = s; idx = i; }
       }
+      if (idx < 0) idx = all.length > 1 ? 1 : 0;
       setDetected((all[idx] || []).map((h) => String(h ?? "")));
       toast({ title: "Headers detected", description: `Row ${idx + 1}, ${all[idx]?.length || 0} columns` });
     } catch (e: any) {
