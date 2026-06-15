@@ -26,11 +26,14 @@ interface Stats {
   aov: number;
   confirmedCount: number;
   totalOrders: number;
+  totalRealOrders: number;
   activeOrders: number;
   needsReview: number;
   confirmed: number;
   confirmedValid: number;
   rawConfirmed: number;
+  successful: number;
+  successfulActive: number;
   fulfilled: number;
   shipped: number;
   newOrders: number;
