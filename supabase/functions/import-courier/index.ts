@@ -184,12 +184,22 @@ Deno.serve(async (req) => {
     if (rows.length < 2) {
       return new Response(JSON.stringify({ error: "Empty file" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const headers = rows[0].map((h) => String(h ?? ""));
-    const hmap = buildHeaderMap(headers);
+
+    // Load mappings from DB (admin client)
+    const { data: mappingsData } = await admin
+      .from("courier_import_mappings")
+      .select("target_field, source_header, occurrence");
+    const mappings: MappingRow[] = (mappingsData as any) || [];
+
+    const headerRowIdx = findHeaderRow(rows, mappings);
+    const headers = (rows[headerRowIdx] || []).map((h: any) => String(h ?? ""));
+    const dataStart = headerRowIdx + 1;
+    const hmap = buildHeaderMap(headers, mappings);
     if (hmap.tracking_number === undefined) {
-      return new Response(JSON.stringify({ error: "Missing tracking number column", detected_headers: headers }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({
+        error: "Missing tracking number column — check Import Mapping settings",
+        detected_headers: headers,
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Create batch (processing)
