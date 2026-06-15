@@ -78,6 +78,9 @@ interface OrderRow {
   operator_viewed_at: string | null;
   operator_review_status: string | null;
   call_outcome: string | null;
+  call_attempt_count: number | null;
+  next_call_after: string | null;
+  final_cancel_reason: string | null;
   order_items: { image_url: string; quantity: number }[];
   /** Number of total orders from this customer (set by grouping) */
   _customerOrderCount?: number;
@@ -169,7 +172,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
@@ -564,6 +567,24 @@ const AdminOrders = () => {
                       {order.review_required && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 w-fit">
                           Review needed
+                        </span>
+                      )}
+                      {Number(order.call_attempt_count || 0) > 0 && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border w-fit ${
+                            order.call_attempt_count === 1
+                              ? "bg-amber-100 text-amber-800 border-amber-300"
+                              : order.call_attempt_count === 2
+                              ? "bg-orange-100 text-orange-800 border-orange-300"
+                              : "bg-red-100 text-red-800 border-red-300"
+                          }`}
+                        >
+                          არ პასუხობს {order.call_attempt_count}/3
+                        </span>
+                      )}
+                      {order.next_call_after && order.status === "on_hold" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-800 border-blue-300 w-fit">
+                          ⏰ {new Date(order.next_call_after).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
                     </div>
