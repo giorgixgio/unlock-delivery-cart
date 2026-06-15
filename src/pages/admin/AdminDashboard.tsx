@@ -118,6 +118,28 @@ const AdminDashboard = () => {
       const productRevenue = totalRevenue - deliveryRevenue;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
+      // End-of-day unresolved: still in operator workflow (not confirmed/canceled/fulfilled/merged),
+      // and any scheduled callback is already in the past (or unset).
+      const nowMs = Date.now();
+      const unresolved = realOrders.filter((o) => {
+        if (o.is_confirmed || o.is_fulfilled) return false;
+        if (o.status === "canceled" || o.status === "returned") return false;
+        const nca = (o as any).next_call_after ? new Date((o as any).next_call_after).getTime() : null;
+        if (nca && nca > nowMs) return false; // future callback = resolved-for-now
+        return true;
+      });
+      const retryNeeded = unresolved.filter((o) => Number((o as any).call_attempt_count || 0) > 0).length;
+
+      // Cancellation reason breakdown
+      const reasonMap = new Map<string, number>();
+      for (const o of canceled) {
+        const r = (o as any).final_cancel_reason || "unspecified";
+        reasonMap.set(r, (reasonMap.get(r) || 0) + 1);
+      }
+      const cancelReasonBreakdown = Array.from(reasonMap.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
+
       setStats({
         totalRevenue,
         deliveryRevenue,
@@ -141,6 +163,9 @@ const AdminDashboard = () => {
         merged: merged.length,
         tbilisiCount: active.filter((o) => o.is_tbilisi).length,
         regionCount: active.filter((o) => !o.is_tbilisi).length,
+        eodRemaining: unresolved.length,
+        retryNeeded,
+        cancelReasonBreakdown,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
