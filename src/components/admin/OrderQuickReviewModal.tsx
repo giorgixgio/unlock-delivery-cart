@@ -16,6 +16,15 @@ import {
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import { startSession, markAction, endSession } from "@/lib/operatorSession";
+import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
+import CancelReasonModal from "@/components/admin/CancelReasonModal";
+import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
+import {
+  recordNoAnswerAttempt,
+  cancelOrderWithReason,
+  scheduleCallback,
+} from "@/lib/callAttemptService";
+import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
@@ -131,6 +140,11 @@ interface OrderFull {
   operator_review_status: string | null;
   operator_viewed_at: string | null;
   call_outcome: string | null;
+  call_attempt_count: number | null;
+  last_call_attempt_at: string | null;
+  last_call_attempt_by: string | null;
+  next_call_after: string | null;
+  final_cancel_reason: string | null;
   order_items: OrderItem[];
 }
 
@@ -189,6 +203,11 @@ export default function OrderQuickReviewModal({
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Cancel + callback modals
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
+  const [callbackOpen, setCallbackOpen] = useState(false);
+
   const actor = user?.email || "admin";
 
   // Load order whenever id changes & mark viewed
@@ -206,7 +225,7 @@ export default function OrderQuickReviewModal({
       const { data } = await supabase
         .from("orders")
         .select(
-          "id, public_order_number, created_at, status, payment_method, customer_name, customer_phone, city, region, address_line1, address_line2, raw_city, raw_address, normalized_city, normalized_address, subtotal, shipping_fee, discount_total, total, is_confirmed, is_fulfilled, is_tbilisi, internal_note, notes_customer, operator_review_status, operator_viewed_at, call_outcome, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)"
+          "id, public_order_number, created_at, status, payment_method, customer_name, customer_phone, city, region, address_line1, address_line2, raw_city, raw_address, normalized_city, normalized_address, subtotal, shipping_fee, discount_total, total, is_confirmed, is_fulfilled, is_tbilisi, internal_note, notes_customer, operator_review_status, operator_viewed_at, call_outcome, call_attempt_count, last_call_attempt_at, last_call_attempt_by, next_call_after, final_cancel_reason, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)"
         )
         .eq("id", orderId)
         .maybeSingle();
@@ -346,11 +365,67 @@ export default function OrderQuickReviewModal({
   };
 
   /** Click handler for outcome buttons.
-   *  Confirmed = full save (address/notes) + status change.
-   *  Other outcomes = save current edits + outcome label + mapped status.
-   *  Always auto-advances on success when hasNext. */
+   *  - confirmed: full save + status change (legacy).
+   *  - no_answer: increments call_attempt_count, keeps status; auto-advances.
+   *  - cancelled / wrong_number / duplicate: opens cancel-reason modal (preselected).
+   *  - callback: opens callback picker.
+   */
   const handleOutcome = async (outcome: Outcome) => {
     if (!order) return;
+
+    // No-Answer = retry counter, not a final status.
+    if (outcome === "no_answer") {
+      setSaving(true);
+      const result = await recordNoAnswerAttempt(order.id, actor);
+      setSaving(false);
+      if (!result) {
+        toast({ title: "ვერ შეინახა", variant: "destructive" });
+        return;
+      }
+      markAction("call_attempt");
+      const max = DEFAULT_MAX_CALL_ATTEMPTS;
+      const nowIso = new Date().toISOString();
+      onOrderUpdated(order.id, {
+        call_attempt_count: result.count,
+        last_call_attempt_at: nowIso,
+        last_call_attempt_by: actor,
+        operator_review_status: "no_answer",
+        call_outcome: "no_answer",
+      });
+      setOrder({
+        ...order,
+        call_attempt_count: result.count,
+        last_call_attempt_at: nowIso,
+        last_call_attempt_by: actor,
+        operator_review_status: "no_answer",
+        call_outcome: "no_answer",
+      });
+      toast({ title: `ცდა შენახულია: არ პასუხობს ${result.count}/${max}` });
+      void endSession("no_answer", "no_answer");
+      if (hasNext) setTimeout(() => goNext(), 280);
+      return;
+    }
+
+    // Callback → open scheduler
+    if (outcome === "callback") {
+      setCallbackOpen(true);
+      return;
+    }
+
+    // Cancellations route through reason modal
+    if (outcome === "cancelled" || outcome === "wrong_number" || outcome === "duplicate") {
+      setCancelPreselect(
+        outcome === "wrong_number"
+          ? "wrong_number"
+          : outcome === "duplicate"
+          ? "duplicate_order"
+          : null,
+      );
+      setCancelOpen(true);
+      return;
+    }
+
+    // Confirmed (legacy path) — full save + status change
     const def = OUTCOMES.find((o) => o.key === outcome)!;
     setSaving(true);
     const updates = collectEditUpdates();
@@ -366,24 +441,69 @@ export default function OrderQuickReviewModal({
     if (!ok) { setSaving(false); return; }
 
     markAction("outcome");
-
     await logSystemEvent({
       entityType: "order", entityId: order.id,
       eventType: "ORDER_CALL_OUTCOME" as any, actorId: actor,
       payload: { outcome, mapped_status: def.status || null },
     });
-
     setSaving(false);
     toast({ title: `${def.label} — შენახულია` });
-
-    // End session with outcome so handling time + outcome are recorded.
     void endSession("outcome", outcome);
-
-    if (hasNext) {
-      // small feedback delay so operator sees selected state before advancing
-      setTimeout(() => { goNext(); }, 320);
-    }
+    if (hasNext) setTimeout(() => goNext(), 320);
   };
+
+  const handleCancelConfirm = async (reason: CancelReason, note: string | null) => {
+    if (!order) return;
+    setSaving(true);
+    // Save current edits first so address/notes aren't lost
+    const editUpdates = collectEditUpdates();
+    if (Object.keys(editUpdates).length > 0) await persistUpdates(editUpdates);
+
+    const ok = await cancelOrderWithReason(
+      order.id, actor, reason, note,
+      Number(order.call_attempt_count || 0),
+    );
+    setSaving(false);
+    if (!ok) { toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" }); return; }
+    markAction("cancel");
+    setCancelOpen(false);
+    setCancelPreselect(null);
+    const patch = {
+      status: "canceled",
+      is_confirmed: false,
+      final_cancel_reason: reason,
+      final_cancel_note: note,
+      operator_review_status: "cancelled",
+      call_outcome: "cancelled",
+    };
+    onOrderUpdated(order.id, patch);
+    setOrder({ ...order, ...(patch as Partial<OrderFull>) });
+    toast({ title: "შეკვეთა გაუქმდა" });
+    void endSession("outcome", "cancelled");
+    if (hasNext) setTimeout(() => goNext(), 280);
+  };
+
+  const handleCallbackConfirm = async (whenIso: string) => {
+    if (!order) return;
+    setSaving(true);
+    const ok = await scheduleCallback(order.id, actor, whenIso);
+    setSaving(false);
+    if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
+    markAction("callback");
+    setCallbackOpen(false);
+    const patch = {
+      status: "on_hold",
+      next_call_after: whenIso,
+      operator_review_status: "callback",
+      call_outcome: "callback",
+    };
+    onOrderUpdated(order.id, patch);
+    setOrder({ ...order, ...(patch as Partial<OrderFull>) });
+    toast({ title: `გადარეკვა დანიშნულია: ${new Date(whenIso).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` });
+    void endSession("outcome", "callback");
+    if (hasNext) setTimeout(() => goNext(), 280);
+  };
+
 
   const copyPhone = () => {
     if (!order) return;
@@ -586,30 +706,49 @@ export default function OrderQuickReviewModal({
                 )}
               </section>
 
+              {/* Call attempts */}
+              <CallAttemptsPanel
+                count={Number(order.call_attempt_count || 0)}
+                lastAt={order.last_call_attempt_at}
+                lastBy={order.last_call_attempt_by}
+                nextCallAfter={order.next_call_after}
+              />
+
               {/* Outcome buttons */}
               <section className="rounded-lg border border-border p-3 bg-card">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">ზარის შედეგი</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {OUTCOMES.map((o) => {
                     const isSel = currentOutcome === o.key;
+                    const attempts = Number(order.call_attempt_count || 0);
+                    const maxReached = attempts >= DEFAULT_MAX_CALL_ATTEMPTS;
+                    const isNoAnswer = o.key === "no_answer";
+                    const disabled = saving || (isNoAnswer && maxReached);
+                    const label = isNoAnswer
+                      ? maxReached
+                        ? "მაქს. ცდები ⛔"
+                        : `არ პასუხობს — ცდა ${attempts + 1}/${DEFAULT_MAX_CALL_ATTEMPTS}`
+                      : o.label;
                     return (
                       <button
                         key={o.key}
                         type="button"
-                        disabled={saving}
+                        disabled={disabled}
                         onClick={() => handleOutcome(o.key)}
                         className={`relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border-2 font-bold text-sm transition-all disabled:opacity-60 ${isSel ? o.selected + " scale-[1.02]" : o.unselected}`}
+                        title={isNoAnswer && maxReached ? "გააუქმე მიზეზით: არ პასუხობს რამდენიმე ცდის შემდეგ" : undefined}
                       >
                         {isSel ? <Check className="w-4 h-4" /> : <o.Icon className="w-4 h-4" />}
-                        <span className="truncate">{o.label}</span>
+                        <span className="truncate">{label}</span>
                       </button>
                     );
                   })}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">
-                  „დადასტურდა" ინახავს ყველა შესწორებას (მისამართი, შენიშვნა, პროდუქტები) და სტატუსს ცვლის — ისევე როგორც ქვედა „შენახვა".
+                  „არ პასუხობს" ინახავს ცდას და გადადის შემდეგ შეკვეთაზე — სტატუსი არ იცვლება. „გაუქმდა" საჭიროებს მიზეზის არჩევას.
                 </p>
               </section>
+
 
               {/* Address */}
               <section className="rounded-lg border border-border p-3 bg-card space-y-3">
@@ -763,7 +902,24 @@ export default function OrderQuickReviewModal({
           </Button>
         </div>
       </div>
+
+      <CancelReasonModal
+        open={cancelOpen}
+        orderNumber={order?.public_order_number}
+        callAttemptCount={Number(order?.call_attempt_count || 0)}
+        preselect={cancelPreselect}
+        submitting={saving}
+        onCancel={() => { setCancelOpen(false); setCancelPreselect(null); }}
+        onConfirm={handleCancelConfirm}
+      />
+      <CallbackPickerModal
+        open={callbackOpen}
+        submitting={saving}
+        onCancel={() => setCallbackOpen(false)}
+        onConfirm={handleCallbackConfirm}
+      />
     </div>
+
   );
 }
 

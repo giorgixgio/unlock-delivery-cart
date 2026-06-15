@@ -9,8 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, DollarSign, ShoppingCart, AlertTriangle, CheckCircle,
-  TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon,
+  TruckIcon, XCircle, Merge, Package, Banknote, CalendarIcon, PhoneOff,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CANCEL_REASON_LABEL } from "@/lib/cancelReasons";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
@@ -42,6 +44,9 @@ interface Stats {
   merged: number;
   tbilisiCount: number;
   regionCount: number;
+  eodRemaining: number;
+  retryNeeded: number;
+  cancelReasonBreakdown: Array<{ reason: string; count: number }>;
 }
 
 const AdminDashboard = () => {
@@ -57,7 +62,7 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at");
+        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason");
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
@@ -113,6 +118,28 @@ const AdminDashboard = () => {
       const productRevenue = totalRevenue - deliveryRevenue;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
+      // End-of-day unresolved: still in operator workflow (not confirmed/canceled/fulfilled/merged),
+      // and any scheduled callback is already in the past (or unset).
+      const nowMs = Date.now();
+      const unresolved = realOrders.filter((o) => {
+        if (o.is_confirmed || o.is_fulfilled) return false;
+        if (o.status === "canceled" || o.status === "returned") return false;
+        const nca = (o as any).next_call_after ? new Date((o as any).next_call_after).getTime() : null;
+        if (nca && nca > nowMs) return false; // future callback = resolved-for-now
+        return true;
+      });
+      const retryNeeded = unresolved.filter((o) => Number((o as any).call_attempt_count || 0) > 0).length;
+
+      // Cancellation reason breakdown
+      const reasonMap = new Map<string, number>();
+      for (const o of canceled) {
+        const r = (o as any).final_cancel_reason || "unspecified";
+        reasonMap.set(r, (reasonMap.get(r) || 0) + 1);
+      }
+      const cancelReasonBreakdown = Array.from(reasonMap.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
+
       setStats({
         totalRevenue,
         deliveryRevenue,
@@ -136,6 +163,9 @@ const AdminDashboard = () => {
         merged: merged.length,
         tbilisiCount: active.filter((o) => o.is_tbilisi).length,
         regionCount: active.filter((o) => !o.is_tbilisi).length,
+        eodRemaining: unresolved.length,
+        retryNeeded,
+        cancelReasonBreakdown,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -374,8 +404,66 @@ const AdminDashboard = () => {
       </section>
 
 
+      <Separator />
+
+      {/* End-of-Day / Call attempts */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          End of Day & Call Attempts
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <Link to="/admin/orders?filter=unresolved" className="block">
+            <MetricCard
+              icon={AlertTriangle}
+              label="End of Day Remaining"
+              value={applyToCount(stats.eodRemaining)}
+              accent="text-amber-600"
+              highlight={stats.eodRemaining > 0}
+              size="lg"
+              subtext="Not confirmed, canceled, fulfilled or merged · excludes future callbacks"
+            />
+          </Link>
+          <Link to="/admin/orders?filter=retry" className="block">
+            <MetricCard
+              icon={PhoneOff}
+              label="Retry Needed"
+              value={applyToCount(stats.retryNeeded)}
+              accent="text-orange-500"
+              subtext="No-answer attempts pending finalization"
+            />
+          </Link>
+          <MetricCard
+            icon={XCircle}
+            label="Canceled after Attempts"
+            value={applyToCount(stats.cancelReasonBreakdown.find((r) => r.reason === "no_answer_after_attempts")?.count || 0)}
+            accent="text-red-500"
+            subtext="Finalized after max no-answer attempts"
+          />
+        </div>
+
+        {stats.cancelReasonBreakdown.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Cancellation Reasons
+            </div>
+            <Card>
+              <CardContent className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {stats.cancelReasonBreakdown.map((r) => (
+                  <div key={r.reason} className="flex items-center justify-between text-sm border-b border-border/40 last:border-0 py-1.5">
+                    <span className="text-muted-foreground truncate pr-2">
+                      {CANCEL_REASON_LABEL[r.reason] || r.reason}
+                    </span>
+                    <span className="font-bold tabular-nums">{applyToCount(r.count)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </section>
 
       <Separator />
+
 
       {/* Shipped */}
       <section>

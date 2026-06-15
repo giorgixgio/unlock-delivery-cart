@@ -679,9 +679,12 @@ export type Database = {
           auto_confirm_reason: string | null
           auto_confirmed: boolean | null
           batch_id: string | null
+          call_attempt_count: number
+          call_attempt_history: Json
           call_outcome: string | null
           call_outcome_updated_at: string | null
           call_outcome_updated_by: string | null
+          canceled_after_attempts: boolean
           channel: string
           city: string
           cookie_id_hash: string | null
@@ -693,14 +696,19 @@ export type Database = {
           customer_name: string
           customer_phone: string
           discount_total: number
+          final_cancel_note: string | null
+          final_cancel_reason: string | null
           id: string
           internal_note: string | null
           ip_address: string | null
           is_confirmed: boolean
           is_fulfilled: boolean
           is_tbilisi: boolean
+          last_call_attempt_at: string | null
+          last_call_attempt_by: string | null
           merged_child_order_ids: string[] | null
           merged_into_order_id: string | null
+          next_call_after: string | null
           normalization_confidence: number | null
           normalization_notes: string | null
           normalized_address: string | null
@@ -746,9 +754,12 @@ export type Database = {
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
           batch_id?: string | null
+          call_attempt_count?: number
+          call_attempt_history?: Json
           call_outcome?: string | null
           call_outcome_updated_at?: string | null
           call_outcome_updated_by?: string | null
+          canceled_after_attempts?: boolean
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -760,14 +771,19 @@ export type Database = {
           customer_name: string
           customer_phone: string
           discount_total?: number
+          final_cancel_note?: string | null
+          final_cancel_reason?: string | null
           id?: string
           internal_note?: string | null
           ip_address?: string | null
           is_confirmed?: boolean
           is_fulfilled?: boolean
           is_tbilisi?: boolean
+          last_call_attempt_at?: string | null
+          last_call_attempt_by?: string | null
           merged_child_order_ids?: string[] | null
           merged_into_order_id?: string | null
+          next_call_after?: string | null
           normalization_confidence?: number | null
           normalization_notes?: string | null
           normalized_address?: string | null
@@ -813,9 +829,12 @@ export type Database = {
           auto_confirm_reason?: string | null
           auto_confirmed?: boolean | null
           batch_id?: string | null
+          call_attempt_count?: number
+          call_attempt_history?: Json
           call_outcome?: string | null
           call_outcome_updated_at?: string | null
           call_outcome_updated_by?: string | null
+          canceled_after_attempts?: boolean
           channel?: string
           city?: string
           cookie_id_hash?: string | null
@@ -827,14 +846,19 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           discount_total?: number
+          final_cancel_note?: string | null
+          final_cancel_reason?: string | null
           id?: string
           internal_note?: string | null
           ip_address?: string | null
           is_confirmed?: boolean
           is_fulfilled?: boolean
           is_tbilisi?: boolean
+          last_call_attempt_at?: string | null
+          last_call_attempt_by?: string | null
           merged_child_order_ids?: string[] | null
           merged_into_order_id?: string | null
+          next_call_after?: string | null
           normalization_confidence?: number | null
           normalization_notes?: string | null
           normalized_address?: string | null
