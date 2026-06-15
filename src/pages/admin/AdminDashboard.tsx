@@ -404,8 +404,66 @@ const AdminDashboard = () => {
       </section>
 
 
+      <Separator />
+
+      {/* End-of-Day / Call attempts */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          End of Day & Call Attempts
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <Link to="/admin/orders?filter=unresolved" className="block">
+            <MetricCard
+              icon={AlertTriangle}
+              label="End of Day Remaining"
+              value={applyToCount(stats.eodRemaining)}
+              accent="text-amber-600"
+              highlight={stats.eodRemaining > 0}
+              size="lg"
+              subtext="Not confirmed, canceled, fulfilled or merged · excludes future callbacks"
+            />
+          </Link>
+          <Link to="/admin/orders?filter=retry" className="block">
+            <MetricCard
+              icon={PhoneOff}
+              label="Retry Needed"
+              value={applyToCount(stats.retryNeeded)}
+              accent="text-orange-500"
+              subtext="No-answer attempts pending finalization"
+            />
+          </Link>
+          <MetricCard
+            icon={XCircle}
+            label="Canceled after Attempts"
+            value={applyToCount(stats.cancelReasonBreakdown.find((r) => r.reason === "no_answer_after_attempts")?.count || 0)}
+            accent="text-red-500"
+            subtext="Finalized after max no-answer attempts"
+          />
+        </div>
+
+        {stats.cancelReasonBreakdown.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              Cancellation Reasons
+            </div>
+            <Card>
+              <CardContent className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {stats.cancelReasonBreakdown.map((r) => (
+                  <div key={r.reason} className="flex items-center justify-between text-sm border-b border-border/40 last:border-0 py-1.5">
+                    <span className="text-muted-foreground truncate pr-2">
+                      {CANCEL_REASON_LABEL[r.reason] || r.reason}
+                    </span>
+                    <span className="font-bold tabular-nums">{applyToCount(r.count)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </section>
 
       <Separator />
+
 
       {/* Shipped */}
       <section>
