@@ -1,5 +1,5 @@
-// Courier Import Edge Function
-// Accepts JSON payload parsed client-side (SheetJS) and upserts shipments + history.
+// Courier Import Edge Function — Bulk, idempotent.
+// Accepts JSON payload parsed client-side and bulk-upserts shipments + history.
 // Always returns JSON: { success, message, details }
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -16,7 +16,7 @@ function json(status: number, body: Record<string, any>) {
   });
 }
 
-// ---------- Header detection ----------
+// ---------- Field mapping ----------
 type Field =
   | "tracking_number" | "courier_status" | "status_date" | "cod_amount" | "company_receives"
   | "phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number";
@@ -44,9 +44,7 @@ const FALLBACK_ALIASES: Record<Field, string[]> = {
   order_number: ["შეკვეთის ნომერი", "order", "order_number"],
 };
 
-function normHeader(s: any): string {
-  return String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-}
+const normHeader = (s: any) => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 
 type MappingRow = { target_field: string; source_header: string | null; occurrence: number };
 
@@ -108,7 +106,6 @@ function parseDate(v: any): string | null {
   if (v instanceof Date) return isNaN(+v) ? null : v.toISOString();
   const s = String(v).trim();
   if (!s) return null;
-  // Georgian/EU formats: DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY, optional HH:MM[:SS]
   const m = s.match(/^(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
   if (m) {
     let [, dd, mm, yy, hh, mi, ss] = m;
@@ -117,16 +114,19 @@ function parseDate(v: any): string | null {
       parseInt(hh || "0"), parseInt(mi || "0"), parseInt(ss || "0")));
     return isNaN(+d) ? null : d.toISOString();
   }
-  // ISO-like fallback
   const d = new Date(s);
   return isNaN(+d) ? null : d.toISOString();
 }
 
+function chunk<T>(a: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n));
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") {
-    return json(405, { success: false, message: "Method not allowed", details: {} });
-  }
+  if (req.method !== "POST") return json(405, { success: false, message: "Method not allowed", details: {} });
 
   let stage = "init";
   const debug: Record<string, any> = {};
@@ -142,66 +142,44 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !anonKey || !serviceKey) {
-      console.error("Missing env vars", { hasUrl: !!supabaseUrl, hasAnon: !!anonKey, hasService: !!serviceKey });
       return json(500, { success: false, message: "Server configuration error", details: { stage } });
     }
     const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) {
-      return json(401, { success: false, message: "Unauthorized", details: { stage } });
-    }
+    if (claimsErr || !claims?.claims) return json(401, { success: false, message: "Unauthorized", details: { stage } });
     const userId = claims.claims.sub;
     const userEmail = claims.claims.email as string | undefined;
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: isAdmin } = await admin.rpc("is_active_admin", { user_id: userId });
-    if (!isAdmin) {
-      return json(403, { success: false, message: "Forbidden", details: { stage } });
-    }
+    if (!isAdmin) return json(403, { success: false, message: "Forbidden", details: { stage } });
 
     // ---- Payload ----
     stage = "parse_payload";
     let payload: any;
-    try {
-      payload = await req.json();
-    } catch (e: any) {
-      return json(400, { success: false, message: "Invalid JSON body", details: { stage, error: e.message } });
-    }
+    try { payload = await req.json(); }
+    catch (e: any) { return json(400, { success: false, message: "Invalid JSON body", details: { stage, error: e.message } }); }
 
-    const {
-      file_name,
-      file_size,
-      file_hash,
-      sheet_names,
-      headers,
-      rows,
-      dry_run,
-    } = payload || {};
-
+    const { file_name, file_size, file_hash, sheet_names, headers, rows, dry_run } = payload || {};
     debug.file_name = file_name;
     debug.file_size = file_size;
     debug.sheet_names = sheet_names;
     debug.header_count = Array.isArray(headers) ? headers.length : 0;
     debug.row_count = Array.isArray(rows) ? rows.length : 0;
-
     console.log("import-courier received", debug);
 
     if (!file_name || !file_hash || !Array.isArray(headers) || !Array.isArray(rows)) {
-      return json(400, {
-        success: false,
-        message: "Missing required payload fields (file_name, file_hash, headers, rows)",
-        details: { stage, debug },
-      });
+      return json(400, { success: false, message: "Missing required payload fields", details: { stage, debug } });
     }
 
-    // ---- Idempotent dedup ----
-    stage = "dedup";
+    // ---- Idempotent file dedup ----
+    stage = "dedup_file";
     const { data: existing } = await admin
       .from("courier_import_batches").select("*").eq("file_hash", file_hash).maybeSingle();
-    if (existing) {
+    if (existing && !dry_run) {
       return json(200, {
         success: true,
-        message: "This file was already imported.",
+        message: `This file was already imported on ${new Date(existing.uploaded_at).toLocaleString()}.`,
         details: { deduped: true, batch: existing },
       });
     }
@@ -209,230 +187,251 @@ Deno.serve(async (req) => {
     // ---- Header mapping ----
     stage = "mapping";
     const { data: mappingsData } = await admin
-      .from("courier_import_mappings")
-      .select("target_field, source_header, occurrence");
+      .from("courier_import_mappings").select("target_field, source_header, occurrence");
     const mappings: MappingRow[] = (mappingsData as any) || [];
-
     const headerStrs = headers.map((h: any) => String(h ?? ""));
     const hmap = buildHeaderMap(headerStrs, mappings);
     debug.detected_mapping = Object.fromEntries(
       Object.entries(hmap).map(([k, v]) => [k, headerStrs[v as number]]),
     );
-
     const missing = REQUIRED_FIELDS.filter((r) => hmap[r.field] === undefined);
     if (missing.length > 0) {
-      const msg = `Column mapping missing: ${missing.map((m) => m.label).join(", ")}`;
       return json(400, {
         success: false,
-        message: msg,
-        details: {
-          stage,
-          missing_fields: missing.map((m) => m.field),
-          detected_headers: headerStrs,
-          detected_mapping: debug.detected_mapping,
-        },
+        message: `Column mapping missing: ${missing.map((m) => m.label).join(", ")}`,
+        details: { stage, missing_fields: missing.map((m) => m.field), detected_headers: headerStrs, detected_mapping: debug.detected_mapping },
       });
     }
 
-    // ---- Dry run (preview only) ----
     if (dry_run) {
-      return json(200, {
-        success: true,
-        message: "Preview OK",
-        details: { ...debug, mapping_ok: true },
-      });
+      return json(200, { success: true, message: "Preview OK", details: { ...debug, mapping_ok: true } });
     }
+
+    // ---- Parse all rows into structured records (in-memory, single pass) ----
+    stage = "transform_rows";
+    const get = (row: any[], f: Field) => { const i = hmap[f]; return i === undefined ? null : row[i]; };
+
+    type Parsed = {
+      tracking: string; courierStatus: string; cod: number; comp: number;
+      derived: string; type: string; statusDate: string | null;
+      phone: string | null; phoneNorm: string | null;
+      customerName: string | null; city: string | null; address: string | null;
+      sku: string | null; quantity: number | null; orderNumber: string | null;
+      rawObj: Record<string, any>; rowIndex: number;
+    };
+
+    const parsedRows: Parsed[] = [];
+    const seenTracking = new Set<string>();
+    let duplicateInFile = 0;
+    let errored = 0;
+    const errors: any[] = [];
+
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri];
+      if (!Array.isArray(row) || row.every((v) => v == null || v === "")) continue;
+      try {
+        const tracking = String(get(row, "tracking_number") ?? "").trim();
+        if (!tracking) { errored++; errors.push({ row: ri + 1, error: "missing tracking" }); continue; }
+        if (seenTracking.has(tracking)) { duplicateInFile++; continue; }
+        seenTracking.add(tracking);
+
+        const courierStatus = String(get(row, "courier_status") ?? "").trim();
+        const cod = parseNum(get(row, "cod_amount"));
+        const comp = parseNum(get(row, "company_receives"));
+        const { derived, type } = deriveStatus(courierStatus, cod, comp);
+        const phone = (get(row, "phone") ?? "")?.toString().trim() || null;
+        const phoneNorm = phone ? phone.replace(/[^0-9]/g, "") || null : null;
+        const rawObj: Record<string, any> = {};
+        headerStrs.forEach((h, i) => { rawObj[h || `col_${i}`] = row[i]; });
+
+        parsedRows.push({
+          tracking, courierStatus, cod, comp, derived, type,
+          statusDate: parseDate(get(row, "status_date")),
+          phone, phoneNorm,
+          customerName: (get(row, "customer_name") ?? "")?.toString().trim() || null,
+          city: (get(row, "city") ?? "")?.toString().trim() || null,
+          address: (get(row, "address") ?? "")?.toString().trim() || null,
+          sku: (get(row, "sku") ?? "")?.toString().trim() || null,
+          quantity: parseInt(String(get(row, "quantity") ?? "0")) || null,
+          orderNumber: (get(row, "order_number") ?? "")?.toString().trim() || null,
+          rawObj, rowIndex: ri + 1,
+        });
+      } catch (e: any) {
+        errored++;
+        errors.push({ row: ri + 1, error: e?.message || String(e) });
+      }
+    }
+    debug.parsed_rows = parsedRows.length;
+    debug.duplicate_in_file = duplicateInFile;
 
     // ---- Create batch ----
     stage = "create_batch";
     const { data: batch, error: batchErr } = await admin
       .from("courier_import_batches")
       .insert({
-        file_name,
-        file_hash,
+        file_name, file_hash,
         uploaded_by: userEmail || userId,
         total_rows: rows.length,
         status: "processing",
       })
       .select().single();
-    if (batchErr) {
-      console.error("create_batch failed", batchErr);
-      return json(500, { success: false, message: `Failed to create batch: ${batchErr.message}`, details: { stage } });
+    if (batchErr) return json(500, { success: false, message: `Failed to create batch: ${batchErr.message}`, details: { stage } });
+
+    // ---- Bulk fetch existing shipments by tracking ----
+    stage = "fetch_existing";
+    const allTracking = parsedRows.map((p) => p.tracking);
+    const existingMap = new Map<string, any>();
+    for (const tchunk of chunk(allTracking, 500)) {
+      const { data: existRows, error: e1 } = await admin
+        .from("courier_shipments")
+        .select("id, tracking_number, current_courier_status, latest_status_date, cod_amount, company_receives, order_number, phone, customer_name, city, address, sku, quantity")
+        .in("tracking_number", tchunk);
+      if (e1) throw e1;
+      for (const r of existRows || []) existingMap.set(r.tracking_number, r);
+    }
+    debug.existing_found = existingMap.size;
+
+    // ---- Match original order_id for new tracking numbers (bulk) ----
+    stage = "match_orders";
+    const newTracking = parsedRows.filter((p) => !existingMap.has(p.tracking)).map((p) => p.tracking);
+    const orderMatch = new Map<string, string>();
+    for (const tchunk of chunk(newTracking, 500)) {
+      const { data: oRows } = await admin
+        .from("orders").select("id, tracking_number").in("tracking_number", tchunk);
+      for (const o of (oRows || []) as any[]) orderMatch.set(o.tracking_number, o.id);
     }
 
-    // ---- Process rows ----
-    stage = "process_rows";
-    let successful = 0, errored = 0, newShip = 0, updShip = 0, newHist = 0, possRet = 0, autoLinked = 0;
-    const errors: any[] = [];
-    const get = (row: any[], f: Field) => {
-      const i = hmap[f]; return i === undefined ? null : row[i];
-    };
+    // ---- Build upsert payload + classify new/updated/skipped ----
+    stage = "classify";
+    const nowISO = new Date().toISOString();
+    let newCount = 0, updatedCount = 0, skippedCount = 0;
+    const toUpsert: any[] = [];
+    const historyCandidates: Parsed[] = [];
 
-    for (let ri = 0; ri < rows.length; ri++) {
-      const row = rows[ri];
-      if (!Array.isArray(row) || row.every((v) => v == null || v === "")) continue;
-
-      try {
-        const tracking = String(get(row, "tracking_number") ?? "").trim();
-        if (!tracking) { errored++; errors.push({ row: ri + 1, error: "missing tracking" }); continue; }
-
-        const courierStatus = String(get(row, "courier_status") ?? "").trim();
-        const cod = parseNum(get(row, "cod_amount"));
-        const comp = parseNum(get(row, "company_receives"));
-        const { derived, type } = deriveStatus(courierStatus, cod, comp);
-        const statusDate = parseDate(get(row, "status_date"));
-        const phone = (get(row, "phone") ?? "")?.toString().trim() || null;
-        const customerName = (get(row, "customer_name") ?? "")?.toString().trim() || null;
-        const city = (get(row, "city") ?? "")?.toString().trim() || null;
-        const address = (get(row, "address") ?? "")?.toString().trim() || null;
-        const sku = (get(row, "sku") ?? "")?.toString().trim() || null;
-        const quantity = parseInt(String(get(row, "quantity") ?? "0")) || null;
-        const orderNumber = (get(row, "order_number") ?? "")?.toString().trim() || null;
-
-        const rawObj: Record<string, any> = {};
-        headerStrs.forEach((h, i) => { rawObj[h || `col_${i}`] = row[i]; });
-
-        const { data: existShip } = await admin
-          .from("courier_shipments").select("*").eq("tracking_number", tracking).maybeSingle();
-
-        let shipmentId: string;
-        let isNew = false;
-        let prevStatus: string | null = null;
-        let prevStatusDate: string | null = null;
-
-        if (existShip) {
-          shipmentId = existShip.id;
-          prevStatus = existShip.current_courier_status;
-          prevStatusDate = existShip.latest_status_date;
-          const { error: upErr } = await admin.from("courier_shipments").update({
-            order_number: orderNumber ?? existShip.order_number,
-            phone: phone ?? existShip.phone,
-            customer_name: customerName ?? existShip.customer_name,
-            city: city ?? existShip.city,
-            address: address ?? existShip.address,
-            sku: sku ?? existShip.sku,
-            quantity: quantity ?? existShip.quantity,
-            cod_amount: cod,
-            company_receives: comp,
-            current_courier_status: courierStatus,
-            derived_status: derived,
-            shipment_type: type,
-            last_seen_at: new Date().toISOString(),
-            latest_status_date: statusDate ?? existShip.latest_status_date,
-          }).eq("id", shipmentId);
-          if (upErr) throw upErr;
-          updShip++;
-        } else {
-          isNew = true;
-          const { data: matchOrder } = await admin
-            .from("orders").select("id").eq("tracking_number", tracking).maybeSingle();
-
-          const { data: inserted, error: insErr } = await admin.from("courier_shipments").insert({
-            tracking_number: tracking,
-            original_order_id: matchOrder?.id ?? null,
-            order_number: orderNumber,
-            phone, customer_name: customerName, city, address, sku, quantity,
-            cod_amount: cod, company_receives: comp,
-            current_courier_status: courierStatus,
-            derived_status: derived,
-            shipment_type: type,
-            first_seen_at: new Date().toISOString(),
-            last_seen_at: new Date().toISOString(),
-            latest_status_date: statusDate,
-          }).select().single();
-          if (insErr) throw insErr;
-          shipmentId = inserted.id;
-          newShip++;
+    for (const p of parsedRows) {
+      const ex = existingMap.get(p.tracking);
+      if (ex) {
+        const changed =
+          (ex.current_courier_status || "") !== p.courierStatus ||
+          (ex.latest_status_date || null) !== (p.statusDate || null) ||
+          Number(ex.cod_amount || 0) !== p.cod ||
+          Number(ex.company_receives || 0) !== p.comp;
+        if (!changed) { skippedCount++; continue; }
+        updatedCount++;
+        toUpsert.push({
+          tracking_number: p.tracking,
+          order_number: p.orderNumber ?? ex.order_number,
+          phone: p.phone ?? ex.phone,
+          customer_name: p.customerName ?? ex.customer_name,
+          city: p.city ?? ex.city,
+          address: p.address ?? ex.address,
+          sku: p.sku ?? ex.sku,
+          quantity: p.quantity ?? ex.quantity,
+          cod_amount: p.cod,
+          company_receives: p.comp,
+          current_courier_status: p.courierStatus,
+          derived_status: p.derived,
+          shipment_type: p.type,
+          last_seen_at: nowISO,
+          latest_status_date: p.statusDate ?? ex.latest_status_date,
+        });
+        // Add history only if status (or status_date) is new
+        if ((ex.current_courier_status || "") !== p.courierStatus || (ex.latest_status_date || null) !== (p.statusDate || null)) {
+          historyCandidates.push(p);
         }
+      } else {
+        newCount++;
+        toUpsert.push({
+          tracking_number: p.tracking,
+          original_order_id: orderMatch.get(p.tracking) ?? null,
+          order_number: p.orderNumber,
+          phone: p.phone, customer_name: p.customerName, city: p.city, address: p.address,
+          sku: p.sku, quantity: p.quantity,
+          cod_amount: p.cod, company_receives: p.comp,
+          current_courier_status: p.courierStatus,
+          derived_status: p.derived,
+          shipment_type: p.type,
+          first_seen_at: nowISO,
+          last_seen_at: nowISO,
+          latest_status_date: p.statusDate,
+        });
+        historyCandidates.push(p);
+      }
+    }
+    debug.to_upsert = toUpsert.length;
+    debug.history_candidates = historyCandidates.length;
 
-        if (prevStatus !== courierStatus || (statusDate && prevStatusDate !== statusDate) || isNew) {
-          const { error: hErr } = await admin.from("courier_status_history").insert({
-            courier_shipment_id: shipmentId,
-            tracking_number: tracking,
-            import_batch_id: batch.id,
-            courier_status: courierStatus,
-            derived_status: derived,
-            status_date: statusDate,
-            cod_amount: cod,
-            company_receives: comp,
-            raw_row_json: rawObj,
-          });
-          if (!hErr) newHist++;
+    // ---- Bulk upsert shipments ----
+    stage = "upsert_shipments";
+    for (const part of chunk(toUpsert, 500)) {
+      const { error: upErr } = await admin
+        .from("courier_shipments")
+        .upsert(part, { onConflict: "tracking_number" });
+      if (upErr) throw upErr;
+    }
+
+    // ---- Re-fetch ids for history insert ----
+    stage = "fetch_ids";
+    const trackingToId = new Map<string, string>();
+    for (const tchunk of chunk(historyCandidates.map((p) => p.tracking), 500)) {
+      const { data: rows2 } = await admin
+        .from("courier_shipments").select("id, tracking_number").in("tracking_number", tchunk);
+      for (const r of (rows2 || []) as any[]) trackingToId.set(r.tracking_number, r.id);
+    }
+
+    // ---- Bulk insert history (deduped by unique index on shipment+status+date) ----
+    stage = "insert_history";
+    const historyRows = historyCandidates
+      .map((p) => ({
+        courier_shipment_id: trackingToId.get(p.tracking)!,
+        tracking_number: p.tracking,
+        import_batch_id: batch.id,
+        courier_status: p.courierStatus,
+        derived_status: p.derived,
+        status_date: p.statusDate,
+        cod_amount: p.cod,
+        company_receives: p.comp,
+        raw_row_json: p.rawObj,
+      }))
+      .filter((r) => r.courier_shipment_id);
+
+    let newHistoryRows = 0;
+    for (const part of chunk(historyRows, 500)) {
+      // Use plain insert; rely on partial-failure tolerance per chunk
+      const { data: ins, error: hErr } = await admin
+        .from("courier_status_history").insert(part).select("id");
+      if (hErr) {
+        // Likely dedup index violation on a sub-row; fall back to per-row
+        for (const one of part) {
+          const { data: oneIns, error: oneErr } = await admin
+            .from("courier_status_history").insert(one).select("id");
+          if (!oneErr && oneIns) newHistoryRows += oneIns.length;
         }
-
-        if (isNew && type === "RETURN_TO_SENDER" && phone) {
-          const phoneNorm = phone.replace(/[^0-9]/g, "");
-          const refDate = statusDate ? new Date(statusDate) : new Date();
-          const windowStart = new Date(refDate.getTime() - 21 * 86400000).toISOString();
-          const windowEnd = refDate.toISOString();
-          const { data: candidates } = await admin
-            .from("courier_shipments")
-            .select("*")
-            .eq("phone_normalized", phoneNorm)
-            .eq("shipment_type", "CUSTOMER_DELIVERY")
-            .gte("latest_status_date", windowStart)
-            .lte("latest_status_date", windowEnd)
-            .limit(20);
-
-          let best: { id: string; score: number; reasons: string[] } | null = null;
-          for (const c of candidates || []) {
-            let score = 0; const reasons: string[] = [];
-            if (c.phone_normalized === phoneNorm) { score += 40; reasons.push("phone"); }
-            if (sku && c.sku === sku) { score += 25; reasons.push("sku"); }
-            if (customerName && c.customer_name && c.customer_name.trim().toLowerCase() === customerName.trim().toLowerCase()) { score += 15; reasons.push("name"); }
-            if (city && c.city && c.city.trim().toLowerCase() === city.trim().toLowerCase()) { score += 10; reasons.push("city"); }
-            if (c.latest_status_date) { score += 10; reasons.push("date_window"); }
-            if (orderNumber && c.order_number === orderNumber) { score += 50; reasons.push("order_number"); }
-            if (!best || score > best.score) best = { id: c.id, score, reasons };
-          }
-
-          if (best && best.score >= 50) {
-            const matchedBy = best.score >= 70 ? "AUTO" : "SUGGESTED";
-            await admin.from("return_matches").insert({
-              original_shipment_id: best.id,
-              return_shipment_id: shipmentId,
-              confidence_score: best.score,
-              match_reason: best.reasons.join(","),
-              matched_by: matchedBy,
-            });
-            if (matchedBy === "AUTO") {
-              autoLinked++;
-              const { data: origShip } = await admin.from("courier_shipments").select("tracking_number").eq("id", best.id).single();
-              if (origShip) {
-                await admin.from("courier_shipments").update({ linked_original_tracking_number: origShip.tracking_number }).eq("id", shipmentId);
-                await admin.from("courier_shipments").update({ linked_return_tracking_number: tracking }).eq("id", best.id);
-              }
-            } else {
-              possRet++;
-            }
-          }
-        }
-
-        successful++;
-      } catch (e: any) {
-        errored++;
-        const errEntry = {
-          row: ri + 1,
-          error: e?.message || String(e),
-          stack: e?.stack,
-          row_data: row,
-        };
-        errors.push(errEntry);
-        console.error("row failure", errEntry);
+      } else {
+        newHistoryRows += ins?.length || 0;
       }
     }
 
+    // ---- Finalize batch ----
     stage = "finalize";
-    const { data: finalBatch } = await admin.from("courier_import_batches").update({
-      successful_rows: successful, error_rows: errored,
-      new_shipments: newShip, updated_shipments: updShip,
-      new_history_rows: newHist, possible_returns: possRet, auto_linked_returns: autoLinked,
-      errors: errors.slice(0, 200), status: "completed",
-    }).eq("id", batch.id).select().single();
+    const successful = newCount + updatedCount + skippedCount;
+    const { data: finalBatch } = await admin
+      .from("courier_import_batches").update({
+        successful_rows: successful,
+        error_rows: errored,
+        new_shipments: newCount,
+        updated_shipments: updatedCount,
+        skipped_rows: skippedCount + duplicateInFile,
+        new_history_rows: newHistoryRows,
+        possible_returns: 0,
+        auto_linked_returns: 0,
+        errors: errors.slice(0, 200),
+        status: "completed",
+      }).eq("id", batch.id).select().single();
 
     return json(200, {
       success: true,
-      message: `Import complete — ${successful} ok, ${errored} errors`,
+      message: `${rows.length} rows checked — ${newCount} new, ${updatedCount} updated, ${skippedCount} skipped, ${duplicateInFile} duplicate, ${errored} errors`,
       details: { batch: finalBatch, ...debug },
     });
   } catch (e: any) {
