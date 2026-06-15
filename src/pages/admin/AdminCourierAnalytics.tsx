@@ -156,6 +156,12 @@ export default function AdminCourierAnalytics() {
               <option value="UNKNOWN">Unknown</option>
             </select>
           </div>
+          <div className="flex items-end gap-2 col-span-2 md:col-span-1">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="checkbox" checked={includeUndated} onChange={(e) => setIncludeUndated(e.target.checked)} />
+              Include undated
+            </label>
+          </div>
         </CardContent>
       </Card>
 
