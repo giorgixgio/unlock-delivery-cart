@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
+import * as XLSX from "xlsx";
 
 type Batch = {
   id: string; file_name: string; uploaded_at: string; uploaded_by: string | null;
@@ -14,10 +16,38 @@ type Batch = {
   status: string; errors: any[];
 };
 
+type Parsed = {
+  file_name: string;
+  file_size: number;
+  file_hash: string;
+  sheet_names: string[];
+  headers: string[];
+  rows: any[][];
+  header_row_index: number;
+};
+
+async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function findHeaderRowIdx(rows: any[][]): number {
+  const wanted = ["თრექინგი", "შტრიხკოდი", "tracking", "tracking_number"];
+  const limit = Math.min(rows.length, 15);
+  for (let i = 0; i < limit; i++) {
+    const r = (rows[i] || []).map((c) => String(c ?? "").toLowerCase().trim());
+    if (r.some((c) => wanted.includes(c) || c.includes("tracking") || c.includes("თრექინგი"))) return i;
+  }
+  return 0;
+}
+
 export default function AdminCourierImport() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [parsing, setParsing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [parsed, setParsed] = useState<Parsed | null>(null);
+  const [serverError, setServerError] = useState<{ message: string; details?: any } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   async function load() {
@@ -30,24 +60,85 @@ export default function AdminCourierImport() {
   }
   useEffect(() => { load(); }, []);
 
-  async function handleFile(file: File) {
-    setUploading(true);
+  async function parseFile(file: File) {
+    setParsing(true);
+    setServerError(null);
+    setParsed(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const { data, error } = await supabase.functions.invoke("import-courier", { body: fd });
-      if (error) throw error;
-      if ((data as any)?.deduped) {
-        toast({ title: "ეს ფაილი უკვე ატვირთულია", description: "ბაჩი ნაჩვენებია სიაში." });
-      } else {
-        toast({ title: "იმპორტი დასრულდა", description: `ახალი: ${(data as any)?.batch?.new_shipments ?? 0}, განახლდა: ${(data as any)?.batch?.updated_shipments ?? 0}` });
+      const buf = await file.arrayBuffer();
+      const hash = await sha256Hex(buf);
+      const wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: true });
+      const sheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
+      const allRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+      if (allRows.length < 2) throw new Error("File is empty or has no data rows");
+      const headerIdx = findHeaderRowIdx(allRows);
+      const headers = (allRows[headerIdx] || []).map((h: any) => String(h ?? ""));
+      const dataRows = allRows.slice(headerIdx + 1).map((r) =>
+        r.map((v) => (v instanceof Date ? v.toISOString() : v)),
+      );
+      setParsed({
+        file_name: file.name,
+        file_size: file.size,
+        file_hash: hash,
+        sheet_names: wb.SheetNames,
+        headers,
+        rows: dataRows,
+        header_row_index: headerIdx,
+      });
+    } catch (e: any) {
+      toast({ title: "Could not parse file", description: e.message || String(e), variant: "destructive" });
+    } finally {
+      setParsing(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function confirmImport() {
+    if (!parsed) return;
+    setUploading(true);
+    setServerError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-courier", {
+        body: {
+          file_name: parsed.file_name,
+          file_size: parsed.file_size,
+          file_hash: parsed.file_hash,
+          sheet_names: parsed.sheet_names,
+          headers: parsed.headers,
+          rows: parsed.rows,
+        },
+      });
+
+      // supabase-js returns the JSON body in `data` even for non-2xx, but `error` is set.
+      // FunctionsHttpError exposes .context.response — read it to surface real message.
+      if (error) {
+        let serverBody: any = data;
+        const ctxResp = (error as any)?.context?.response;
+        if (!serverBody && ctxResp && typeof ctxResp.json === "function") {
+          try { serverBody = await ctxResp.json(); } catch { /* ignore */ }
+        }
+        const msg = serverBody?.message || (error as any).message || "Edge function failed";
+        setServerError({ message: msg, details: serverBody?.details });
+        toast({ title: "Import failed", description: msg, variant: "destructive" });
+        return;
       }
+
+      const body = data as any;
+      if (!body?.success) {
+        setServerError({ message: body?.message || "Unknown error", details: body?.details });
+        toast({ title: "Import failed", description: body?.message || "Unknown error", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Import complete", description: body.message });
+      setParsed(null);
       await load();
     } catch (e: any) {
-      toast({ title: "შეცდომა", description: e.message || String(e), variant: "destructive" });
+      setServerError({ message: e?.message || String(e) });
+      toast({ title: "Network error", description: e?.message || String(e), variant: "destructive" });
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -60,18 +151,102 @@ export default function AdminCourierImport() {
 
       <Card>
         <CardHeader><CardTitle className="text-base">Upload .xlsx</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <input
             ref={fileRef} type="file" accept=".xlsx" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) parseFile(f); }}
           />
-          <Button onClick={() => fileRef.current?.click()} disabled={uploading} size="lg">
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {uploading ? "მუშავდება..." : "აირჩიე ფაილი"}
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">იგივე ფაილის ხელახლა ატვირთვა უსაფრთხოა — დუბლიკატები არ შეიქმნება.</p>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={() => fileRef.current?.click()} disabled={parsing || uploading} size="lg">
+              {parsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {parsing ? "ფაილი იკითხება..." : "აირჩიე ფაილი"}
+            </Button>
+            {parsed && (
+              <Button variant="ghost" onClick={() => { setParsed(null); setServerError(null); }}>
+                <X className="w-4 h-4" /> Cancel
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">იგივე ფაილის ხელახლა ატვირთვა უსაფრთხოა — დუბლიკატები არ შეიქმნება.</p>
         </CardContent>
       </Card>
+
+      {serverError && (
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertTitle>{serverError.message}</AlertTitle>
+          {serverError.details && (
+            <AlertDescription>
+              <pre className="text-xs whitespace-pre-wrap mt-2 max-h-60 overflow-auto">
+                {JSON.stringify(serverError.details, null, 2)}
+              </pre>
+            </AlertDescription>
+          )}
+        </Alert>
+      )}
+
+      {parsed && (
+        <Card className="border-blue-300">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600" /> Import Preview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div><div className="text-muted-foreground text-xs">File</div><div className="font-mono">{parsed.file_name}</div></div>
+              <div><div className="text-muted-foreground text-xs">Size</div><div>{(parsed.file_size / 1024).toFixed(1)} KB</div></div>
+              <div><div className="text-muted-foreground text-xs">Sheets</div><div>{parsed.sheet_names.join(", ")}</div></div>
+              <div><div className="text-muted-foreground text-xs">Data Rows</div><div className="font-bold">{parsed.rows.length}</div></div>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold mb-2">Detected headers ({parsed.headers.length}, row {parsed.header_row_index + 1}):</div>
+              <div className="flex flex-wrap gap-1.5">
+                {parsed.headers.map((h, i) => (
+                  <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-muted border font-mono">{i}: {h || "—"}</span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold mb-2">First 5 rows:</div>
+              <div className="overflow-auto border rounded max-h-80">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {parsed.headers.map((h, i) => (
+                        <TableHead key={i} className="text-xs whitespace-nowrap">{h || `col_${i}`}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parsed.rows.slice(0, 5).map((r, ri) => (
+                      <TableRow key={ri}>
+                        {parsed.headers.map((_, i) => (
+                          <TableCell key={i} className="text-xs whitespace-nowrap">
+                            {r[i] == null ? "—" : String(r[i])}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={confirmImport} disabled={uploading} size="lg">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {uploading ? "იმპორტი მიმდინარეობს..." : `დაადასტურე იმპორტი (${parsed.rows.length} row)`}
+              </Button>
+              <Button variant="outline" onClick={() => setParsed(null)} disabled={uploading}>
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle className="text-base">Import History</CardTitle></CardHeader>
@@ -103,7 +278,7 @@ export default function AdminCourierImport() {
                     <TableCell className="text-right text-blue-700">{b.auto_linked_returns}</TableCell>
                     <TableCell className="text-right text-amber-700">{b.possible_returns}</TableCell>
                     <TableCell className="text-right">
-                      {b.error_rows > 0 ? <span className="text-red-700 font-semibold flex items-center justify-end gap-1"><AlertCircle className="w-3 h-3"/>{b.error_rows}</span> : "—"}
+                      {b.error_rows > 0 ? <span className="text-red-700 font-semibold flex items-center justify-end gap-1"><AlertCircle className="w-3 h-3" />{b.error_rows}</span> : "—"}
                     </TableCell>
                   </TableRow>
                   {expanded === b.id && (b.errors?.length ?? 0) > 0 && (
