@@ -26,8 +26,11 @@ interface Stats {
   aov: number;
   confirmedCount: number;
   totalOrders: number;
+  activeOrders: number;
   needsReview: number;
   confirmed: number;
+  confirmedValid: number;
+  rawConfirmed: number;
   fulfilled: number;
   shipped: number;
   newOrders: number;
@@ -69,27 +72,34 @@ const AdminDashboard = () => {
       if (error) throw error;
       const all = orders || [];
 
-      // Exclude merged — they're not real orders
-      const active = all.filter((o) => o.status !== "merged");
-      // "Live" orders = exclude merged + canceled/returned
-      const live = active.filter((o) => o.status !== "canceled" && o.status !== "returned");
+      // Mutually-exclusive main status buckets
+      const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
+      const merged = all.filter((o) => o.status === "merged");
+      // Active = not canceled, not merged. This is the canonical denominator.
+      const active = all.filter(
+        (o) => o.status !== "canceled" && o.status !== "returned" && o.status !== "merged"
+      );
 
-      const needsReview = live.filter(
+      const needsReview = active.filter(
         (o) =>
           o.status === "new" || o.status === "on_hold" || o.status === "pending_bump" || !o.is_confirmed || o.review_required
       );
 
-      const confirmedOrders = live.filter((o) => o.is_confirmed && !o.is_fulfilled);
-      const fulfilled = live.filter((o) => o.is_fulfilled);
+      const confirmedOrders = active.filter((o) => o.is_confirmed && !o.is_fulfilled);
+      const fulfilled = active.filter((o) => o.is_fulfilled);
       const shipped = active.filter((o) => o.status === "shipped");
-      const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
-      const merged = all.filter((o) => o.status === "merged");
-      const newOrders = live.filter((o) => o.status === "new" && !o.is_confirmed);
-      const onHold = live.filter((o) => o.status === "on_hold");
+      const newOrders = active.filter((o) => o.status === "new" && !o.is_confirmed);
+      const onHold = active.filter((o) => o.status === "on_hold");
 
-      // Revenue = all live orders (non-merged, non-canceled).
+      // Raw confirmed across ALL orders (incl. canceled/merged) — used only to warn
+      // when an admin has confirmed orders that later got canceled/merged.
+      const rawConfirmedAll = all.filter((o) => o.is_confirmed).length;
+      // Confirmed-valid = confirmed AND active (same filter as denominator).
+      const confirmedValid = active.filter((o) => o.is_confirmed).length;
+
+      // Revenue = active orders only (excludes canceled + merged).
       // `total` already includes shipping_fee — never add it again.
-      const revenueOrders = live;
+      const revenueOrders = active;
       const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
       const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
       const productRevenue = totalRevenue - deliveryRevenue;
@@ -101,17 +111,20 @@ const AdminDashboard = () => {
         productRevenue,
         aov,
         confirmedCount: revenueOrders.length,
-        totalOrders: live.length,
+        totalOrders: all.length,
+        activeOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
+        confirmedValid,
+        rawConfirmed: rawConfirmedAll,
         fulfilled: fulfilled.length,
         shipped: shipped.length,
         newOrders: newOrders.length,
         onHold: onHold.length,
         canceled: canceled.length,
         merged: merged.length,
-        tbilisiCount: live.filter((o) => o.is_tbilisi).length,
-        regionCount: live.filter((o) => !o.is_tbilisi).length,
+        tbilisiCount: active.filter((o) => o.is_tbilisi).length,
+        regionCount: active.filter((o) => !o.is_tbilisi).length,
       });
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -226,11 +239,11 @@ const AdminDashboard = () => {
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({applyToCount(stats.totalOrders)} orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
+          Revenue <span className="text-foreground">({applyToCount(stats.activeOrders)} active orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.totalOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.totalOrders) : 0)} accent="text-blue-500" size="lg" />
+          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.activeOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.activeOrders) : 0)} accent="text-blue-500" size="lg" />
           <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
           <MetricCard icon={TruckIcon} label="Delivery Revenue" value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
         </div>
@@ -287,9 +300,12 @@ const AdminDashboard = () => {
         <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
-            const activeOrders = stats.totalOrders - stats.canceled;
-            const confirmedLike = stats.confirmed + stats.fulfilled;
-            const confirmedRate = activeOrders > 0 ? confirmedLike / activeOrders : 0;
+            const activeOrders = stats.activeOrders;
+            // Confirmed-valid uses the SAME filter as the denominator (active only)
+            // so the ratio can never exceed 100%.
+            const confirmedValid = stats.confirmedValid;
+            const confirmedRate = activeOrders > 0 ? Math.min(1, confirmedValid / activeOrders) : 0;
+            const mismatch = stats.rawConfirmed > confirmedValid;
             return (
               <>
                 <MetricCard
@@ -297,14 +313,18 @@ const AdminDashboard = () => {
                   label="Active Orders"
                   value={applyToCount(activeOrders)}
                   accent="text-blue-500"
-                  subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled`}
+                  subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled − ${applyToCount(stats.merged)} merged`}
                 />
                 <MetricCard
                   icon={CheckCircle}
                   label="Confirmed Rate"
-                  value={`${(confirmedRate * 100).toFixed(1)}%`}
+                  value={activeOrders > 0 ? `${(confirmedRate * 100).toFixed(1)}%` : "—"}
                   accent="text-emerald-500"
-                  subtext={`${applyToCount(confirmedLike)} / ${applyToCount(activeOrders)} active`}
+                  subtext={
+                    mismatch
+                      ? `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active · ${applyToCount(stats.rawConfirmed - confirmedValid)} confirmed are canceled/merged (excluded)`
+                      : `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active`
+                  }
                 />
               </>
             );
