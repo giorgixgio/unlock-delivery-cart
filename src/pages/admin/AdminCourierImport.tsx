@@ -143,6 +143,7 @@ export default function AdminCourierImport() {
       });
     } catch (e: any) {
       toast({ title: "Could not parse file", description: e.message || String(e), variant: "destructive" });
+      setStage("idle");
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -152,7 +153,11 @@ export default function AdminCourierImport() {
   async function confirmImport() {
     if (!parsed) return;
     setUploading(true);
+    setStage("checking");
     setServerError(null);
+    // small UI tick so user sees "Checking duplicates"
+    await new Promise((r) => setTimeout(r, 150));
+    setStage("importing");
     try {
       const { data, error } = await supabase.functions.invoke("import-courier", {
         body: {
