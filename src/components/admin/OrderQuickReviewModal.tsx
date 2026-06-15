@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   X, ChevronLeft, ChevronRight, Phone, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
-  Search, Plus, Minus, Trash2, AlertTriangle, UserX, Files, Check,
+  Search, Plus, Minus, Trash2, AlertTriangle, Check,
 } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
@@ -26,7 +26,7 @@ import {
 } from "@/lib/callAttemptService";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
-type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
+type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
 
 const OUTCOMES: {
   key: Outcome;
@@ -56,19 +56,13 @@ const OUTCOMES: {
     unselected: "border-red-300 text-red-700 bg-red-50/60 hover:bg-red-100",
     selected:   "border-red-600 text-white bg-red-600 shadow-md ring-2 ring-red-300",
     status: "canceled" },
-  { key: "wrong_number", label: "არასწორი ნომერი", Icon: UserX,
-    unselected: "border-rose-400 text-rose-800 bg-rose-50/60 hover:bg-rose-100",
-    selected:   "border-rose-800 text-white bg-rose-800 shadow-md ring-2 ring-rose-300",
-    status: "canceled" },
-  { key: "duplicate", label: "დუბლიკატი", Icon: Files,
-    unselected: "border-purple-300 text-purple-700 bg-purple-50/60 hover:bg-purple-100",
-    selected:   "border-purple-600 text-white bg-purple-600 shadow-md ring-2 ring-purple-300",
-    status: "canceled" },
 ];
 
-export const OUTCOME_LABEL: Record<string, string> = Object.fromEntries(
-  OUTCOMES.map((o) => [o.key, o.label])
-);
+export const OUTCOME_LABEL: Record<string, string> = {
+  ...Object.fromEntries(OUTCOMES.map((o) => [o.key, o.label])),
+  wrong_number: "არასწორი ნომერი",
+  duplicate: "დუბლიკატი",
+};
 export const OUTCOME_BADGE_CLS: Record<string, string> = {
   confirmed:    "bg-emerald-100 text-emerald-800 border-emerald-300",
   no_answer:    "bg-amber-100 text-amber-800 border-amber-300",
@@ -413,14 +407,8 @@ export default function OrderQuickReviewModal({
     }
 
     // Cancellations route through reason modal
-    if (outcome === "cancelled" || outcome === "wrong_number" || outcome === "duplicate") {
-      setCancelPreselect(
-        outcome === "wrong_number"
-          ? "wrong_number"
-          : outcome === "duplicate"
-          ? "duplicate_order"
-          : null,
-      );
+    if (outcome === "cancelled") {
+      setCancelPreselect(null);
       setCancelOpen(true);
       return;
     }
