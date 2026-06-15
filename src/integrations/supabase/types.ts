@@ -325,6 +325,42 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_import_mappings: {
+        Row: {
+          data_type: string
+          is_required: boolean
+          label: string
+          notes: string | null
+          occurrence: number
+          sort_order: number
+          source_header: string | null
+          target_field: string
+          updated_at: string
+        }
+        Insert: {
+          data_type?: string
+          is_required?: boolean
+          label: string
+          notes?: string | null
+          occurrence?: number
+          sort_order?: number
+          source_header?: string | null
+          target_field: string
+          updated_at?: string
+        }
+        Update: {
+          data_type?: string
+          is_required?: boolean
+          label?: string
+          notes?: string | null
+          occurrence?: number
+          sort_order?: number
+          source_header?: string | null
+          target_field?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       courier_shipments: {
         Row: {
           address: string | null

@@ -41,6 +41,7 @@ import AdminStockoutDemand from "./pages/admin/AdminStockoutDemand";
 import AdminCourierImport from "./pages/admin/AdminCourierImport";
 import AdminCourierReturnMatching from "./pages/admin/AdminCourierReturnMatching";
 import AdminCourierAnalytics from "./pages/admin/AdminCourierAnalytics";
+import AdminCourierImportMapping from "./pages/admin/AdminCourierImportMapping";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -149,6 +150,7 @@ const App = () => (
                       <Route path="courier-import" element={<AdminCourierImport />} />
                       <Route path="courier-import/return-matching" element={<AdminCourierReturnMatching />} />
                       <Route path="courier-import/analytics" element={<AdminCourierAnalytics />} />
+                      <Route path="courier-import/mapping" element={<AdminCourierImportMapping />} />
                       
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
