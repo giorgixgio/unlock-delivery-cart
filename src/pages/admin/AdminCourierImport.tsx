@@ -31,14 +31,36 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   return Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function findHeaderRowIdx(rows: any[][]): number {
-  const wanted = ["თრექინგი", "შტრიხკოდი", "tracking", "tracking_number"];
-  const limit = Math.min(rows.length, 15);
-  for (let i = 0; i < limit; i++) {
-    const r = (rows[i] || []).map((c) => String(c ?? "").toLowerCase().trim());
-    if (r.some((c) => wanted.includes(c) || c.includes("tracking") || c.includes("თრექინგი"))) return i;
+const KNOWN_HEADERS = [
+  "თრექინგი", "შტრიხკოდი", "სტატუსი", "შეკვ. თარიღი", "აღების თარიღი",
+  "დას. თარიღი", "გამგზ. სახელი, გვარი", "მიმღ. სახელი, გვარი",
+  "მიმღ. ქალაქი", "მიმღ. მისამართი", "მიმღ. ტელეფონი",
+  "cod - გადახდა კურიერთან", "კომპანიას ერიცხება",
+  "tracking", "tracking_number", "status", "phone",
+];
+
+function scoreRowAsHeader(row: any[]): number {
+  const cells = (row || []).map((c) => String(c ?? "").toLowerCase().trim()).filter(Boolean);
+  if (cells.length < 3) return 0;
+  let score = 0;
+  for (const cell of cells) {
+    for (const k of KNOWN_HEADERS) {
+      if (cell === k.toLowerCase() || cell.includes(k.toLowerCase())) { score++; break; }
+    }
   }
-  return 0;
+  return score;
+}
+
+function findHeaderRowIdx(rows: any[][]): number {
+  const limit = Math.min(rows.length, 15);
+  let bestIdx = -1, bestScore = 0;
+  for (let i = 0; i < limit; i++) {
+    const s = scoreRowAsHeader(rows[i]);
+    if (s > bestScore) { bestScore = s; bestIdx = i; }
+  }
+  if (bestIdx >= 0 && bestScore >= 2) return bestIdx;
+  // Fallback for this courier export: row 1 is a title, real headers are in row 2.
+  return rows.length > 1 ? 1 : 0;
 }
 
 export default function AdminCourierImport() {
