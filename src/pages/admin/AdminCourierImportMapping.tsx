@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Save, Upload, FileSearch } from "lucide-react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 type Mapping = {
   target_field: string;
@@ -65,9 +65,26 @@ export default function AdminCourierImportMapping() {
   async function detectHeaders(file: File) {
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(new Uint8Array(buf), { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const all: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("No sheets");
+      const maxCol = ws.columnCount;
+      const all: any[][] = [];
+      for (let r = 1; r <= Math.min(ws.rowCount, 20); r++) {
+        const row = ws.getRow(r);
+        const arr: any[] = [];
+        for (let c = 1; c <= maxCol; c++) {
+          let v: any = row.getCell(c).value;
+          if (v && typeof v === "object") {
+            if ("richText" in v) v = (v as any).richText.map((rt: any) => rt.text).join("");
+            else if ("text" in v) v = (v as any).text;
+            else if ("result" in v) v = (v as any).result;
+          }
+          arr.push(v == null || v === "" ? null : v);
+        }
+        all.push(arr);
+      }
       const known = ["თრექინგი", "შტრიხკოდი", "სტატუსი", "მიმღ. ქალაქი", "მიმღ. მისამართი", "მიმღ. ტელეფონი", "კომპანიას ერიცხება", "cod - გადახდა კურიერთან"];
       let idx = -1, best = 0;
       for (let i = 0; i < Math.min(all.length, 15); i++) {
