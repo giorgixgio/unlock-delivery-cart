@@ -365,7 +365,7 @@ export default function AdminCourierImport() {
                   </TableRow>
                   {expanded === b.id && (b.errors?.length ?? 0) > 0 && (
                     <TableRow key={b.id + "-err"}>
-                      <TableCell colSpan={9} className="bg-red-50">
+                      <TableCell colSpan={8} className="bg-red-50">
                         <pre className="text-xs overflow-auto max-h-64">{JSON.stringify(b.errors, null, 2)}</pre>
                       </TableCell>
                     </TableRow>
@@ -373,7 +373,7 @@ export default function AdminCourierImport() {
                 </>
               ))}
               {batches.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No imports yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No imports yet</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
