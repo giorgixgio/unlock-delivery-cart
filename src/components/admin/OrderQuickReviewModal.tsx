@@ -16,6 +16,15 @@ import {
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import { startSession, markAction, endSession } from "@/lib/operatorSession";
+import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
+import CancelReasonModal from "@/components/admin/CancelReasonModal";
+import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
+import {
+  recordNoAnswerAttempt,
+  cancelOrderWithReason,
+  scheduleCallback,
+} from "@/lib/callAttemptService";
+import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
 
@@ -131,6 +140,11 @@ interface OrderFull {
   operator_review_status: string | null;
   operator_viewed_at: string | null;
   call_outcome: string | null;
+  call_attempt_count: number | null;
+  last_call_attempt_at: string | null;
+  last_call_attempt_by: string | null;
+  next_call_after: string | null;
+  final_cancel_reason: string | null;
   order_items: OrderItem[];
 }
 
