@@ -277,6 +277,7 @@ export type Database = {
           new_history_rows: number
           new_shipments: number
           possible_returns: number
+          skipped_rows: number
           status: string
           successful_rows: number
           total_rows: number
@@ -296,6 +297,7 @@ export type Database = {
           new_history_rows?: number
           new_shipments?: number
           possible_returns?: number
+          skipped_rows?: number
           status?: string
           successful_rows?: number
           total_rows?: number
@@ -315,6 +317,7 @@ export type Database = {
           new_history_rows?: number
           new_shipments?: number
           possible_returns?: number
+          skipped_rows?: number
           status?: string
           successful_rows?: number
           total_rows?: number
