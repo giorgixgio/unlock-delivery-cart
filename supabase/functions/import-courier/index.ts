@@ -81,18 +81,27 @@ function buildHeaderMap(headers: string[], mappings: MappingRow[]): Partial<Reco
   return map;
 }
 
-function deriveStatus(courierStatus: string, cod: number, comp: number): { derived: string; type: string } {
-  const s = (courierStatus || "").toLowerCase();
-  const has = (k: string) => s.includes(k.toLowerCase());
-  const isDelivered = has("ჩაბარებული");
-  const isReturnKW = has("დაბრუნებ") || has("უკან") || has("return") || has("გამომგზავ");
-  const isCancelKW = has("მიღების გაუქმება") || has("უარი") || has("გაუქმებ") || has("cancel") || has("refus");
-  const isTransitKW = has("გაგზავნილი") || has("გზაში") || has("საწყობ") || has("კურიერთან") || has("დამუშავება") || has("transit");
-  if (isDelivered && cod > 0 && comp > 0) return { derived: "DELIVERED_TO_CUSTOMER", type: "CUSTOMER_DELIVERY" };
-  if (isReturnKW || (isDelivered && cod === 0 && comp === 0)) return { derived: "RETURNED_TO_SENDER", type: "RETURN_TO_SENDER" };
-  if (isCancelKW) return { derived: "CANCELLED_OR_REFUSED", type: "CUSTOMER_DELIVERY" };
-  if (isTransitKW) return { derived: "IN_TRANSIT", type: "CUSTOMER_DELIVERY" };
-  return { derived: "UNKNOWN", type: "UNKNOWN" };
+// Map a courier status string to a derived (business) status. New taxonomy:
+//   DELIVERED_TO_CUSTOMER    — status="ჩაბარებული" AND company_receives>0
+//   RETURNED_TO_SENDER       — status="ჩაბარებული" AND company_receives=0, OR explicit return text
+//   FINAL_NOT_DELIVERED      — status contains "არ ჩაბარდა" (final failed delivery)
+//   CANCELLED_BEFORE_COURIER — status="მიღების გაუქმება" (never reached courier flow)
+//   IN_TRANSIT               — everything else (pending / warehouse / branch / in-route)
+function deriveStatus(courierStatus: string, _cod: number, comp: number): { derived: string; type: string } {
+  const s = (courierStatus || "").trim();
+  const sl = s.toLowerCase();
+  const has = (k: string) => sl.includes(k.toLowerCase());
+  if (s === "ჩაბარებული" || has("ჩაბარებული")) {
+    if (comp > 0) return { derived: "DELIVERED_TO_CUSTOMER", type: "CUSTOMER_DELIVERY" };
+    return { derived: "RETURNED_TO_SENDER", type: "RETURN_TO_SENDER" };
+  }
+  if (has("არ ჩაბარდა")) return { derived: "FINAL_NOT_DELIVERED", type: "CUSTOMER_DELIVERY" };
+  if (has("მიღების გაუქმება")) return { derived: "CANCELLED_BEFORE_COURIER", type: "CUSTOMER_DELIVERY" };
+  if (has("უბრუნდება გამგზავნს") || has("დაბრუნებ") || has("გამომგზავ")) {
+    return { derived: "RETURNED_TO_SENDER", type: "RETURN_TO_SENDER" };
+  }
+  // pending / warehouse / branch / in-route / awaiting
+  return { derived: "IN_TRANSIT", type: "CUSTOMER_DELIVERY" };
 }
 
 function parseNum(v: any): number {
