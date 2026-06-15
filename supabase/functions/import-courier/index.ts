@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
         file_name: file.name,
         file_hash: fileHash,
         uploaded_by: userEmail || userId,
-        total_rows: rows.length - 1,
+        total_rows: Math.max(0, rows.length - dataStart),
         status: "processing",
       })
       .select().single();
@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
       const i = hmap[f]; return i === undefined ? null : row[i];
     };
 
-    for (let ri = 1; ri < rows.length; ri++) {
+    for (let ri = dataStart; ri < rows.length; ri++) {
       const row = rows[ri];
       if (!row || row.every((v) => v == null || v === "")) continue;
 
