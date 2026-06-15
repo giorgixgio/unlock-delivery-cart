@@ -26,7 +26,7 @@ import {
 } from "@/lib/callAttemptService";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
-type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled" | "wrong_number" | "duplicate";
+type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
 
 const OUTCOMES: {
   key: Outcome;
@@ -55,14 +55,6 @@ const OUTCOMES: {
   { key: "cancelled", label: "გაუქმდა", Icon: XCircle,
     unselected: "border-red-300 text-red-700 bg-red-50/60 hover:bg-red-100",
     selected:   "border-red-600 text-white bg-red-600 shadow-md ring-2 ring-red-300",
-    status: "canceled" },
-  { key: "wrong_number", label: "არასწორი ნომერი", Icon: UserX,
-    unselected: "border-rose-400 text-rose-800 bg-rose-50/60 hover:bg-rose-100",
-    selected:   "border-rose-800 text-white bg-rose-800 shadow-md ring-2 ring-rose-300",
-    status: "canceled" },
-  { key: "duplicate", label: "დუბლიკატი", Icon: Files,
-    unselected: "border-purple-300 text-purple-700 bg-purple-50/60 hover:bg-purple-100",
-    selected:   "border-purple-600 text-white bg-purple-600 shadow-md ring-2 ring-purple-300",
     status: "canceled" },
 ];
 
