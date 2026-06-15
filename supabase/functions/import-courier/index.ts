@@ -293,7 +293,7 @@ Deno.serve(async (req) => {
     for (const tchunk of chunk(allTracking, 500)) {
       const { data: existRows, error: e1 } = await admin
         .from("courier_shipments")
-        .select("id, tracking_number, current_courier_status, latest_status_date, cod_amount, company_receives, order_number, phone, customer_name, city, address, sku, quantity")
+        .select("id, tracking_number, current_courier_status, derived_status, latest_status_date, cod_amount, company_receives, order_number, phone, customer_name, city, address, sku, quantity")
         .in("tracking_number", tchunk);
       if (e1) throw e1;
       for (const r of existRows || []) existingMap.set(r.tracking_number, r);
@@ -310,23 +310,34 @@ Deno.serve(async (req) => {
       for (const o of (oRows || []) as any[]) orderMatch.set(o.tracking_number, o.id);
     }
 
-    // ---- Build upsert payload + classify new/updated/skipped ----
+    // ---- Build upsert payload + classify + track transitions ----
     stage = "classify";
     const nowISO = new Date().toISOString();
     let newCount = 0, updatedCount = 0, skippedCount = 0;
+    let pendingToDelivered = 0, pendingToFailed = 0, statusChanged = 0;
+    const transitions: { tracking: string; from: string; to: string }[] = [];
     const toUpsert: any[] = [];
     const historyCandidates: Parsed[] = [];
+    const touchOnly: string[] = [];
 
     for (const p of parsedRows) {
       const ex = existingMap.get(p.tracking);
       if (ex) {
-        const changed =
-          (ex.current_courier_status || "") !== p.courierStatus ||
-          (ex.latest_status_date || null) !== (p.statusDate || null) ||
-          Number(ex.cod_amount || 0) !== p.cod ||
-          Number(ex.company_receives || 0) !== p.comp;
-        if (!changed) { skippedCount++; continue; }
+        const statusDifferent = (ex.current_courier_status || "") !== p.courierStatus;
+        const dateDifferent = (ex.latest_status_date || null) !== (p.statusDate || null);
+        const codDifferent = Number(ex.cod_amount || 0) !== p.cod;
+        const compDifferent = Number(ex.company_receives || 0) !== p.comp;
+        const changed = statusDifferent || dateDifferent || codDifferent || compDifferent;
+        if (!changed) { skippedCount++; touchOnly.push(p.tracking); continue; }
         updatedCount++;
+        if (statusDifferent) {
+          statusChanged++;
+          transitions.push({ tracking: p.tracking, from: ex.derived_status || "?", to: p.derived });
+          if (ex.derived_status === "IN_TRANSIT") {
+            if (p.derived === "DELIVERED_TO_CUSTOMER") pendingToDelivered++;
+            if (p.derived === "FINAL_NOT_DELIVERED") pendingToFailed++;
+          }
+        }
         toUpsert.push({
           tracking_number: p.tracking,
           order_number: p.orderNumber ?? ex.order_number,
@@ -344,10 +355,7 @@ Deno.serve(async (req) => {
           last_seen_at: nowISO,
           latest_status_date: p.statusDate ?? ex.latest_status_date,
         });
-        // Add history only if status (or status_date) is new
-        if ((ex.current_courier_status || "") !== p.courierStatus || (ex.latest_status_date || null) !== (p.statusDate || null)) {
-          historyCandidates.push(p);
-        }
+        if (statusDifferent || dateDifferent) historyCandidates.push(p);
       } else {
         newCount++;
         toUpsert.push({
@@ -369,6 +377,17 @@ Deno.serve(async (req) => {
     }
     debug.to_upsert = toUpsert.length;
     debug.history_candidates = historyCandidates.length;
+    debug.pending_to_delivered = pendingToDelivered;
+    debug.pending_to_failed = pendingToFailed;
+    debug.status_changed = statusChanged;
+
+    // Touch last_seen_at on unchanged rows
+    if (touchOnly.length) {
+      stage = "touch_unchanged";
+      for (const tchunk of chunk(touchOnly, 500)) {
+        await admin.from("courier_shipments").update({ last_seen_at: nowISO }).in("tracking_number", tchunk);
+      }
+    }
 
     // ---- Bulk upsert shipments ----
     stage = "upsert_shipments";
