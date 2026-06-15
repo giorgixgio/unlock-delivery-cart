@@ -736,7 +736,7 @@ export default function OrderQuickReviewModal({
                         disabled={disabled}
                         onClick={() => handleOutcome(o.key)}
                         className={`relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border-2 font-bold text-sm transition-all disabled:opacity-60 ${isSel ? o.selected + " scale-[1.02]" : o.unselected}`}
-                        title={isNoAnswer && maxReached ? "გააუქმე მიზეზით „არ პასუხობს რამდენიმე ცდის შემდეგ"" : undefined}
+                        title={isNoAnswer && maxReached ? "გააუქმე მიზეზით: არ პასუხობს რამდენიმე ცდის შემდეგ" : undefined}
                       >
                         {isSel ? <Check className="w-4 h-4" /> : <o.Icon className="w-4 h-4" />}
                         <span className="truncate">{label}</span>
