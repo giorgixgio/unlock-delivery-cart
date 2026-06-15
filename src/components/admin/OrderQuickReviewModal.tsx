@@ -220,7 +220,7 @@ export default function OrderQuickReviewModal({
       const { data } = await supabase
         .from("orders")
         .select(
-          "id, public_order_number, created_at, status, payment_method, customer_name, customer_phone, city, region, address_line1, address_line2, raw_city, raw_address, normalized_city, normalized_address, subtotal, shipping_fee, discount_total, total, is_confirmed, is_fulfilled, is_tbilisi, internal_note, notes_customer, operator_review_status, operator_viewed_at, call_outcome, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)"
+          "id, public_order_number, created_at, status, payment_method, customer_name, customer_phone, city, region, address_line1, address_line2, raw_city, raw_address, normalized_city, normalized_address, subtotal, shipping_fee, discount_total, total, is_confirmed, is_fulfilled, is_tbilisi, internal_note, notes_customer, operator_review_status, operator_viewed_at, call_outcome, call_attempt_count, last_call_attempt_at, last_call_attempt_by, next_call_after, final_cancel_reason, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)"
         )
         .eq("id", orderId)
         .maybeSingle();
