@@ -365,11 +365,67 @@ export default function OrderQuickReviewModal({
   };
 
   /** Click handler for outcome buttons.
-   *  Confirmed = full save (address/notes) + status change.
-   *  Other outcomes = save current edits + outcome label + mapped status.
-   *  Always auto-advances on success when hasNext. */
+   *  - confirmed: full save + status change (legacy).
+   *  - no_answer: increments call_attempt_count, keeps status; auto-advances.
+   *  - cancelled / wrong_number / duplicate: opens cancel-reason modal (preselected).
+   *  - callback: opens callback picker.
+   */
   const handleOutcome = async (outcome: Outcome) => {
     if (!order) return;
+
+    // No-Answer = retry counter, not a final status.
+    if (outcome === "no_answer") {
+      setSaving(true);
+      const result = await recordNoAnswerAttempt(order.id, actor);
+      setSaving(false);
+      if (!result) {
+        toast({ title: "ვერ შეინახა", variant: "destructive" });
+        return;
+      }
+      markAction("call_attempt");
+      const max = DEFAULT_MAX_CALL_ATTEMPTS;
+      const nowIso = new Date().toISOString();
+      onOrderUpdated(order.id, {
+        call_attempt_count: result.count,
+        last_call_attempt_at: nowIso,
+        last_call_attempt_by: actor,
+        operator_review_status: "no_answer",
+        call_outcome: "no_answer",
+      });
+      setOrder({
+        ...order,
+        call_attempt_count: result.count,
+        last_call_attempt_at: nowIso,
+        last_call_attempt_by: actor,
+        operator_review_status: "no_answer",
+        call_outcome: "no_answer",
+      });
+      toast({ title: `ცდა შენახულია: არ პასუხობს ${result.count}/${max}` });
+      void endSession("no_answer", "no_answer");
+      if (hasNext) setTimeout(() => goNext(), 280);
+      return;
+    }
+
+    // Callback → open scheduler
+    if (outcome === "callback") {
+      setCallbackOpen(true);
+      return;
+    }
+
+    // Cancellations route through reason modal
+    if (outcome === "cancelled" || outcome === "wrong_number" || outcome === "duplicate") {
+      setCancelPreselect(
+        outcome === "wrong_number"
+          ? "wrong_number"
+          : outcome === "duplicate"
+          ? "duplicate_order"
+          : null,
+      );
+      setCancelOpen(true);
+      return;
+    }
+
+    // Confirmed (legacy path) — full save + status change
     const def = OUTCOMES.find((o) => o.key === outcome)!;
     setSaving(true);
     const updates = collectEditUpdates();
@@ -385,24 +441,69 @@ export default function OrderQuickReviewModal({
     if (!ok) { setSaving(false); return; }
 
     markAction("outcome");
-
     await logSystemEvent({
       entityType: "order", entityId: order.id,
       eventType: "ORDER_CALL_OUTCOME" as any, actorId: actor,
       payload: { outcome, mapped_status: def.status || null },
     });
-
     setSaving(false);
     toast({ title: `${def.label} — შენახულია` });
-
-    // End session with outcome so handling time + outcome are recorded.
     void endSession("outcome", outcome);
-
-    if (hasNext) {
-      // small feedback delay so operator sees selected state before advancing
-      setTimeout(() => { goNext(); }, 320);
-    }
+    if (hasNext) setTimeout(() => goNext(), 320);
   };
+
+  const handleCancelConfirm = async (reason: CancelReason, note: string | null) => {
+    if (!order) return;
+    setSaving(true);
+    // Save current edits first so address/notes aren't lost
+    const editUpdates = collectEditUpdates();
+    if (Object.keys(editUpdates).length > 0) await persistUpdates(editUpdates);
+
+    const ok = await cancelOrderWithReason(
+      order.id, actor, reason, note,
+      Number(order.call_attempt_count || 0),
+    );
+    setSaving(false);
+    if (!ok) { toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" }); return; }
+    markAction("cancel");
+    setCancelOpen(false);
+    setCancelPreselect(null);
+    const patch = {
+      status: "canceled",
+      is_confirmed: false,
+      final_cancel_reason: reason,
+      final_cancel_note: note,
+      operator_review_status: "cancelled",
+      call_outcome: "cancelled",
+    };
+    onOrderUpdated(order.id, patch);
+    setOrder({ ...order, ...(patch as Partial<OrderFull>) });
+    toast({ title: "შეკვეთა გაუქმდა" });
+    void endSession("outcome", "cancelled");
+    if (hasNext) setTimeout(() => goNext(), 280);
+  };
+
+  const handleCallbackConfirm = async (whenIso: string) => {
+    if (!order) return;
+    setSaving(true);
+    const ok = await scheduleCallback(order.id, actor, whenIso);
+    setSaving(false);
+    if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
+    markAction("callback");
+    setCallbackOpen(false);
+    const patch = {
+      status: "on_hold",
+      next_call_after: whenIso,
+      operator_review_status: "callback",
+      call_outcome: "callback",
+    };
+    onOrderUpdated(order.id, patch);
+    setOrder({ ...order, ...(patch as Partial<OrderFull>) });
+    toast({ title: `გადარეკვა დანიშნულია: ${new Date(whenIso).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` });
+    void endSession("outcome", "callback");
+    if (hasNext) setTimeout(() => goNext(), 280);
+  };
+
 
   const copyPhone = () => {
     if (!order) return;
