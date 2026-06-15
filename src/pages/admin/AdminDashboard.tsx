@@ -300,9 +300,12 @@ const AdminDashboard = () => {
         <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
-            const activeOrders = stats.totalOrders - stats.canceled;
-            const confirmedLike = stats.confirmed + stats.fulfilled;
-            const confirmedRate = activeOrders > 0 ? confirmedLike / activeOrders : 0;
+            const activeOrders = stats.activeOrders;
+            // Confirmed-valid uses the SAME filter as the denominator (active only)
+            // so the ratio can never exceed 100%.
+            const confirmedValid = stats.confirmedValid;
+            const confirmedRate = activeOrders > 0 ? Math.min(1, confirmedValid / activeOrders) : 0;
+            const mismatch = stats.rawConfirmed > confirmedValid;
             return (
               <>
                 <MetricCard
@@ -310,14 +313,18 @@ const AdminDashboard = () => {
                   label="Active Orders"
                   value={applyToCount(activeOrders)}
                   accent="text-blue-500"
-                  subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled`}
+                  subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled − ${applyToCount(stats.merged)} merged`}
                 />
                 <MetricCard
                   icon={CheckCircle}
                   label="Confirmed Rate"
-                  value={`${(confirmedRate * 100).toFixed(1)}%`}
+                  value={activeOrders > 0 ? `${(confirmedRate * 100).toFixed(1)}%` : "—"}
                   accent="text-emerald-500"
-                  subtext={`${applyToCount(confirmedLike)} / ${applyToCount(activeOrders)} active`}
+                  subtext={
+                    mismatch
+                      ? `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active · ${applyToCount(stats.rawConfirmed - confirmedValid)} confirmed are canceled/merged (excluded)`
+                      : `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active`
+                  }
                 />
               </>
             );
