@@ -89,21 +89,47 @@ export default function AdminCourierImport() {
     try {
       const buf = await file.arrayBuffer();
       const hash = await sha256Hex(buf);
-      const wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: true });
-      const sheetName = wb.SheetNames[0];
-      const sheet = wb.Sheets[sheetName];
-      const allRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const ws = wb.worksheets[0];
+      if (!ws) throw new Error("Workbook has no sheets");
+      const sheetNames = wb.worksheets.map((s) => s.name);
+      const maxCol = ws.columnCount;
+      const allRows: any[][] = [];
+      // ExcelJS rows are 1-indexed; eachRow skips empty rows so we iterate manually.
+      for (let r = 1; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const arr: any[] = [];
+        for (let c = 1; c <= maxCol; c++) {
+          const cell = row.getCell(c);
+          let v: any = cell.value;
+          // Unwrap rich text / formula / hyperlink shapes
+          if (v && typeof v === "object") {
+            if ("richText" in v && Array.isArray((v as any).richText)) {
+              v = (v as any).richText.map((rt: any) => rt.text).join("");
+            } else if ("text" in v) {
+              v = (v as any).text;
+            } else if ("result" in v) {
+              v = (v as any).result;
+            } else if ("hyperlink" in v) {
+              v = (v as any).text || (v as any).hyperlink;
+            } else if (v instanceof Date) {
+              v = v.toISOString();
+            }
+          }
+          arr.push(v == null || v === "" ? null : v);
+        }
+        allRows.push(arr);
+      }
       if (allRows.length < 2) throw new Error("File is empty or has no data rows");
       const headerIdx = findHeaderRowIdx(allRows);
       const headers = (allRows[headerIdx] || []).map((h: any) => String(h ?? ""));
-      const dataRows = allRows.slice(headerIdx + 1).map((r) =>
-        r.map((v) => (v instanceof Date ? v.toISOString() : v)),
-      );
+      const dataRows = allRows.slice(headerIdx + 1);
       setParsed({
         file_name: file.name,
         file_size: file.size,
         file_hash: hash,
-        sheet_names: wb.SheetNames,
+        sheet_names: sheetNames,
         headers,
         rows: dataRows,
         header_row_index: headerIdx,
