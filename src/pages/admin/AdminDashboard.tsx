@@ -78,7 +78,10 @@ const AdminDashboard = () => {
       // Mutually-exclusive main status buckets
       const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
       const merged = all.filter((o) => o.status === "merged");
-      // Active = not canceled, not merged. This is the canonical denominator.
+      // Total real orders = all created in period, excluding merged duplicates.
+      // Canceled orders STAY in this cohort (they are real orders).
+      const realOrders = all.filter((o) => o.status !== "merged");
+      // Active = not canceled, not merged. Used only for Active Confirm Rate.
       const active = all.filter(
         (o) => o.status !== "canceled" && o.status !== "returned" && o.status !== "merged"
       );
@@ -94,14 +97,16 @@ const AdminDashboard = () => {
       const newOrders = active.filter((o) => o.status === "new" && !o.is_confirmed);
       const onHold = active.filter((o) => o.status === "on_hold");
 
+      // Successful = confirmed OR fulfilled (counted once). Used for Lead-to-Confirm.
+      // Pull from realOrders so a confirmed-then-canceled order is NOT counted as success.
+      const successful = realOrders.filter((o) => (o.is_confirmed || o.is_fulfilled) && o.status !== "canceled" && o.status !== "returned").length;
+      const successfulActive = active.filter((o) => o.is_confirmed || o.is_fulfilled).length;
+
       // Raw confirmed across ALL orders (incl. canceled/merged) — used only to warn
-      // when an admin has confirmed orders that later got canceled/merged.
       const rawConfirmedAll = all.filter((o) => o.is_confirmed).length;
-      // Confirmed-valid = confirmed AND active (same filter as denominator).
       const confirmedValid = active.filter((o) => o.is_confirmed).length;
 
       // Revenue = active orders only (excludes canceled + merged).
-      // `total` already includes shipping_fee — never add it again.
       const revenueOrders = active;
       const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
       const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
@@ -115,11 +120,14 @@ const AdminDashboard = () => {
         aov,
         confirmedCount: revenueOrders.length,
         totalOrders: all.length,
+        totalRealOrders: realOrders.length,
         activeOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
         confirmedValid,
         rawConfirmed: rawConfirmedAll,
+        successful,
+        successfulActive,
         fulfilled: fulfilled.length,
         shipped: shipped.length,
         newOrders: newOrders.length,
