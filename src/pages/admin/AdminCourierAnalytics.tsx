@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DERIVED_LABEL, DERIVED_BADGE, DerivedStatus } from "@/lib/courierStatus";
+import { DerivedStatus } from "@/lib/courierStatus";
 
 type Shipment = {
   id: string; tracking_number: string; sku: string | null; city: string | null;
@@ -18,6 +18,11 @@ function daysBetween(a: string | null, b: string | null): number | null {
   return (new Date(b).getTime() - new Date(a).getTime()) / 86400000;
 }
 
+// "Customer delivery attempt" = excludes return-to-sender tracking rows.
+// "Finalized" = courier flow is done (delivered or failed). Excludes pending and cancelled-before-courier.
+const isFinalized = (d: DerivedStatus | null) =>
+  d === "DELIVERED_TO_CUSTOMER" || d === "FINAL_NOT_DELIVERED";
+
 export default function AdminCourierAnalytics() {
   const todayISO = new Date().toISOString().slice(0, 10);
   const monthAgoISO = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
@@ -26,22 +31,18 @@ export default function AdminCourierAnalytics() {
   const [to, setTo] = useState(todayISO);
   const [skuFilter, setSkuFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [includeUndated, setIncludeUndated] = useState(true);
   const [ships, setShips] = useState<Shipment[]>([]);
-  const [returnsLink, setReturnsLink] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // Use first_seen_at as fallback for date filtering since latest_status_date may be NULL
       const fromISO = `${from}T00:00:00Z`;
       const toISO = `${to}T23:59:59Z`;
       let q = supabase.from("courier_shipments")
         .select("id, tracking_number, sku, city, derived_status, shipment_type, cod_amount, company_receives, first_seen_at, latest_status_date")
-        .limit(10000);
+        .limit(20000);
       if (includeUndated) {
         q = q.or(`and(latest_status_date.gte.${fromISO},latest_status_date.lte.${toISO}),latest_status_date.is.null`);
       } else {
@@ -49,114 +50,124 @@ export default function AdminCourierAnalytics() {
       }
       if (skuFilter) q = q.ilike("sku", `%${skuFilter}%`);
       if (cityFilter) q = q.ilike("city", `%${cityFilter}%`);
-      if (statusFilter !== "ALL") q = q.eq("derived_status", statusFilter);
-      if (typeFilter !== "ALL") q = q.eq("shipment_type", typeFilter);
       const { data } = await q;
       setShips((data as any) || []);
-
-      const { data: rm } = await supabase.from("return_matches").select("original_shipment_id, return_shipment_id").in("matched_by", ["AUTO", "MANUAL"]);
-      const m = new Map<string, string>();
-      (rm || []).forEach((r: any) => m.set(r.original_shipment_id, r.return_shipment_id));
-      setReturnsLink(m);
       setLoading(false);
     })();
-  }, [from, to, skuFilter, cityFilter, statusFilter, typeFilter, includeUndated]);
+  }, [from, to, skuFilter, cityFilter, includeUndated]);
 
   const kpis = useMemo(() => {
-    const total = ships.length;
-    let delivered = 0, refused = 0, returned = 0, transit = 0, codSum = 0, compSum = 0;
-    let delivDays: number[] = []; let retDays: number[] = [];
-    const shipById = new Map(ships.map((s) => [s.id, s]));
-    for (const s of ships) {
-      if (s.derived_status === "DELIVERED_TO_CUSTOMER") {
-        delivered++;
-        codSum += Number(s.cod_amount || 0);
-        compSum += Number(s.company_receives || 0);
-        const d = daysBetween(s.first_seen_at, s.latest_status_date);
-        if (d != null && d >= 0) delivDays.push(d);
-      } else if (s.derived_status === "CANCELLED_OR_REFUSED") refused++;
-      else if (s.derived_status === "RETURNED_TO_SENDER") returned++;
-      else if (s.derived_status === "IN_TRANSIT") transit++;
+    // Only customer-delivery rows count toward the main rate.
+    // Return-to-sender tracking is excluded entirely.
+    const customerRows = ships.filter((s) => s.shipment_type !== "RETURN_TO_SENDER");
+
+    let delivered = 0, failed = 0, cancelledBefore = 0, pending = 0, returned = 0;
+    let codSum = 0, compSum = 0;
+    const delivDays: number[] = [];
+
+    for (const s of customerRows) {
+      switch (s.derived_status) {
+        case "DELIVERED_TO_CUSTOMER":
+          delivered++;
+          codSum += Number(s.cod_amount || 0);
+          compSum += Number(s.company_receives || 0);
+          const d = daysBetween(s.first_seen_at, s.latest_status_date);
+          if (d != null && d >= 0) delivDays.push(d);
+          break;
+        case "FINAL_NOT_DELIVERED":
+          failed++;
+          break;
+        case "CANCELLED_BEFORE_COURIER":
+          cancelledBefore++;
+          break;
+        case "IN_TRANSIT":
+          pending++;
+          break;
+        case "RETURNED_TO_SENDER":
+          returned++;
+          break;
+        case "CANCELLED_OR_REFUSED": // legacy
+          failed++;
+          break;
+        default:
+          pending++;
+      }
     }
-    // avg days to return: original -> matched return latest_status_date
-    for (const [origId, retId] of returnsLink) {
-      const o = shipById.get(origId), r = shipById.get(retId);
-      if (o && r) { const d = daysBetween(o.first_seen_at, r.latest_status_date); if (d != null && d >= 0) retDays.push(d); }
-    }
-    const pct = (n: number) => total ? Math.round((n / total) * 1000) / 10 : 0;
+    // Return-to-sender tracking (separate, excluded from main rate)
+    const returnTracking = ships.filter((s) => s.shipment_type === "RETURN_TO_SENDER").length + returned;
+
+    const finalized = delivered + failed;
+    const pct = (n: number) => finalized ? Math.round((n / finalized) * 1000) / 10 : 0;
     const avg = (a: number[]) => a.length ? (a.reduce((s, v) => s + v, 0) / a.length).toFixed(1) : "—";
-    return { total, delivered, refused, returned, transit, codSum, compSum,
-      deliveryPct: pct(delivered), refusedPct: pct(refused), returnPct: pct(returned),
-      avgDelivDays: avg(delivDays), avgRetDays: avg(retDays) };
-  }, [ships, returnsLink]);
+
+    return {
+      totalRows: ships.length,
+      finalized,
+      delivered,
+      failed,
+      pending,
+      cancelledBefore,
+      returnTracking,
+      deliveryRate: pct(delivered),
+      failureRate: pct(failed),
+      codSum, compSum,
+      avgDelivDays: avg(delivDays),
+    };
+  }, [ships]);
 
   const skuTable = useMemo(() => {
     const m = new Map<string, any>();
     for (const s of ships) {
+      if (s.shipment_type === "RETURN_TO_SENDER") continue;
+      if (!isFinalized(s.derived_status)) continue;
       const k = s.sku || "—";
-      const r = m.get(k) || { sku: k, total: 0, delivered: 0, refused: 0, returned: 0, pending: 0, revenue: 0 };
-      r.total++;
+      const r = m.get(k) || { sku: k, finalized: 0, delivered: 0, failed: 0, revenue: 0 };
+      r.finalized++;
       if (s.derived_status === "DELIVERED_TO_CUSTOMER") { r.delivered++; r.revenue += Number(s.company_receives || 0); }
-      else if (s.derived_status === "CANCELLED_OR_REFUSED") r.refused++;
-      else if (s.derived_status === "RETURNED_TO_SENDER") r.returned++;
-      else r.pending++;
+      else if (s.derived_status === "FINAL_NOT_DELIVERED") r.failed++;
       m.set(k, r);
     }
     return Array.from(m.values()).map((r) => ({
       ...r,
-      deliveryPct: r.total ? Math.round((r.delivered / r.total) * 1000) / 10 : 0,
-      returnPct: r.total ? Math.round((r.returned / r.total) * 1000) / 10 : 0,
-    })).sort((a, b) => b.total - a.total);
+      deliveryRate: r.finalized ? Math.round((r.delivered / r.finalized) * 1000) / 10 : 0,
+      failureRate: r.finalized ? Math.round((r.failed / r.finalized) * 1000) / 10 : 0,
+    })).sort((a, b) => b.finalized - a.finalized);
   }, [ships]);
 
   const cityTable = useMemo(() => {
     const m = new Map<string, any>();
     for (const s of ships) {
+      if (s.shipment_type === "RETURN_TO_SENDER") continue;
+      if (!isFinalized(s.derived_status)) continue;
       const k = s.city || "—";
-      const r = m.get(k) || { city: k, total: 0, delivered: 0, refused: 0, returned: 0 };
-      r.total++;
+      const r = m.get(k) || { city: k, finalized: 0, delivered: 0, failed: 0 };
+      r.finalized++;
       if (s.derived_status === "DELIVERED_TO_CUSTOMER") r.delivered++;
-      else if (s.derived_status === "CANCELLED_OR_REFUSED") r.refused++;
-      else if (s.derived_status === "RETURNED_TO_SENDER") r.returned++;
+      else if (s.derived_status === "FINAL_NOT_DELIVERED") r.failed++;
       m.set(k, r);
     }
     return Array.from(m.values()).map((r) => ({
-      ...r, deliveryPct: r.total ? Math.round((r.delivered / r.total) * 1000) / 10 : 0,
-    })).sort((a, b) => b.total - a.total);
+      ...r, deliveryRate: r.finalized ? Math.round((r.delivered / r.finalized) * 1000) / 10 : 0,
+    })).sort((a, b) => b.finalized - a.finalized);
   }, [ships]);
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-extrabold">Courier Analytics</h1>
+      <div>
+        <h1 className="text-2xl font-extrabold">Courier Analytics</h1>
+        <p className="text-sm text-muted-foreground">
+          Main rate = delivered ÷ (delivered + failed). Pending, cancelled-before-courier and return-to-sender rows are excluded.
+        </p>
+      </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-6 gap-3">
+        <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           <div><Label className="text-xs">From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div><Label className="text-xs">To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div><Label className="text-xs">SKU</Label><Input value={skuFilter} onChange={(e) => setSkuFilter(e.target.value)} placeholder="any" /></div>
           <div><Label className="text-xs">City</Label><Input value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} placeholder="any" /></div>
-          <div>
-            <Label className="text-xs">Status</Label>
-            <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="ALL">All</option>
-              <option value="DELIVERED_TO_CUSTOMER">Delivered</option>
-              <option value="CANCELLED_OR_REFUSED">Refused</option>
-              <option value="RETURNED_TO_SENDER">Returned</option>
-              <option value="IN_TRANSIT">In Transit</option>
-              <option value="UNKNOWN">Unknown</option>
-            </select>
-          </div>
-          <div>
-            <Label className="text-xs">Type</Label>
-            <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              <option value="ALL">All</option>
-              <option value="CUSTOMER_DELIVERY">Customer Delivery</option>
-              <option value="RETURN_TO_SENDER">Return</option>
-              <option value="UNKNOWN">Unknown</option>
-            </select>
-          </div>
-          <div className="flex items-end gap-2 col-span-2 md:col-span-1">
+          <div className="flex items-end">
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input type="checkbox" checked={includeUndated} onChange={(e) => setIncludeUndated(e.target.checked)} />
               Include undated
@@ -165,42 +176,62 @@ export default function AdminCourierAnalytics() {
         </CardContent>
       </Card>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Kpi label="Total" value={kpis.total} />
-        <Kpi label="Delivered" value={kpis.delivered} sub={`${kpis.deliveryPct}%`} />
-        <Kpi label="Refused" value={kpis.refused} sub={`${kpis.refusedPct}%`} />
-        <Kpi label="Returned" value={kpis.returned} sub={`${kpis.returnPct}%`} />
-        <Kpi label="In Transit" value={kpis.transit} />
-        <Kpi label="COD ₾" value={Math.round(kpis.codSum)} />
-        <Kpi label="Company ₾" value={Math.round(kpis.compSum)} />
-        <Kpi label="Avg Days→Delivery" value={kpis.avgDelivDays} />
-        <Kpi label="Avg Days→Return" value={kpis.avgRetDays} />
+      {/* Main finalized KPIs */}
+      <div>
+        <h2 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Finalized courier outcomes</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Kpi label="Courier Finalized Orders" value={kpis.finalized} accent="border-l-4 border-l-foreground" />
+          <Kpi label="Delivered to Client" value={kpis.delivered} sub={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
+          <Kpi label="Failed / Refused" value={kpis.failed} sub={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
+          <Kpi label="Successful Delivery Rate" value={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
+          <Kpi label="Failed / Refused Rate" value={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
+        </div>
       </div>
 
-      {/* SKU table */}
+      {/* Excluded */}
+      <div>
+        <h2 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Excluded from main rate</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Kpi label="Pending / Active" value={kpis.pending} sub="in transit, warehouse" />
+          <Kpi label="Cancelled Before Courier" value={kpis.cancelledBefore} sub="მიღების გაუქმება" />
+          <Kpi label="Return-to-Sender rows" value={kpis.returnTracking} sub="separate tracking" />
+          <Kpi label="Total uploaded rows" value={kpis.totalRows} />
+        </div>
+      </div>
+
+      {/* Financial */}
+      <div>
+        <h2 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Money (delivered only)</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kpi label="COD ₾" value={Math.round(kpis.codSum)} />
+          <Kpi label="Company receives ₾" value={Math.round(kpis.compSum)} />
+          <Kpi label="Avg days → delivery" value={kpis.avgDelivDays} />
+        </div>
+      </div>
+
+      {/* SKU table — finalized only */}
       <Card>
-        <CardHeader><CardTitle className="text-base">By SKU</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">By SKU (finalized only)</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>SKU</TableHead><TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Refused</TableHead>
-              <TableHead className="text-right">Returned</TableHead><TableHead className="text-right">Pending</TableHead>
-              <TableHead className="text-right">Delivery %</TableHead><TableHead className="text-right">Return %</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead className="text-right">Finalized</TableHead>
+              <TableHead className="text-right">Delivered</TableHead>
+              <TableHead className="text-right">Failed</TableHead>
+              <TableHead className="text-right">Delivery %</TableHead>
+              <TableHead className="text-right">Failure %</TableHead>
               <TableHead className="text-right">Revenue ₾</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {skuTable.map((r) => (
                 <TableRow key={r.sku}>
                   <TableCell className="font-mono text-xs">{r.sku}</TableCell>
-                  <TableCell className="text-right">{r.total}</TableCell>
+                  <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
-                  <TableCell className="text-right text-red-700">{r.refused}</TableCell>
-                  <TableCell className="text-right text-orange-700">{r.returned}</TableCell>
-                  <TableCell className="text-right">{r.pending}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryPct}%</TableCell>
-                  <TableCell className="text-right">{r.returnPct}%</TableCell>
+                  <TableCell className="text-right text-red-700">{r.failed}</TableCell>
+                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
+                  <TableCell className="text-right">{r.failureRate}%</TableCell>
                   <TableCell className="text-right">{Math.round(r.revenue)}</TableCell>
                 </TableRow>
               ))}
@@ -209,26 +240,26 @@ export default function AdminCourierAnalytics() {
         </CardContent>
       </Card>
 
-      {/* City table */}
+      {/* City table — finalized only */}
       <Card>
-        <CardHeader><CardTitle className="text-base">By City</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">By City (finalized only)</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>City</TableHead><TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Delivered</TableHead><TableHead className="text-right">Refused</TableHead>
-              <TableHead className="text-right">Returned</TableHead>
+              <TableHead>City</TableHead>
+              <TableHead className="text-right">Finalized</TableHead>
+              <TableHead className="text-right">Delivered</TableHead>
+              <TableHead className="text-right">Failed</TableHead>
               <TableHead className="text-right">Delivery %</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {cityTable.map((r) => (
                 <TableRow key={r.city}>
                   <TableCell>{r.city}</TableCell>
-                  <TableCell className="text-right">{r.total}</TableCell>
+                  <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
-                  <TableCell className="text-right text-red-700">{r.refused}</TableCell>
-                  <TableCell className="text-right text-orange-700">{r.returned}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryPct}%</TableCell>
+                  <TableCell className="text-right text-red-700">{r.failed}</TableCell>
+                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -241,9 +272,9 @@ export default function AdminCourierAnalytics() {
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: any; sub?: string }) {
+function Kpi({ label, value, sub, accent }: { label: string; value: any; sub?: string; accent?: string }) {
   return (
-    <Card><CardContent className="pt-6">
+    <Card className={accent}><CardContent className="pt-6">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-2xl font-extrabold">{value}</p>
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
