@@ -12,9 +12,12 @@ type Batch = {
   id: string; file_name: string; uploaded_at: string; uploaded_by: string | null;
   total_rows: number; successful_rows: number; error_rows: number;
   new_shipments: number; updated_shipments: number; new_history_rows: number;
+  skipped_rows: number;
   possible_returns: number; auto_linked_returns: number;
   status: string; errors: any[];
 };
+
+type Stage = "idle" | "parsing" | "checking" | "importing" | "done";
 
 type Parsed = {
   file_name: string;
@@ -68,6 +71,8 @@ export default function AdminCourierImport() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [parsing, setParsing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
+  const [lastSummary, setLastSummary] = useState<string | null>(null);
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [serverError, setServerError] = useState<{ message: string; details?: any } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -84,8 +89,10 @@ export default function AdminCourierImport() {
 
   async function parseFile(file: File) {
     setParsing(true);
+    setStage("parsing");
     setServerError(null);
     setParsed(null);
+    setLastSummary(null);
     try {
       const buf = await file.arrayBuffer();
       const hash = await sha256Hex(buf);
@@ -136,6 +143,7 @@ export default function AdminCourierImport() {
       });
     } catch (e: any) {
       toast({ title: "Could not parse file", description: e.message || String(e), variant: "destructive" });
+      setStage("idle");
     } finally {
       setParsing(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -145,7 +153,11 @@ export default function AdminCourierImport() {
   async function confirmImport() {
     if (!parsed) return;
     setUploading(true);
+    setStage("checking");
     setServerError(null);
+    // small UI tick so user sees "Checking duplicates"
+    await new Promise((r) => setTimeout(r, 150));
+    setStage("importing");
     try {
       const { data, error } = await supabase.functions.invoke("import-courier", {
         body: {
@@ -180,15 +192,26 @@ export default function AdminCourierImport() {
       }
 
       toast({ title: "Import complete", description: body.message });
+      setLastSummary(body.message);
+      setStage("done");
       setParsed(null);
       await load();
     } catch (e: any) {
       setServerError({ message: e?.message || String(e) });
       toast({ title: "Network error", description: e?.message || String(e), variant: "destructive" });
+      setStage("idle");
     } finally {
       setUploading(false);
     }
   }
+
+  const stageLabel: Record<Stage, string> = {
+    idle: "",
+    parsing: "1/3 ფაილი იკითხება...",
+    checking: "2/3 დუბლიკატების შემოწმება...",
+    importing: "3/3 იმპორტი მიმდინარეობს...",
+    done: "✓ დასრულდა",
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -216,6 +239,19 @@ export default function AdminCourierImport() {
             )}
           </div>
           <p className="text-xs text-muted-foreground">იგივე ფაილის ხელახლა ატვირთვა უსაფრთხოა — დუბლიკატები არ შეიქმნება.</p>
+          {(parsing || uploading) && stage !== "idle" && stage !== "done" && (
+            <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded p-3">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="font-semibold">{stageLabel[stage]}</span>
+            </div>
+          )}
+          {stage === "done" && lastSummary && (
+            <Alert className="border-green-300 bg-green-50">
+              <CheckCircle2 className="w-4 h-4 text-green-700" />
+              <AlertTitle className="text-green-900">იმპორტი დასრულდა</AlertTitle>
+              <AlertDescription className="text-green-900 text-sm">{lastSummary}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -307,9 +343,8 @@ export default function AdminCourierImport() {
                 <TableHead className="text-right">Rows</TableHead>
                 <TableHead className="text-right">New</TableHead>
                 <TableHead className="text-right">Updated</TableHead>
+                <TableHead className="text-right">Skipped</TableHead>
                 <TableHead className="text-right">History</TableHead>
-                <TableHead className="text-right">Auto Returns</TableHead>
-                <TableHead className="text-right">Suggested</TableHead>
                 <TableHead className="text-right">Errors</TableHead>
               </TableRow>
             </TableHeader>
@@ -321,17 +356,16 @@ export default function AdminCourierImport() {
                     <TableCell className="font-mono text-xs">{b.file_name}</TableCell>
                     <TableCell className="text-right">{b.total_rows}</TableCell>
                     <TableCell className="text-right text-green-700 font-semibold">{b.new_shipments}</TableCell>
-                    <TableCell className="text-right">{b.updated_shipments}</TableCell>
+                    <TableCell className="text-right text-blue-700">{b.updated_shipments}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{b.skipped_rows ?? 0}</TableCell>
                     <TableCell className="text-right">{b.new_history_rows}</TableCell>
-                    <TableCell className="text-right text-blue-700">{b.auto_linked_returns}</TableCell>
-                    <TableCell className="text-right text-amber-700">{b.possible_returns}</TableCell>
                     <TableCell className="text-right">
                       {b.error_rows > 0 ? <span className="text-red-700 font-semibold flex items-center justify-end gap-1"><AlertCircle className="w-3 h-3" />{b.error_rows}</span> : "—"}
                     </TableCell>
                   </TableRow>
                   {expanded === b.id && (b.errors?.length ?? 0) > 0 && (
                     <TableRow key={b.id + "-err"}>
-                      <TableCell colSpan={9} className="bg-red-50">
+                      <TableCell colSpan={8} className="bg-red-50">
                         <pre className="text-xs overflow-auto max-h-64">{JSON.stringify(b.errors, null, 2)}</pre>
                       </TableCell>
                     </TableRow>
@@ -339,7 +373,7 @@ export default function AdminCourierImport() {
                 </>
               ))}
               {batches.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No imports yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No imports yet</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
