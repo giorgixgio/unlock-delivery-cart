@@ -58,9 +58,11 @@ const OUTCOMES: {
     status: "canceled" },
 ];
 
-export const OUTCOME_LABEL: Record<string, string> = Object.fromEntries(
-  OUTCOMES.map((o) => [o.key, o.label])
-);
+export const OUTCOME_LABEL: Record<string, string> = {
+  ...Object.fromEntries(OUTCOMES.map((o) => [o.key, o.label])),
+  wrong_number: "არასწორი ნომერი",
+  duplicate: "დუბლიკატი",
+};
 export const OUTCOME_BADGE_CLS: Record<string, string> = {
   confirmed:    "bg-emerald-100 text-emerald-800 border-emerald-300",
   no_answer:    "bg-amber-100 text-amber-800 border-amber-300",
