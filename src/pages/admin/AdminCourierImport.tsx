@@ -192,15 +192,26 @@ export default function AdminCourierImport() {
       }
 
       toast({ title: "Import complete", description: body.message });
+      setLastSummary(body.message);
+      setStage("done");
       setParsed(null);
       await load();
     } catch (e: any) {
       setServerError({ message: e?.message || String(e) });
       toast({ title: "Network error", description: e?.message || String(e), variant: "destructive" });
+      setStage("idle");
     } finally {
       setUploading(false);
     }
   }
+
+  const stageLabel: Record<Stage, string> = {
+    idle: "",
+    parsing: "1/3 ფაილი იკითხება...",
+    checking: "2/3 დუბლიკატების შემოწმება...",
+    importing: "3/3 იმპორტი მიმდინარეობს...",
+    done: "✓ დასრულდა",
+  };
 
   return (
     <div className="p-6 space-y-6">
