@@ -405,14 +405,8 @@ export default function OrderQuickReviewModal({
     }
 
     // Cancellations route through reason modal
-    if (outcome === "cancelled" || outcome === "wrong_number" || outcome === "duplicate") {
-      setCancelPreselect(
-        outcome === "wrong_number"
-          ? "wrong_number"
-          : outcome === "duplicate"
-          ? "duplicate_order"
-          : null,
-      );
+    if (outcome === "cancelled") {
+      setCancelPreselect(null);
       setCancelOpen(true);
       return;
     }
