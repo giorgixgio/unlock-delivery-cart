@@ -343,9 +343,8 @@ export default function AdminCourierImport() {
                 <TableHead className="text-right">Rows</TableHead>
                 <TableHead className="text-right">New</TableHead>
                 <TableHead className="text-right">Updated</TableHead>
+                <TableHead className="text-right">Skipped</TableHead>
                 <TableHead className="text-right">History</TableHead>
-                <TableHead className="text-right">Auto Returns</TableHead>
-                <TableHead className="text-right">Suggested</TableHead>
                 <TableHead className="text-right">Errors</TableHead>
               </TableRow>
             </TableHeader>
@@ -357,10 +356,9 @@ export default function AdminCourierImport() {
                     <TableCell className="font-mono text-xs">{b.file_name}</TableCell>
                     <TableCell className="text-right">{b.total_rows}</TableCell>
                     <TableCell className="text-right text-green-700 font-semibold">{b.new_shipments}</TableCell>
-                    <TableCell className="text-right">{b.updated_shipments}</TableCell>
+                    <TableCell className="text-right text-blue-700">{b.updated_shipments}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{b.skipped_rows ?? 0}</TableCell>
                     <TableCell className="text-right">{b.new_history_rows}</TableCell>
-                    <TableCell className="text-right text-blue-700">{b.auto_linked_returns}</TableCell>
-                    <TableCell className="text-right text-amber-700">{b.possible_returns}</TableCell>
                     <TableCell className="text-right">
                       {b.error_rows > 0 ? <span className="text-red-700 font-semibold flex items-center justify-end gap-1"><AlertCircle className="w-3 h-3" />{b.error_rows}</span> : "—"}
                     </TableCell>
