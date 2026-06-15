@@ -457,10 +457,27 @@ Deno.serve(async (req) => {
         status: "completed",
       }).eq("id", batch.id).select().single();
 
+    const summary =
+      `${rows.length} rows checked — ${newCount} new, ${updatedCount} updated ` +
+      `(${pendingToDelivered} pending→delivered, ${pendingToFailed} pending→failed), ` +
+      `${skippedCount} unchanged, ${newHistoryRows} new history rows` +
+      (errored ? `, ${errored} errors` : "");
+
     return json(200, {
       success: true,
-      message: `${rows.length} rows checked — ${newCount} new, ${updatedCount} updated, ${skippedCount} skipped, ${duplicateInFile} duplicate, ${errored} errors`,
-      details: { batch: finalBatch, ...debug },
+      message: summary,
+      details: {
+        batch: finalBatch,
+        new_shipments: newCount,
+        updated_shipments: updatedCount,
+        skipped_unchanged: skippedCount,
+        status_changed: statusChanged,
+        pending_to_delivered: pendingToDelivered,
+        pending_to_failed: pendingToFailed,
+        new_history_rows: newHistoryRows,
+        transitions_sample: transitions.slice(0, 20),
+        ...debug,
+      },
     });
   } catch (e: any) {
     console.error("import-courier fatal", { stage, error: e?.message, stack: e?.stack, debug });
