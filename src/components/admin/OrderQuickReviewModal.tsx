@@ -706,30 +706,49 @@ export default function OrderQuickReviewModal({
                 )}
               </section>
 
+              {/* Call attempts */}
+              <CallAttemptsPanel
+                count={Number(order.call_attempt_count || 0)}
+                lastAt={order.last_call_attempt_at}
+                lastBy={order.last_call_attempt_by}
+                nextCallAfter={order.next_call_after}
+              />
+
               {/* Outcome buttons */}
               <section className="rounded-lg border border-border p-3 bg-card">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">ზარის შედეგი</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {OUTCOMES.map((o) => {
                     const isSel = currentOutcome === o.key;
+                    const attempts = Number(order.call_attempt_count || 0);
+                    const maxReached = attempts >= DEFAULT_MAX_CALL_ATTEMPTS;
+                    const isNoAnswer = o.key === "no_answer";
+                    const disabled = saving || (isNoAnswer && maxReached);
+                    const label = isNoAnswer
+                      ? maxReached
+                        ? "მაქს. ცდები ⛔"
+                        : `არ პასუხობს — ცდა ${attempts + 1}/${DEFAULT_MAX_CALL_ATTEMPTS}`
+                      : o.label;
                     return (
                       <button
                         key={o.key}
                         type="button"
-                        disabled={saving}
+                        disabled={disabled}
                         onClick={() => handleOutcome(o.key)}
                         className={`relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border-2 font-bold text-sm transition-all disabled:opacity-60 ${isSel ? o.selected + " scale-[1.02]" : o.unselected}`}
+                        title={isNoAnswer && maxReached ? "გააუქმე მიზეზით „არ პასუხობს რამდენიმე ცდის შემდეგ"" : undefined}
                       >
                         {isSel ? <Check className="w-4 h-4" /> : <o.Icon className="w-4 h-4" />}
-                        <span className="truncate">{o.label}</span>
+                        <span className="truncate">{label}</span>
                       </button>
                     );
                   })}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">
-                  „დადასტურდა" ინახავს ყველა შესწორებას (მისამართი, შენიშვნა, პროდუქტები) და სტატუსს ცვლის — ისევე როგორც ქვედა „შენახვა".
+                  „არ პასუხობს" ინახავს ცდას და გადადის შემდეგ შეკვეთაზე — სტატუსი არ იცვლება. „გაუქმდა" საჭიროებს მიზეზის არჩევას.
                 </p>
               </section>
+
 
               {/* Address */}
               <section className="rounded-lg border border-border p-3 bg-card space-y-3">
