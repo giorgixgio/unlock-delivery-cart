@@ -12,9 +12,12 @@ type Batch = {
   id: string; file_name: string; uploaded_at: string; uploaded_by: string | null;
   total_rows: number; successful_rows: number; error_rows: number;
   new_shipments: number; updated_shipments: number; new_history_rows: number;
+  skipped_rows: number;
   possible_returns: number; auto_linked_returns: number;
   status: string; errors: any[];
 };
+
+type Stage = "idle" | "parsing" | "checking" | "importing" | "done";
 
 type Parsed = {
   file_name: string;
