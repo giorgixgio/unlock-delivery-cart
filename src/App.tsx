@@ -38,6 +38,9 @@ import AdminPackingWaves from "./pages/admin/AdminPackingWaves";
 import AdminPackingWaveDetail from "./pages/admin/AdminPackingWaveDetail";
 import AdminPackingRun from "./pages/admin/AdminPackingRun";
 import AdminStockoutDemand from "./pages/admin/AdminStockoutDemand";
+import AdminCourierImport from "./pages/admin/AdminCourierImport";
+import AdminCourierReturnMatching from "./pages/admin/AdminCourierReturnMatching";
+import AdminCourierAnalytics from "./pages/admin/AdminCourierAnalytics";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -143,6 +146,9 @@ const App = () => (
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
                       <Route path="stockout-demand" element={<AdminStockoutDemand />} />
+                      <Route path="courier-import" element={<AdminCourierImport />} />
+                      <Route path="courier-import/return-matching" element={<AdminCourierReturnMatching />} />
+                      <Route path="courier-import/analytics" element={<AdminCourierAnalytics />} />
                       
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
