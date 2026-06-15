@@ -60,7 +60,7 @@ export default function AdminCourierAnalytics() {
       setReturnsLink(m);
       setLoading(false);
     })();
-  }, [from, to, skuFilter, cityFilter, statusFilter, typeFilter]);
+  }, [from, to, skuFilter, cityFilter, statusFilter, typeFilter, includeUndated]);
 
   const kpis = useMemo(() => {
     const total = ships.length;
