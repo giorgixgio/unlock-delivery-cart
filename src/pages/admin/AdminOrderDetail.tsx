@@ -15,6 +15,7 @@ import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import EditableOrderFields from "@/components/admin/EditableOrderFields";
 import EditableItemRow from "@/components/admin/EditableItemRow";
+import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -1051,6 +1052,11 @@ const AdminOrderDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {order && (
+        <div className="px-4 md:px-6 pb-6">
+          <CourierHistorySection orderId={order.id} trackingNumber={order.tracking_number} />
+        </div>
+      )}
     </div>
   );
 };
