@@ -89,8 +89,10 @@ export default function AdminCourierImport() {
 
   async function parseFile(file: File) {
     setParsing(true);
+    setStage("parsing");
     setServerError(null);
     setParsed(null);
+    setLastSummary(null);
     try {
       const buf = await file.arrayBuffer();
       const hash = await sha256Hex(buf);
