@@ -307,18 +307,30 @@ const AdminDashboard = () => {
           />
         </div>
 
-        {/* Derived */}
+        {/* Derived — cohort rates based on order creation date */}
         <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
+        <p className="text-[10px] text-muted-foreground italic mb-3">
+          Rates are based on order creation date. Later confirmations update the original order's day.
+        </p>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
+            const totalReal = stats.totalRealOrders;
             const activeOrders = stats.activeOrders;
-            // Confirmed-valid uses the SAME filter as the denominator (active only)
-            // so the ratio can never exceed 100%.
-            const confirmedValid = stats.confirmedValid;
-            const confirmedRate = activeOrders > 0 ? Math.min(1, confirmedValid / activeOrders) : 0;
-            const mismatch = stats.rawConfirmed > confirmedValid;
+            const successful = stats.successful;
+            const successfulActive = stats.successfulActive;
+            const leadRate = totalReal > 0 ? Math.min(1, successful / totalReal) : 0;
+            const activeRate = activeOrders > 0 ? Math.min(1, successfulActive / activeOrders) : 0;
+            const cancelRate = totalReal > 0 ? stats.canceled / totalReal : 0;
+            const needsActionRate = totalReal > 0 ? stats.needsReview / totalReal : 0;
             return (
               <>
+                <MetricCard
+                  icon={ShoppingCart}
+                  label="Total Real Orders"
+                  value={applyToCount(totalReal)}
+                  accent="text-foreground"
+                  subtext={`Created in selected period · excludes ${applyToCount(stats.merged)} merged`}
+                />
                 <MetricCard
                   icon={ShoppingCart}
                   label="Active Orders"
@@ -328,20 +340,40 @@ const AdminDashboard = () => {
                 />
                 <MetricCard
                   icon={CheckCircle}
-                  label="Confirmed Rate"
-                  value={activeOrders > 0 ? `${(confirmedRate * 100).toFixed(1)}%` : "—"}
+                  label="Lead-to-Confirm Rate"
+                  value={totalReal > 0 ? `${(leadRate * 100).toFixed(1)}%` : "—"}
                   accent="text-emerald-500"
-                  subtext={
-                    mismatch
-                      ? `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active · ${applyToCount(stats.rawConfirmed - confirmedValid)} confirmed are canceled/merged (excluded)`
-                      : `${applyToCount(confirmedValid)} / ${applyToCount(activeOrders)} active`
-                  }
+                  size="lg"
+                  subtext={`${applyToCount(successful)} / ${applyToCount(totalReal)} total orders · confirmed or fulfilled (canceled included in denominator)`}
+                />
+                <MetricCard
+                  icon={CheckCircle}
+                  label="Active Confirm Rate"
+                  value={activeOrders > 0 ? `${(activeRate * 100).toFixed(1)}%` : "—"}
+                  accent="text-emerald-600"
+                  subtext={`${applyToCount(successfulActive)} / ${applyToCount(activeOrders)} active · operational view, excludes canceled`}
+                />
+                <MetricCard
+                  icon={XCircle}
+                  label="Cancel Rate"
+                  value={totalReal > 0 ? `${(cancelRate * 100).toFixed(1)}%` : "—"}
+                  accent="text-red-400"
+                  subtext={`${applyToCount(stats.canceled)} canceled / ${applyToCount(totalReal)} total orders`}
+                />
+                <MetricCard
+                  icon={AlertTriangle}
+                  label="Needs Action Rate"
+                  value={totalReal > 0 ? `${(needsActionRate * 100).toFixed(1)}%` : "—"}
+                  accent="text-amber-500"
+                  subtext={`${applyToCount(stats.needsReview)} pending / ${applyToCount(totalReal)} total orders`}
                 />
               </>
             );
           })()}
         </div>
       </section>
+
+
 
       <Separator />
 
