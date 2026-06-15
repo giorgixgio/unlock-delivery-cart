@@ -105,8 +105,20 @@ function parseNum(v: any): number {
 
 function parseDate(v: any): string | null {
   if (v == null || v === "") return null;
-  if (v instanceof Date) return v.toISOString();
-  const d = new Date(String(v));
+  if (v instanceof Date) return isNaN(+v) ? null : v.toISOString();
+  const s = String(v).trim();
+  if (!s) return null;
+  // Georgian/EU formats: DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY, optional HH:MM[:SS]
+  const m = s.match(/^(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    let [, dd, mm, yy, hh, mi, ss] = m;
+    let year = parseInt(yy); if (year < 100) year += 2000;
+    const d = new Date(Date.UTC(year, parseInt(mm) - 1, parseInt(dd),
+      parseInt(hh || "0"), parseInt(mi || "0"), parseInt(ss || "0")));
+    return isNaN(+d) ? null : d.toISOString();
+  }
+  // ISO-like fallback
+  const d = new Date(s);
   return isNaN(+d) ? null : d.toISOString();
 }
 

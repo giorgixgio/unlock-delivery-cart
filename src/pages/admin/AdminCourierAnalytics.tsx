@@ -20,7 +20,7 @@ function daysBetween(a: string | null, b: string | null): number | null {
 
 export default function AdminCourierAnalytics() {
   const todayISO = new Date().toISOString().slice(0, 10);
-  const monthAgoISO = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const monthAgoISO = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
   const [from, setFrom] = useState(monthAgoISO);
   const [to, setTo] = useState(todayISO);
@@ -28,6 +28,7 @@ export default function AdminCourierAnalytics() {
   const [cityFilter, setCityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [includeUndated, setIncludeUndated] = useState(true);
   const [ships, setShips] = useState<Shipment[]>([]);
   const [returnsLink, setReturnsLink] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -35,11 +36,17 @@ export default function AdminCourierAnalytics() {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      // Use first_seen_at as fallback for date filtering since latest_status_date may be NULL
+      const fromISO = `${from}T00:00:00Z`;
+      const toISO = `${to}T23:59:59Z`;
       let q = supabase.from("courier_shipments")
         .select("id, tracking_number, sku, city, derived_status, shipment_type, cod_amount, company_receives, first_seen_at, latest_status_date")
-        .gte("latest_status_date", `${from}T00:00:00Z`)
-        .lte("latest_status_date", `${to}T23:59:59Z`)
         .limit(10000);
+      if (includeUndated) {
+        q = q.or(`and(latest_status_date.gte.${fromISO},latest_status_date.lte.${toISO}),latest_status_date.is.null`);
+      } else {
+        q = q.gte("latest_status_date", fromISO).lte("latest_status_date", toISO);
+      }
       if (skuFilter) q = q.ilike("sku", `%${skuFilter}%`);
       if (cityFilter) q = q.ilike("city", `%${cityFilter}%`);
       if (statusFilter !== "ALL") q = q.eq("derived_status", statusFilter);
@@ -53,7 +60,7 @@ export default function AdminCourierAnalytics() {
       setReturnsLink(m);
       setLoading(false);
     })();
-  }, [from, to, skuFilter, cityFilter, statusFilter, typeFilter]);
+  }, [from, to, skuFilter, cityFilter, statusFilter, typeFilter, includeUndated]);
 
   const kpis = useMemo(() => {
     const total = ships.length;
@@ -148,6 +155,12 @@ export default function AdminCourierAnalytics() {
               <option value="RETURN_TO_SENDER">Return</option>
               <option value="UNKNOWN">Unknown</option>
             </select>
+          </div>
+          <div className="flex items-end gap-2 col-span-2 md:col-span-1">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="checkbox" checked={includeUndated} onChange={(e) => setIncludeUndated(e.target.checked)} />
+              Include undated
+            </label>
           </div>
         </CardContent>
       </Card>
