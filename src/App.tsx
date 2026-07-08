@@ -42,6 +42,8 @@ import AdminCourierImport from "./pages/admin/AdminCourierImport";
 import AdminCourierReturnMatching from "./pages/admin/AdminCourierReturnMatching";
 import AdminCourierAnalytics from "./pages/admin/AdminCourierAnalytics";
 import AdminCourierImportMapping from "./pages/admin/AdminCourierImportMapping";
+import AdminPacking from "./pages/admin/AdminPacking";
+import AdminBinLocations from "./pages/admin/AdminBinLocations";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
