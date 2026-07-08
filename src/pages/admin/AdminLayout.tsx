@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3 } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
