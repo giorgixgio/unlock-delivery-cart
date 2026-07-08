@@ -1504,6 +1504,7 @@ export type Database = {
       products: {
         Row: {
           available: boolean
+          bin_location: string | null
           category: string
           compare_at_price: number | null
           created_at: string
@@ -1521,6 +1522,7 @@ export type Database = {
         }
         Insert: {
           available?: boolean
+          bin_location?: string | null
           category?: string
           compare_at_price?: number | null
           created_at?: string
@@ -1538,6 +1540,7 @@ export type Database = {
         }
         Update: {
           available?: boolean
+          bin_location?: string | null
           category?: string
           compare_at_price?: number | null
           created_at?: string

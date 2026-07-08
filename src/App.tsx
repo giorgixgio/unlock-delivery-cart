@@ -42,6 +42,8 @@ import AdminCourierImport from "./pages/admin/AdminCourierImport";
 import AdminCourierReturnMatching from "./pages/admin/AdminCourierReturnMatching";
 import AdminCourierAnalytics from "./pages/admin/AdminCourierAnalytics";
 import AdminCourierImportMapping from "./pages/admin/AdminCourierImportMapping";
+import AdminPacking from "./pages/admin/AdminPacking";
+import AdminBinLocations from "./pages/admin/AdminBinLocations";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -151,6 +153,8 @@ const App = () => (
                       <Route path="courier-import/return-matching" element={<AdminCourierReturnMatching />} />
                       <Route path="courier-import/analytics" element={<AdminCourierAnalytics />} />
                       <Route path="courier-import/mapping" element={<AdminCourierImportMapping />} />
+                      <Route path="packing" element={<AdminPacking />} />
+                      <Route path="bin-locations" element={<AdminBinLocations />} />
                       
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
