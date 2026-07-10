@@ -1,14 +1,5 @@
 // Create Packing Session
-// --------------------------------------------------------------
-// Freezes the current pool of confirmed orders into a session:
-//   • classifies each order single-SKU vs multi-SKU
-//   • multi-SKU orders are chunked into rounds of `round_size`, each
-//     order pinned to a (run_number, slot_number) — this is what the
-//     printed [R##-##] tags and the packing tab both read, so they
-//     can never drift apart even if new orders come in afterward.
-//   • single-SKU orders are recorded but not slotted (each is a whole parcel)
-// Reuses existing tables: packing_waves, packing_wave_orders,
-// packing_runs, packing_run_slots.
+// Admin-only. Freezes the current pool of confirmed orders into a session.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -26,15 +17,35 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // --- Auth: require an active admin JWT ---
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return json(401, { error: "Unauthorized" });
+    }
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsRes, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsRes?.claims?.sub) {
+      return json(401, { error: "Unauthorized" });
+    }
     const supabase = createClient(supabaseUrl, serviceKey);
+    const { data: isAdmin, error: adminErr } = await supabase.rpc("is_active_admin", {
+      user_id: claimsRes.claims.sub,
+    });
+    if (adminErr || !isAdmin) {
+      return json(403, { error: "Forbidden" });
+    }
 
     let body: any = {};
     try { body = await req.json(); } catch { /* allow empty */ }
     const actor = String(body.actor || "admin");
     const roundSize = Math.max(1, parseInt(String(body.round_size ?? "10"), 10) || 10);
 
-    // 1. Pull eligible orders (same rule as the old export path).
     const { data: eligible, error: eligErr } = await supabase
       .from("orders")
       .select("id, created_at, customer_phone, tracking_number, order_items(sku)")
@@ -52,7 +63,6 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, empty: true, message: "No eligible confirmed orders to pack." });
     }
 
-    // 2. Classify.
     const classified = orders.map((o: any) => {
       const skus = new Set((o.order_items || []).map((i: any) => String(i.sku || "")));
       return { order: o, multi: skus.size > 1 };
@@ -60,7 +70,6 @@ Deno.serve(async (req) => {
     const singles = classified.filter((c) => !c.multi);
     const multis = classified.filter((c) => c.multi).sort((a, b) => new Date(a.order.created_at).getTime() - new Date(b.order.created_at).getTime());
 
-    // 3. Create the session (wave).
     const { data: wave, error: waveErr } = await supabase
       .from("packing_waves")
       .insert({ created_by: actor, status: "active" })
@@ -69,7 +78,6 @@ Deno.serve(async (req) => {
     if (waveErr || !wave) return json(500, { error: waveErr?.message || "Could not create session" });
     const waveId = wave.id;
 
-    // 4. Record classification for every order.
     const waveOrderRows = classified.map((c) => {
       const skus = new Set((c.order.order_items || []).map((i: any) => String(i.sku || "")));
       const primary = [...(c.order.order_items || [])].map((i: any) => String(i.sku || "")).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0] || "";
@@ -84,7 +92,6 @@ Deno.serve(async (req) => {
     });
     await supabase.from("packing_wave_orders").insert(waveOrderRows);
 
-    // 5. Chunk multi-SKU into rounds -> runs + slots.
     const roundCount = Math.ceil(multis.length / roundSize);
     for (let r = 0; r < roundCount; r++) {
       const chunk = multis.slice(r * roundSize, r * roundSize + roundSize);
@@ -106,7 +113,6 @@ Deno.serve(async (req) => {
       await supabase.from("packing_run_slots").insert(slotRows);
     }
 
-    // 6. Stamp orders so they aren't pulled into a second session.
     await supabase
       .from("orders")
       .update({ packing_wave_id: waveId })
