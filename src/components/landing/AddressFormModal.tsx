@@ -327,8 +327,31 @@ const AddressFormModal = ({
                 </div>
               </div>
 
+              {/* Returning customer summary card */}
+              {savedAddress && (savedAddress.region || savedAddress.address) && (
+                <div className="mt-4 rounded-[20px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-[1px]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-300">
+                        შენი მისამართი უკვე გვაქვს
+                      </p>
+                      <p className="text-[14px] text-foreground mt-1 leading-snug break-words">
+                        {savedAddress.region}
+                        {savedAddress.region && savedAddress.address ? ", " : ""}
+                        {savedAddress.address}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        თუ სხვა ადგილას გინდა მიწოდება, შეცვალე ქვემოთ.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Fields */}
               <div className="space-y-4 mt-5">
+
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
