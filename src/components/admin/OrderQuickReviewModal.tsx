@@ -202,6 +202,19 @@ export default function OrderQuickReviewModal({
   const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
+  // Previous orders from same phone
+  interface PrevOrder {
+    id: string;
+    public_order_number: string;
+    created_at: string;
+    status: string;
+    total: number;
+    call_attempt_count: number | null;
+  }
+  const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
+  const [prevLoading, setPrevLoading] = useState(false);
+  const [bulkCanceling, setBulkCanceling] = useState(false);
+
   const actor = user?.email || "admin";
 
   // Load order whenever id changes & mark viewed
@@ -273,6 +286,61 @@ export default function OrderQuickReviewModal({
   useEffect(() => {
     return () => { void endSession("unmounted"); };
   }, []);
+
+  // ── Fetch previous orders from the same phone (last 9 digits) ──
+  useEffect(() => {
+    if (!order?.customer_phone || !order?.id) { setPrevOrders([]); return; }
+    const digits = order.customer_phone.replace(/\D/g, "");
+    const last9 = digits.slice(-9);
+    if (last9.length < 6) { setPrevOrders([]); return; }
+    let cancelled = false;
+    setPrevLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, public_order_number, created_at, status, total, call_attempt_count")
+        .ilike("customer_phone", `%${last9}%`)
+        .neq("id", order.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (cancelled) return;
+      setPrevOrders((data || []) as PrevOrder[]);
+      setPrevLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [order?.id, order?.customer_phone]);
+
+  const cancellablePrev = useMemo(
+    () => prevOrders.filter((p) => !["canceled", "delivered", "shipped", "packed", "returned", "merged"].includes(p.status)),
+    [prevOrders],
+  );
+
+  const handleBulkCancelPrev = useCallback(async () => {
+    if (cancellablePrev.length === 0) return;
+    if (!confirm(`${cancellablePrev.length} წინა შეკვეთა გაუქმდება (დუბლიკატი). გავაგრძელო?`)) return;
+    setBulkCanceling(true);
+    let ok = 0, fail = 0;
+    for (const p of cancellablePrev) {
+      const success = await cancelOrderWithReason(
+        p.id, actor, "duplicate_order", "Bulk-canceled as duplicate from quick review",
+        Number(p.call_attempt_count || 0),
+      );
+      if (success) ok++; else fail++;
+    }
+    // Refresh list
+    setPrevOrders((list) =>
+      list.map((p) =>
+        cancellablePrev.some((c) => c.id === p.id) ? { ...p, status: "canceled" } : p
+      ),
+    );
+    setBulkCanceling(false);
+    toast({
+      title: fail === 0 ? `გაუქმდა ${ok} წინა შეკვეთა` : `გაუქმდა ${ok}, ვერ ${fail}`,
+      variant: fail === 0 ? undefined : "destructive",
+    });
+  }, [cancellablePrev, actor, toast]);
+
+
 
   // Keyboard navigation
   useEffect(() => {
@@ -693,6 +761,65 @@ export default function OrderQuickReviewModal({
                   <p className="text-xs text-muted-foreground italic mt-2">"{order.notes_customer}"</p>
                 )}
               </section>
+
+              {/* Previous orders from same phone */}
+              {(prevLoading || prevOrders.length > 0) && (
+                <section className="rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 p-3">
+                  <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      წინა შეკვეთები ({prevOrders.length})
+                    </h3>
+                    {cancellablePrev.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 gap-1.5 text-xs"
+                        disabled={bulkCanceling}
+                        onClick={handleBulkCancelPrev}
+                      >
+                        {bulkCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                        ყველა წინა გააუქმე ({cancellablePrev.length})
+                      </Button>
+                    )}
+                  </div>
+                  {prevLoading ? (
+                    <div className="text-xs text-muted-foreground">იტვირთება…</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {prevOrders.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-2 bg-background/70 rounded-md px-2.5 py-1.5 border border-border/60"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="font-mono text-xs font-bold">#{p.public_order_number}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor[p.status] || "bg-muted"}`}>
+                              {p.status.replace("_", " ")}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {new Date(p.created_at).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-xs font-semibold">{Number(p.total).toFixed(2)} ₾</span>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/orders/${p.id}`)}
+                              className="text-primary hover:text-primary/80"
+                              title="Advanced"
+                              aria-label="Open advanced"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
 
               {/* Call attempts */}
               <CallAttemptsPanel

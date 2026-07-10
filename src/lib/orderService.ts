@@ -68,6 +68,51 @@ export async function createOrder(input: OrderInput) {
   const cookieIdHash = getCookieIdHash();
   const userAgent = getUserAgent();
 
+  // ── Address inheritance: if city or address is missing, inherit from the
+  //    customer's most recent order (matched by phone last 9 digits).
+  //    Operator manual edits after insert are never touched (runs pre-insert only).
+  let inheritedCity = input.city || "";
+  let inheritedRegion = input.region || "";
+  let inheritedAddress = input.addressLine1 || "";
+  let inheritedIsTbilisi = input.isTbilisi ?? false;
+  let addressInherited = false;
+  const needsInheritance =
+    (!inheritedCity.trim() || !inheritedAddress.trim()) && !!input.customerPhone;
+  if (needsInheritance) {
+    try {
+      const digits = input.customerPhone.replace(/\D/g, "");
+      const last9 = digits.slice(-9);
+      if (last9.length >= 6) {
+        const { data: prev } = await supabase
+          .from("orders")
+          .select("city, region, address_line1, is_tbilisi")
+          .ilike("customer_phone", `%${last9}%`)
+          .not("city", "is", null)
+          .neq("city", "")
+          .not("address_line1", "is", null)
+          .neq("address_line1", "")
+          .neq("status", "merged")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (prev) {
+          if (!inheritedCity.trim() && prev.city) {
+            inheritedCity = prev.city;
+            inheritedRegion = prev.region || prev.city;
+            inheritedIsTbilisi = !!prev.is_tbilisi;
+            addressInherited = true;
+          }
+          if (!inheritedAddress.trim() && prev.address_line1) {
+            inheritedAddress = prev.address_line1;
+            addressInherited = true;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("address inheritance lookup failed", e);
+    }
+  }
+
   let orderId = "unknown";
 
   try {
@@ -87,22 +132,28 @@ export async function createOrder(input: OrderInput) {
       .insert({
         customer_name: input.customerName,
         customer_phone: input.customerPhone,
-        city: input.city || "",
-        region: input.region || "",
-        address_line1: input.addressLine1 || "",
-        is_tbilisi: input.isTbilisi ?? false,
+        city: inheritedCity,
+        region: inheritedRegion,
+        address_line1: inheritedAddress,
+        is_tbilisi: inheritedIsTbilisi,
         subtotal: input.subtotal,
         total: input.total,
         status: orderStatus,
         payment_method: "COD",
         public_order_number: "",
-        raw_city: input.city || "",
-        raw_address: input.addressLine1 || "",
+        raw_city: inheritedCity,
+        raw_address: inheritedAddress,
         cookie_id_hash: cookieIdHash,
         user_agent: userAgent,
         source: orderSource,
         shipping_fee: input.shippingFee ?? 0,
-        ...(input.landingSlug ? { tags: [`landing:${input.landingSlug}`] } : {}),
+        ...(addressInherited && orderStatus !== "pending_details"
+          ? { address_status: "completed" }
+          : {}),
+        tags: [
+          ...(input.landingSlug ? [`landing:${input.landingSlug}`] : []),
+          ...(addressInherited ? ["address:inherited"] : []),
+        ],
       } as any)
       .select("id, public_order_number")
       .single();
