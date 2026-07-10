@@ -104,19 +104,11 @@ const AddressFormModal = ({
           .eq("id", orderId)
           .maybeSingle();
         const phone = (current?.customer_phone || "").replace(/\D/g, "");
-        const last9 = phone.slice(-9);
-        if (!last9 || last9.length < 6) return;
-        const { data: prev } = await supabase
-          .from("orders")
-          .select("city, region, address_line1, normalized_city, normalized_address")
-          .ilike("customer_phone", `%${last9}%`)
-          .neq("id", orderId)
-          .not("address_line1", "is", null)
-          .neq("address_line1", "")
-          .neq("status", "merged")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        if (!phone || phone.length < 6) return;
+        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
+          p_phone: phone,
+        });
+        const prev = Array.isArray(data) ? data[0] : data;
         if (cancelled || !prev) return;
         const region = prev.normalized_city || prev.region || prev.city || "";
         const address = prev.normalized_address || prev.address_line1 || "";
