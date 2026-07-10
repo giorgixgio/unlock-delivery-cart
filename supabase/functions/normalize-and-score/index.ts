@@ -64,7 +64,15 @@ Deno.serve(async (req) => {
     }
 
     // === AUTO-CONFIRM (low risk + high confidence) ===
-    if (riskLevel === "low" && riskScore === 0 && confidence >= 0.75) {
+    // Skip if a human operator already confirmed this order — otherwise the
+    // "AUTO" badge appears next to an operator-confirmed order (e.g. #104527).
+    if (
+      riskLevel === "low" &&
+      riskScore === 0 &&
+      confidence >= 0.75 &&
+      !order.is_confirmed &&
+      !order.auto_confirmed
+    ) {
       updates.auto_confirmed = true;
       updates.auto_confirm_reason = "High confidence: clean address + no duplicate signals";
       updates.is_confirmed = true;
