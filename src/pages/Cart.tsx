@@ -152,6 +152,52 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [form.phone, phoneRevealed]);
 
+  // ── Returning-customer lookup by phone: if user typed a valid phone but
+  //    has no locally-saved address, pull the latest known address from DB
+  //    so we can show them the "we already have your address" summary card.
+  const lookedUpPhonesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isRecognized) return;
+    if (!isValidGeorgianPhone(form.phone)) return;
+    if (form.region.trim() && form.address.trim()) return;
+    const digits = form.phone.replace(/\D/g, "");
+    const last9 = digits.slice(-9);
+    if (last9.length < 6) return;
+    if (lookedUpPhonesRef.current.has(last9)) return;
+    lookedUpPhonesRef.current.add(last9);
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("orders")
+          .select("city, region, address_line1, is_tbilisi")
+          .ilike("customer_phone", `%${last9}%`)
+          .not("city", "is", null)
+          .neq("city", "")
+          .not("address_line1", "is", null)
+          .neq("address_line1", "")
+          .neq("status", "merged")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled || !data) return;
+        setForm((f) => ({
+          ...f,
+          region: f.region.trim() || data.region || data.city || "",
+          address: f.address.trim() || data.address_line1 || "",
+        }));
+        if (data.is_tbilisi !== undefined) {
+          const lower = (data.city || "").trim().toLowerCase();
+          setManualLocation(lower === "თბილისი" || lower === "tbilisi");
+        }
+        setIsRecognized(true);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, form.phone, form.region, form.address, isRecognized, setManualLocation]);
+
+
   // Focus address after city is confirmed (called from PredictiveInput onConfirm)
   const handleCityConfirm = useCallback(() => {
     setTimeout(() => {
