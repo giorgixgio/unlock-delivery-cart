@@ -762,6 +762,65 @@ export default function OrderQuickReviewModal({
                 )}
               </section>
 
+              {/* Previous orders from same phone */}
+              {(prevLoading || prevOrders.length > 0) && (
+                <section className="rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 p-3">
+                  <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      წინა შეკვეთები ({prevOrders.length})
+                    </h3>
+                    {cancellablePrev.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 gap-1.5 text-xs"
+                        disabled={bulkCanceling}
+                        onClick={handleBulkCancelPrev}
+                      >
+                        {bulkCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                        ყველა წინა გააუქმე ({cancellablePrev.length})
+                      </Button>
+                    )}
+                  </div>
+                  {prevLoading ? (
+                    <div className="text-xs text-muted-foreground">იტვირთება…</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {prevOrders.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-2 bg-background/70 rounded-md px-2.5 py-1.5 border border-border/60"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="font-mono text-xs font-bold">#{p.public_order_number}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor[p.status] || "bg-muted"}`}>
+                              {p.status.replace("_", " ")}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {new Date(p.created_at).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-xs font-semibold">{Number(p.total).toFixed(2)} ₾</span>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/orders/${p.id}`)}
+                              className="text-primary hover:text-primary/80"
+                              title="Advanced"
+                              aria-label="Open advanced"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+
               {/* Call attempts */}
               <CallAttemptsPanel
                 count={Number(order.call_attempt_count || 0)}
