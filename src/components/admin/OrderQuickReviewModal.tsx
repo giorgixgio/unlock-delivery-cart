@@ -202,6 +202,19 @@ export default function OrderQuickReviewModal({
   const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
+  // Previous orders from same phone
+  interface PrevOrder {
+    id: string;
+    public_order_number: string;
+    created_at: string;
+    status: string;
+    total: number;
+    call_attempt_count: number | null;
+  }
+  const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
+  const [prevLoading, setPrevLoading] = useState(false);
+  const [bulkCanceling, setBulkCanceling] = useState(false);
+
   const actor = user?.email || "admin";
 
   // Load order whenever id changes & mark viewed
