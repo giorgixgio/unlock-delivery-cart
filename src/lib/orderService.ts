@@ -132,22 +132,28 @@ export async function createOrder(input: OrderInput) {
       .insert({
         customer_name: input.customerName,
         customer_phone: input.customerPhone,
-        city: input.city || "",
-        region: input.region || "",
-        address_line1: input.addressLine1 || "",
-        is_tbilisi: input.isTbilisi ?? false,
+        city: inheritedCity,
+        region: inheritedRegion,
+        address_line1: inheritedAddress,
+        is_tbilisi: inheritedIsTbilisi,
         subtotal: input.subtotal,
         total: input.total,
         status: orderStatus,
         payment_method: "COD",
         public_order_number: "",
-        raw_city: input.city || "",
-        raw_address: input.addressLine1 || "",
+        raw_city: inheritedCity,
+        raw_address: inheritedAddress,
         cookie_id_hash: cookieIdHash,
         user_agent: userAgent,
         source: orderSource,
         shipping_fee: input.shippingFee ?? 0,
-        ...(input.landingSlug ? { tags: [`landing:${input.landingSlug}`] } : {}),
+        ...(addressInherited && orderStatus !== "pending_details"
+          ? { address_status: "completed", address_source: "inherited" }
+          : {}),
+        tags: [
+          ...(input.landingSlug ? [`landing:${input.landingSlug}`] : []),
+          ...(addressInherited ? ["address:inherited"] : []),
+        ],
       } as any)
       .select("id, public_order_number")
       .single();
