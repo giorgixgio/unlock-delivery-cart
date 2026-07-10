@@ -213,6 +213,7 @@ export async function createOrder(input: OrderInput) {
             "Authorization": `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({ order_id: order.id }),
+          keepalive: true,
         });
       } catch (e) {
         console.warn("normalize-and-score call failed:", e);
