@@ -148,7 +148,7 @@ export async function createOrder(input: OrderInput) {
         source: orderSource,
         shipping_fee: input.shippingFee ?? 0,
         ...(addressInherited && orderStatus !== "pending_details"
-          ? { address_status: "completed", address_source: "inherited" }
+          ? { address_status: "completed" }
           : {}),
         tags: [
           ...(input.landingSlug ? [`landing:${input.landingSlug}`] : []),
