@@ -395,6 +395,7 @@ export async function updateOrderAddress(
         "Authorization": `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({ order_id: orderId }),
+      keepalive: true,
     });
   } catch (e) {
     console.warn("normalize-and-score call failed:", e);
