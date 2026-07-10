@@ -114,8 +114,11 @@ const AdminPackingWaveDetail = () => {
     setBusy(true);
     try {
       const url = import.meta.env.VITE_SUPABASE_URL;
+      const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: s } = await supabase.auth.getSession();
+      const token = s?.session?.access_token || anon;
       const res = await fetch(`${url}/functions/v1/export-courier?action=download&courier=${courier}&wave_id=${wave.id}`, {
-        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        headers: { apikey: anon, Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
