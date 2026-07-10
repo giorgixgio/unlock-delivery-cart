@@ -72,6 +72,8 @@ const AdminPackingRun = () => {
   };
 
   // Print sheets — open print window
+  const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
   const printSheet = (which: "slot-setup" | "pick-to-slot" | "final-check") => {
     const win = window.open("", "_blank", "width=800,height=900");
     if (!win) return;
@@ -86,17 +88,16 @@ const AdminPackingRun = () => {
     </style>`;
     let body = "";
     if (which === "slot-setup") {
-      body = `<h1>Slot Setup Sheet — Run #${run?.run_number}</h1>
+      body = `<h1>Slot Setup Sheet — Run #${esc(run?.run_number)}</h1>
         <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Items</th><th>COD</th><th>City</th></tr></thead><tbody>${
         slots.map((s) => {
           const o = orders[s.order_id]; const its = items[s.order_id] || [];
           const cnt = its.reduce((a, b) => a + (b.quantity || 0), 0);
           const city = o?.normalized_city || o?.raw_city || o?.city || "";
-          return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || s.order_id.slice(0,8)}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${cnt}</td><td>${o?.total ?? ""} ₾</td><td>${city}</td></tr>`;
+          return `<tr><td class="slot">${esc(s.slot_number)}</td><td>${esc(o?.public_order_number || s.order_id.slice(0,8))}</td><td>${esc(s.tracking_number_snapshot || o?.tracking_number || "")}</td><td>${esc(cnt)}</td><td>${esc(o?.total ?? "")} ₾</td><td>${esc(city)}</td></tr>`;
         }).join("")
       }</tbody></table>`;
     } else if (which === "pick-to-slot") {
-      // group by SKU
       const map = new Map<string, { title: string; slots: Map<number, number> }>();
       for (const s of slots) {
         for (const it of items[s.order_id] || []) {
@@ -107,23 +108,23 @@ const AdminPackingRun = () => {
         }
       }
       const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
-      body = `<h1>Pick-to-Slot Sheet — Run #${run?.run_number}</h1>
+      body = `<h1>Pick-to-Slot Sheet — Run #${esc(run?.run_number)}</h1>
         <table><thead><tr><th>SKU</th><th>Product</th><th>Total</th><th>Slot instructions</th></tr></thead><tbody>${
         groups.map(([sku, v]) => {
           const total = Array.from(v.slots.values()).reduce((a, b) => a + b, 0);
           const inst = Array.from(v.slots.entries()).sort((a, b) => a[0] - b[0])
             .map(([slot, q]) => q > 1 ? `Slot ${slot} ×${q}` : `Slot ${slot}`).join(", ");
-          return `<tr><td><b>${sku}</b></td><td>${v.title}</td><td>${total}</td><td>${inst}</td></tr>`;
+          return `<tr><td><b>${esc(sku)}</b></td><td>${esc(v.title)}</td><td>${esc(total)}</td><td>${esc(inst)}</td></tr>`;
         }).join("")
       }</tbody></table>`;
     } else {
-      body = `<h1>Final Check Sheet — Run #${run?.run_number}</h1>
+      body = `<h1>Final Check Sheet — Run #${esc(run?.run_number)}</h1>
         <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Expected items</th><th>Count</th><th>Packed</th></tr></thead><tbody>${
         slots.map((s) => {
           const o = orders[s.order_id]; const its = items[s.order_id] || [];
           const cnt = its.reduce((a, b) => a + (b.quantity || 0), 0);
-          const ex = its.map((i) => `${i.sku} × ${i.quantity}`).join("<br/>");
-          return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || ""}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${ex}</td><td>${cnt}</td><td><span class="ck"></span></td></tr>`;
+          const ex = its.map((i) => `${esc(i.sku)} × ${esc(i.quantity)}`).join("<br/>");
+          return `<tr><td class="slot">${esc(s.slot_number)}</td><td>${esc(o?.public_order_number || "")}</td><td>${esc(s.tracking_number_snapshot || o?.tracking_number || "")}</td><td>${ex}</td><td>${esc(cnt)}</td><td><span class="ck"></span></td></tr>`;
         }).join("")
       }</tbody></table>`;
     }

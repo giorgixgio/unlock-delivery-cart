@@ -257,6 +257,7 @@ const AdminPackingWaveDetail = () => {
     runNumber: number,
     which: "slot-setup" | "pick-to-slot" | "final-check"
   ) => {
+    const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     try {
       const slots = waveSlots.filter((s) => s.run_id === runId).sort((a, b) => a.slot_number - b.slot_number);
       const oids = slots.map((s) => s.order_id);
@@ -276,13 +277,13 @@ const AdminPackingWaveDetail = () => {
       const styles = `<style>body{font-family:Arial,sans-serif;padding:16px;color:#000}h1{font-size:18px;margin:0 0 12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #333;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee}.slot{font-weight:bold}.ck{width:18px;height:18px;border:1.5px solid #000;display:inline-block}</style>`;
       let body = "";
       if (which === "slot-setup") {
-        body = `<h1>Slot Setup Sheet — Run #${runNumber}</h1>
+        body = `<h1>Slot Setup Sheet — Run #${esc(runNumber)}</h1>
           <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Items</th><th>COD</th><th>City</th></tr></thead><tbody>${
           slots.map((s) => {
             const o = om[s.order_id]; const items = im[s.order_id] || [];
             const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
             const city = o?.normalized_city || o?.raw_city || o?.city || "";
-            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || s.order_id.slice(0,8)}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${cnt}</td><td>${o?.total ?? ""} ₾</td><td>${city}</td></tr>`;
+            return `<tr><td class="slot">${esc(s.slot_number)}</td><td>${esc(o?.public_order_number || s.order_id.slice(0,8))}</td><td>${esc(s.tracking_number_snapshot || o?.tracking_number || "")}</td><td>${esc(cnt)}</td><td>${esc(o?.total ?? "")} ₾</td><td>${esc(city)}</td></tr>`;
           }).join("")
         }</tbody></table>`;
       } else if (which === "pick-to-slot") {
@@ -296,23 +297,23 @@ const AdminPackingWaveDetail = () => {
           }
         }
         const groups = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
-        body = `<h1>Pick-to-Slot Sheet — Run #${runNumber}</h1>
+        body = `<h1>Pick-to-Slot Sheet — Run #${esc(runNumber)}</h1>
           <table><thead><tr><th>SKU</th><th>Product</th><th>Total</th><th>Slot instructions</th></tr></thead><tbody>${
           groups.map(([sku, v]) => {
             const total = Array.from(v.slots.values()).reduce((a, b) => a + b, 0);
             const inst = Array.from(v.slots.entries()).sort((a, b) => a[0] - b[0])
               .map(([slot, q]) => q > 1 ? `Slot ${slot} ×${q}` : `Slot ${slot}`).join(", ");
-            return `<tr><td><b>${sku}</b></td><td>${v.title}</td><td>${total}</td><td>${inst}</td></tr>`;
+            return `<tr><td><b>${esc(sku)}</b></td><td>${esc(v.title)}</td><td>${esc(total)}</td><td>${esc(inst)}</td></tr>`;
           }).join("")
         }</tbody></table>`;
       } else {
-        body = `<h1>Final Check Sheet — Run #${runNumber}</h1>
+        body = `<h1>Final Check Sheet — Run #${esc(runNumber)}</h1>
           <table><thead><tr><th>Slot</th><th>Order #</th><th>Tracking</th><th>Expected items</th><th>Count</th><th>Packed</th></tr></thead><tbody>${
           slots.map((s) => {
             const o = om[s.order_id]; const items = im[s.order_id] || [];
             const cnt = items.reduce((a: number, b: any) => a + (b.quantity || 0), 0);
-            const ex = items.map((i: any) => `${i.sku} × ${i.quantity}`).join("<br/>");
-            return `<tr><td class="slot">${s.slot_number}</td><td>${o?.public_order_number || ""}</td><td>${s.tracking_number_snapshot || o?.tracking_number || ""}</td><td>${ex}</td><td>${cnt}</td><td><span class="ck"></span></td></tr>`;
+            const ex = items.map((i: any) => `${esc(i.sku)} × ${esc(i.quantity)}`).join("<br/>");
+            return `<tr><td class="slot">${esc(s.slot_number)}</td><td>${esc(o?.public_order_number || "")}</td><td>${esc(s.tracking_number_snapshot || o?.tracking_number || "")}</td><td>${ex}</td><td>${esc(cnt)}</td><td><span class="ck"></span></td></tr>`;
           }).join("")
         }</tbody></table>`;
       }
