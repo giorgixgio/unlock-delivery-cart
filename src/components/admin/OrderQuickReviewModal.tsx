@@ -287,6 +287,61 @@ export default function OrderQuickReviewModal({
     return () => { void endSession("unmounted"); };
   }, []);
 
+  // ── Fetch previous orders from the same phone (last 9 digits) ──
+  useEffect(() => {
+    if (!order?.customer_phone || !order?.id) { setPrevOrders([]); return; }
+    const digits = order.customer_phone.replace(/\D/g, "");
+    const last9 = digits.slice(-9);
+    if (last9.length < 6) { setPrevOrders([]); return; }
+    let cancelled = false;
+    setPrevLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, public_order_number, created_at, status, total, call_attempt_count")
+        .ilike("customer_phone", `%${last9}%`)
+        .neq("id", order.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (cancelled) return;
+      setPrevOrders((data || []) as PrevOrder[]);
+      setPrevLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [order?.id, order?.customer_phone]);
+
+  const cancellablePrev = useMemo(
+    () => prevOrders.filter((p) => !["canceled", "delivered", "shipped", "packed", "returned", "merged"].includes(p.status)),
+    [prevOrders],
+  );
+
+  const handleBulkCancelPrev = useCallback(async () => {
+    if (cancellablePrev.length === 0) return;
+    if (!confirm(`${cancellablePrev.length} წინა შეკვეთა გაუქმდება (დუბლიკატი). გავაგრძელო?`)) return;
+    setBulkCanceling(true);
+    let ok = 0, fail = 0;
+    for (const p of cancellablePrev) {
+      const success = await cancelOrderWithReason(
+        p.id, actor, "duplicate_order", "Bulk-canceled as duplicate from quick review",
+        Number(p.call_attempt_count || 0),
+      );
+      if (success) ok++; else fail++;
+    }
+    // Refresh list
+    setPrevOrders((list) =>
+      list.map((p) =>
+        cancellablePrev.some((c) => c.id === p.id) ? { ...p, status: "canceled" } : p
+      ),
+    );
+    setBulkCanceling(false);
+    toast({
+      title: fail === 0 ? `გაუქმდა ${ok} წინა შეკვეთა` : `გაუქმდა ${ok}, ვერ ${fail}`,
+      variant: fail === 0 ? undefined : "destructive",
+    });
+  }, [cancellablePrev, actor, toast]);
+
+
+
   // Keyboard navigation
   useEffect(() => {
     if (!orderId) return;
