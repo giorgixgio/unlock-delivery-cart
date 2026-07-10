@@ -213,6 +213,7 @@ export async function createOrder(input: OrderInput) {
             "Authorization": `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({ order_id: order.id }),
+          keepalive: true,
         });
       } catch (e) {
         console.warn("normalize-and-score call failed:", e);
@@ -394,6 +395,7 @@ export async function updateOrderAddress(
         "Authorization": `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({ order_id: orderId }),
+      keepalive: true,
     });
   } catch (e) {
     console.warn("normalize-and-score call failed:", e);

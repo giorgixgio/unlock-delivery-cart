@@ -224,6 +224,47 @@ Deno.serve(async (req) => {
     }
 
     // action === "download"
+    // Safety net: some orders may reach export without normalized_city/address
+    // (e.g. the fire-and-forget normalize call was cancelled when the tab
+    // closed, or an operator confirmed before it finished). Normalize them
+    // synchronously now so the courier file gets the Georgian version, not
+    // the Latin/English text the customer typed.
+    const missing = assigned.filter((a) => {
+      const o = a.order;
+      const hasCity = !!(o.normalized_city && String(o.normalized_city).trim());
+      const hasAddr = !!(o.normalized_address && String(o.normalized_address).trim());
+      return !hasCity || !hasAddr;
+    });
+    if (missing.length) {
+      for (const m of missing) {
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/normalize-and-score`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ order_id: m.order.id }),
+          });
+          if (!res.ok) continue;
+          const { data: refreshed } = await supabase
+            .from("orders")
+            .select("normalized_city, normalized_address, raw_city, raw_address")
+            .eq("id", m.order.id)
+            .single();
+          if (refreshed) {
+            m.order.normalized_city = refreshed.normalized_city ?? m.order.normalized_city;
+            m.order.normalized_address = refreshed.normalized_address ?? m.order.normalized_address;
+            m.order.raw_city = refreshed.raw_city ?? m.order.raw_city;
+            m.order.raw_address = refreshed.raw_address ?? m.order.raw_address;
+          }
+        } catch (_e) {
+          // best-effort — fall back to raw/city on the row
+        }
+      }
+    }
+
     const { data: template } = await supabase
       .from("courier_export_settings")
       .select("*")

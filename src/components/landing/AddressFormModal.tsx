@@ -65,6 +65,7 @@ const AddressFormModal = ({
   const [view, setView] = useState<View>("form");
   const [partialWarning, setPartialWarning] = useState(false);
   const [emptyWarning, setEmptyWarning] = useState(false);
+  const [savedAddress, setSavedAddress] = useState<{ region: string; address: string } | null>(null);
   const submittedRef = useRef(false);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ const AddressFormModal = ({
     setView("form");
     setPartialWarning(false);
     setEmptyWarning(false);
+    setSavedAddress(null);
     trackAddressFormViewed(orderId);
     trackAddressPopupOpened(orderId);
     const saved = loadCustomerInfo();
@@ -82,8 +84,54 @@ const AddressFormModal = ({
         region: saved.region || f.region,
         address: saved.address || f.address,
       }));
+      if (saved.region && saved.address) {
+        setSavedAddress({ region: saved.region, address: saved.address });
+      }
     }
   }, [open, orderId]);
+
+  // Returning-customer lookup by phone from the just-created order.
+  // If we have a previous address on file, pre-fill and show a summary card
+  // so the user sees "we already have your address" and can confirm/edit.
+  useEffect(() => {
+    if (!open || !orderId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: current } = await supabase
+          .from("orders")
+          .select("customer_phone")
+          .eq("id", orderId)
+          .maybeSingle();
+        const phone = (current?.customer_phone || "").replace(/\D/g, "");
+        const last9 = phone.slice(-9);
+        if (!last9 || last9.length < 6) return;
+        const { data: prev } = await supabase
+          .from("orders")
+          .select("city, region, address_line1, normalized_city, normalized_address")
+          .ilike("customer_phone", `%${last9}%`)
+          .neq("id", orderId)
+          .not("address_line1", "is", null)
+          .neq("address_line1", "")
+          .neq("status", "merged")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled || !prev) return;
+        const region = prev.normalized_city || prev.region || prev.city || "";
+        const address = prev.normalized_address || prev.address_line1 || "";
+        if (!region && !address) return;
+        setSavedAddress({ region, address });
+        setForm((f) => ({
+          ...f,
+          region: f.region.trim() || region,
+          address: f.address.trim() || address,
+        }));
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [open, orderId]);
+
 
   useEffect(() => {
     if (!open) return;
@@ -279,8 +327,31 @@ const AddressFormModal = ({
                 </div>
               </div>
 
+              {/* Returning customer summary card */}
+              {savedAddress && (savedAddress.region || savedAddress.address) && (
+                <div className="mt-4 rounded-[20px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-4">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-[1px]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-300">
+                        შენი მისამართი უკვე გვაქვს
+                      </p>
+                      <p className="text-[14px] text-foreground mt-1 leading-snug break-words">
+                        {savedAddress.region}
+                        {savedAddress.region && savedAddress.address ? ", " : ""}
+                        {savedAddress.address}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground mt-1">
+                        თუ სხვა ადგილას გინდა მიწოდება, შეცვალე ქვემოთ.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Fields */}
               <div className="space-y-4 mt-5">
+
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
