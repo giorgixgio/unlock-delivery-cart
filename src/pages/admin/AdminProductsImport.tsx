@@ -35,11 +35,14 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 async function generateContent(item: InputProduct): Promise<ImportedProduct> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token || SUPABASE_KEY;
   const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-product-content`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${token}`,
     },
     body: JSON.stringify(item),
   });
