@@ -180,11 +180,11 @@ export async function createOrder(input: OrderInput) {
     if (itemsError) throw itemsError;
 
     // Create initial event
-    await supabase.from("order_events").insert({
-      order_id: order.id,
-      actor: "system",
-      event_type: "status_change",
-      payload: { from: null, to: orderStatus, source: "storefront_checkout" },
+    await (supabase as any).rpc("storefront_log_order_event", {
+      p_order_id: order.id,
+      p_actor: "system",
+      p_event_type: "status_change",
+      p_payload: { from: null, to: orderStatus, source: "storefront_checkout" },
     });
 
     // Log SUCCESS system event
@@ -366,21 +366,14 @@ export async function updateOrderAddress(
   }
 ) {
   const status = data.addressStatus || (data.addressLine1.trim() ? "completed" : "partial");
-  const { error } = await supabase
-    .from("orders")
-    .update({
-      city: data.city,
-      region: data.region,
-      address_line1: data.addressLine1,
-      raw_city: data.city,
-      raw_address: data.addressLine1,
-      is_tbilisi: data.isTbilisi,
-      status: "new",
-      address_status: status,
-      address_added_at: new Date().toISOString(),
-      skipped_address: false,
-    } as any)
-    .eq("id", orderId);
+  const { error } = await (supabase as any).rpc("storefront_update_order_address", {
+    p_order_id: orderId,
+    p_city: data.city,
+    p_region: data.region,
+    p_address_line1: data.addressLine1,
+    p_is_tbilisi: data.isTbilisi,
+    p_address_status: status,
+  });
 
   if (error) throw error;
 
@@ -404,13 +397,9 @@ export async function updateOrderAddress(
 
 /** Mark that the customer explicitly skipped the address popup. Does not delete the order. */
 export async function markOrderAddressSkipped(orderId: string) {
-  const { error } = await supabase
-    .from("orders")
-    .update({
-      skipped_address: true,
-      address_status: "missing",
-    } as any)
-    .eq("id", orderId);
+  const { error } = await (supabase as any).rpc("storefront_mark_address_skipped", {
+    p_order_id: orderId,
+  });
   if (error) throw error;
 }
 

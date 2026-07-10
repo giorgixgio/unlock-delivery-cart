@@ -71,16 +71,21 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview`, {
-      headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-    })
-      .then((r) => r.json())
-      .then((data) => {
+    (async () => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: s } = await supabase.auth.getSession();
+      const token = s?.session?.access_token || anon;
+      try {
+        const r = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview`, {
+          headers: { apikey: anon, Authorization: `Bearer ${token}` },
+        });
+        const data = await r.json();
         setPreview(data);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    })();
   }, [open]);
 
   const performDownload = async () => {
@@ -89,8 +94,11 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
     const fileName = `${courier}_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: s } = await supabase.auth.getSession();
+      const token = s?.session?.access_token || anon;
       const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download&courier=${courier}`, {
-        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        headers: { apikey: anon, Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
 

@@ -33,47 +33,25 @@ const BumpOfferModal = ({
   const handleAccept = async () => {
     setLoading(true);
     try {
-      // Add bump item to order
-      await supabase.from("order_items").insert({
-        order_id: orderId,
-        product_id: product.id,
-        sku: product.sku || product.id,
-        title: `${product.title} (ბამპ)`,
-        quantity: bumpConfig.bump_qty,
-        unit_price: bumpUnitPrice,
-        line_total: bumpTotal,
-        image_url: product.image || "",
-        tags: ["is_bump"],
+      // Apply bump via SECURITY DEFINER RPC (inserts item + updates totals
+      // atomically, and enforces "fresh unconfirmed order" server-side).
+      const { error: bumpErr } = await (supabase as any).rpc("storefront_apply_bump", {
+        p_order_id: orderId,
+        p_product_id: product.id,
+        p_sku: product.sku || product.id,
+        p_title: `${product.title} (ბამპ)`,
+        p_quantity: bumpConfig.bump_qty,
+        p_unit_price: bumpUnitPrice,
+        p_line_total: bumpTotal,
+        p_image_url: product.image || "",
       });
+      if (bumpErr) throw bumpErr;
 
-      // Update order total and status
-      const { data: order } = await supabase
-        .from("orders")
-        .select("total, subtotal")
-        .eq("id", orderId)
-        .single();
-
-      if (order) {
-        const newTotal = Number(order.total) + bumpTotal;
-        const newSubtotal = Number(order.subtotal) + bumpTotal;
-        await supabase
-          .from("orders")
-          .update({
-            total: newTotal,
-            subtotal: newSubtotal,
-            status: "new",
-            tags: (await supabase.from("orders").select("tags").eq("id", orderId).single())
-              .data?.tags?.concat(["bump_accepted"]) || ["bump_accepted"],
-          } as any)
-          .eq("id", orderId);
-      }
-
-      // Log event
-      await supabase.from("order_events").insert({
-        order_id: orderId,
-        actor: "system",
-        event_type: "bump_accepted",
-        payload: {
+      await (supabase as any).rpc("storefront_log_order_event", {
+        p_order_id: orderId,
+        p_actor: "system",
+        p_event_type: "bump_accepted",
+        p_payload: {
           bump_qty: bumpConfig.bump_qty,
           bump_discount_pct: bumpConfig.discount_pct,
           bump_unit_price: bumpUnitPrice,
@@ -170,16 +148,12 @@ const BumpOfferModal = ({
 
 async function finalizeOrder(orderId: string) {
   try {
-    await supabase
-      .from("orders")
-      .update({ status: "new" } as any)
-      .eq("id", orderId);
-
-    await supabase.from("order_events").insert({
-      order_id: orderId,
-      actor: "system",
-      event_type: "bump_declined",
-      payload: { bump_shown: true, bump_accepted: false },
+    // Status stays "new" on the RPC path; only log the declined signal.
+    await (supabase as any).rpc("storefront_log_order_event", {
+      p_order_id: orderId,
+      p_actor: "system",
+      p_event_type: "bump_declined",
+      p_payload: { bump_shown: true, bump_accepted: false },
     });
   } catch (err) {
     console.error("Finalize order failed:", err);

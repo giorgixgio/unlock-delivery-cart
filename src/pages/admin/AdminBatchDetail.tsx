@@ -340,15 +340,18 @@ const AdminBatchDetail = () => {
 
   /* ─── Packing Slips (HTML popup) ─── */
   const openPackingSlipsWindow = () => {
+    const esc = (s: unknown) => String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const today = new Date().toLocaleDateString("ka-GE");
     const slipsHtml = orders.map((ord, idx) => {
       const items = snapshot.filter((s) => s.order_id === ord.id);
       return `<div class="slip" ${idx > 0 ? 'style="page-break-before:always"' : ''}>
-<div class="slip-header"><strong>#${ord.public_order_number}</strong><span>${today}</span></div>
-<div class="info"><div><strong>${ord.customer_name}</strong></div><div>${ord.customer_phone}</div><div>${ord.address_line1}, ${ord.city}</div>
-${ord.tracking_number ? `<div class="tracking">Tracking: ${ord.tracking_number}</div>` : ""}</div>
+<div class="slip-header"><strong>#${esc(ord.public_order_number)}</strong><span>${esc(today)}</span></div>
+<div class="info"><div><strong>${esc(ord.customer_name)}</strong></div><div>${esc(ord.customer_phone)}</div><div>${esc(ord.address_line1)}, ${esc(ord.city)}</div>
+${ord.tracking_number ? `<div class="tracking">Tracking: ${esc(ord.tracking_number)}</div>` : ""}</div>
 <table><thead><tr><th>SKU</th><th>Product</th><th style="text-align:center">Qty</th></tr></thead><tbody>
-${items.map(i => `<tr><td style="font-weight:bold">${i.sku}</td><td>${i.product_name}</td><td style="text-align:center;font-weight:bold">${i.qty}</td></tr>`).join("")}
+${items.map(i => `<tr><td style="font-weight:bold">${esc(i.sku)}</td><td>${esc(i.product_name)}</td><td style="text-align:center;font-weight:bold">${esc(i.qty)}</td></tr>`).join("")}
 </tbody></table></div>`;
     }).join("");
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Packing Slips</title>
