@@ -1827,6 +1827,78 @@ export type Database = {
           id: string
         }[]
       }
+      storefront_apply_bump: {
+        Args: {
+          p_image_url: string
+          p_line_total: number
+          p_order_id: string
+          p_product_id: string
+          p_quantity: number
+          p_sku: string
+          p_title: string
+          p_unit_price: number
+        }
+        Returns: undefined
+      }
+      storefront_get_last_address_by_phone: {
+        Args: { p_phone: string }
+        Returns: {
+          address_line1: string
+          city: string
+          is_tbilisi: boolean
+          normalized_address: string
+          normalized_city: string
+          region: string
+        }[]
+      }
+      storefront_log_order_event: {
+        Args: {
+          p_actor: string
+          p_event_type: string
+          p_order_id: string
+          p_payload: Json
+        }
+        Returns: undefined
+      }
+      storefront_log_system_event: {
+        Args: {
+          p_actor_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_error_message: string
+          p_event_type: string
+          p_payload: Json
+          p_status: string
+        }
+        Returns: undefined
+      }
+      storefront_mark_address_skipped: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      storefront_recent_addresses: {
+        Args: { p_limit?: number }
+        Returns: {
+          address: string
+        }[]
+      }
+      storefront_recent_cities: {
+        Args: { p_limit?: number }
+        Returns: {
+          city: string
+        }[]
+      }
+      storefront_update_order_address: {
+        Args: {
+          p_address_line1: string
+          p_address_status: string
+          p_city: string
+          p_is_tbilisi: boolean
+          p_order_id: string
+          p_region: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

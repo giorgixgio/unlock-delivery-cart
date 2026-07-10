@@ -138,11 +138,11 @@ const AddressFormModal = ({
     (async () => {
       try {
         const [{ data: cities }, { data: addresses }] = await Promise.all([
-          supabase.from("orders").select("normalized_city").not("normalized_city", "is", null).neq("normalized_city", "").order("created_at", { ascending: false }).limit(200),
-          supabase.from("orders").select("normalized_address").not("normalized_address", "is", null).neq("normalized_address", "").order("created_at", { ascending: false }).limit(200),
+          (supabase as any).rpc("storefront_recent_cities", { p_limit: 200 }),
+          (supabase as any).rpc("storefront_recent_addresses", { p_limit: 200 }),
         ]);
-        if (cities) setHistoricalCities([...new Set(cities.map((c) => c.normalized_city).filter(Boolean) as string[])]);
-        if (addresses) setHistoricalAddresses([...new Set(addresses.map((a) => a.normalized_address).filter(Boolean) as string[])]);
+        if (cities) setHistoricalCities([...new Set((cities as any[]).map((c) => c.city).filter(Boolean) as string[])]);
+        if (addresses) setHistoricalAddresses([...new Set((addresses as any[]).map((a) => a.address).filter(Boolean) as string[])]);
       } catch {}
     })();
   }, [open]);

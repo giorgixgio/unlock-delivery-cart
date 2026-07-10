@@ -169,26 +169,18 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await supabase
-          .from("orders")
-          .select("city, region, address_line1, is_tbilisi")
-          .ilike("customer_phone", `%${last9}%`)
-          .not("city", "is", null)
-          .neq("city", "")
-          .not("address_line1", "is", null)
-          .neq("address_line1", "")
-          .neq("status", "merged")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (cancelled || !data) return;
+        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
+          p_phone: form.phone,
+        });
+        const row = Array.isArray(data) ? data[0] : data;
+        if (cancelled || !row) return;
         setForm((f) => ({
           ...f,
-          region: f.region.trim() || data.region || data.city || "",
-          address: f.address.trim() || data.address_line1 || "",
+          region: f.region.trim() || row.region || row.city || "",
+          address: f.address.trim() || row.address_line1 || "",
         }));
-        if (data.is_tbilisi !== undefined) {
-          const lower = (data.city || "").trim().toLowerCase();
+        if (row.is_tbilisi !== undefined && row.is_tbilisi !== null) {
+          const lower = (row.city || "").trim().toLowerCase();
           setManualLocation(lower === "თბილისი" || lower === "tbilisi");
         }
         setIsRecognized(true);
@@ -225,27 +217,15 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     });
     const fetchHistorical = async () => {
       try {
-        const { data: cities } = await supabase
-          .from("orders")
-          .select("normalized_city")
-          .not("normalized_city", "is", null)
-          .neq("normalized_city", "")
-          .neq("status", "merged")
-          .order("created_at", { ascending: false })
-          .limit(200);
-        const { data: addresses } = await supabase
-          .from("orders")
-          .select("normalized_address")
-          .not("normalized_address", "is", null)
-          .neq("normalized_address", "")
-          .neq("status", "merged")
-          .order("created_at", { ascending: false })
-          .limit(200);
+        const [{ data: cities }, { data: addresses }] = await Promise.all([
+          (supabase as any).rpc("storefront_recent_cities", { p_limit: 200 }),
+          (supabase as any).rpc("storefront_recent_addresses", { p_limit: 200 }),
+        ]);
         if (cities) {
-          setHistoricalCities([...new Set(cities.map(c => c.normalized_city).filter(Boolean) as string[])]);
+          setHistoricalCities([...new Set((cities as any[]).map((c) => c.city).filter(Boolean) as string[])]);
         }
         if (addresses) {
-          setHistoricalAddresses([...new Set(addresses.map(a => a.normalized_address).filter(Boolean) as string[])]);
+          setHistoricalAddresses([...new Set((addresses as any[]).map((a) => a.address).filter(Boolean) as string[])]);
         }
       } catch {}
     };
