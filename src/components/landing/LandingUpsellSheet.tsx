@@ -17,6 +17,7 @@ interface LandingUpsellSheetProps {
   open: boolean;
   onClose: () => void;
   orderId: string;
+  orderNumber?: string;
   baseProduct: Product;
   basePrice: number;
   onComplete: (deliveryFee: number, newTotal: number) => void;
@@ -25,11 +26,14 @@ interface LandingUpsellSheetProps {
 
 const BUNDLE_PRICE = 19;
 const MAX_SELECT = 2;
+// Sticky orange announcement bar height (28px per Fix #1) + safe area
+const TOP_SAFE_PADDING = "calc(28px + env(safe-area-inset-top))";
 
 const LandingUpsellSheet = ({
   open,
   onClose: _onClose,
   orderId,
+  orderNumber,
   baseProduct,
   basePrice,
   onComplete,
@@ -116,12 +120,37 @@ const LandingUpsellSheet = ({
         <SheetTitle className="sr-only">შეთავაზება</SheetTitle>
 
         {/* ═══ ZONE 1: FIXED HEADER ═══ */}
-        <div className="flex-shrink-0 bg-card border-b border-border">
+        <div
+          className="flex-shrink-0 bg-card border-b border-border"
+          style={{ paddingTop: TOP_SAFE_PADDING }}
+        >
           <div className="flex justify-center pt-2 pb-1">
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
 
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-3">
+            {/* Step indicator */}
+            <div className="pb-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                ნაბიჯი 1/2
+              </p>
+              <div className="mt-1.5 h-[5px] w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                  style={{ width: "50%" }}
+                />
+              </div>
+            </div>
+
+            {/* Reassurance line */}
+            {orderNumber && (
+              <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-1.5">
+                <p className="text-[12px] font-semibold text-emerald-800 dark:text-emerald-300 leading-snug">
+                  შეკვეთა #{orderNumber} დადასტურებულია ✅ — გადაიხდი მიღებისას
+                </p>
+              </div>
+            )}
+
             <div className="flex items-start gap-3 pr-8 relative">
               <div className="min-w-0 flex-1 text-center">
                 <h2 className="text-xl font-extrabold text-foreground leading-tight">

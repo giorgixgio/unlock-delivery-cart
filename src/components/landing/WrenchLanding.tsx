@@ -327,6 +327,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
         orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
         onComplete={handleUpsellComplete}

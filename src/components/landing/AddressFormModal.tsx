@@ -41,8 +41,8 @@ interface AddressFormModalProps {
 
 type View = "form" | "skip_confirm" | "success";
 
-// Sticky orange announcement bar height + safe area + breathing room
-const TOP_SAFE_PADDING = "calc(46px + env(safe-area-inset-top) + 18px)";
+// Sticky orange announcement bar height (28px per Fix #1) + safe area + breathing room
+const TOP_SAFE_PADDING = "calc(28px + env(safe-area-inset-top) + 18px)";
 const BOTTOM_SAFE_PADDING = "calc(150px + env(safe-area-inset-bottom))";
 
 const inputClass =
@@ -235,7 +235,7 @@ const AddressFormModal = ({
             aria-label="დახურვა"
             className="fixed z-[2] w-9 h-9 rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-muted/70 flex items-center justify-center transition-colors bg-background/80 backdrop-blur-sm"
             style={{
-              top: "calc(46px + env(safe-area-inset-top) + 10px)",
+              top: "calc(28px + env(safe-area-inset-top) + 10px)",
               right: "14px",
             }}
           >
@@ -261,6 +261,13 @@ const AddressFormModal = ({
         >
           {view === "form" && (
             <>
+              {/* Reassurance line */}
+              <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-1.5">
+                <p className="text-[12px] font-semibold text-emerald-800 dark:text-emerald-300 leading-snug">
+                  შეკვეთა #{orderNumber} დადასტურებულია ✅ — გადაიხდი მიღებისას
+                </p>
+              </div>
+
               {/* Step label + progress bar */}
               <div className="pb-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -269,7 +276,7 @@ const AddressFormModal = ({
                 <div className="mt-2 h-[5px] w-full rounded-full bg-muted overflow-hidden relative">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 relative overflow-hidden"
-                    style={{ width: "83%" }}
+                    style={{ width: "100%" }}
                   >
                     <span className="absolute inset-y-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent animate-shine" />
                   </div>
