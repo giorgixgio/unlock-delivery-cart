@@ -244,7 +244,7 @@ const LandingUpsellSheet = ({
             onClick={handleSkip}
             className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
           >
-            არა მადლობა — გავაგრძელო 5₾ მიტანით →
+            არა მადლობა →
           </button>
         </div>
       </SheetContent>
