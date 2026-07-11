@@ -36,59 +36,41 @@ const StickyAnnouncementBar = memo(() => {
         top: 0,
         zIndex: 60,
         width: "100%",
-        height: 46,
-        background: "linear-gradient(90deg, #ff6a00, #ffb300, #ff6a00)",
-        backgroundSize: "200% 100%",
-        animation: "announceGradient 3s ease infinite, barFlash 0.6s ease-in-out infinite",
+        height: 28,
+        background: "rgba(255, 106, 0, 0.92)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 16px",
-        borderBottom: "2px solid rgba(0,0,0,0.15)",
-        boxShadow: "0 3px 16px rgba(255,106,0,0.5)",
+        padding: "0 12px",
+        borderBottom: "1px solid rgba(0,0,0,0.08)",
         fontFamily: "'Noto Sans Georgian', 'FiraGO', sans-serif",
       }}
     >
       {/* Left: lightning + text */}
       <span
         style={{
-          fontSize: 12,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 600,
           color: "#fff",
           whiteSpace: "nowrap",
+          opacity: 0.95,
         }}
       >
-        ⚡ ფლეშ ფასი მოქმედებს მხოლოდ:
+        ⚡ ფლეშ ფასი:
       </span>
 
-      {/* Right: timer + hourglass */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span
-          style={{
-            fontFamily: "'Courier New', monospace",
-            fontSize: 20,
-            fontWeight: 900,
-            color: "#fff",
-            letterSpacing: 2,
-            textShadow: "0 0 10px rgba(255,255,255,0.8)",
-          }}
-        >
-          {mins}:{secs}
-        </span>
-        <span style={{ fontSize: 14, color: "#fff" }}>⏳</span>
-      </div>
-
-      <style>{`
-        @keyframes announceGradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        @keyframes barFlash {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.85; }
-        }
-      `}</style>
+      {/* Right: timer */}
+      <span
+        style={{
+          fontFamily: "'Courier New', monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          color: "#fff",
+          letterSpacing: 1,
+        }}
+      >
+        {mins}:{secs}
+      </span>
     </div>
   );
 });
