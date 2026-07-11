@@ -123,14 +123,14 @@ const CODFormModal = ({
         stock: product.available,
       });
 
-      saveCustomerInfo({ phone, region: "", address: "" });
+      saveCustomerInfo({ phone: submitPhone, region: "", address: "" });
 
       // Create order with status pending_details (phone only, no address)
       const result = await submitCustomerOrder({
         debugLabel: "Landing page order submit",
         order: {
-          customerName: phone,
-          customerPhone: phone,
+          customerName: submitPhone,
+          customerPhone: submitPhone,
           items: [{ product, quantity }],
           subtotal: totalAfter,
           total: totalAfter + 5,
@@ -144,7 +144,7 @@ const CODFormModal = ({
           productHandle: product.handle ?? null,
           sku: (product as any).sku ?? null,
           productName: product.title,
-          phone,
+          phone: submitPhone,
           quantity,
           source: "landing_cod",
           landingPageUrl: window.location.href,
