@@ -823,34 +823,94 @@ export default function OrderQuickReviewModal({
                     <div className="text-xs text-muted-foreground">იტვირთება…</div>
                   ) : (
                     <div className="space-y-1">
-                      {prevOrders.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center justify-between gap-2 bg-background/70 rounded-md px-2.5 py-1.5 border border-border/60"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="font-mono text-xs font-bold">#{p.public_order_number}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor[p.status] || "bg-muted"}`}>
-                              {p.status.replace("_", " ")}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              {new Date(p.created_at).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                            </span>
+                      {prevOrders.map((p) => {
+                        const isExpanded = expandedPrevId === p.id;
+                        const items = prevItemsById[p.id];
+                        const canCancelRow = !["canceled", "delivered", "shipped", "packed", "returned", "merged"].includes(p.status);
+                        const canMergeRow = canCancelRow && order && !order.is_fulfilled;
+                        return (
+                          <div key={p.id} className="bg-background/70 rounded-md border border-border/60 overflow-hidden">
+                            <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                              <button
+                                type="button"
+                                onClick={() => togglePrevExpand(p.id)}
+                                className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80"
+                                aria-expanded={isExpanded}
+                              >
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
+                                <span className="font-mono text-xs font-bold">#{p.public_order_number}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor[p.status] || "bg-muted"}`}>
+                                  {p.status.replace("_", " ")}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground truncate">
+                                  {new Date(p.created_at).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </button>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <span className="text-xs font-semibold mr-1">{Number(p.total).toFixed(2)} ₾</span>
+                                {canMergeRow && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setMergeWithPrevId(p.id)}
+                                    className="p-1 rounded hover:bg-blue-100 text-blue-700"
+                                    title="მიმდინარესთან შერწყმა"
+                                    aria-label="Merge with current"
+                                  >
+                                    <GitMerge className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {canCancelRow && (
+                                  <button
+                                    type="button"
+                                    disabled={cancelingPrevId === p.id}
+                                    onClick={() => cancelSinglePrev(p)}
+                                    className="p-1 rounded hover:bg-red-100 text-red-700 disabled:opacity-50"
+                                    title="გააუქმე (დუბლიკატი)"
+                                    aria-label="Cancel this order"
+                                  >
+                                    {cancelingPrevId === p.id
+                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      : <XCircle className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/admin/orders/${p.id}`)}
+                                  className="p-1 rounded hover:bg-muted text-primary"
+                                  title="Advanced"
+                                  aria-label="Open advanced"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded && (
+                              <div className="border-t border-border/60 bg-muted/30 px-2.5 py-1.5">
+                                {prevItemsLoading === p.id ? (
+                                  <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> იტვირთება…
+                                  </div>
+                                ) : items && items.length > 0 ? (
+                                  <ul className="space-y-1">
+                                    {items.map((it, idx) => (
+                                      <li key={idx} className="flex items-center gap-2 text-[11px]">
+                                        {it.image_url && (
+                                          <img src={it.image_url} alt="" className="w-6 h-6 rounded object-cover border border-border/60" />
+                                        )}
+                                        <span className="flex-1 truncate">{it.title}</span>
+                                        <span className="font-semibold">×{it.quantity}</span>
+                                        <span className="text-muted-foreground w-14 text-right">{(it.unit_price * it.quantity).toFixed(2)} ₾</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div className="text-[11px] text-muted-foreground">პროდუქტები არ არის</div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <span className="text-xs font-semibold">{Number(p.total).toFixed(2)} ₾</span>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/admin/orders/${p.id}`)}
-                              className="text-primary hover:text-primary/80"
-                              title="Advanced"
-                              aria-label="Open advanced"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </section>
