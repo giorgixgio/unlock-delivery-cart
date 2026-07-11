@@ -99,11 +99,12 @@ const CODFormModal = ({
   };
 
   const handleSubmit = async () => {
-    const result = phoneSchema.safeParse({ phone });
-    if (!result.success) {
-      setError(result.error.errors[0]?.message || "ტელეფონი აუცილებელია");
+    setTouched(true);
+    if (!isValid) {
+      setError("");
       return;
     }
+    const submitPhone = cleanedPhone;
 
     setSubmitting(true);
     setError("");
