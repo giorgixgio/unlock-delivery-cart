@@ -43,7 +43,7 @@ type View = "form" | "skip_confirm" | "success";
 
 // Sticky orange announcement bar height + safe area + breathing room
 const TOP_SAFE_PADDING = "calc(46px + env(safe-area-inset-top) + 18px)";
-const BOTTOM_SAFE_PADDING = "calc(24px + env(safe-area-inset-bottom))";
+const BOTTOM_SAFE_PADDING = "calc(150px + env(safe-area-inset-bottom))";
 
 const inputClass =
   "h-[58px] !text-[17px] rounded-2xl border-[1.5px] border-border px-[18px] focus-visible:ring-2 focus-visible:ring-success/40 focus-visible:border-success";
@@ -225,9 +225,8 @@ const AddressFormModal = ({
     <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
       <SheetContent
         side="bottom"
-        className="h-[100dvh] max-h-[100dvh] rounded-t-3xl p-0 overflow-hidden [&>button.absolute]:hidden border-0"
+        className="h-[100dvh] max-h-[100dvh] rounded-t-3xl p-0 overflow-hidden flex flex-col [&>button.absolute]:hidden border-0"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        style={{ overflowY: "auto" }}
       >
         {/* Soft close (X) */}
         {view !== "success" && (
@@ -243,6 +242,9 @@ const AddressFormModal = ({
             <X className="w-4 h-4" />
           </button>
         )}
+
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto relative">
 
         {/* Scroll container with safe-area padding */}
         <div
@@ -395,44 +397,6 @@ const AddressFormModal = ({
                 <p className="text-sm text-destructive mt-3 text-center">{errors._form}</p>
               )}
 
-              {/* Primary CTA */}
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full mt-5 font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground"
-                style={{
-                  minHeight: 66,
-                  height: "auto",
-                  padding: "10px 18px",
-                  fontSize: "clamp(16px, 4.4vw, 20px)",
-                  lineHeight: 1.15,
-                  whiteSpace: "normal",
-                  overflowWrap: "anywhere",
-                  textAlign: "center",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxSizing: "border-box",
-                }}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    იგზავნება...
-                  </>
-                ) : (
-                  <span>მისამართის დამატება და დასრულება</span>
-                )}
-              </Button>
-
-              {/* Secondary skip */}
-              <button
-                type="button"
-                onClick={requestClose}
-                className="block mx-auto mt-3 text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-              >
-                გამოტოვება — ოპერატორი დაგიკავშირდებათ
-              </button>
             </>
           )}
 
@@ -477,6 +441,52 @@ const AddressFormModal = ({
             </div>
           )}
         </div>
+
+        {/* Sticky footer with primary CTA */}
+        {view === "form" && (
+          <div
+            className="sticky bottom-0 left-0 right-0 z-10 bg-background border-t border-border px-5 pt-3"
+            style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
+          >
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground"
+              style={{
+                minHeight: 66,
+                height: "auto",
+                padding: "10px 18px",
+                fontSize: "clamp(16px, 4.4vw, 20px)",
+                lineHeight: 1.15,
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
+                textAlign: "center",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+              }}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  იგზავნება...
+                </>
+              ) : (
+                <span>მისამართის დამატება და დასრულება</span>
+              )}
+            </Button>
+
+            <button
+              type="button"
+              onClick={requestClose}
+              className="block mx-auto mt-3 text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              გამოტოვება — ოპერატორი დაგიკავშირდებათ
+            </button>
+          </div>
+        )}
+      </div>
       </SheetContent>
     </Sheet>
   );
