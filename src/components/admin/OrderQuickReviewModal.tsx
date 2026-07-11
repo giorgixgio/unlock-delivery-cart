@@ -11,8 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   X, ChevronLeft, ChevronRight, Phone, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
-  Search, Plus, Minus, Trash2, AlertTriangle, Check,
+  Search, Plus, Minus, Trash2, AlertTriangle, Check, GitMerge,
 } from "lucide-react";
+import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import { startSession, markAction, endSession } from "@/lib/operatorSession";
