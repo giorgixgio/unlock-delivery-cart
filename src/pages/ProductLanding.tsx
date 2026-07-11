@@ -185,7 +185,7 @@ const GenericLanding = ({
   return (
     <div className="min-h-screen bg-background pb-36">
       <StickyAnnouncementBar />
-      <header className="sticky top-[44px] z-40 bg-card border-b border-border shadow-sm">
+      <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -195,7 +195,10 @@ const GenericLanding = ({
         </div>
       </header>
 
-      <div className="container max-w-lg mx-auto px-4 pt-4 space-y-5">
+      <div
+        className="container max-w-lg mx-auto px-4 space-y-5"
+        style={{ paddingTop: "calc(28px + env(safe-area-inset-top))" }}
+      >
         {/* Product image slider */}
         <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title}>
           {discount > 0 && (
