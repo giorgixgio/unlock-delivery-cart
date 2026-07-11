@@ -17,7 +17,6 @@ import LandingReviews from "@/components/landing/LandingReviews";
 import LandingBulletDescription from "@/components/landing/LandingBulletDescription";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import CODFormModal from "@/components/landing/CODFormModal";
-import OrderConfirmationOverlay from "@/components/landing/OrderConfirmationOverlay";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
@@ -25,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
-import { trackLandingView } from "@/lib/funnelTracking";
+import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -140,7 +139,6 @@ const GenericLanding = ({
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -166,11 +164,10 @@ const GenericLanding = ({
       setAddressOpen(true);
       return;
     }
-    setConfirmOpen(true);
+    trackConfirmationViewed(orderId, product.id);
+    setUpsellOpen(true);
   };
 
-  const handleViewOffer = () => { setConfirmOpen(false); setUpsellOpen(true); };
-  const handleSkipOffer = () => { setConfirmOpen(false); setDeliveryFee(5); setAddressOpen(true); };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
@@ -282,13 +279,6 @@ const GenericLanding = ({
         landingSlug={landingSlug}
         landingVariant="generic"
         onPhoneOrderCreated={handlePhoneOrderCreated}
-      />
-      <OrderConfirmationOverlay
-        open={confirmOpen}
-        orderId={pendingOrderId}
-        productId={product.id}
-        onViewOffer={handleViewOffer}
-        onSkip={handleSkipOffer}
       />
       <LandingUpsellSheet
         open={upsellOpen}
