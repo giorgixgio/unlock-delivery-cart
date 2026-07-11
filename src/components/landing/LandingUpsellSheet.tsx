@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Check, Truck, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { getRelated } from "@/lib/rankingEngine";
@@ -124,51 +124,50 @@ const LandingUpsellSheet = ({
           className="flex-shrink-0 bg-card border-b border-border"
           style={{ paddingTop: TOP_SAFE_PADDING }}
         >
-          <div className="flex justify-center pt-2 pb-1">
+          {/* Top bar: handle + X in its own space */}
+          <div className="relative flex items-center justify-center px-4 pt-2 pb-1">
             <div className="w-10 h-1 rounded-full bg-border" />
+            <button
+              onClick={handleSkip}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
+              aria-label="დახურვა"
+            >
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
           </div>
 
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-2">
             {/* Step indicator */}
-            <div className="pb-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 ნაბიჯი 1/2
               </p>
-              <div className="mt-1.5 h-[5px] w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                  style={{ width: "50%" }}
-                />
-              </div>
+            </div>
+            <div className="mb-2 h-[4px] w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                style={{ width: "50%" }}
+              />
             </div>
 
-            {/* Reassurance line */}
+            {/* Compact reassurance line */}
             {orderNumber && (
-              <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-1.5">
-                <p className="text-[12px] font-semibold text-emerald-800 dark:text-emerald-300 leading-snug">
-                  შეკვეთა #{orderNumber} დადასტურებულია ✅ — გადაიხდი მიღებისას
-                </p>
-              </div>
+              <p className="mb-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 leading-tight">
+                შეკვეთა #{orderNumber} დადასტურდა ✅ · გადაიხდი მიღებისას
+              </p>
             )}
 
-            <div className="flex items-start gap-3 pr-8 relative">
-              <div className="min-w-0 flex-1 text-center">
-                <h2 className="text-xl font-extrabold text-foreground leading-tight">
-                  მიიღე კიდევ 2 პროდუქტი — მხოლოდ{" "}
-                  <span className="text-[1.35em] font-black text-primary">{BUNDLE_PRICE}₾</span>
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1 leading-snug">
-                  ცალკე ღირს ~40₾ · +{" "}
-                  <span className="font-bold text-success">მიტანა უფასო</span>{" "}
-                  (ზოგავ 5₾-ს)
-                </p>
-              </div>
-              <button
-                onClick={handleSkip}
-                className="absolute top-0 right-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
-              >
-                <X className="w-3.5 h-3.5 text-muted-foreground" />
-              </button>
+            {/* Headline + subline */}
+            <div className="text-center">
+              <h2 className="text-lg font-extrabold text-foreground leading-tight">
+                მიიღე კიდევ 2 პროდუქტი — მხოლოდ{" "}
+                <span className="text-[1.3em] font-black text-primary">{BUNDLE_PRICE}₾</span>
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
+                ცალკე ღირს ~40₾ · +{" "}
+                <span className="font-bold text-success">მიტანა უფასო</span>{" "}
+                (ზოგავ 5₾-ს)
+              </p>
             </div>
           </div>
         </div>
@@ -203,24 +202,6 @@ const LandingUpsellSheet = ({
 
         {/* ═══ ZONE 3: STICKY BOTTOM CTA ═══ */}
         <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {complete ? (
-            <div className="flex items-center justify-between rounded-lg bg-success/10 border border-success/20 px-3 py-2 mb-2.5 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-success flex-shrink-0" />
-                <span className="text-[11px] font-bold text-success">✅ მიტანა უფასოა</span>
-              </div>
-              <span className="text-xs font-extrabold text-primary tabular-nums">{BUNDLE_PRICE}₾</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 mb-2.5">
-              <Truck className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-[11px] font-semibold text-foreground leading-snug">
-                აირჩიე 2 პროდუქტი და მიტანა გახდება{" "}
-                <span className="text-success font-bold">უფასო</span> — დაზოგე 5₾
-              </span>
-            </div>
-          )}
-
           {complete ? (
             <button
               onClick={handleAccept}
