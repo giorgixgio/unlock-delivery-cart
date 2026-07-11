@@ -215,6 +215,11 @@ export default function OrderQuickReviewModal({
   const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
   const [prevLoading, setPrevLoading] = useState(false);
   const [bulkCanceling, setBulkCanceling] = useState(false);
+  const [expandedPrevId, setExpandedPrevId] = useState<string | null>(null);
+  const [prevItemsById, setPrevItemsById] = useState<Record<string, { sku: string; title: string; quantity: number; unit_price: number; image_url: string }[]>>({});
+  const [prevItemsLoading, setPrevItemsLoading] = useState<string | null>(null);
+  const [cancelingPrevId, setCancelingPrevId] = useState<string | null>(null);
+  const [mergeWithPrevId, setMergeWithPrevId] = useState<string | null>(null);
 
   const actor = user?.email || "admin";
 
