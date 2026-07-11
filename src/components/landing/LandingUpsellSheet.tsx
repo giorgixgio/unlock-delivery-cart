@@ -17,6 +17,7 @@ interface LandingUpsellSheetProps {
   open: boolean;
   onClose: () => void;
   orderId: string;
+  orderNumber?: string;
   baseProduct: Product;
   basePrice: number;
   onComplete: (deliveryFee: number, newTotal: number) => void;
@@ -25,11 +26,14 @@ interface LandingUpsellSheetProps {
 
 const BUNDLE_PRICE = 19;
 const MAX_SELECT = 2;
+// Sticky orange announcement bar height (28px per Fix #1) + safe area
+const TOP_SAFE_PADDING = "calc(28px + env(safe-area-inset-top))";
 
 const LandingUpsellSheet = ({
   open,
   onClose: _onClose,
   orderId,
+  orderNumber,
   baseProduct,
   basePrice,
   onComplete,
