@@ -228,19 +228,36 @@ const CODFormModal = ({
                   <span className="text-base">🇬🇪</span>
                   <span>+995</span>
                 </div>
-                <Input
-                  type="tel"
-                  placeholder="5XX XXX XXX"
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (error) setError("");
-                  }}
-                  className="h-12 text-base rounded-lg flex-1"
-                  autoFocus
-                />
+                <div className="relative flex-1">
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="5XX XXX XXX"
+                    value={cleanedPhone}
+                    onChange={(e) => {
+                      setPhone(cleanPhoneInput(e.target.value));
+                      if (error) setError("");
+                    }}
+                    onBlur={() => setTouched(true)}
+                    className={`h-12 text-base rounded-lg w-full pr-10 ${
+                      showInlineError ? "border-destructive focus-visible:ring-destructive" : ""
+                    } ${isValid ? "border-success focus-visible:ring-success" : ""}`}
+                    autoFocus
+                  />
+                  {isValid && (
+                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                  )}
+                </div>
               </div>
-              {error && <p className="text-sm text-destructive mt-1">{error}</p>}
+              {showInlineError && (
+                <p className="text-sm text-destructive mt-1 font-semibold">
+                  შეიყვანე სწორი ნომერი — 9 ციფრი, იწყება 5-ით
+                </p>
+              )}
+              {error && !showInlineError && (
+                <p className="text-sm text-destructive mt-1">{error}</p>
+              )}
             </div>
 
             {/* COD badge */}
@@ -251,7 +268,7 @@ const CODFormModal = ({
 
             <Button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !isValid}
               className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
               size="lg"
             >
