@@ -1129,6 +1129,18 @@ export default function OrderQuickReviewModal({
         onCancel={() => setCallbackOpen(false)}
         onConfirm={handleCallbackConfirm}
       />
+      {order && mergeWithPrevId && (
+        <ManualMergeModal
+          open={!!mergeWithPrevId}
+          orderIds={[order.id, mergeWithPrevId]}
+          onClose={() => setMergeWithPrevId(null)}
+          onComplete={() => {
+            setMergeWithPrevId(null);
+            setPrevOrders((list) => list.map((x) => x.id === mergeWithPrevId ? { ...x, status: "merged" } : x));
+            toast({ title: "შერწყმა დასრულდა ✓" });
+          }}
+        />
+      )}
     </div>
 
   );
