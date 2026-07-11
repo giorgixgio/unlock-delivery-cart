@@ -75,10 +75,11 @@ const CODFormModal = ({
       setSuccess(false);
       setShowStockout(false);
       setStockoutAttemptId(null);
+      setTouched(false);
       return;
     }
     const saved = loadCustomerInfo();
-    if (saved?.phone) setPhone(saved.phone);
+    if (saved?.phone) setPhone(cleanPhoneInput(saved.phone));
     trackPhoneFormViewed(product.id);
   }, [open]);
 
