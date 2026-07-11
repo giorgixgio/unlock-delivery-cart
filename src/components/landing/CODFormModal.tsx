@@ -54,11 +54,16 @@ const CODFormModal = ({
 }: CODFormModalProps) => {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [stockoutAttemptId, setStockoutAttemptId] = useState<string | null>(null);
   const [showStockout, setShowStockout] = useState(false);
   const navigate = useNavigate();
+
+  const cleanedPhone = cleanPhoneInput(phone);
+  const isValid = isValidGeorgianMobile(cleanedPhone);
+  const showInlineError = touched && !isValid && cleanedPhone.length > 0;
 
   const unitPrice = product.price;
   const totalBefore = unitPrice * quantity;
