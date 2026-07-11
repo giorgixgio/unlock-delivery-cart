@@ -216,6 +216,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
         orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
         onComplete={handleUpsellComplete}
