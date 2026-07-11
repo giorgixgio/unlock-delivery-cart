@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Check, Gift, Truck, X } from "lucide-react";
+import { Check, Truck, X } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { getRelated } from "@/lib/rankingEngine";
@@ -121,19 +121,17 @@ const LandingUpsellSheet = ({
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
 
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-4">
             <div className="flex items-start gap-3 pr-8 relative">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Gift className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-extrabold text-foreground leading-snug">
-                  აირჩიე 2 პროდუქტი მხოლოდ {BUNDLE_PRICE}₾-ად
+              <div className="min-w-0 flex-1 text-center">
+                <h2 className="text-xl font-extrabold text-foreground leading-tight">
+                  მიიღე კიდევ 2 პროდუქტი — მხოლოდ{" "}
+                  <span className="text-[1.35em] font-black text-primary">{BUNDLE_PRICE}₾</span>
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {complete
-                    ? "✅ მიტანა უფასოა"
-                    : `კიდევ ${needed} — და მიტანა უფასო იქნება`}
+                <p className="text-sm text-muted-foreground mt-1 leading-snug">
+                  ცალკე ღირს ~40₾ · +{" "}
+                  <span className="font-bold text-success">მიტანა უფასო</span>{" "}
+                  (ზოგავ 5₾-ს)
                 </p>
               </div>
               <button
@@ -142,38 +140,6 @@ const LandingUpsellSheet = ({
               >
                 <X className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-            </div>
-
-            <div className="mt-2.5 flex items-center gap-2">
-              <div className="flex-1 flex gap-1.5">
-                {[0, 1].map((i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 h-[5px] rounded-full transition-colors duration-300 ${
-                      filled > i ? "bg-primary" : "bg-border"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-7 text-right">
-                {filled}/{MAX_SELECT}
-              </span>
-              {complete && (
-                <span className="flex items-center gap-1 text-[11px] font-bold text-success animate-in fade-in duration-300">
-                  <Truck className="w-3.5 h-3.5" />
-                  უფასო
-                </span>
-              )}
-            </div>
-
-            <div className="mt-2 rounded-lg bg-primary/5 border border-primary/15 px-3 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🔥</span>
-                <span className="text-xs font-bold text-foreground">ნებისმიერი 2 პროდუქტი</span>
-              </div>
-              <div className="text-right">
-                <span className="text-base font-extrabold text-primary">{BUNDLE_PRICE}₾</span>
-              </div>
             </div>
           </div>
         </div>
@@ -208,21 +174,21 @@ const LandingUpsellSheet = ({
 
         {/* ═══ ZONE 3: STICKY BOTTOM CTA ═══ */}
         <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {!complete && (
-            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 mb-2.5">
-              <Truck className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-[11px] font-semibold text-foreground leading-snug">
-                აირჩიე 2 პროდუქტი და მიტანა გახდება <span className="text-success font-bold">უფასო</span> — დაზოგე 5₾
-              </span>
-            </div>
-          )}
-          {complete && (
+          {complete ? (
             <div className="flex items-center justify-between rounded-lg bg-success/10 border border-success/20 px-3 py-2 mb-2.5 animate-in fade-in duration-200">
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-success flex-shrink-0" />
                 <span className="text-[11px] font-bold text-success">✅ მიტანა უფასოა</span>
               </div>
               <span className="text-xs font-extrabold text-primary tabular-nums">{BUNDLE_PRICE}₾</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 mb-2.5">
+              <Truck className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-[11px] font-semibold text-foreground leading-snug">
+                აირჩიე 2 პროდუქტი და მიტანა გახდება{" "}
+                <span className="text-success font-bold">უფასო</span> — დაზოგე 5₾
+              </span>
             </div>
           )}
 
@@ -232,16 +198,16 @@ const LandingUpsellSheet = ({
               disabled={submitting}
               className="w-full h-12 rounded-xl bg-success text-success-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
             >
-              დაამატე 2 პროდუქტი {BUNDLE_PRICE}₾-ად
+              დაამატე შეკვეთაში —{" "}
+              <span className="text-base font-black">{BUNDLE_PRICE}₾</span>{" "}
+              · <span className="font-black">მიტანა უფასო</span>
             </button>
           ) : (
             <button
               disabled
               className="w-full h-12 rounded-xl font-bold text-sm bg-muted text-muted-foreground border border-border opacity-60 cursor-not-allowed"
             >
-              {filled === 0
-                ? "აირჩიე 2 პროდუქტი გასაგრძელებლად"
-                : "დაამატე კიდევ 1 პროდუქტი"}
+              აირჩიე კიდევ {needed} პროდუქტი
             </button>
           )}
 
@@ -249,7 +215,7 @@ const LandingUpsellSheet = ({
             onClick={handleSkip}
             className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
           >
-            გაფორმება 5₾ მიწოდებით →
+            არა მადლობა — გავაგრძელო 5₾ მიტანით →
           </button>
         </div>
       </SheetContent>
@@ -302,10 +268,16 @@ function UpsellCard({
           {product.title}
         </p>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] text-muted-foreground line-through tabular-nums">
-            {product.price}₾
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            ცალკე {product.price}₾
           </span>
-          <span className={`text-[10px] font-bold ${selected ? "text-primary" : "text-muted-foreground"}`}>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors ${
+              selected
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
             {selected ? "✓ არჩეულია" : "აირჩიე"}
           </span>
         </div>
