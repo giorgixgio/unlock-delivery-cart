@@ -235,7 +235,7 @@ const AddressFormModal = ({
             aria-label="დახურვა"
             className="fixed z-[2] w-9 h-9 rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-muted/70 flex items-center justify-center transition-colors bg-background/80 backdrop-blur-sm"
             style={{
-              top: "calc(46px + env(safe-area-inset-top) + 10px)",
+              top: "calc(28px + env(safe-area-inset-top) + 10px)",
               right: "14px",
             }}
           >
