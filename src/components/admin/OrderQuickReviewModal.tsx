@@ -346,6 +346,36 @@ export default function OrderQuickReviewModal({
     });
   }, [cancellablePrev, actor, toast]);
 
+  const togglePrevExpand = useCallback(async (id: string) => {
+    if (expandedPrevId === id) { setExpandedPrevId(null); return; }
+    setExpandedPrevId(id);
+    if (!prevItemsById[id]) {
+      setPrevItemsLoading(id);
+      const { data } = await supabase
+        .from("order_items")
+        .select("sku, title, quantity, unit_price, image_url")
+        .eq("order_id", id);
+      setPrevItemsById((m) => ({ ...m, [id]: (data || []) as any }));
+      setPrevItemsLoading(null);
+    }
+  }, [expandedPrevId, prevItemsById]);
+
+  const cancelSinglePrev = useCallback(async (p: { id: string; public_order_number: string; call_attempt_count: number | null }) => {
+    if (!confirm(`შეკვეთა #${p.public_order_number} გაუქმდება (დუბლიკატი). გავაგრძელო?`)) return;
+    setCancelingPrevId(p.id);
+    const ok = await cancelOrderWithReason(
+      p.id, actor, "duplicate_order", "Canceled as duplicate from quick review",
+      Number(p.call_attempt_count || 0),
+    );
+    setCancelingPrevId(null);
+    if (ok) {
+      setPrevOrders((list) => list.map((x) => x.id === p.id ? { ...x, status: "canceled" } : x));
+      toast({ title: `#${p.public_order_number} გაუქმდა` });
+    } else {
+      toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" });
+    }
+  }, [actor, toast]);
+
 
 
   // Keyboard navigation
