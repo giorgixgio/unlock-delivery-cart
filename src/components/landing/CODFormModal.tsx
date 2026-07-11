@@ -4,8 +4,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, CheckCircle2 } from "lucide-react";
-import { z } from "zod";
+import { Loader2, Phone, CheckCircle2, Check } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -13,9 +12,25 @@ import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking"
 import { trackStockoutAttempt } from "@/lib/metaPixel";
 import StockoutMessageView from "./StockoutMessageView";
 
-const phoneSchema = z.object({
-  phone: z.string().trim().min(5, "ტელეფონი აუცილებელია").max(20),
-});
+const cleanPhoneInput = (raw: string): string => {
+  let d = (raw || "").replace(/\D/g, "");
+  if (d.startsWith("995")) d = d.slice(3);
+  while (d.startsWith("0")) d = d.slice(1);
+  return d.slice(0, 9);
+};
+
+const JUNK_PATTERNS = new Set([
+  "555555555", "500000000", "512345678", "555123456",
+  "123456789", "111111111", "000000000",
+]);
+
+const isValidGeorgianMobile = (digits: string): boolean => {
+  if (digits.length !== 9) return false;
+  if (digits[0] !== "5") return false;
+  if (/^(\d)\1{8}$/.test(digits)) return false;
+  if (JUNK_PATTERNS.has(digits)) return false;
+  return true;
+};
 
 interface CODFormModalProps {
   open: boolean;
@@ -39,11 +54,16 @@ const CODFormModal = ({
 }: CODFormModalProps) => {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [stockoutAttemptId, setStockoutAttemptId] = useState<string | null>(null);
   const [showStockout, setShowStockout] = useState(false);
   const navigate = useNavigate();
+
+  const cleanedPhone = cleanPhoneInput(phone);
+  const isValid = isValidGeorgianMobile(cleanedPhone);
+  const showInlineError = touched && !isValid && cleanedPhone.length > 0;
 
   const unitPrice = product.price;
   const totalBefore = unitPrice * quantity;
@@ -55,10 +75,11 @@ const CODFormModal = ({
       setSuccess(false);
       setShowStockout(false);
       setStockoutAttemptId(null);
+      setTouched(false);
       return;
     }
     const saved = loadCustomerInfo();
-    if (saved?.phone) setPhone(saved.phone);
+    if (saved?.phone) setPhone(cleanPhoneInput(saved.phone));
     trackPhoneFormViewed(product.id);
   }, [open]);
 
@@ -78,11 +99,12 @@ const CODFormModal = ({
   };
 
   const handleSubmit = async () => {
-    const result = phoneSchema.safeParse({ phone });
-    if (!result.success) {
-      setError(result.error.errors[0]?.message || "ტელეფონი აუცილებელია");
+    setTouched(true);
+    if (!isValid) {
+      setError("");
       return;
     }
+    const submitPhone = cleanedPhone;
 
     setSubmitting(true);
     setError("");
@@ -101,14 +123,14 @@ const CODFormModal = ({
         stock: product.available,
       });
 
-      saveCustomerInfo({ phone, region: "", address: "" });
+      saveCustomerInfo({ phone: submitPhone, region: "", address: "" });
 
       // Create order with status pending_details (phone only, no address)
       const result = await submitCustomerOrder({
         debugLabel: "Landing page order submit",
         order: {
-          customerName: phone,
-          customerPhone: phone,
+          customerName: submitPhone,
+          customerPhone: submitPhone,
           items: [{ product, quantity }],
           subtotal: totalAfter,
           total: totalAfter + 5,
@@ -122,7 +144,7 @@ const CODFormModal = ({
           productHandle: product.handle ?? null,
           sku: (product as any).sku ?? null,
           productName: product.title,
-          phone,
+          phone: submitPhone,
           quantity,
           source: "landing_cod",
           landingPageUrl: window.location.href,
@@ -206,19 +228,36 @@ const CODFormModal = ({
                   <span className="text-base">🇬🇪</span>
                   <span>+995</span>
                 </div>
-                <Input
-                  type="tel"
-                  placeholder="5XX XXX XXX"
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (error) setError("");
-                  }}
-                  className="h-12 text-base rounded-lg flex-1"
-                  autoFocus
-                />
+                <div className="relative flex-1">
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="5XX XXX XXX"
+                    value={cleanedPhone}
+                    onChange={(e) => {
+                      setPhone(cleanPhoneInput(e.target.value));
+                      if (error) setError("");
+                    }}
+                    onBlur={() => setTouched(true)}
+                    className={`h-12 text-base rounded-lg w-full pr-10 ${
+                      showInlineError ? "border-destructive focus-visible:ring-destructive" : ""
+                    } ${isValid ? "border-success focus-visible:ring-success" : ""}`}
+                    autoFocus
+                  />
+                  {isValid && (
+                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                  )}
+                </div>
               </div>
-              {error && <p className="text-sm text-destructive mt-1">{error}</p>}
+              {showInlineError && (
+                <p className="text-sm text-destructive mt-1 font-semibold">
+                  შეიყვანე სწორი ნომერი — 9 ციფრი, იწყება 5-ით
+                </p>
+              )}
+              {error && !showInlineError && (
+                <p className="text-sm text-destructive mt-1">{error}</p>
+              )}
             </div>
 
             {/* COD badge */}
@@ -229,7 +268,7 @@ const CODFormModal = ({
 
             <Button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !isValid}
               className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
               size="lg"
             >
