@@ -261,6 +261,13 @@ const AddressFormModal = ({
         >
           {view === "form" && (
             <>
+              {/* Reassurance line */}
+              <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-1.5">
+                <p className="text-[12px] font-semibold text-emerald-800 dark:text-emerald-300 leading-snug">
+                  შეკვეთა #{orderNumber} დადასტურებულია ✅ — გადაიხდი მიღებისას
+                </p>
+              </div>
+
               {/* Step label + progress bar */}
               <div className="pb-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -269,7 +276,7 @@ const AddressFormModal = ({
                 <div className="mt-2 h-[5px] w-full rounded-full bg-muted overflow-hidden relative">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 relative overflow-hidden"
-                    style={{ width: "83%" }}
+                    style={{ width: "100%" }}
                   >
                     <span className="absolute inset-y-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent animate-shine" />
                   </div>
