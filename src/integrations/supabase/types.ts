@@ -1899,6 +1899,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      storefront_update_order_upsell: {
+        Args: {
+          p_order_id: string
+          p_shipping_fee: number
+          p_subtotal: number
+          p_total: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
