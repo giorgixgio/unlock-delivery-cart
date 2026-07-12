@@ -340,17 +340,21 @@ export async function addUpsellItems(
 
   if (itemsError) throw itemsError;
 
-  // Update order totals
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({
-      shipping_fee: newShippingFee,
-      total: newTotal,
-      subtotal: newTotal - newShippingFee,
-    } as any)
-    .eq("id", orderId);
+  // Update order totals via SECURITY DEFINER RPC (direct table UPDATE from anon
+  // is silently ignored under some RLS conditions, which was leaving totals stale
+  // after upsell items were added).
+  const { error: updateError } = await (supabase as any).rpc(
+    "storefront_update_order_upsell",
+    {
+      p_order_id: orderId,
+      p_subtotal: newTotal - newShippingFee,
+      p_shipping_fee: newShippingFee,
+      p_total: newTotal,
+    }
+  );
 
   if (updateError) throw updateError;
+
 }
 
 /** Update order with address details and finalize status.
