@@ -321,9 +321,10 @@ export async function addUpsellItems(
   newShippingFee: number,
   newTotal: number
 ) {
-  // Insert additional order_items
-  const itemRows = items.map((item) => ({
-    order_id: orderId,
+  // Use SECURITY DEFINER RPC so upsell items can be added even after the order
+  // has auto-confirmed (anon RLS on order_items INSERT requires is_confirmed=false,
+  // which was silently blocking upsell adds when normalize-and-score fired first).
+  const itemPayload = items.map((item) => ({
     product_id: item.product.id,
     sku: item.product.sku || item.product.id,
     title: item.product.title,
@@ -331,29 +332,18 @@ export async function addUpsellItems(
     unit_price: item.product.price,
     line_total: item.product.price * item.quantity,
     image_url: item.product.image || "",
-    tags: ["upsell"],
   }));
 
-  const { error: itemsError } = await supabase
-    .from("order_items")
-    .insert(itemRows);
+  const { error } = await (supabase as any).rpc("storefront_add_upsell_items", {
+    p_order_id: orderId,
+    p_items: itemPayload,
+    p_subtotal: newTotal - newShippingFee,
+    p_shipping_fee: newShippingFee,
+    p_total: newTotal,
+  });
 
-  if (itemsError) throw itemsError;
+  if (error) throw error;
 
-  // Update order totals via SECURITY DEFINER RPC (direct table UPDATE from anon
-  // is silently ignored under some RLS conditions, which was leaving totals stale
-  // after upsell items were added).
-  const { error: updateError } = await (supabase as any).rpc(
-    "storefront_update_order_upsell",
-    {
-      p_order_id: orderId,
-      p_subtotal: newTotal - newShippingFee,
-      p_shipping_fee: newShippingFee,
-      p_total: newTotal,
-    }
-  );
-
-  if (updateError) throw updateError;
 
 }
 
