@@ -178,11 +178,12 @@ const GenericLanding = ({
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    goToSuccess(pendingOrderNumber);
+    setDoneOpen(true);
   };
 
-  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
   const handleAddressComplete = () => afterAddress(pendingOrderNumber);
+  const handleDoneClose = () => setDoneOpen(false);
 
   return (
     <div className="min-h-screen bg-background pb-36">
