@@ -318,7 +318,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
@@ -328,7 +328,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       />
       <AddressFormModal
         open={addressOpen}
-        onClose={() => setAddressOpen(false)}
+        onClose={handleAddressComplete}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         orderTotal={pendingOrderTotal}
