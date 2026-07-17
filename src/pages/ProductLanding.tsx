@@ -153,31 +153,34 @@ const GenericLanding = ({
 
   const handleCTA = () => setCodOpen(true);
 
+  const goToSuccess = (orderNumber: string) => navigate(`/success?order=${orderNumber}`);
+
   const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
     setPendingOrderId(orderId);
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
-    // Skip the confirmation + upsell sheets entirely when upsells are disabled.
-    if (!upsellsActive) {
-      setDeliveryFee(5);
-      setAddressOpen(true);
-      return;
-    }
     trackConfirmationViewed(orderId, product.id);
-    setUpsellOpen(true);
+    // NEW ORDER: address first, upsell second.
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
+  const afterAddress = (onum: string) => {
+    setAddressOpen(false);
+    if (upsellsActive) setUpsellOpen(true);
+    else goToSuccess(onum);
+  };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    setAddressOpen(true);
+    goToSuccess(pendingOrderNumber);
   };
 
-  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
-  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleAddressComplete = () => afterAddress(pendingOrderNumber);
 
   return (
     <div className="min-h-screen bg-background pb-36">
