@@ -18,6 +18,7 @@ import LandingBulletDescription from "@/components/landing/LandingBulletDescript
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 
 import { Skeleton } from "@/components/ui/skeleton";

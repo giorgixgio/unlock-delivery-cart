@@ -13,6 +13,7 @@ import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
