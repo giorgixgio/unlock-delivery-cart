@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, X, Zap } from "lucide-react";
+import { Loader2, CheckCircle2, X } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { updateOrderAddress, markOrderAddressSkipped } from "@/lib/orderService";
