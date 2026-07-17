@@ -77,25 +77,53 @@ const LandingUpsellSheet = ({
 
   const filled = selectedIds.size;
   const complete = filled >= MAX_SELECT;
-  const deliveryFee = complete ? 0 : 5;
-  const upsellPrice = complete ? BUNDLE_PRICE : 0;
-  const total = basePrice + upsellPrice + deliveryFee;
 
-  const handleAccept = async () => {
-    if (!complete) return;
+  const selectedItems = useMemo(() => {
+    return Array.from(selectedIds).map((id) => {
+      const p = upsellProducts.find((x) => x.id === id)!;
+      return { product: p, quantity: 1 };
+    });
+  }, [selectedIds, upsellProducts]);
+
+  const selectedProductsTotal = useMemo(() => {
+    return selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  }, [selectedItems]);
+
+  const deliveryFee = complete ? 0 : 5;
+  const upsellTotal = complete ? BUNDLE_PRICE : selectedProductsTotal;
+  const total = basePrice + upsellTotal + deliveryFee;
+
+  const handleClose = () => {
+    trackUpsellSkipped(orderId, filled);
+    onSkip();
+  };
+
+  const handleContinue = async () => {
+    // 0 selected: skip without adding anything
+    if (filled === 0) {
+      trackUpsellSkipped(orderId, filled);
+      onSkip();
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const items = Array.from(selectedIds).map((id) => {
-        const p = upsellProducts.find((x) => x.id === id)!;
-        return { product: p, quantity: 1 };
-      });
-      await addUpsellItems(orderId, items, deliveryFee, total);
-      trackUpsellCompleted({
-        orderId,
-        selectedUpsellProductIds: Array.from(selectedIds),
-        upsellBundleValue: BUNDLE_PRICE,
-      });
-      onComplete(deliveryFee, total);
+      if (complete) {
+        // 2 selected: bundle deal — 19 GEL, free shipping
+        await addUpsellItems(orderId, selectedItems, 0, total);
+        trackUpsellCompleted({
+          orderId,
+          selectedUpsellProductIds: Array.from(selectedIds),
+          upsellBundleValue: BUNDLE_PRICE,
+        });
+        onComplete(0, total);
+      } else {
+        // 1 selected: add at regular price, keep 5 GEL shipping
+        const newTotal = basePrice + selectedProductsTotal + 5;
+        await addUpsellItems(orderId, selectedItems, 5, newTotal);
+        trackUpsellSkipped(orderId, filled);
+        onComplete(5, newTotal);
+      }
     } catch (err) {
       console.error("Upsell failed:", err);
       onSkip();
@@ -103,13 +131,6 @@ const LandingUpsellSheet = ({
       setSubmitting(false);
     }
   };
-
-  const handleSkip = () => {
-    trackUpsellSkipped(orderId, filled);
-    onSkip();
-  };
-
-  const needed = MAX_SELECT - filled;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) handleSkip(); }}>
