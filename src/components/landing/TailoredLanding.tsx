@@ -207,7 +207,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
@@ -217,7 +217,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       />
       <AddressFormModal
         open={addressOpen}
-        onClose={() => setAddressOpen(false)}
+        onClose={handleAddressComplete}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         orderTotal={pendingOrderTotal}
