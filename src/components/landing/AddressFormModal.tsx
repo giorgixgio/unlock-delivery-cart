@@ -89,6 +89,11 @@ const AddressFormModal = ({
         setSavedAddress({ region: saved.region, address: saved.address });
       }
     }
+    // Autofocus city field so the keyboard opens on mount.
+    const t = setTimeout(() => {
+      try { cityRef.current?.focus(); } catch {}
+    }, 260);
+    return () => clearTimeout(t);
   }, [open, orderId]);
 
   // Returning-customer lookup by phone from the just-created order.
