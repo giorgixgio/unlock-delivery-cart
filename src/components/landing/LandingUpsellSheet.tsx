@@ -140,13 +140,13 @@ const LandingUpsellSheet = ({
             {/* Step indicator */}
             <div className="flex items-center justify-between mb-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                ნაბიჯი 1/2
+                ნაბიჯი 2/2
               </p>
             </div>
             <div className="mb-2 h-[4px] w-full rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                style={{ width: "50%" }}
+                style={{ width: "100%" }}
               />
             </div>
 
