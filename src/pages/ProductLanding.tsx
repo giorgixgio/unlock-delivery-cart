@@ -288,13 +288,21 @@ const GenericLanding = ({
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
+        onClose={() => { setUpsellOpen(false); setDoneOpen(true); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
+      />
+      <LandingDoneSheet
+        open={doneOpen}
+        onClose={handleDoneClose}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        deliveryFee={deliveryFee}
+        total={pendingOrderTotal + deliveryFee}
       />
       <AddressFormModal
         open={addressOpen}
