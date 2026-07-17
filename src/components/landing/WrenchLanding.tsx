@@ -109,11 +109,12 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    goToSuccess(pendingOrderNumber);
+    setDoneOpen(true);
   };
 
-  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
   const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
+  const handleDoneClose = () => setDoneOpen(false);
 
   return (
     <div className="min-h-screen bg-background pb-36">
