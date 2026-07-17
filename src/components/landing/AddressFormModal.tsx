@@ -67,6 +67,7 @@ const AddressFormModal = ({
   const [emptyWarning, setEmptyWarning] = useState(false);
   const [savedAddress, setSavedAddress] = useState<{ region: string; address: string } | null>(null);
   const submittedRef = useRef(false);
+  const cityRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
