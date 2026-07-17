@@ -1827,6 +1827,16 @@ export type Database = {
           id: string
         }[]
       }
+      storefront_add_upsell_items: {
+        Args: {
+          p_items: Json
+          p_order_id: string
+          p_shipping_fee: number
+          p_subtotal: number
+          p_total: number
+        }
+        Returns: undefined
+      }
       storefront_apply_bump: {
         Args: {
           p_image_url: string
