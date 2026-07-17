@@ -189,11 +189,8 @@ const AddressFormModal = ({
 
     const hasFullAddress = !!region && !!addressLine;
 
-    // Only city → gentle warning first, allow on second tap
-    if (!hasFullAddress && !!region && !addressLine && !partialWarning) {
-      setPartialWarning(true);
-      return;
-    }
+    // City-only is acceptable now; button is disabled until city has text,
+    // so a single tap submits without a second-tap nag.
 
     setSubmitting(true);
     try {
