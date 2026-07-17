@@ -268,98 +268,50 @@ const AddressFormModal = ({
         >
           {view === "form" && (
             <>
-              {/* Reassurance line */}
-              <div className="mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 px-3 py-1.5">
-                <p className="text-[12px] font-semibold text-emerald-800 dark:text-emerald-300 leading-snug">
-                  შეკვეთა #{orderNumber} დადასტურებულია ✅ — გადაიხდი მიღებისას
-                </p>
-              </div>
-
-              {/* Step label + progress bar */}
+              {/* Step label + progress bar (1/2 — address is now first) */}
               <div className="pb-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  ნაბიჯი 2/2
+                  ნაბიჯი 1/2
                 </p>
                 <div className="mt-2 h-[5px] w-full rounded-full bg-muted overflow-hidden relative">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 relative overflow-hidden"
-                    style={{ width: "100%" }}
+                    style={{ width: "50%" }}
                   >
                     <span className="absolute inset-y-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent animate-shine" />
                   </div>
                 </div>
               </div>
 
-              <SheetTitle
-                className="font-extrabold text-foreground mt-2 leading-[1.18] flex items-center gap-2 flex-wrap"
-                style={{ fontSize: "clamp(22px, 5.6vw, 30px)" }}
-              >
-                შეკვეთა მიღებულია <span className="text-emerald-500">✅</span>
-              </SheetTitle>
-              <p
-                className="text-muted-foreground mt-2"
-                style={{ fontSize: "clamp(14px, 3.8vw, 16px)", lineHeight: 1.35 }}
-              >
-                მისამართის დამატება აჩქარებს მიწოდებას. ჩაწერე ქალაქი და მისამართი, რომ ოპერატორმა უფრო სწრაფად დაადასტუროს შეკვეთა.
-              </p>
-
-              {/* Order summary card */}
-              <div
-                className="mt-4 rounded-[20px] bg-card"
-                style={{
-                  border: "1px solid hsl(var(--border))",
-                  padding: "18px 20px",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground text-[15px]">შეკვეთა #{orderNumber}</span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700">COD</span>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between text-[14px] text-muted-foreground">
-                    <span>ჯამი</span>
-                    <span className="text-foreground font-semibold">{orderTotal.toFixed(2)} ₾</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[14px] text-muted-foreground">
-                    <span>მიწოდება</span>
-                    <span className="text-foreground font-semibold">
-                      {deliveryFee > 0 ? `${deliveryFee.toFixed(2)} ₾` : "უფასო"}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                  <span className="font-bold text-foreground text-[15px]">გადასახდელია</span>
-                  <span className="font-extrabold text-[20px]" style={{ color: "#ff6a00" }}>
-                    {finalTotal.toFixed(2)} ₾
-                  </span>
-                </div>
-              </div>
-
-              {/* Returning customer summary card */}
-              {savedAddress && (savedAddress.region || savedAddress.address) && (
-                <div className="mt-4 rounded-[20px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-4">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-[1px]" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-300">
-                        შენი მისამართი უკვე გვაქვს
+              {/* BIG unmissable confirmation card — solid green, large text */}
+              <SheetTitle asChild>
+                <div
+                  className="rounded-[20px] bg-emerald-500 text-white shadow-md"
+                  style={{ padding: "18px 20px" }}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-7 h-7 flex-shrink-0 mt-[1px]" />
+                    <div className="min-w-0">
+                      <p className="font-extrabold leading-tight" style={{ fontSize: "clamp(18px, 5vw, 22px)" }}>
+                        შეკვეთა #{orderNumber} მიღებულია
                       </p>
-                      <p className="text-[14px] text-foreground mt-1 leading-snug break-words">
-                        {savedAddress.region}
-                        {savedAddress.region && savedAddress.address ? ", " : ""}
-                        {savedAddress.address}
-                      </p>
-                      <p className="text-[12px] text-muted-foreground mt-1">
-                        თუ სხვა ადგილას გინდა მიწოდება, შეცვალე ქვემოთ.
+                      <p className="mt-1 font-semibold text-white/95 leading-snug" style={{ fontSize: "clamp(13px, 3.6vw, 15px)" }}>
+                        არ საჭიროებს ხელახლა შეკვეთას
                       </p>
                     </div>
                   </div>
                 </div>
-              )}
+              </SheetTitle>
 
-              {/* Fields */}
-              <div className="space-y-4 mt-5">
+              {/* Short helper line */}
+              <p className="mt-4 text-[13px] font-semibold text-foreground leading-snug">
+                დაამატე მისამართი — ოპერატორი აღარ დაგირეკავს დასაზუსტებლად
+              </p>
 
+              {/* Fields — placed immediately, above the fold */}
+              <div className="space-y-4 mt-3">
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
@@ -371,6 +323,7 @@ const AddressFormModal = ({
                       placeholder="მაგ: თბილისი / ქუთაისი / ზუგდიდი"
                       error={errors.region}
                       className={inputClass}
+                      inputRef={cityRef}
                     />
                   </div>
                 </div>
@@ -387,14 +340,43 @@ const AddressFormModal = ({
                       className={inputClass}
                     />
                   </div>
-                  <p
-                    className="mt-2 flex items-start gap-1.5"
-                    style={{ fontSize: 14, color: "#777", lineHeight: 1.3 }}
-                  >
-                    <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-[1px]" />
-                    <span>მისამართის დამატებით შეკვეთა უფრო სწრაფად მუშავდება</span>
-                  </p>
                 </div>
+              </div>
+
+              {/* Returning customer summary card */}
+              {savedAddress && (savedAddress.region || savedAddress.address) && (
+                <div className="mt-4 rounded-[20px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-3">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-[1px]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">
+                        შენი მისამართი უკვე გვაქვს
+                      </p>
+                      <p className="text-[13px] text-foreground mt-0.5 leading-snug break-words">
+                        {savedAddress.region}
+                        {savedAddress.region && savedAddress.address ? ", " : ""}
+                        {savedAddress.address}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Order summary — moved BELOW fields, compact single line */}
+              <div
+                className="mt-4 rounded-2xl bg-card flex items-center justify-between gap-3"
+                style={{ border: "1px solid hsl(var(--border))", padding: "10px 14px" }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[12px] font-bold text-foreground truncate">#{orderNumber}</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 flex-shrink-0">COD</span>
+                  <span className="text-[11px] text-muted-foreground truncate">
+                    ჯამი {orderTotal.toFixed(0)}₾ · მიწოდება {deliveryFee > 0 ? `${deliveryFee.toFixed(0)}₾` : "უფასო"}
+                  </span>
+                </div>
+                <span className="font-extrabold text-[15px] flex-shrink-0" style={{ color: "#ff6a00" }}>
+                  {finalTotal.toFixed(0)}₾
+                </span>
               </div>
 
               {emptyWarning && (
