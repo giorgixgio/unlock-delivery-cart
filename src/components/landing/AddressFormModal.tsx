@@ -157,8 +157,9 @@ const AddressFormModal = ({
       onClose();
       return;
     }
+    // Skip always continues to the next step — no interstitial.
     trackAddressPopupClosed(orderId, "x_button");
-    setView("skip_confirm");
+    void handleSkipConfirm();
   };
 
   const handleSkipConfirm = async () => {
