@@ -114,11 +114,12 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    goToSuccess(pendingOrderNumber);
+    setDoneOpen(true);
   };
 
-  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
   const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
+  const handleDoneClose = () => setDoneOpen(false);
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
 
