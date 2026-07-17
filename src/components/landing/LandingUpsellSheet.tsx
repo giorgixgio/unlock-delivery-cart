@@ -77,25 +77,53 @@ const LandingUpsellSheet = ({
 
   const filled = selectedIds.size;
   const complete = filled >= MAX_SELECT;
-  const deliveryFee = complete ? 0 : 5;
-  const upsellPrice = complete ? BUNDLE_PRICE : 0;
-  const total = basePrice + upsellPrice + deliveryFee;
 
-  const handleAccept = async () => {
-    if (!complete) return;
+  const selectedItems = useMemo(() => {
+    return Array.from(selectedIds).map((id) => {
+      const p = upsellProducts.find((x) => x.id === id)!;
+      return { product: p, quantity: 1 };
+    });
+  }, [selectedIds, upsellProducts]);
+
+  const selectedProductsTotal = useMemo(() => {
+    return selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  }, [selectedItems]);
+
+  const deliveryFee = complete ? 0 : 5;
+  const upsellTotal = complete ? BUNDLE_PRICE : selectedProductsTotal;
+  const total = basePrice + upsellTotal + deliveryFee;
+
+  const handleClose = () => {
+    trackUpsellSkipped(orderId, filled);
+    onSkip();
+  };
+
+  const handleContinue = async () => {
+    // 0 selected: skip without adding anything
+    if (filled === 0) {
+      trackUpsellSkipped(orderId, filled);
+      onSkip();
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const items = Array.from(selectedIds).map((id) => {
-        const p = upsellProducts.find((x) => x.id === id)!;
-        return { product: p, quantity: 1 };
-      });
-      await addUpsellItems(orderId, items, deliveryFee, total);
-      trackUpsellCompleted({
-        orderId,
-        selectedUpsellProductIds: Array.from(selectedIds),
-        upsellBundleValue: BUNDLE_PRICE,
-      });
-      onComplete(deliveryFee, total);
+      if (complete) {
+        // 2 selected: bundle deal — 19 GEL, free shipping
+        await addUpsellItems(orderId, selectedItems, 0, total);
+        trackUpsellCompleted({
+          orderId,
+          selectedUpsellProductIds: Array.from(selectedIds),
+          upsellBundleValue: BUNDLE_PRICE,
+        });
+        onComplete(0, total);
+      } else {
+        // 1 selected: add at regular price, keep 5 GEL shipping
+        const newTotal = basePrice + selectedProductsTotal + 5;
+        await addUpsellItems(orderId, selectedItems, 5, newTotal);
+        trackUpsellSkipped(orderId, filled);
+        onComplete(5, newTotal);
+      }
     } catch (err) {
       console.error("Upsell failed:", err);
       onSkip();
@@ -104,15 +132,8 @@ const LandingUpsellSheet = ({
     }
   };
 
-  const handleSkip = () => {
-    trackUpsellSkipped(orderId, filled);
-    onSkip();
-  };
-
-  const needed = MAX_SELECT - filled;
-
   return (
-    <Sheet open={open} onOpenChange={(o) => { if (!o) handleSkip(); }}>
+    <Sheet open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <SheetContent
         side="bottom"
         className="h-[100dvh] rounded-t-2xl p-0 flex flex-col overflow-hidden [&>button]:hidden"
@@ -128,7 +149,7 @@ const LandingUpsellSheet = ({
           <div className="relative flex items-center justify-center px-4 pt-2 pb-1">
             <div className="w-10 h-1 rounded-full bg-border" />
             <button
-              onClick={handleSkip}
+              onClick={handleClose}
               className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
               aria-label="დახურვა"
             >
@@ -152,8 +173,8 @@ const LandingUpsellSheet = ({
 
             {/* Compact reassurance line */}
             {orderNumber && (
-              <p className="mb-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 leading-tight">
-                შეკვეთა #{orderNumber} დადასტურდა ✅ · გადაიხდი მიღებისას
+              <p className="mb-1.5 text-[12px] font-bold text-emerald-700 dark:text-emerald-300 leading-tight">
+                ✅ შეკვეთა #{orderNumber} დადასტურდა — ეს არის დამატებითი შეთავაზება
               </p>
             )}
 
@@ -202,30 +223,20 @@ const LandingUpsellSheet = ({
 
         {/* ═══ ZONE 3: STICKY BOTTOM CTA ═══ */}
         <div className="flex-shrink-0 bg-card border-t border-border px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {complete ? (
-            <button
-              onClick={handleAccept}
-              disabled={submitting}
-              className="w-full h-12 rounded-xl bg-success text-success-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
-            >
-              დაამატე შეკვეთაში —{" "}
-              <span className="text-base font-black">{BUNDLE_PRICE}₾</span>{" "}
-              · <span className="font-black">მიტანა უფასო</span>
-            </button>
-          ) : (
-            <button
-              disabled
-              className="w-full h-12 rounded-xl font-bold text-sm bg-muted text-muted-foreground border border-border opacity-60 cursor-not-allowed"
-            >
-              აირჩიე კიდევ {needed} პროდუქტი
-            </button>
-          )}
-
           <button
-            onClick={handleSkip}
-            className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2 py-1.5 mt-0.5"
+            onClick={handleContinue}
+            disabled={submitting}
+            className="w-full h-12 rounded-xl bg-success text-success-foreground font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
           >
-            არა მადლობა →
+            {filled === 0 && "გაგრძელება →"}
+            {filled === 1 && "დაამატე 1 პროდუქტი — გაგრძელება →"}
+            {filled === 2 && (
+              <>
+                დაამატე 2 პროდუქტი —{" "}
+                <span className="text-base font-black">{BUNDLE_PRICE}₾</span>{" "}
+                · <span className="font-black">მიტანა უფასო</span> →
+              </>
+            )}
           </button>
         </div>
       </SheetContent>
