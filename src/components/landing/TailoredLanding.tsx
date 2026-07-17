@@ -63,31 +63,34 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
 
   const handleCTA = () => setCodOpen(true);
 
+  const goToSuccess = (onum: string) => navigate(`/success?order=${onum}`);
+
   const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
     setPendingOrderId(orderId);
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
-    // Skip confirmation + upsell sheets entirely when upsells are disabled.
-    if (!upsellsActive) {
-      setDeliveryFee(5);
-      setAddressOpen(true);
-      return;
-    }
     trackConfirmationViewed(orderId, product.id);
-    setUpsellOpen(true);
+    // NEW ORDER: address first, upsell second.
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
 
+  const afterAddress = () => {
+    setAddressOpen(false);
+    if (upsellsActive) setUpsellOpen(true);
+    else goToSuccess(pendingOrderNumber);
+  };
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    setAddressOpen(true);
+    goToSuccess(pendingOrderNumber);
   };
 
-  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
-  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleAddressComplete = () => afterAddress();
 
   return (
     <div className="min-h-screen bg-background pb-36">
@@ -204,7 +207,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
@@ -214,7 +217,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       />
       <AddressFormModal
         open={addressOpen}
-        onClose={() => setAddressOpen(false)}
+        onClose={handleAddressComplete}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         orderTotal={pendingOrderTotal}

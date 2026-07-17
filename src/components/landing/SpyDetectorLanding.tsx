@@ -95,25 +95,28 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
 
   const handleCTA = () => setCodOpen(true);
 
+  const goToSuccess = (onum: string) => navigate(`/success?order=${onum}`);
+
   const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
     setPendingOrderId(orderId);
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
     trackConfirmationViewed(orderId, product.id);
-    setUpsellOpen(true);
+    // NEW ORDER: address first, upsell second.
+    setDeliveryFee(5);
+    setAddressOpen(true);
   };
-
 
   const handleUpsellComplete = (newDeliveryFee: number, newTotal: number) => {
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    setAddressOpen(true);
+    goToSuccess(pendingOrderNumber);
   };
 
-  const handleUpsellSkip = () => { setDeliveryFee(5); setUpsellOpen(false); setAddressOpen(true); };
-  const handleAddressComplete = () => { setAddressOpen(false); navigate(`/success?order=${pendingOrderNumber}`); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
 
@@ -353,7 +356,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
@@ -363,7 +366,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       />
       <AddressFormModal
         open={addressOpen}
-        onClose={() => setAddressOpen(false)}
+        onClose={handleAddressComplete}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         orderTotal={pendingOrderTotal}
