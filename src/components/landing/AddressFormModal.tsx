@@ -446,16 +446,15 @@ const AddressFormModal = ({
           >
             <Button
               onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground"
+              disabled={submitting || !form.region.trim()}
+              className="w-full font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
               style={{
-                minHeight: 66,
+                minHeight: 60,
                 height: "auto",
                 padding: "10px 18px",
-                fontSize: "clamp(16px, 4.4vw, 20px)",
+                fontSize: "clamp(17px, 4.6vw, 20px)",
                 lineHeight: 1.15,
                 whiteSpace: "normal",
-                overflowWrap: "anywhere",
                 textAlign: "center",
                 display: "flex",
                 alignItems: "center",
@@ -464,21 +463,18 @@ const AddressFormModal = ({
               }}
             >
               {submitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  იგზავნება...
-                </>
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />იგზავნება...</>
               ) : (
-                <span>მისამართის დამატება და დასრულება</span>
+                <span>გაგრძელება →</span>
               )}
             </Button>
 
             <button
               type="button"
               onClick={requestClose}
-              className="block mx-auto mt-3 text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              className="block mx-auto mt-2.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2"
             >
-              გამოტოვება — ოპერატორი დაგიკავშირდებათ
+              გამოტოვება — ოპერატორი დამირეკავს
             </button>
           </div>
         )}
