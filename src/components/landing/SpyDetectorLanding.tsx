@@ -356,7 +356,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); setAddressOpen(true); }}
+        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
@@ -366,7 +366,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       />
       <AddressFormModal
         open={addressOpen}
-        onClose={() => setAddressOpen(false)}
+        onClose={handleAddressComplete}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         orderTotal={pendingOrderTotal}
