@@ -42,8 +42,8 @@ interface AddressFormModalProps {
 type View = "form" | "skip_confirm" | "success";
 
 // Sticky orange announcement bar height (28px per Fix #1) + safe area + breathing room
-const TOP_SAFE_PADDING = "calc(28px + env(safe-area-inset-top) + 18px)";
-const BOTTOM_SAFE_PADDING = "calc(150px + env(safe-area-inset-bottom))";
+const TOP_SAFE_PADDING = "calc(28px + env(safe-area-inset-top) + 12px)";
+const BOTTOM_SAFE_PADDING = "calc(160px + env(safe-area-inset-bottom))";
 
 const inputClass =
   "h-[58px] !text-[17px] rounded-2xl border-[1.5px] border-border px-[18px] focus-visible:ring-2 focus-visible:ring-success/40 focus-visible:border-success";
