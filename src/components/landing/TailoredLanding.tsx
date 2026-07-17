@@ -17,6 +17,7 @@ import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
@@ -48,6 +49,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
   const [codOpen, setCodOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
@@ -86,11 +88,12 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    goToSuccess(pendingOrderNumber);
+    setDoneOpen(true);
   };
 
-  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
   const handleAddressComplete = () => afterAddress();
+  const handleDoneClose = () => setDoneOpen(false);
 
   return (
     <div className="min-h-screen bg-background pb-36">
@@ -207,13 +210,21 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
+        onClose={() => { setUpsellOpen(false); setDoneOpen(true); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
+      />
+      <LandingDoneSheet
+        open={doneOpen}
+        onClose={handleDoneClose}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        deliveryFee={deliveryFee}
+        total={pendingOrderTotal + deliveryFee}
       />
       <AddressFormModal
         open={addressOpen}

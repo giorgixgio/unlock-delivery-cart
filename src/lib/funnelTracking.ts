@@ -211,3 +211,14 @@ export function trackAddressAbandoned(orderId: string) {
   trackEvent("address_skipped_or_abandoned", { order_id: orderId });
 }
 
+// ═══════════════════════════════════════════════════
+// 7. DONE / TERMINAL SCREEN EVENTS
+// ═══════════════════════════════════════════════════
+export function trackDoneScreenViewed(orderId: string, orderNumber: string) {
+  trackEvent("done_screen_viewed", { order_id: orderId, order_number: orderNumber });
+}
+
+export function trackDoneScreenClosed(orderId: string, orderNumber: string) {
+  trackEvent("done_screen_closed", { order_id: orderId, order_number: orderNumber });
+}
+

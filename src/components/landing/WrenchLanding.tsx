@@ -12,6 +12,7 @@ import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
+import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
@@ -78,6 +79,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
   const [codOpen, setCodOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
@@ -107,11 +109,12 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
     setDeliveryFee(newDeliveryFee);
     setPendingOrderTotal(newTotal - newDeliveryFee);
     setUpsellOpen(false);
-    goToSuccess(pendingOrderNumber);
+    setDoneOpen(true);
   };
 
-  const handleUpsellSkip = () => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); };
+  const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
   const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
+  const handleDoneClose = () => setDoneOpen(false);
 
   return (
     <div className="min-h-screen bg-background pb-36">
@@ -318,13 +321,21 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       />
       <LandingUpsellSheet
         open={upsellOpen}
-        onClose={() => { setUpsellOpen(false); goToSuccess(pendingOrderNumber); }}
+        onClose={() => { setUpsellOpen(false); setDoneOpen(true); }}
         orderId={pendingOrderId}
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
+      />
+      <LandingDoneSheet
+        open={doneOpen}
+        onClose={handleDoneClose}
+        orderId={pendingOrderId}
+        orderNumber={pendingOrderNumber}
+        deliveryFee={deliveryFee}
+        total={pendingOrderTotal + deliveryFee}
       />
       <AddressFormModal
         open={addressOpen}
