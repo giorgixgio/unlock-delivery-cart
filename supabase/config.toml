@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.create-packing-session]
 verify_jwt = false
+
+[functions.provision-operators]
+verify_jwt = false
