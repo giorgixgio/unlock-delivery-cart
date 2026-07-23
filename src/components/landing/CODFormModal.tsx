@@ -57,7 +57,9 @@ const CODFormModal = ({
   discountPct,
   landingSlug,
   onPhoneOrderCreated,
+  onDuplicateBlocked,
 }: CODFormModalProps) => {
+
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
