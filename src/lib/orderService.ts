@@ -293,6 +293,12 @@ export async function submitCustomerOrder(input: SubmitOrderInput): Promise<Subm
     }
 
     const order = await createOrder(input.order);
+    // Fire-and-forget confirmation SMS. Only on a genuinely new order — never on
+    // the duplicate-blocked or stockout paths. Failure never impacts checkout.
+    try {
+      const orderNumber = (order as any)?.public_order_number || (order as any)?.publicOrderNumber;
+      if (orderNumber) sendConfirmationSms(String(orderNumber), input.order.customerPhone);
+    } catch { /* fire-and-forget */ }
     return { kind: "order", order };
 
   } catch (err) {
