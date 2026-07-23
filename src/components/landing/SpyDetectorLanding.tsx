@@ -20,6 +20,9 @@ import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
+import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
+import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderRecord } from "@/lib/lastOrderStore";
+import { trackEvent } from "@/lib/analytics";
 
 interface SpyDetectorLandingProps {
   product: Product;
@@ -89,22 +92,40 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
 
   const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
   const qtyDiscountPct = getQtyDiscountPct(selectedQty);
+  const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: "spy-detector" });
+    const last = readLastOrder(product.sku || product.id);
+    if (last) {
+      setRepeatBlocked(last);
+      trackEvent("duplicate_block_shown", { sku: last.sku, orderNumber: last.orderNumber });
+    }
   }, [product.id]);
+
+  const handleReorder = () => {
+    markIntentionalRepeat(product.sku || product.id);
+    setRepeatBlocked(null);
+  };
 
   const handleCTA = () => setCodOpen(true);
 
   const goToSuccess = (onum: string) => navigate(`/success?order=${onum}`);
 
-  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number, phone?: string) => {
     setPendingOrderId(orderId);
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
     trackConfirmationViewed(orderId, product.id);
+    saveLastOrder({
+      orderNumber,
+      sku: product.sku || product.id,
+      productName: product.title,
+      phone: phone || "",
+      createdAt: Date.now(),
+    });
     // NEW ORDER: address first, upsell second.
     setDeliveryFee(5);
     setAddressOpen(true);
