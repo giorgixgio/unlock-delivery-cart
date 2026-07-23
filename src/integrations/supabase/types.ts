@@ -1648,6 +1648,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_logs: {
+        Row: {
+          api_message: string | null
+          content: string | null
+          created_at: string
+          error_code: number | null
+          id: string
+          order_number: string
+          phone: string | null
+          sender: string
+          status: string
+          type: string
+        }
+        Insert: {
+          api_message?: string | null
+          content?: string | null
+          created_at?: string
+          error_code?: number | null
+          id?: string
+          order_number: string
+          phone?: string | null
+          sender?: string
+          status?: string
+          type: string
+        }
+        Update: {
+          api_message?: string | null
+          content?: string | null
+          created_at?: string
+          error_code?: number | null
+          id?: string
+          order_number?: string
+          phone?: string | null
+          sender?: string
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
       stockout_attempts: {
         Row: {
           attempt_count: number
