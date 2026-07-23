@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
+import { triggerFulfillmentSms } from "@/lib/smsService";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
@@ -328,7 +329,8 @@ const AdminOrderDetail = () => {
   const handleToggleFulfilled = async () => {
     if (!order || !id) return;
     setSaving(true);
-    const newVal = !order.is_fulfilled;
+    const wasFulfilled = order.is_fulfilled;
+    const newVal = !wasFulfilled;
     try {
       await versionedOrderUpdate(id, order.version, { is_fulfilled: newVal });
       await logEvent("fulfillment_change", { is_fulfilled: newVal });
@@ -336,6 +338,35 @@ const AdminOrderDetail = () => {
         entityType: "order", entityId: id, eventType: "ORDER_FULFILL_TOGGLE", actorId: actor,
         payload: { before: { is_fulfilled: order.is_fulfilled }, after: { is_fulfilled: newVal } },
       });
+
+      // SMS side effect — only on false → true. Never blocks fulfillment.
+      if (!wasFulfilled && newVal) {
+        try {
+          const summary = await triggerFulfillmentSms([{
+            orderId: id,
+            orderNumber: order.public_order_number,
+            phone: order.customer_phone,
+            status: order.status,
+          }]);
+          if (summary.sent > 0) {
+            toast({ title: "SMS გაიგზავნა" });
+          } else if (summary.failed > 0) {
+            const err = summary.errors[0];
+            toast({
+              title: "SMS ვერ გაიგზავნა",
+              description: err ? `code ${err.code ?? "—"} · ${err.message ?? ""}` : undefined,
+              variant: "destructive",
+            });
+          } else if (summary.skipped > 0) {
+            const reason = Object.keys(summary.skipReasons)[0];
+            if (reason && reason !== "already_sent") {
+              toast({ title: `SMS გამოტოვდა (${reason})` });
+            }
+          }
+        } catch (smsErr) {
+          console.warn("[fulfillment-sms] error", smsErr);
+        }
+      }
     } catch (err: any) {
       const msg = err?.message || String(err);
       if (msg.includes("CONFLICT")) {

@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 import { openStickerPrintWindow, type StickerOrder } from "./StickerPrintView";
 import { openPackingListWindow } from "./PackingListView";
 import { createBatchFromOrderIds } from "@/lib/batchService";
+import { triggerFulfillmentSms, fetchSmsBalance, countEligibleFulfillmentTargets, type FulfillmentSmsTarget } from "@/lib/smsService";
 
 interface MassFulfillModalProps {
   open: boolean;
@@ -230,6 +231,42 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     setStep("preview");
   }, [overwriteTracking, toast]);
 
+  // Pre-flight: check SMS balance and confirm the batch before firing anything.
+  const handleApplyClick = async () => {
+    const toApply = rows.filter(r => r.matchResult === "matched" && r.matchedOrderId);
+    if (toApply.length === 0) return;
+
+    // Fetch phones + status only for the matched orders to estimate SMS count
+    const ids = toApply.map(r => r.matchedOrderId!) as string[];
+    const { data: previewOrders } = await supabase
+      .from("orders")
+      .select("id, public_order_number, customer_phone, status, is_fulfilled")
+      .in("id", ids);
+
+    // Only orders that will actually transition to fulfilled (were not already) count
+    const smsTargets: FulfillmentSmsTarget[] = (previewOrders || [])
+      .filter((o: any) => o.is_fulfilled !== true)
+      .map((o: any) => ({
+        orderId: o.id,
+        orderNumber: o.public_order_number,
+        phone: o.customer_phone,
+        status: o.status,
+      }));
+    const smsCount = countEligibleFulfillmentTargets(smsTargets);
+
+    const balance = await fetchSmsBalance();
+    const balanceStr = balance === null ? "?" : String(balance);
+    let msg = `იგზავნება ${smsCount} SMS. ბალანსი: ${balanceStr}.`;
+    if (balance !== null && balance < smsCount) {
+      msg += `\n\n⚠️ ბალანსი ვერ ფარავს ${smsCount - balance} SMS-ს. მხოლოდ პირველი ${balance} გაიგზავნება.\n\nგსურთ გაგრძელება?`;
+    } else {
+      msg += `\n\nგსურთ გაგრძელება?`;
+    }
+    if (!window.confirm(msg)) return;
+
+    await handleApply();
+  };
+
   const handleApply = async () => {
     const toApply = rows.filter(r => r.matchResult === "matched" && r.matchedOrderId);
     if (toApply.length === 0) return;
@@ -360,12 +397,13 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       })
       .eq("id", batchId);
 
-    // Fetch full order details for sticker/packing list generation
+    // Fetch full order details for sticker/packing list generation + SMS targets
     const appliedOrderIds = toApply.filter(r => r.matchedOrderId).map(r => r.matchedOrderId!);
+    let smsTargets: FulfillmentSmsTarget[] = [];
     if (appliedOrderIds.length > 0) {
       const { data: fullOrders } = await supabase
         .from("orders")
-        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, order_items(sku, quantity, title)")
+        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, status, order_items(sku, quantity, title)")
         .in("id", appliedOrderIds);
 
       if (fullOrders) {
@@ -380,8 +418,36 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           items: (o.order_items || []).map((i: any) => ({ sku: i.sku, quantity: i.quantity, title: i.title })),
         }));
         setFulfilledOrders(stickerData);
+
+        smsTargets = fullOrders.map((o: any) => ({
+          orderId: o.id,
+          orderNumber: o.public_order_number,
+          phone: o.customer_phone,
+          status: o.status,
+        }));
       }
     }
+
+    // Fire fulfillment SMS after the DB updates land. Never blocks fulfillment.
+    if (smsTargets.length > 0) {
+      try {
+        const s = await triggerFulfillmentSms(smsTargets);
+        const parts = [`გაიგზავნა ${s.sent}`];
+        if (s.skipped) parts.push(`გამოტოვდა ${s.skipped}`);
+        if (s.failed) parts.push(`შეცდომა ${s.failed}`);
+        const desc = s.failed && s.errors[0]
+          ? `#${s.errors[0].orderNumber} code ${s.errors[0].code ?? "—"}`
+          : undefined;
+        toast({
+          title: `SMS: ${parts.join(" · ")}`,
+          description: desc,
+          variant: s.failed > 0 ? "destructive" : "default",
+        });
+      } catch (smsErr) {
+        console.warn("[mass-fulfill-sms] error", smsErr);
+      }
+    }
+
 
     // Auto-create warehouse batch from fulfilled orders
     if (appliedOrderIds.length > 0) {
@@ -632,7 +698,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
                   Re-upload
                 </Button>
                 <Button
-                  onClick={handleApply}
+                  onClick={handleApplyClick}
                   disabled={!summary || summary.matched === 0}
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                 >
