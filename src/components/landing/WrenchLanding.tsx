@@ -345,6 +345,13 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         landingSlug={landingSlug}
         landingVariant="wrench"
         onPhoneOrderCreated={handlePhoneOrderCreated}
+        onDuplicateBlocked={(orderNumber, createdAt) => {
+          const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
+          saveLastOrder(rec);
+          setRepeatBlocked(rec);
+          setCodOpen(false);
+        }}
+
       />
       <LandingUpsellSheet
         open={upsellOpen}
