@@ -231,6 +231,42 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     setStep("preview");
   }, [overwriteTracking, toast]);
 
+  // Pre-flight: check SMS balance and confirm the batch before firing anything.
+  const handleApplyClick = async () => {
+    const toApply = rows.filter(r => r.matchResult === "matched" && r.matchedOrderId);
+    if (toApply.length === 0) return;
+
+    // Fetch phones + status only for the matched orders to estimate SMS count
+    const ids = toApply.map(r => r.matchedOrderId!) as string[];
+    const { data: previewOrders } = await supabase
+      .from("orders")
+      .select("id, public_order_number, customer_phone, status, is_fulfilled")
+      .in("id", ids);
+
+    // Only orders that will actually transition to fulfilled (were not already) count
+    const smsTargets: FulfillmentSmsTarget[] = (previewOrders || [])
+      .filter((o: any) => o.is_fulfilled !== true)
+      .map((o: any) => ({
+        orderId: o.id,
+        orderNumber: o.public_order_number,
+        phone: o.customer_phone,
+        status: o.status,
+      }));
+    const smsCount = countEligibleFulfillmentTargets(smsTargets);
+
+    const balance = await fetchSmsBalance();
+    const balanceStr = balance === null ? "?" : String(balance);
+    let msg = `იგზავნება ${smsCount} SMS. ბალანსი: ${balanceStr}.`;
+    if (balance !== null && balance < smsCount) {
+      msg += `\n\n⚠️ ბალანსი ვერ ფარავს ${smsCount - balance} SMS-ს. მხოლოდ პირველი ${balance} გაიგზავნება.\n\nგსურთ გაგრძელება?`;
+    } else {
+      msg += `\n\nგსურთ გაგრძელება?`;
+    }
+    if (!window.confirm(msg)) return;
+
+    await handleApply();
+  };
+
   const handleApply = async () => {
     const toApply = rows.filter(r => r.matchResult === "matched" && r.matchedOrderId);
     if (toApply.length === 0) return;
