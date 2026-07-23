@@ -133,9 +133,13 @@ const CODFormModal = ({
 
       saveCustomerInfo({ phone: submitPhone, region: "", address: "" });
 
+      const productSku = product.sku || product.id;
+      const intentionalRepeat = consumeIntentionalRepeat(productSku);
+
       // Create order with status pending_details (phone only, no address)
       const result = await submitCustomerOrder({
         debugLabel: "Landing page order submit",
+        intentionalRepeat,
         order: {
           customerName: submitPhone,
           customerPhone: submitPhone,
@@ -164,6 +168,19 @@ const CODFormModal = ({
         return;
       }
 
+      if (result.kind === "duplicate") {
+        // NEVER show error, NEVER fire Purchase. Surface the existing order via
+        // the same green RepeatOrderBlock the client-side guard uses.
+        trackEvent("duplicate_block_shown", {
+          sku: productSku,
+          orderNumber: result.orderNumber,
+          source: "server",
+        });
+        onDuplicateBlocked?.(result.orderNumber, result.createdAt);
+        onClose();
+        return;
+      }
+
       const { order } = result;
 
       // ═══ MAIN CONVERSION: Fire Meta Purchase + PostHog phone_submitted ═══
@@ -181,6 +198,7 @@ const CODFormModal = ({
       setTimeout(() => {
         onPhoneOrderCreated(order.id, order.public_order_number, totalAfter);
       }, 600);
+
     } catch (err: any) {
       console.error("Phone order failed:", err);
       setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");
