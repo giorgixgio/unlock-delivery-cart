@@ -26,6 +26,9 @@ import TailoredLanding from "@/components/landing/TailoredLanding";
 import WrenchLanding from "@/components/landing/WrenchLanding";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
+import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
+import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderRecord } from "@/lib/lastOrderStore";
+import { trackEvent } from "@/lib/analytics";
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -147,22 +150,40 @@ const GenericLanding = ({
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
+  const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: "generic" });
+    const last = readLastOrder(product.sku || product.id);
+    if (last) {
+      setRepeatBlocked(last);
+      trackEvent("duplicate_block_shown", { sku: last.sku, orderNumber: last.orderNumber });
+    }
   }, [product.id]);
+
+  const handleReorder = () => {
+    markIntentionalRepeat(product.sku || product.id);
+    setRepeatBlocked(null);
+  };
 
   const handleCTA = () => setCodOpen(true);
 
   const goToSuccess = (orderNumber: string) => navigate(`/success?order=${orderNumber}`);
 
-  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number) => {
+  const handlePhoneOrderCreated = (orderId: string, orderNumber: string, orderTotal: number, phone?: string) => {
     setPendingOrderId(orderId);
     setPendingOrderNumber(orderNumber);
     setPendingOrderTotal(orderTotal);
     setCodOpen(false);
     trackConfirmationViewed(orderId, product.id);
+    saveLastOrder({
+      orderNumber,
+      sku: product.sku || product.id,
+      productName: product.title,
+      phone: phone || "",
+      createdAt: Date.now(),
+    });
     // NEW ORDER: address first, upsell second.
     setDeliveryFee(5);
     setAddressOpen(true);
@@ -258,20 +279,26 @@ const GenericLanding = ({
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="container max-w-lg mx-auto flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
-            {selectedQty > 1 && (
-              <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
-            )}
-          </div>
-          <Button
-            onClick={handleCTA}
-            className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
-            size="lg"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
-          </Button>
+        <div className="container max-w-lg mx-auto">
+          {repeatBlocked ? (
+            <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={handleReorder} />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
+                {selectedQty > 1 && (
+                  <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+                )}
+              </div>
+              <Button
+                onClick={handleCTA}
+                className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+                size="lg"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
