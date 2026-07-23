@@ -24,11 +24,20 @@ interface SubmitOrderInput {
   order: OrderInput;
   stockout?: RecordStockoutInput;
   debugLabel?: string;
+  /** When true, bypasses the server-side duplicate-order guard. */
+  intentionalRepeat?: boolean;
 }
 
 type SubmitOrderResult =
   | { kind: "order"; order: Awaited<ReturnType<typeof createOrder>> }
+  | {
+      kind: "duplicate";
+      orderId: string;
+      orderNumber: string;
+      createdAt: string;
+    }
   | { kind: "stockout"; attemptId: string | null; recorded: boolean; originalError: unknown; recordError?: unknown };
+
 
 function isOutOfStockError(err: unknown): err is Error {
   return err instanceof Error && err.message.startsWith("OUT_OF_STOCK");
