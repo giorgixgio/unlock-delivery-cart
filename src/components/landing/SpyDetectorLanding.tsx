@@ -347,23 +347,29 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
 
       {/* STICKY CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/95 backdrop-blur-sm border-t border-white/10 p-3 shadow-[0_-4px_30px_rgba(220,38,38,0.15)]">
-        <div className="container max-w-2xl mx-auto flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <p className="text-xl font-extrabold text-red-500">{totalPrice.toFixed(0)} ₾</p>
-            {selectedQty > 1 && (
-              <p className="text-[10px] text-white/40">{selectedQty} ცალი</p>
-            )}
-          </div>
-          <Button
-            onClick={handleCTA}
-            className="flex-1 h-16 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 animate-[pulse_3s_ease-in-out_infinite] flex flex-col items-center justify-center gap-0.5 px-4"
-            size="lg"
-          >
-            <span className="flex items-center gap-2 text-lg font-extrabold leading-tight">
-              <ShoppingCart className="w-5 h-5" /> შეუკვეთე ახლა
-            </span>
-            <span className="text-[11px] font-medium text-white/70 leading-tight">მხოლოდ ტელეფონი</span>
-          </Button>
+        <div className="container max-w-2xl mx-auto">
+          {repeatBlocked ? (
+            <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={handleReorder} />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <p className="text-xl font-extrabold text-red-500">{totalPrice.toFixed(0)} ₾</p>
+                {selectedQty > 1 && (
+                  <p className="text-[10px] text-white/40">{selectedQty} ცალი</p>
+                )}
+              </div>
+              <Button
+                onClick={handleCTA}
+                className="flex-1 h-16 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 animate-[pulse_3s_ease-in-out_infinite] flex flex-col items-center justify-center gap-0.5 px-4"
+                size="lg"
+              >
+                <span className="flex items-center gap-2 text-lg font-extrabold leading-tight">
+                  <ShoppingCart className="w-5 h-5" /> შეუკვეთე ახლა
+                </span>
+                <span className="text-[11px] font-medium text-white/70 leading-tight">მხოლოდ ტელეფონი</span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
