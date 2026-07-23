@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 import { openStickerPrintWindow, type StickerOrder } from "./StickerPrintView";
 import { openPackingListWindow } from "./PackingListView";
 import { createBatchFromOrderIds } from "@/lib/batchService";
+import { triggerFulfillmentSms, fetchSmsBalance, countEligibleFulfillmentTargets, type FulfillmentSmsTarget } from "@/lib/smsService";
 
 interface MassFulfillModalProps {
   open: boolean;
