@@ -10,7 +10,10 @@ import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
 import { trackStockoutAttempt } from "@/lib/metaPixel";
+import { consumeIntentionalRepeat } from "@/lib/lastOrderStore";
+import { trackEvent } from "@/lib/analytics";
 import StockoutMessageView from "./StockoutMessageView";
+
 
 const cleanPhoneInput = (raw: string): string => {
   let d = (raw || "").replace(/\D/g, "");
@@ -41,7 +44,10 @@ interface CODFormModalProps {
   landingSlug: string;
   landingVariant: string;
   onPhoneOrderCreated: (orderId: string, orderNumber: string, orderTotal: number) => void;
+  /** Fired when server returns an existing recent order for this phone+sku. */
+  onDuplicateBlocked?: (orderNumber: string, createdAt: string) => void;
 }
+
 
 const CODFormModal = ({
   open,
@@ -51,7 +57,9 @@ const CODFormModal = ({
   discountPct,
   landingSlug,
   onPhoneOrderCreated,
+  onDuplicateBlocked,
 }: CODFormModalProps) => {
+
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
@@ -125,9 +133,13 @@ const CODFormModal = ({
 
       saveCustomerInfo({ phone: submitPhone, region: "", address: "" });
 
+      const productSku = product.sku || product.id;
+      const intentionalRepeat = consumeIntentionalRepeat(productSku);
+
       // Create order with status pending_details (phone only, no address)
       const result = await submitCustomerOrder({
         debugLabel: "Landing page order submit",
+        intentionalRepeat,
         order: {
           customerName: submitPhone,
           customerPhone: submitPhone,
@@ -156,6 +168,19 @@ const CODFormModal = ({
         return;
       }
 
+      if (result.kind === "duplicate") {
+        // NEVER show error, NEVER fire Purchase. Surface the existing order via
+        // the same green RepeatOrderBlock the client-side guard uses.
+        trackEvent("duplicate_block_shown", {
+          sku: productSku,
+          orderNumber: result.orderNumber,
+          source: "server",
+        });
+        onDuplicateBlocked?.(result.orderNumber, result.createdAt);
+        onClose();
+        return;
+      }
+
       const { order } = result;
 
       // ═══ MAIN CONVERSION: Fire Meta Purchase + PostHog phone_submitted ═══
@@ -173,6 +198,7 @@ const CODFormModal = ({
       setTimeout(() => {
         onPhoneOrderCreated(order.id, order.public_order_number, totalAfter);
       }, 600);
+
     } catch (err: any) {
       console.error("Phone order failed:", err);
       setError("შეკვეთა ვერ შეიქმნა. სცადეთ თავიდან.");

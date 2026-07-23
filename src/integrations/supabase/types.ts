@@ -537,6 +537,30 @@ export type Database = {
         }
         Relationships: []
       }
+      duplicate_block_events: {
+        Row: {
+          blocked_at: string
+          existing_order_id: string | null
+          id: string
+          phone_normalized: string | null
+          sku: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          existing_order_id?: string | null
+          id?: string
+          phone_normalized?: string | null
+          sku?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          existing_order_id?: string | null
+          id?: string
+          phone_normalized?: string | null
+          sku?: string | null
+        }
+        Relationships: []
+      }
       export_batches: {
         Row: {
           created_at: string
@@ -1849,6 +1873,14 @@ export type Database = {
           p_unit_price: number
         }
         Returns: undefined
+      }
+      storefront_check_duplicate_order: {
+        Args: { p_hours?: number; p_phone: string; p_sku: string }
+        Returns: {
+          created_at: string
+          order_id: string
+          order_number: string
+        }[]
       }
       storefront_get_last_address_by_phone: {
         Args: { p_phone: string }

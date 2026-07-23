@@ -235,6 +235,13 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
         landingSlug={landingSlug}
         landingVariant="tailored"
         onPhoneOrderCreated={handlePhoneOrderCreated}
+        onDuplicateBlocked={(orderNumber, createdAt) => {
+          const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
+          saveLastOrder(rec);
+          setRepeatBlocked(rec);
+          setCodOpen(false);
+        }}
+
       />
       <LandingUpsellSheet
         open={upsellOpen}

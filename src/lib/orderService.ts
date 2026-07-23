@@ -24,11 +24,20 @@ interface SubmitOrderInput {
   order: OrderInput;
   stockout?: RecordStockoutInput;
   debugLabel?: string;
+  /** When true, bypasses the server-side duplicate-order guard. */
+  intentionalRepeat?: boolean;
 }
 
 type SubmitOrderResult =
   | { kind: "order"; order: Awaited<ReturnType<typeof createOrder>> }
+  | {
+      kind: "duplicate";
+      orderId: string;
+      orderNumber: string;
+      createdAt: string;
+    }
   | { kind: "stockout"; attemptId: string | null; recorded: boolean; originalError: unknown; recordError?: unknown };
+
 
 function isOutOfStockError(err: unknown): err is Error {
   return err instanceof Error && err.message.startsWith("OUT_OF_STOCK");
@@ -257,8 +266,34 @@ async function isProductCurrentlyOutOfStock(productId: string): Promise<{
 
 export async function submitCustomerOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
   try {
+    // ── SERVER-SIDE DUPLICATE GUARD (fallback for cleared localStorage / new device) ──
+    if (!input.intentionalRepeat) {
+      const firstItem = input.order.items[0];
+      const primarySku = firstItem?.product?.sku || firstItem?.product?.id || "";
+      if (input.order.customerPhone && primarySku) {
+        try {
+          const { data: dupRows } = await (supabase as any).rpc(
+            "storefront_check_duplicate_order",
+            { p_phone: input.order.customerPhone, p_sku: primarySku, p_hours: 3 },
+          );
+          const dup = Array.isArray(dupRows) ? dupRows[0] : null;
+          if (dup?.order_id) {
+            return {
+              kind: "duplicate",
+              orderId: dup.order_id,
+              orderNumber: dup.order_number,
+              createdAt: dup.created_at,
+            };
+          }
+        } catch (e) {
+          console.warn("duplicate-order check failed, proceeding with insert", e);
+        }
+      }
+    }
+
     const order = await createOrder(input.order);
     return { kind: "order", order };
+
   } catch (err) {
     if (!isOutOfStockError(err) || !input.stockout) throw err;
 
