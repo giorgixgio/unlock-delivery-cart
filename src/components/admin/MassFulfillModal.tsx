@@ -397,12 +397,13 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       })
       .eq("id", batchId);
 
-    // Fetch full order details for sticker/packing list generation
+    // Fetch full order details for sticker/packing list generation + SMS targets
     const appliedOrderIds = toApply.filter(r => r.matchedOrderId).map(r => r.matchedOrderId!);
+    let smsTargets: FulfillmentSmsTarget[] = [];
     if (appliedOrderIds.length > 0) {
       const { data: fullOrders } = await supabase
         .from("orders")
-        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, order_items(sku, quantity, title)")
+        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, status, order_items(sku, quantity, title)")
         .in("id", appliedOrderIds);
 
       if (fullOrders) {
@@ -417,8 +418,36 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           items: (o.order_items || []).map((i: any) => ({ sku: i.sku, quantity: i.quantity, title: i.title })),
         }));
         setFulfilledOrders(stickerData);
+
+        smsTargets = fullOrders.map((o: any) => ({
+          orderId: o.id,
+          orderNumber: o.public_order_number,
+          phone: o.customer_phone,
+          status: o.status,
+        }));
       }
     }
+
+    // Fire fulfillment SMS after the DB updates land. Never blocks fulfillment.
+    if (smsTargets.length > 0) {
+      try {
+        const s = await triggerFulfillmentSms(smsTargets);
+        const parts = [`გაიგზავნა ${s.sent}`];
+        if (s.skipped) parts.push(`გამოტოვდა ${s.skipped}`);
+        if (s.failed) parts.push(`შეცდომა ${s.failed}`);
+        const desc = s.failed && s.errors[0]
+          ? `#${s.errors[0].orderNumber} code ${s.errors[0].code ?? "—"}`
+          : undefined;
+        toast({
+          title: `SMS: ${parts.join(" · ")}`,
+          description: desc,
+          variant: s.failed > 0 ? "destructive" : "default",
+        });
+      } catch (smsErr) {
+        console.warn("[mass-fulfill-sms] error", smsErr);
+      }
+    }
+
 
     // Auto-create warehouse batch from fulfilled orders
     if (appliedOrderIds.length > 0) {
