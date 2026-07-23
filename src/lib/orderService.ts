@@ -3,6 +3,7 @@ import { CartItem, Product } from "@/lib/constants";
 import { getCookieIdHash, getUserAgent } from "@/lib/identitySignals";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { recordStockoutAttempt, type RecordStockoutInput } from "@/lib/stockoutService";
+import { sendConfirmationSms } from "@/lib/smsService";
 
 interface OrderInput {
   customerName: string;
