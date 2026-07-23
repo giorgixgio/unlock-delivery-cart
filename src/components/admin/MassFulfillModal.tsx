@@ -698,7 +698,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
                   Re-upload
                 </Button>
                 <Button
-                  onClick={handleApply}
+                  onClick={handleApplyClick}
                   disabled={!summary || summary.matched === 0}
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                 >
