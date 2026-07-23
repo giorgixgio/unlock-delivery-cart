@@ -312,20 +312,26 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
 
       {/* STICKY CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
-        <div className="container max-w-2xl mx-auto flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
-            {selectedQty > 1 && (
-              <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
-            )}
-          </div>
-          <Button
-            onClick={handleCTA}
-            className="flex-1 h-14 text-lg font-extrabold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
-            size="lg"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
-          </Button>
+        <div className="container max-w-2xl mx-auto">
+          {repeatBlocked ? (
+            <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={handleReorder} />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
+                {selectedQty > 1 && (
+                  <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+                )}
+              </div>
+              <Button
+                onClick={handleCTA}
+                className="flex-1 h-14 text-lg font-extrabold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+                size="lg"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
