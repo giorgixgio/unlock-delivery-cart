@@ -44,7 +44,10 @@ interface CODFormModalProps {
   landingSlug: string;
   landingVariant: string;
   onPhoneOrderCreated: (orderId: string, orderNumber: string, orderTotal: number) => void;
+  /** Fired when server returns an existing recent order for this phone+sku. */
+  onDuplicateBlocked?: (orderNumber: string, createdAt: string) => void;
 }
+
 
 const CODFormModal = ({
   open,
