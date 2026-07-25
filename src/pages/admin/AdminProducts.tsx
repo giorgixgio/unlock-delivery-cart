@@ -131,6 +131,7 @@ const AdminProducts = () => {
   const [editTitleValue, setEditTitleValue] = useState("");
   const [imageManagerProduct, setImageManagerProduct] = useState<VariantRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [newProductOpen, setNewProductOpen] = useState(false);
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
