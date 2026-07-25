@@ -970,6 +970,13 @@ const AdminOrderDetail = () => {
             />
           ))}
         </div>
+        <LandingQtyDiscountActions
+          orderId={id!}
+          items={order.order_items}
+          actor={actor}
+          disabled={order.is_fulfilled || ["shipped", "delivered", "canceled", "returned", "merged"].includes(order.status)}
+          onApplied={refreshOrder}
+        />
       </div>
 
       {/* Totals */}
