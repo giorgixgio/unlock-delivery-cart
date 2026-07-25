@@ -795,6 +795,10 @@ const AdminProducts = () => {
           )}
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setNewProductOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            New Product
+          </Button>
           <SyncButton />
           <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
             <Upload className="w-4 h-4" />
@@ -802,6 +806,12 @@ const AdminProducts = () => {
           </Button>
         </div>
       </div>
+
+      <NewProductModal
+        open={newProductOpen}
+        onClose={() => setNewProductOpen(false)}
+        onCreated={refreshProducts}
+      />
 
       {/* Bulk Upload Panel */}
       {bulkOpen && (
