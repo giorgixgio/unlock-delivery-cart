@@ -10,11 +10,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 import ProductImageManager from "@/components/admin/ProductImageManager";
+import NewProductModal from "@/components/admin/NewProductModal";
 
 interface VariantRow {
   productId: string;
@@ -130,6 +131,7 @@ const AdminProducts = () => {
   const [editTitleValue, setEditTitleValue] = useState("");
   const [imageManagerProduct, setImageManagerProduct] = useState<VariantRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [newProductOpen, setNewProductOpen] = useState(false);
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -793,6 +795,10 @@ const AdminProducts = () => {
           )}
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setNewProductOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            New Product
+          </Button>
           <SyncButton />
           <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
             <Upload className="w-4 h-4" />
@@ -800,6 +806,12 @@ const AdminProducts = () => {
           </Button>
         </div>
       </div>
+
+      <NewProductModal
+        open={newProductOpen}
+        onClose={() => setNewProductOpen(false)}
+        onCreated={refreshProducts}
+      />
 
       {/* Bulk Upload Panel */}
       {bulkOpen && (
