@@ -1080,6 +1080,23 @@ export default function OrderQuickReviewModal({
                   )}
                 </div>
 
+                {order.order_items && order.order_items.length === 1 && (
+                  <LandingQtyDiscountActions
+                    orderId={order.id}
+                    items={order.order_items.map((it) => ({
+                      id: it.id,
+                      sku: it.sku,
+                      title: it.title,
+                      quantity: it.quantity,
+                      unit_price: Number(it.unit_price),
+                      line_total: Number(it.line_total),
+                    }))}
+                    actor={actor}
+                    disabled={saving}
+                    onApplied={refreshItemsAndTotals}
+                  />
+                )}
+
                 {/* Totals */}
                 <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{Number(order.subtotal).toFixed(1)} ₾</span></div>
