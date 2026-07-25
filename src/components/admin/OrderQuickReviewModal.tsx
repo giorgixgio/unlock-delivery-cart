@@ -16,6 +16,7 @@ import {
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
+import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
 import { startSession, markAction, endSession } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
@@ -1078,6 +1079,23 @@ export default function OrderQuickReviewModal({
                     <div className="text-xs text-muted-foreground py-3 text-center">პროდუქტი არ არის</div>
                   )}
                 </div>
+
+                {order.order_items && order.order_items.length === 1 && (
+                  <LandingQtyDiscountActions
+                    orderId={order.id}
+                    items={order.order_items.map((it) => ({
+                      id: it.id,
+                      sku: it.sku,
+                      title: it.title,
+                      quantity: it.quantity,
+                      unit_price: Number(it.unit_price),
+                      line_total: Number(it.line_total),
+                    }))}
+                    actor={actor}
+                    disabled={saving}
+                    onApplied={refreshItemsAndTotals}
+                  />
+                )}
 
                 {/* Totals */}
                 <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm">
