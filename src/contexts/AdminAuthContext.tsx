@@ -67,17 +67,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const email = nextSession.user.email?.toLowerCase() ?? null;
 
-      // Demo flag (legacy — leaves real data intact, just labels the UI)
+      // Demo flag + role (legacy — leaves real data intact, just labels the UI)
       let demoActive = false;
+      let userRole: string | null = null;
       if (adminActive && email) {
         const { data: row } = await supabase
           .from("admin_users")
-          .select("is_demo")
+          .select("is_demo, role")
           .eq("email", email)
           .maybeSingle();
         demoActive = (row as any)?.is_demo === true;
+        userRole = ((row as any)?.role as string) ?? null;
       }
       setIsDemo(demoActive);
+      setRole(userRole);
       setDemoMode(demoActive);
 
       // Presentation mode — load this user's row (RLS allows own-row read)
