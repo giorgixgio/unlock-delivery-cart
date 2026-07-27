@@ -46,6 +46,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!nextSession?.user?.id) {
       setIsAdmin(false);
       setIsDemo(false);
+      setRole(null);
       setDemoMode(false);
       setIsPresentation(false);
       setPresentationMultiplierState(1);
