@@ -27,10 +27,13 @@ const navItems = [
 ];
 
 const AdminLayout = () => {
-  const { user, signOut, isDemo } = useAdminAuth();
+  const { user, signOut, isDemo, role } = useAdminAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const visibleNavItems = role === "warehouse"
+    ? navItems.filter((n) => n.to === "/admin/products")
+    : navItems;
 
   const handleSignOut = async () => {
     await signOut();
