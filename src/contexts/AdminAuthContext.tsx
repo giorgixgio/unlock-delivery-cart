@@ -173,6 +173,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUser(null);
     setIsAdmin(false);
     setIsDemo(false);
+    setRole(null);
     setDemoMode(false);
     setIsPresentation(false);
     setPresentationMultiplierState(1);
@@ -186,6 +187,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user,
         isAdmin,
         isDemo,
+        role,
         isPresentation,
         presentationMultiplier,
         loading,
