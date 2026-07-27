@@ -58,16 +58,23 @@ const LandingPageRoute = () => {
 const queryClient = new QueryClient();
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { loading, isAdmin, session } = useAdminAuth();
+  const { loading, isAdmin, session, role } = useAdminAuth();
+  const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!session || !isAdmin) return <Navigate to="/admin/login" replace />;
+  // Warehouse role: restrict to /admin/products only
+  if (role === "warehouse" && !location.pathname.startsWith("/admin/products")) {
+    return <Navigate to="/admin/products" replace />;
+  }
   return <>{children}</>;
 };
 
 const AdminLoginGuard = () => {
-  const { loading, isAdmin, session } = useAdminAuth();
+  const { loading, isAdmin, session, role } = useAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (session && isAdmin) return <Navigate to="/admin/orders" replace />;
+  if (session && isAdmin) {
+    return <Navigate to={role === "warehouse" ? "/admin/products" : "/admin/orders"} replace />;
+  }
   return <AdminLogin />;
 };
 

@@ -16,6 +16,8 @@ interface AdminAuthContextType {
   user: User | null;
   isAdmin: boolean;
   isDemo: boolean;
+  /** Admin role from admin_users.role (e.g. 'admin', 'operator', 'warehouse'). */
+  role: string | null;
   /** True when this signed-in admin has presentation mode active. */
   isPresentation: boolean;
   /** Multiplier (0–1) currently applied to displayed revenue. */
@@ -32,6 +34,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const [isPresentation, setIsPresentation] = useState(false);
   const [presentationMultiplier, setPresentationMultiplierState] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!nextSession?.user?.id) {
       setIsAdmin(false);
       setIsDemo(false);
+      setRole(null);
       setDemoMode(false);
       setIsPresentation(false);
       setPresentationMultiplierState(1);
@@ -63,17 +67,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const email = nextSession.user.email?.toLowerCase() ?? null;
 
-      // Demo flag (legacy — leaves real data intact, just labels the UI)
+      // Demo flag + role (legacy — leaves real data intact, just labels the UI)
       let demoActive = false;
+      let userRole: string | null = null;
       if (adminActive && email) {
         const { data: row } = await supabase
           .from("admin_users")
-          .select("is_demo")
+          .select("is_demo, role")
           .eq("email", email)
           .maybeSingle();
         demoActive = (row as any)?.is_demo === true;
+        userRole = ((row as any)?.role as string) ?? null;
       }
       setIsDemo(demoActive);
+      setRole(userRole);
       setDemoMode(demoActive);
 
       // Presentation mode — load this user's row (RLS allows own-row read)
@@ -99,6 +106,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch {
       setIsAdmin(false);
       setIsDemo(false);
+      setRole(null);
       setDemoMode(false);
       setIsPresentation(false);
       setPresentationMultiplierState(1);
@@ -165,6 +173,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUser(null);
     setIsAdmin(false);
     setIsDemo(false);
+    setRole(null);
     setDemoMode(false);
     setIsPresentation(false);
     setPresentationMultiplierState(1);
@@ -178,6 +187,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user,
         isAdmin,
         isDemo,
+        role,
         isPresentation,
         presentationMultiplier,
         loading,

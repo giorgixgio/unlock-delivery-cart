@@ -27,10 +27,13 @@ const navItems = [
 ];
 
 const AdminLayout = () => {
-  const { user, signOut, isDemo } = useAdminAuth();
+  const { user, signOut, isDemo, role } = useAdminAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const visibleNavItems = role === "warehouse"
+    ? navItems.filter((n) => n.to === "/admin/products")
+    : navItems;
 
   const handleSignOut = async () => {
     await signOut();
@@ -51,7 +54,7 @@ const AdminLayout = () => {
         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
       </div>
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
