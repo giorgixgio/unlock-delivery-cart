@@ -106,6 +106,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch {
       setIsAdmin(false);
       setIsDemo(false);
+      setRole(null);
       setDemoMode(false);
       setIsPresentation(false);
       setPresentationMultiplierState(1);
