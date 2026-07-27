@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 import ProductImageManager from "@/components/admin/ProductImageManager";
 import NewProductModal from "@/components/admin/NewProductModal";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface VariantRow {
   productId: string;
@@ -119,6 +120,8 @@ const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { role } = useAdminAuth();
+  const isWarehouse = role === "warehouse";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [editingSku, setEditingSku] = useState<string | null>(null);
@@ -795,15 +798,19 @@ const AdminProducts = () => {
           )}
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setNewProductOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Product
-          </Button>
-          <SyncButton />
-          <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
-            <Upload className="w-4 h-4" />
-            Bulk Update SKUs
-          </Button>
+          {!isWarehouse && (
+            <>
+              <Button onClick={() => setNewProductOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Product
+              </Button>
+              <SyncButton />
+              <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
+                <Upload className="w-4 h-4" />
+                Bulk Update SKUs
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

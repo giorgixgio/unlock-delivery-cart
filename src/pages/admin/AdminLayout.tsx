@@ -54,7 +54,7 @@ const AdminLayout = () => {
         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
       </div>
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
