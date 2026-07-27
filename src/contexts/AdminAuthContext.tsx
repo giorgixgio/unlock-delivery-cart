@@ -16,6 +16,8 @@ interface AdminAuthContextType {
   user: User | null;
   isAdmin: boolean;
   isDemo: boolean;
+  /** Admin role from admin_users.role (e.g. 'admin', 'operator', 'warehouse'). */
+  role: string | null;
   /** True when this signed-in admin has presentation mode active. */
   isPresentation: boolean;
   /** Multiplier (0–1) currently applied to displayed revenue. */
