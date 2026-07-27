@@ -34,6 +34,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const [isPresentation, setIsPresentation] = useState(false);
   const [presentationMultiplier, setPresentationMultiplierState] = useState(1);
   const [loading, setLoading] = useState(true);
