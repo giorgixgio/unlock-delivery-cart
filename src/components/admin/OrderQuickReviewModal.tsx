@@ -1005,9 +1005,15 @@ export default function OrderQuickReviewModal({
               <section className="rounded-lg border border-border p-3 bg-card">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">პროდუქტები</h3>
-                  <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
-                    <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setReturnOpen(true)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Create Return
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
+                      <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
+                    </Button>
+                  </div>
+
                 </div>
 
                 {searchOpen && (
