@@ -264,6 +264,20 @@ const AdminOrders = () => {
     setSelectedIds([]);
   };
 
+  const approveReturn = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "confirmed", is_confirmed: true, review_required: false })
+      .eq("id", orderId);
+    if (!error) {
+      await supabase.from("order_events").insert({
+        order_id: orderId, actor: "admin", event_type: "return_approved", payload: {} as any,
+      });
+      fetchOrders(true);
+      fetchCounts();
+    }
+  };
+
   const openOrder = (orderId: string) => {
     setActiveOrderId(orderId);
   };
@@ -576,6 +590,14 @@ const AdminOrders = () => {
                   <td className="px-4 py-3 font-bold">{Number(order.total).toFixed(1)} ₾</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
+                      {order.status === "return_review" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); approveReturn(order.id); }}
+                          className="px-2.5 py-1 rounded-full text-xs font-bold w-fit bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                          Approve
+                        </button>
+                      )}
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize w-fit ${statusColor[order.status] || "bg-muted text-foreground"}`}>
                         {order.status.replace("_", " ")}
                       </span>
