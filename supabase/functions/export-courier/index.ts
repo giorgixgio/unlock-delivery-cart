@@ -322,6 +322,10 @@ Deno.serve(async (req) => {
         notes.push(`RISK:${order.risk_level.toUpperCase()} ${(order.risk_reasons || []).join(", ")}`);
       }
       if (order.internal_note) notes.push(order.internal_note);
+      if (order.is_return) {
+        notes.unshift("RETURN —");
+      }
+
 
       orderIds.push(order.id);
 
