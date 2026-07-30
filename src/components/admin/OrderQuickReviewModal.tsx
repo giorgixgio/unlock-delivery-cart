@@ -198,6 +198,8 @@ export default function OrderQuickReviewModal({
 
   // Product search
   const [searchOpen, setSearchOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
