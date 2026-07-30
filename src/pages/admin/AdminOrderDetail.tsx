@@ -139,6 +139,8 @@ const AdminOrderDetail = () => {
   const [selectedPrevIds, setSelectedPrevIds] = useState<string[]>([]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+
 
   const [status, setStatus] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
