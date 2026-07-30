@@ -322,9 +322,8 @@ Deno.serve(async (req) => {
         notes.push(`RISK:${order.risk_level.toUpperCase()} ${(order.risk_reasons || []).join(", ")}`);
       }
       if (order.internal_note) notes.push(order.internal_note);
-      if (order.is_return) {
-        notes.unshift("RETURN —");
-      }
+      let noteText = noteText;
+      if (order.is_return) noteText = `RETURN — ${noteText}`.trim();
 
 
       orderIds.push(order.id);
@@ -352,7 +351,7 @@ Deno.serve(async (req) => {
           "",
           "",
           "",
-          notes.join(" | "),
+          noteText,
           fixedMap["trackings_return_method"] || "გამგზავნის მისამართი",
           "",
           fixedMap["trackings_payer"] || "გამგზავნი",
@@ -372,7 +371,7 @@ Deno.serve(async (req) => {
           H: order.public_order_number,
           I: `${tag} ${skuWithQty}`, // SKU column — tag prepended so it prints on the slip
           K: String(Number(order.total || 0)),
-          O: notes.join(" | "),
+          O: noteText,
         };
         const row = ONWAY_COLUMNS.map((col) => {
           if (dynamicValues[col] !== undefined) return dynamicValues[col];
