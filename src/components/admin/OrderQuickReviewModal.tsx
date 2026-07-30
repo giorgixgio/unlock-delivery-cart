@@ -1170,7 +1170,18 @@ export default function OrderQuickReviewModal({
           }}
         />
       )}
+      {order && (
+        <CreateReturnModal
+          open={returnOpen}
+          orderId={order.id}
+          actor={actor}
+          onClose={() => setReturnOpen(false)}
+          onCreated={() => toast({ title: "დაბრუნება შექმნილია ✓" })}
+        />
+      )}
     </div>
+
+
 
   );
 }
