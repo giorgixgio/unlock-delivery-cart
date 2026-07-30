@@ -969,6 +969,7 @@ export type Database = {
           ip_address: string | null
           is_confirmed: boolean
           is_fulfilled: boolean
+          is_return: boolean
           is_tbilisi: boolean
           last_call_attempt_at: string | null
           last_call_attempt_by: string | null
@@ -983,6 +984,7 @@ export type Database = {
           operator_review_status: string | null
           operator_viewed_at: string | null
           operator_viewed_by: string | null
+          original_order_id: string | null
           packed_at: string | null
           packed_by: string | null
           packing_status: string
@@ -993,6 +995,7 @@ export type Database = {
           raw_city: string | null
           region: string
           released_at: string | null
+          return_reason: string | null
           review_required: boolean
           risk_level: string
           risk_reasons: string[]
@@ -1044,6 +1047,7 @@ export type Database = {
           ip_address?: string | null
           is_confirmed?: boolean
           is_fulfilled?: boolean
+          is_return?: boolean
           is_tbilisi?: boolean
           last_call_attempt_at?: string | null
           last_call_attempt_by?: string | null
@@ -1058,6 +1062,7 @@ export type Database = {
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
+          original_order_id?: string | null
           packed_at?: string | null
           packed_by?: string | null
           packing_status?: string
@@ -1068,6 +1073,7 @@ export type Database = {
           raw_city?: string | null
           region?: string
           released_at?: string | null
+          return_reason?: string | null
           review_required?: boolean
           risk_level?: string
           risk_reasons?: string[]
@@ -1119,6 +1125,7 @@ export type Database = {
           ip_address?: string | null
           is_confirmed?: boolean
           is_fulfilled?: boolean
+          is_return?: boolean
           is_tbilisi?: boolean
           last_call_attempt_at?: string | null
           last_call_attempt_by?: string | null
@@ -1133,6 +1140,7 @@ export type Database = {
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
+          original_order_id?: string | null
           packed_at?: string | null
           packed_by?: string | null
           packing_status?: string
@@ -1143,6 +1151,7 @@ export type Database = {
           raw_city?: string | null
           region?: string
           released_at?: string | null
+          return_reason?: string | null
           review_required?: boolean
           risk_level?: string
           risk_reasons?: string[]
@@ -1162,6 +1171,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_original_order_id_fkey"
+            columns: ["original_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_packing_wave_id_fkey"
             columns: ["packing_wave_id"]

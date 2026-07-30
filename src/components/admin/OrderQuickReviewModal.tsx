@@ -28,6 +28,9 @@ import {
 } from "@/lib/callAttemptService";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
+import CreateReturnModal from "@/components/admin/CreateReturnModal";
+
+
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
 
 const OUTCOMES: {
@@ -195,6 +198,8 @@ export default function OrderQuickReviewModal({
 
   // Product search
   const [searchOpen, setSearchOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -1005,9 +1010,15 @@ export default function OrderQuickReviewModal({
               <section className="rounded-lg border border-border p-3 bg-card">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">პროდუქტები</h3>
-                  <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
-                    <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setReturnOpen(true)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Create Return
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
+                      <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
+                    </Button>
+                  </div>
+
                 </div>
 
                 {searchOpen && (
@@ -1159,7 +1170,18 @@ export default function OrderQuickReviewModal({
           }}
         />
       )}
+      {order && (
+        <CreateReturnModal
+          open={returnOpen}
+          orderId={order.id}
+          actor={actor}
+          onClose={() => setReturnOpen(false)}
+          onCreated={() => toast({ title: "დაბრუნება შექმნილია ✓" })}
+        />
+      )}
     </div>
+
+
 
   );
 }
