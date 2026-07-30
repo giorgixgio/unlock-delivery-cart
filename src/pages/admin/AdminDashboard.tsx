@@ -62,7 +62,9 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason");
+        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason")
+        .or("is_return.is.null,is_return.eq.false");
+
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
