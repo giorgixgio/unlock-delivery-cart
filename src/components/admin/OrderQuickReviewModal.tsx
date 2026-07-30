@@ -27,6 +27,9 @@ import {
   scheduleCallback,
 } from "@/lib/callAttemptService";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
+import { RotateCcw } from "lucide-react";
+import CreateReturnModal from "@/components/admin/CreateReturnModal";
+
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
 
