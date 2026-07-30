@@ -701,7 +701,40 @@ const AdminOrderDetail = () => {
             <GitMerge className="w-3 h-3" /> Merged into another order
           </span>
         )}
+        {(order as any).is_return && (
+          <span className="px-2 py-1 rounded text-xs font-bold bg-orange-100 text-orange-800">RETURN</span>
+        )}
+        <div className="ml-auto">
+          <Button variant="outline" size="sm" onClick={() => setReturnOpen(true)}>
+            Create Return
+          </Button>
+        </div>
       </div>
+
+      {(order as any).is_return && (order as any).original_order_id && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+          <span className="text-sm text-orange-800">
+            დაბრუნება / გაცვლა{(order as any).return_reason ? ` — ${(order as any).return_reason}` : ""}
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-primary"
+            onClick={() => navigate(`/admin/orders/${(order as any).original_order_id}?from=${fromTab}`)}
+          >
+            ორიგინალი შეკვეთა →
+          </Button>
+        </div>
+      )}
+
+      <CreateReturnModal
+        open={returnOpen}
+        orderId={id!}
+        actor={actor}
+        onClose={() => setReturnOpen(false)}
+        onCreated={(newId) => navigate(`/admin/orders/${newId}?from=returns`)}
+      />
+
 
       {/* Auto-confirm explanation */}
       {order.auto_confirmed && (
