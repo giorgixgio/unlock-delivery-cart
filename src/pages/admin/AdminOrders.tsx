@@ -14,7 +14,7 @@ import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/compo
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
 
-type Tab = "review" | "ready" | "fulfilled" | "merged" | "canceled" | "all";
+type Tab = "review" | "ready" | "fulfilled" | "returns" | "merged" | "canceled" | "all";
 
 const DATE_FILTERS = [
   { label: "All", value: "all" },
@@ -126,20 +126,21 @@ const AdminOrders = () => {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportOpen, setExportOpen] = useState(false);
   const [fulfillOpen, setFulfillOpen] = useState(false);
-  const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0 });
+  const [counts, setCounts] = useState({ review: 0, ready: 0, fulfilled: 0, returns: 0 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { applyToCount, hasModifier } = useViewModifier();
 
   const fetchCounts = useCallback(async () => {
-    const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }] = await Promise.all([
+    const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }, { count: returnsCount }] = await Promise.all([
       supabase
         .from("orders")
         .select("id", { count: "exact", head: true })
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
+        .neq("status", "return_review")
         .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true"),
       supabase
         .from("orders")
@@ -154,12 +155,17 @@ const AdminOrders = () => {
         .select("id", { count: "exact", head: true })
         .eq("is_fulfilled", true)
         .not("status", "in", "(canceled,returned,merged)"),
+      supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "return_review"),
     ]);
 
     setCounts({
       review: applyToCount(reviewCount || 0),
       ready: applyToCount(readyCount || 0),
       fulfilled: applyToCount(fulfilledCount || 0),
+      returns: returnsCount || 0,
     });
   }, [applyToCount]);
 
@@ -172,7 +178,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, is_return, original_order_id, return_reason, order_items(image_url, quantity)");
 
     // Tab-based filtering
     if (activeTab === "review") {
@@ -180,6 +186,7 @@ const AdminOrders = () => {
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
+        .neq("status", "return_review")
         .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true")
         .order("risk_score", { ascending: false })
         .order("created_at", { ascending: false });
@@ -195,6 +202,10 @@ const AdminOrders = () => {
       query = query
         .eq("is_fulfilled", true)
         .not("status", "in", "(canceled,returned,merged)")
+        .order("created_at", { ascending: false });
+    } else if (activeTab === "returns") {
+      query = query
+        .eq("status", "return_review")
         .order("created_at", { ascending: false });
     } else if (activeTab === "merged") {
       query = query
@@ -369,6 +380,16 @@ const AdminOrders = () => {
           )}
         </button>
         <button
+          onClick={() => switchTab("returns")}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all ${
+            activeTab === "returns"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Returns {counts.returns > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-orange-100 text-orange-800">{counts.returns}</span>}
+        </button>
+        <button
           onClick={() => switchTab("merged")}
           className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-all ${
             activeTab === "merged"
@@ -513,6 +534,9 @@ const AdminOrders = () => {
                     <span className="font-bold text-primary">{order.public_order_number}</span>
                     {isUnviewed && (
                       <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">ახალი</span>
+                    )}
+                    {(order as any).is_return && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-800">RETURN</span>
                     )}
                     {order.tags?.includes("auto_merged") && (
                       <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">Merged</span>
