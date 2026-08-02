@@ -64,16 +64,17 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason")
+        .select("id, total, shipping_fee, status, is_confirmed, auto_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_outcome, call_outcome_updated_by, call_attempt_count, next_call_after, final_cancel_reason")
         .or("is_return.is.null,is_return.eq.false");
 
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
         query = query
-          .gte("created_at", startOfDay(day).toISOString())
-          .lte("created_at", endOfDay(day).toISOString());
+          .gte("created_at", tbilisiStartOfDay(day).toISOString())
+          .lte("created_at", tbilisiEndOfDay(day).toISOString());
       }
+
 
       // Hidden history cutoff for restricted accounts (e.g. data-masked admins)
       if (hideBeforeDate) {
