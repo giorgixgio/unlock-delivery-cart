@@ -169,6 +169,9 @@ const AdminDashboard = () => {
         activeOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
+        autoConfirmed,
+        operatorConfirmed,
+
         confirmedValid,
         rawConfirmed: rawConfirmedAll,
         successful,
