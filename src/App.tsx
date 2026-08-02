@@ -30,6 +30,7 @@ import AdminBatches from "./pages/admin/AdminBatches";
 import AdminBatchDetail from "./pages/admin/AdminBatchDetail";
 import Shop from "./pages/Shop";
 import ProductLanding from "./pages/ProductLanding";
+import BundleLanding from "./pages/BundleLanding";
 import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
 import AdminPackingList from "./pages/admin/AdminPackingList";
@@ -126,6 +127,10 @@ const App = () => (
                     <Route path="/shop" element={<Shop />} />
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
+                    {/* 5-for-39 bundle builder */}
+                    <Route path="/bundle" element={<BundleLanding />} />
+                    <Route path="/5for39" element={<BundleLanding />} />
+
                     {/* Legacy Shopify product URLs → redirect to shop with handle */}
                     <Route path="/products/:handle" element={<LegacyProductRedirect />} />
 
