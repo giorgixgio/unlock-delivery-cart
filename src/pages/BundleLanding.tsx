@@ -303,6 +303,18 @@ const BundleLanding = () => {
         </div>
       </div>
 
+      {/* Quick view bottom sheet — selection only, never touches the COD flow */}
+      <BundleQuickViewSheet
+        product={pool.find((p) => p.id === quickViewId) || null}
+        open={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        selected={quickViewId ? selectedIds.includes(quickViewId) : false}
+        selectedCount={n}
+        bundleSize={BUNDLE_SIZE}
+        bundlePrice={BUNDLE_PRICE}
+        onToggle={() => quickViewId && toggle(quickViewId)}
+      />
+
       {/* Existing COD flow — reused as-is */}
       <BundlePhoneSheet
         open={phoneOpen}
