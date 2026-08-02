@@ -368,8 +368,12 @@ const AdminDashboard = () => {
         {/* Derived — cohort rates based on order creation date */}
         <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
         <p className="text-[10px] text-muted-foreground italic mb-3">
-          Rates are based on order creation date. Later confirmations update the original order's day.
+          Cohort: orders <b>created</b> in the selected Tbilisi day (00:00–24:00, UTC+4), including auto-confirmed ones.
+          Later confirmations update the original order's day. For work operators did on a given day
+          (including calls on older orders), see{" "}
+          <Link to="/admin/operator-stats" className="underline">Operator Stats</Link>.
         </p>
+
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
             const totalReal = stats.totalRealOrders;
