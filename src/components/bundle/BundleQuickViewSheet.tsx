@@ -152,7 +152,11 @@ const BundleQuickViewSheet = ({
         >
           <button
             type="button"
-            onClick={onToggle}
+            onClick={() => {
+              const wasSelected = selected;
+              onToggle();
+              if (!wasSelected) setTimeout(onClose, 180);
+            }}
             className={`w-full h-14 rounded-xl text-[15px] font-extrabold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform ${
               selected
                 ? "bg-muted text-foreground border-2 border-success"
