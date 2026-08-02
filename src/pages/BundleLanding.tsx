@@ -66,6 +66,8 @@ const BundleLanding = () => {
   const { data: products, isLoading } = useProducts();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [hintId, setHintId] = useState<number>(0);
+  const [celebrate, setCelebrate] = useState(false);
+
   const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
