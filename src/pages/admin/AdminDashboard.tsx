@@ -34,8 +34,11 @@ interface Stats {
   activeOrders: number;
   needsReview: number;
   confirmed: number;
+  autoConfirmed: number;
+  operatorConfirmed: number;
   confirmedValid: number;
   rawConfirmed: number;
+
   successful: number;
   successfulActive: number;
   fulfilled: number;
