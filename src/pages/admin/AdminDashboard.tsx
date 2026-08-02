@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,10 @@ import { CANCEL_REASON_LABEL } from "@/lib/cancelReasons";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
+import { tbilisiStartOfDay, tbilisiEndOfDay } from "@/lib/tbilisiTime";
 
 const DELIVERY_FEE = 6.5;
+
 
 type DateMode = "today" | "custom" | "all";
 
