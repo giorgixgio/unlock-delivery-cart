@@ -76,7 +76,8 @@ const BundleTile = ({ product, selected, onToggle, onQuickView }: BundleTileProp
           {selected ? "არჩეულია ✓" : "აირჩიე"}
         </div>
       </div>
-    </button>
+    </div>
+
   );
 };
 
