@@ -3,6 +3,8 @@ import { Truck, HandCoins, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
+import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
+
 import BundlePhoneSheet from "@/components/bundle/BundlePhoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
@@ -65,6 +67,10 @@ const BundleLanding = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [hintId, setHintId] = useState<number>(0);
   const [celebrate, setCelebrate] = useState(false);
+
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [phoneOpen, setPhoneOpen] = useState(false);
@@ -218,8 +224,13 @@ const BundleLanding = () => {
                   product={p}
                   selected={selectedIds.includes(p.id)}
                   onToggle={() => toggle(p.id)}
+                  onQuickView={() => {
+                    setQuickViewId(p.id);
+                    setQuickViewOpen(true);
+                  }}
                 />
               ))}
+
             </div>
           )}
         </div>
@@ -291,6 +302,18 @@ const BundleLanding = () => {
           )}
         </div>
       </div>
+
+      {/* Quick view bottom sheet — selection only, never touches the COD flow */}
+      <BundleQuickViewSheet
+        product={pool.find((p) => p.id === quickViewId) || null}
+        open={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        selected={quickViewId ? selectedIds.includes(quickViewId) : false}
+        selectedCount={n}
+        bundleSize={BUNDLE_SIZE}
+        bundlePrice={BUNDLE_PRICE}
+        onToggle={() => quickViewId && toggle(quickViewId)}
+      />
 
       {/* Existing COD flow — reused as-is */}
       <BundlePhoneSheet
