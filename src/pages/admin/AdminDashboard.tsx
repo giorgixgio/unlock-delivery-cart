@@ -325,7 +325,14 @@ const AdminDashboard = () => {
         {/* Main statuses (mutually exclusive) */}
         <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Statuses</div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <MetricCard icon={CheckCircle} label="Confirmed" value={applyToCount(stats.confirmed)} accent="text-emerald-500" />
+          <MetricCard
+            icon={CheckCircle}
+            label="Confirmed"
+            value={applyToCount(stats.confirmed)}
+            accent="text-emerald-500"
+            subtext={`Auto: ${applyToCount(stats.autoConfirmed)} · Operator: ${applyToCount(stats.operatorConfirmed)}`}
+          />
+
           <MetricCard icon={Package} label="Fulfilled" value={applyToCount(stats.fulfilled)} accent="text-emerald-600" />
           <MetricCard icon={XCircle} label="Canceled" value={applyToCount(stats.canceled)} accent="text-red-400" />
           <MetricCard icon={Merge} label="Merged" value={applyToCount(stats.merged)} accent="text-muted-foreground" />
