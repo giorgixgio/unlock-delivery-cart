@@ -30,6 +30,7 @@ import AdminBatches from "./pages/admin/AdminBatches";
 import AdminBatchDetail from "./pages/admin/AdminBatchDetail";
 import Shop from "./pages/Shop";
 import ProductLanding from "./pages/ProductLanding";
+import BundleLanding from "./pages/BundleLanding";
 import AdminLandingPages from "./pages/admin/AdminLandingPages";
 import AdminProductsImport from "./pages/admin/AdminProductsImport";
 import AdminPackingList from "./pages/admin/AdminPackingList";
