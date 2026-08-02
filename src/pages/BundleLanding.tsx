@@ -66,7 +66,9 @@ const BundleLanding = () => {
   const { data: products, isLoading } = useProducts();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [hintId, setHintId] = useState<number>(0);
-  const [celebrate, setCelebrate] = useState(false);
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [phoneOpen, setPhoneOpen] = useState(false);
@@ -220,8 +222,13 @@ const BundleLanding = () => {
                   product={p}
                   selected={selectedIds.includes(p.id)}
                   onToggle={() => toggle(p.id)}
+                  onQuickView={() => {
+                    setQuickViewId(p.id);
+                    setQuickViewOpen(true);
+                  }}
                 />
               ))}
+
             </div>
           )}
         </div>
