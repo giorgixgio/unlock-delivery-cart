@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
+import { tbilisiStartOfDay, tbilisiDayKey, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 
 type DatePreset = "today" | "yesterday" | "7d" | "30d" | "custom";
+type ViewMode = "workload" | "day";
 
 interface OrderRow {
   id: string;
@@ -20,6 +22,19 @@ interface OrderRow {
   operator_viewed_by: string | null;
   call_outcome: string | null;
   call_outcome_updated_at: string | null;
+  call_outcome_updated_by: string | null;
+  created_at: string;
+}
+
+/** Orders CREATED inside the selected range — the "what we actually got that day" cohort. */
+interface DayOrderRow {
+  id: string;
+  total: number;
+  status: string;
+  is_confirmed: boolean;
+  is_fulfilled: boolean;
+  auto_confirmed: boolean | null;
+  call_outcome: string | null;
   call_outcome_updated_by: string | null;
   created_at: string;
 }
@@ -62,15 +77,9 @@ interface OperatorMetrics {
   confirmedWithUpsell: number;
   addressCompleted: number;
   totalRevenue: number;
-}
-
-/* ---------- Tbilisi timezone helpers (UTC+04:00, no DST since 2005) ---------- */
-const TBILISI_OFFSET_MS = 4 * 3600 * 1000;
-
-function tbilisiStartOfDay(d: Date): Date {
-  const tbilisiMs = d.getTime() + TBILISI_OFFSET_MS;
-  const dayStartUtcMs = Math.floor(tbilisiMs / 86400000) * 86400000;
-  return new Date(dayStartUtcMs - TBILISI_OFFSET_MS);
+  sameDayOutcomes: number;  // outcomes set on orders created the same Tbilisi day
+  backlogOutcomes: number;  // outcomes set on orders created on an earlier day
+  firstTouchTimes: number[]; // seconds from order creation to first operator session
 }
 
 function getRange(preset: DatePreset, from?: string, to?: string) {
@@ -112,7 +121,10 @@ function fmtTime(sec: number) {
   if (sec < 60) return `${Math.round(sec)}s`;
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
-  return s ? `${m}m ${s}s` : `${m}m`;
+  if (m < 60) return s ? `${m}m ${s}s` : `${m}m`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return rm ? `${h}h ${rm}m` : `${h}h`;
 }
 
 function median(arr: number[]) {
@@ -133,7 +145,7 @@ type SortKey =
   | "operator" | "handled" | "openedOnly" | "confirmed" | "confirmRate" | "no_answer"
   | "callback" | "cancelled" | "wrong_number" | "duplicate"
   | "avgTime" | "medTime" | "perHour" | "addedItems"
-  | "addedRevenue" | "upsellRate" | "addressRate";
+  | "addedRevenue" | "upsellRate" | "addressRate" | "sameDay" | "backlog" | "firstTouch";
 
 export default function AdminOperatorStats() {
   const [preset, setPreset] = useState<DatePreset>("7d");
@@ -141,8 +153,10 @@ export default function AdminOperatorStats() {
   const [customTo, setCustomTo] = useState("");
   const [operatorFilter, setOperatorFilter] = useState<string>("all");
   const [outcomeFilter, setOutcomeFilter] = useState<string>("all");
+  const [view, setView] = useState<ViewMode>("workload");
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [dayOrders, setDayOrders] = useState<DayOrderRow[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +174,7 @@ export default function AdminOperatorStats() {
       const fromIso = range.from.toISOString();
       const toIso = range.to.toISOString();
 
-      const [outcomeOrdersRes, addEventsRes, sessionsRes] = await Promise.all([
+      const [outcomeOrdersRes, dayOrdersRes, addEventsRes, sessionsRes] = await Promise.all([
         supabase
           .from("orders")
           .select("id, public_order_number, customer_phone, total, subtotal, status, address_status, operator_viewed_at, operator_viewed_by, call_outcome, call_outcome_updated_at, call_outcome_updated_by, created_at")
@@ -168,6 +182,13 @@ export default function AdminOperatorStats() {
           .gte("call_outcome_updated_at", fromIso)
           .lte("call_outcome_updated_at", toIso)
           .limit(5000),
+        supabase
+          .from("orders")
+          .select("id, total, status, is_confirmed, is_fulfilled, auto_confirmed, call_outcome, call_outcome_updated_by, created_at")
+          .or("is_return.is.null,is_return.eq.false")
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .limit(10000),
         supabase
           .from("order_events")
           .select("order_id, actor, event_type, payload, created_at")
@@ -185,6 +206,7 @@ export default function AdminOperatorStats() {
 
       if (cancelled) return;
       setOrders((outcomeOrdersRes.data as OrderRow[]) || []);
+      setDayOrders((dayOrdersRes.data as unknown as DayOrderRow[]) || []);
       setEvents((addEventsRes.data as EventRow[]) || []);
       setSessions((sessionsRes.data as unknown as SessionRow[]) || []);
       setLastLoadedAt(new Date());
@@ -217,6 +239,50 @@ export default function AdminOperatorStats() {
     });
   }, [sessions, operatorFilter]);
 
+  /* ---------- DAY PERFORMANCE: cohort = orders CREATED in the range ---------- */
+  const dayPerf = useMemo(() => {
+    const real = dayOrders.filter((o) => o.status !== "merged");
+    const merged = dayOrders.length - real.length;
+    const cancelled = real.filter((o) => o.status === "canceled" || o.status === "returned");
+    const active = real.filter((o) => o.status !== "canceled" && o.status !== "returned");
+    const confirmed = active.filter((o) => o.is_confirmed || o.is_fulfilled);
+    const operatorConfirmed = confirmed.filter(
+      (o) => o.call_outcome === "confirmed" && o.call_outcome_updated_by
+    ).length;
+    const autoConfirmed = confirmed.length - operatorConfirmed;
+    // Leads that an operator could realistically influence: everything except the
+    // ones the system confirmed on its own before any operator involvement.
+    const reachable = real.length - autoConfirmed;
+    const pending = active.filter((o) => !o.is_confirmed && !o.is_fulfilled).length;
+    const revenue = active.reduce((s, o) => s + Number(o.total || 0), 0);
+    const touchedByOperator = real.filter((o) => o.call_outcome_updated_by).length;
+    return {
+      leads: real.length,
+      merged,
+      cancelled: cancelled.length,
+      confirmed: confirmed.length,
+      autoConfirmed,
+      operatorConfirmed,
+      reachable,
+      pending,
+      revenue,
+      touchedByOperator,
+      confirmRate: real.length ? confirmed.length / real.length : 0,
+      operatorConfirmRate: reachable > 0 ? operatorConfirmed / reachable : 0,
+      autoShare: confirmed.length ? autoConfirmed / confirmed.length : 0,
+      cancelRate: real.length ? cancelled.length / real.length : 0,
+      untouchedPending: active.filter((o) => !o.is_confirmed && !o.is_fulfilled && !o.call_outcome_updated_by).length,
+    };
+  }, [dayOrders]);
+
+  /* ---------- WORKLOAD: cohort = outcomes / sessions that happened in the range ---------- */
+  const orderCreatedAt = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of dayOrders) m.set(o.id, o.created_at);
+    for (const o of orders) m.set(o.id, o.created_at);
+    return m;
+  }, [dayOrders, orders]);
+
   const metrics = useMemo<OperatorMetrics[]>(() => {
     const map = new Map<string, OperatorMetrics>();
     const get = (k: string) => {
@@ -227,14 +293,20 @@ export default function AdminOperatorStats() {
           cancelled: 0, wrong_number: 0, duplicate: 0, handlingTimes: [],
           addedItems: 0, addedRevenue: 0, confirmedWithUpsell: 0,
           addressCompleted: 0, totalRevenue: 0,
+          sameDayOutcomes: 0, backlogOutcomes: 0, firstTouchTimes: [],
         };
         map.set(k, m);
       }
       return m;
     };
 
-    // Sessions → handled/opened-only/active handling times
+    // Sessions → handled/opened-only/active handling times + first-touch latency
+    const firstSessionPerOrder = new Map<string, SessionRow>();
     for (const s of filteredSessions) {
+      const prev = firstSessionPerOrder.get(s.order_id);
+      if (!prev || new Date(s.session_started_at) < new Date(prev.session_started_at)) {
+        firstSessionPerOrder.set(s.order_id, s);
+      }
       // ignore sessions without an end (in-flight) for stats
       if (!s.session_ended_at) continue;
       const m = get(s.operator);
@@ -245,6 +317,12 @@ export default function AdminOperatorStats() {
       } else {
         m.openedOnly += 1;
       }
+    }
+    for (const s of firstSessionPerOrder.values()) {
+      const created = orderCreatedAt.get(s.order_id);
+      if (!created) continue;
+      const secs = (new Date(s.session_started_at).getTime() - new Date(created).getTime()) / 1000;
+      if (isFinite(secs) && secs >= 0) get(s.operator).firstTouchTimes.push(secs);
     }
 
     // Item-added events for upsell / added revenue
@@ -269,10 +347,14 @@ export default function AdminOperatorStats() {
       const oc = o.call_outcome || "";
       if ((m as any)[oc] !== undefined) (m as any)[oc] += 1;
       if (oc === "confirmed" && upsellByOrder.get(o.id)?.has(op)) m.confirmedWithUpsell += 1;
+      // same-day vs backlog (Tbilisi calendar day)
+      const sameDay = tbilisiDayKey(o.created_at) === tbilisiDayKey(o.call_outcome_updated_at);
+      if (sameDay) m.sameDayOutcomes += 1;
+      else m.backlogOutcomes += 1;
     }
 
     return Array.from(map.values()).filter((m) => m.handled > 0 || m.openedOnly > 0 || m.confirmed > 0 || m.addedItems > 0);
-  }, [filteredSessions, filteredOrders, events, operatorFilter]);
+  }, [filteredSessions, filteredOrders, events, operatorFilter, orderCreatedAt]);
 
   const summary = useMemo(() => {
     const handled = metrics.reduce((s, m) => s + m.handled, 0);
@@ -288,37 +370,45 @@ export default function AdminOperatorStats() {
     const cancelled = metrics.reduce((s, m) => s + m.cancelled, 0);
     const addedRevenue = metrics.reduce((s, m) => s + m.addedRevenue, 0);
     const confirmedWithUpsell = metrics.reduce((s, m) => s + m.confirmedWithUpsell, 0);
+    const sameDay = metrics.reduce((s, m) => s + m.sameDayOutcomes, 0);
+    const backlog = metrics.reduce((s, m) => s + m.backlogOutcomes, 0);
+    const outcomes = sameDay + backlog;
+    const firstTouch = median(metrics.flatMap((m) => m.firstTouchTimes));
     return {
-      handled, openedOnly, confirmed,
-      confirmRate: handled ? confirmed / handled : 0,
+      handled, openedOnly, confirmed, outcomes, sameDay, backlog, firstTouch,
+      confirmRate: outcomes ? confirmed / outcomes : 0,
       avgTime, medTime, confirmedPerHour,
-      noAnswerRate: handled ? noAnswer / handled : 0,
-      callbackRate: handled ? callback / handled : 0,
-      cancelRate: handled ? cancelled / handled : 0,
+      noAnswerRate: outcomes ? noAnswer / outcomes : 0,
+      callbackRate: outcomes ? callback / outcomes : 0,
+      cancelRate: outcomes ? cancelled / outcomes : 0,
       addedRevenue,
       upsellRate: confirmed ? confirmedWithUpsell / confirmed : 0,
       operators: metrics.length,
     };
   }, [metrics]);
 
-  const lowSample = summary.handled > 0 && summary.handled < 20;
+  const lowSample = view === "workload" && summary.outcomes > 0 && summary.outcomes < 20;
 
   const sortedMetrics = useMemo(() => {
     const arr = [...metrics];
     const sign = sortDesc ? -1 : 1;
     arr.sort((a, b) => {
       const v = (m: OperatorMetrics): number | string => {
+        const outcomes = m.sameDayOutcomes + m.backlogOutcomes;
         switch (sortKey) {
           case "operator": return m.operator;
           case "handled": return m.handled;
           case "openedOnly": return m.openedOnly;
           case "confirmed": return m.confirmed;
-          case "confirmRate": return m.handled ? m.confirmed / m.handled : 0;
+          case "confirmRate": return outcomes ? m.confirmed / outcomes : 0;
           case "no_answer": return m.no_answer;
           case "callback": return m.callback;
           case "cancelled": return m.cancelled;
           case "wrong_number": return m.wrong_number;
           case "duplicate": return m.duplicate;
+          case "sameDay": return m.sameDayOutcomes;
+          case "backlog": return m.backlogOutcomes;
+          case "firstTouch": return median(m.firstTouchTimes);
           case "avgTime": return m.handlingTimes.length ? m.handlingTimes.reduce((x, y) => x + y, 0) / m.handlingTimes.length : 0;
           case "medTime": return median(m.handlingTimes);
           case "perHour": {
@@ -362,6 +452,31 @@ export default function AdminOperatorStats() {
           </div>
         </div>
 
+        {/* View toggle — two different cohorts, never mix them */}
+        <div className="flex rounded-lg border border-border overflow-hidden text-xs sm:text-sm w-full sm:w-auto">
+          <button
+            onClick={() => setView("day")}
+            className={`flex-1 sm:flex-none px-3 py-2 font-bold transition-colors ${
+              view === "day" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+            }`}
+          >
+            Day performance
+          </button>
+          <button
+            onClick={() => setView("workload")}
+            className={`flex-1 sm:flex-none px-3 py-2 font-bold transition-colors border-l border-border ${
+              view === "workload" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+            }`}
+          >
+            Operator workload
+          </button>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {view === "day"
+            ? "Cohort: orders CREATED in the selected period (Tbilisi day). These numbers match the Dashboard. Includes orders confirmed automatically with no operator involvement."
+            : "Cohort: outcomes and sessions that HAPPENED in the selected period, no matter when the order was created. Calls made today on yesterday's orders count here (see Backlog)."}
+        </p>
+
         {/* Filters: horizontal scroll chips on mobile */}
         <div className="space-y-2">
           <div className="-mx-3 sm:mx-0 overflow-x-auto no-scrollbar">
@@ -388,65 +503,114 @@ export default function AdminOperatorStats() {
               <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-40" />
             </div>
           )}
-          <div className="flex gap-2 flex-wrap">
-            <div>
-              <label className="text-[10px] uppercase font-bold text-muted-foreground block">Operator</label>
-              <select value={operatorFilter} onChange={(e) => setOperatorFilter(e.target.value)}
-                className="h-9 px-3 rounded-md border border-input bg-background text-sm">
-                <option value="all">All</option>
-                {operatorList.map((op) => <option key={op} value={op}>{op}</option>)}
-              </select>
+          {view === "workload" && (
+            <div className="flex gap-2 flex-wrap">
+              <div>
+                <label className="text-[10px] uppercase font-bold text-muted-foreground block">Operator</label>
+                <select value={operatorFilter} onChange={(e) => setOperatorFilter(e.target.value)}
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm">
+                  <option value="all">All</option>
+                  {operatorList.map((op) => <option key={op} value={op}>{op}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-muted-foreground block">Outcome</label>
+                <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)}
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm">
+                  <option value="all">All</option>
+                  {Object.entries(OUTCOME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] uppercase font-bold text-muted-foreground block">Outcome</label>
-              <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)}
-                className="h-9 px-3 rounded-md border border-input bg-background text-sm">
-                <option value="all">All</option>
-                {Object.entries(OUTCOME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-          </div>
+          )}
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : view === "day" ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              <StatCard label="Leads" value={dayPerf.leads}
+                tip="All real orders created in this period (merged duplicates excluded, returns excluded). Same definition as the Dashboard's Total Real Orders." />
+              <StatCard label="Confirmed (total)" value={dayPerf.confirmed} accent="emerald"
+                tip="Orders from this period that are confirmed or fulfilled and not canceled. Auto + operator combined." />
+              <StatCard label="Auto-confirmed" value={dayPerf.autoConfirmed} accent="blue"
+                tip="Confirmed by the system without an operator setting an outcome. Operators cannot influence these." />
+              <StatCard label="Operator-confirmed" value={dayPerf.operatorConfirmed} accent="emerald"
+                tip="Confirmed because an operator explicitly set the outcome to confirmed." />
+              <StatCard label="Operator-reachable leads" value={dayPerf.reachable}
+                tip="Leads minus auto-confirmed orders — the pool operators actually had to work on." />
+              <StatCard label="Operator confirm rate" value={dayPerf.reachable > 0 ? pct(dayPerf.operatorConfirmRate) : "—"}
+                accent={dayPerf.operatorConfirmRate >= 0.5 ? "emerald" : dayPerf.operatorConfirmRate >= 0.3 ? undefined : "red"}
+                tip="Operator-confirmed ÷ operator-reachable leads. Auto-confirmed orders are excluded from both sides." />
+              <StatCard label="Overall confirm rate" value={dayPerf.leads > 0 ? pct(dayPerf.confirmRate) : "—"}
+                tip="All confirmed (auto + operator) ÷ all leads created in this period. This is the Dashboard figure." />
+              <StatCard label="Auto share of confirms" value={dayPerf.confirmed ? pct(dayPerf.autoShare) : "—"} accent="blue"
+                tip="How much of the confirmed volume came from automatic confirmation." />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              <StatCard label="Still pending" value={dayPerf.pending} accent={dayPerf.pending > 0 ? "orange" : undefined}
+                tip="Created in this period, not canceled, and still not confirmed or fulfilled." />
+              <StatCard label="Never touched" value={dayPerf.untouchedPending} accent={dayPerf.untouchedPending > 0 ? "red" : undefined}
+                tip="Pending orders where no operator has set any outcome yet — e.g. orders that came in after operators went home." />
+              <StatCard label="Cancelled" value={dayPerf.cancelled} accent={dayPerf.cancelRate > 0.2 ? "red" : undefined}
+                tip="Canceled or returned orders created in this period." />
+              <StatCard label="Cancel rate" value={dayPerf.leads > 0 ? pct(dayPerf.cancelRate) : "—"}
+                tip="Cancelled ÷ leads." />
+              <StatCard label="Touched by operator" value={dayPerf.touchedByOperator}
+                tip="Orders from this period where an operator set any outcome (at any later time)." />
+              <StatCard label="Merged" value={dayPerf.merged}
+                tip="Duplicate orders merged into another order. Excluded from leads." />
+              <StatCard label="Revenue" value={`${dayPerf.revenue.toFixed(0)} ₾`} accent="emerald"
+                tip="Total of non-canceled, non-merged orders created in this period." />
+            </div>
+          </>
         ) : (
           <>
             {lowSample && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Small sample size ({summary.handled} handled). Rates may not be reliable yet.
+                Small sample size ({summary.outcomes} outcomes). Rates may not be reliable yet.
               </div>
             )}
 
-            {/* Primary metrics — order per Part 13 */}
+            {/* Primary metrics — workload cohort */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-              <StatCard label="Handled" value={summary.handled}
-                tip="Orders where the operator did something meaningful (set outcome, saved edits, added/removed items, edited address or note)." />
+              <StatCard label="Outcomes set" value={summary.outcomes}
+                tip="Total call outcomes operators recorded in this period, on orders from any day. This is the denominator for all rates below." />
+              <StatCard label="On today's orders" value={summary.sameDay}
+                tip="Outcomes on orders created the same Tbilisi day the outcome was set." />
+              <StatCard label="Backlog (older orders)" value={summary.backlog} accent="blue"
+                tip="Outcomes on orders created on an earlier day — e.g. this morning's calls on last night's after-hours orders." />
               <StatCard label="Confirmed" value={summary.confirmed} accent="emerald"
-                tip="Orders the operator marked as confirmed." />
+                tip="Orders the operator marked as confirmed in this period." />
               <StatCard label="Confirm rate" value={pct(summary.confirmRate)}
                 accent={summary.confirmRate >= 0.6 ? "emerald" : summary.confirmRate >= 0.4 ? undefined : "red"}
-                tip="confirmed ÷ handled" />
-              <StatCard label="Avg handling time" value={fmtTime(summary.avgTime)}
-                tip="Average active time from opening the order modal to saving / setting an outcome. Capped at 10 minutes. Not the actual phone call duration." />
+                tip="confirmed ÷ outcomes set" />
               <StatCard label="No answer rate" value={pct(summary.noAnswerRate)} accent={summary.noAnswerRate > 0.3 ? "orange" : undefined}
-                tip="no_answer ÷ handled" />
+                tip="no_answer ÷ outcomes set" />
               <StatCard label="Callback rate" value={pct(summary.callbackRate)} accent={summary.callbackRate > 0.2 ? "blue" : undefined}
-                tip="callback ÷ handled" />
+                tip="callback ÷ outcomes set" />
               <StatCard label="Cancel rate" value={pct(summary.cancelRate)} accent={summary.cancelRate > 0.2 ? "red" : undefined}
-                tip="cancelled ÷ handled" />
-              <StatCard label="Added revenue" value={`${summary.addedRevenue.toFixed(1)} ₾`} accent="emerald"
-                tip="Extra revenue from items manually added by the operator inside the order modal." />
+                tip="cancelled ÷ outcomes set" />
             </div>
 
             {/* Secondary metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              <StatCard label="Handled" value={summary.handled}
+                tip="Sessions where the operator did something meaningful (set outcome, saved edits, added/removed items, edited address or note)." />
               <StatCard label="Opened only" value={summary.openedOnly} accent={summary.openedOnly > summary.handled ? "orange" : undefined}
                 tip="Orders opened but closed without any meaningful action. Useful for spotting curiosity clicks or accidental opens." />
+              <StatCard label="Avg handling time" value={fmtTime(summary.avgTime)}
+                tip="Average active time from opening the order modal to saving / setting an outcome. Capped at 10 minutes. Not the actual phone call duration." />
               <StatCard label="Median time" value={fmtTime(summary.medTime)}
                 tip="Middle handling time across all handled orders. Often more realistic than the average when a few sessions are very long." />
+              <StatCard label="Median first touch" value={fmtTime(summary.firstTouch)}
+                tip="Median delay between the order being created and an operator first opening it. Long values usually mean after-hours orders waiting until morning." />
               <StatCard label="Confirmed / hour" value={summary.confirmedPerHour.toFixed(1)}
                 tip="confirmed ÷ total active handling hours" />
+              <StatCard label="Added revenue" value={`${summary.addedRevenue.toFixed(1)} ₾`} accent="emerald"
+                tip="Extra revenue from items manually added by the operator inside the order modal." />
               <StatCard label="Upsell rate" value={pct(summary.upsellRate)} accent="emerald"
                 tip="Confirmed orders where the operator added at least one item ÷ all confirmed orders." />
               <StatCard label="Operators" value={summary.operators} tip="Distinct operators with activity in this period." />
@@ -454,13 +618,15 @@ export default function AdminOperatorStats() {
 
             {/* Per-operator table */}
             <div className="-mx-3 sm:mx-0 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm min-w-[1100px]">
+              <table className="w-full text-sm min-w-[1300px]">
                 <thead className="bg-muted/50">
                   <tr>
                     {([
                       ["operator", "Operator"],
                       ["handled", "Handled"],
                       ["openedOnly", "Opened only"],
+                      ["sameDay", "Same-day"],
+                      ["backlog", "Backlog"],
                       ["confirmed", "Confirmed"],
                       ["confirmRate", "Confirm %"],
                       ["no_answer", "No ans."],
@@ -468,6 +634,7 @@ export default function AdminOperatorStats() {
                       ["cancelled", "Cancel"],
                       ["wrong_number", "Wrong#"],
                       ["duplicate", "Dup"],
+                      ["firstTouch", "1st touch"],
                       ["avgTime", "Avg time"],
                       ["medTime", "Med time"],
                       ["perHour", "Conf/hr"],
@@ -486,12 +653,13 @@ export default function AdminOperatorStats() {
                 </thead>
                 <tbody>
                   {sortedMetrics.length === 0 ? (
-                    <tr><td colSpan={17} className="text-center py-8 text-muted-foreground text-sm">No operator activity in this range</td></tr>
+                    <tr><td colSpan={20} className="text-center py-8 text-muted-foreground text-sm">No operator activity in this range</td></tr>
                   ) : sortedMetrics.map((m) => {
-                    const confirmRate = m.handled ? m.confirmed / m.handled : 0;
-                    const cancelRate = m.handled ? m.cancelled / m.handled : 0;
-                    const noAnsRate = m.handled ? m.no_answer / m.handled : 0;
-                    const cbRate = m.handled ? m.callback / m.handled : 0;
+                    const outcomes = m.sameDayOutcomes + m.backlogOutcomes;
+                    const confirmRate = outcomes ? m.confirmed / outcomes : 0;
+                    const cancelRate = outcomes ? m.cancelled / outcomes : 0;
+                    const noAnsRate = outcomes ? m.no_answer / outcomes : 0;
+                    const cbRate = outcomes ? m.callback / outcomes : 0;
                     const avg = m.handlingTimes.length ? m.handlingTimes.reduce((a, b) => a + b, 0) / m.handlingTimes.length : 0;
                     const med = median(m.handlingTimes);
                     const hrs = m.handlingTimes.reduce((a, b) => a + b, 0) / 3600;
@@ -503,6 +671,8 @@ export default function AdminOperatorStats() {
                         <td className="px-3 py-2 font-medium truncate max-w-[200px]">{m.operator}</td>
                         <td className="px-3 py-2">{m.handled}</td>
                         <td className={`px-3 py-2 ${m.openedOnly > m.handled ? "text-amber-700 font-bold" : ""}`}>{m.openedOnly || "—"}</td>
+                        <td className="px-3 py-2">{m.sameDayOutcomes || "—"}</td>
+                        <td className={`px-3 py-2 ${m.backlogOutcomes > 0 ? "text-blue-700 font-semibold" : ""}`}>{m.backlogOutcomes || "—"}</td>
                         <td className="px-3 py-2 font-bold text-emerald-700">{m.confirmed}</td>
                         <td className={`px-3 py-2 font-bold ${confirmRate >= 0.6 ? "text-emerald-700" : confirmRate < 0.3 ? "text-red-700" : ""}`}>{pct(confirmRate)}</td>
                         <td className={`px-3 py-2 ${noAnsRate > 0.3 ? "text-amber-700 font-bold" : ""}`}>{m.no_answer}</td>
@@ -510,6 +680,7 @@ export default function AdminOperatorStats() {
                         <td className={`px-3 py-2 ${cancelRate > 0.2 ? "text-red-700 font-bold" : ""}`}>{m.cancelled}</td>
                         <td className="px-3 py-2">{m.wrong_number}</td>
                         <td className="px-3 py-2">{m.duplicate}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{fmtTime(median(m.firstTouchTimes))}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{fmtTime(avg)}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{fmtTime(med)}</td>
                         <td className="px-3 py-2 font-bold">{perHour.toFixed(1)}</td>
@@ -525,15 +696,15 @@ export default function AdminOperatorStats() {
             </div>
 
             {/* Outcome breakdown bar (overall) */}
-            {summary.handled > 0 && (
+            {summary.outcomes > 0 && (
               <div className="rounded-lg border border-border p-4 bg-card">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-                  Outcome breakdown · {summary.handled} handled
+                  Outcome breakdown · {summary.outcomes} outcomes
                 </h3>
                 <div className="flex w-full h-3 rounded-full overflow-hidden border border-border">
                   {(["confirmed", "no_answer", "callback", "cancelled", "wrong_number", "duplicate"] as const).map((k) => {
                     const n = metrics.reduce((s, m) => s + (m as any)[k], 0);
-                    const pctW = (n / summary.handled) * 100;
+                    const pctW = (n / summary.outcomes) * 100;
                     if (pctW <= 0) return null;
                     const colorMap: Record<string, string> = {
                       confirmed: "#10b981", no_answer: "#f59e0b", callback: "#3b82f6",
@@ -545,10 +716,10 @@ export default function AdminOperatorStats() {
                 <div className="flex flex-wrap gap-2 mt-3 text-xs">
                   {(["confirmed", "no_answer", "callback", "cancelled", "wrong_number", "duplicate"] as const).map((k) => {
                     const n = metrics.reduce((s, m) => s + (m as any)[k], 0);
-                    const p = summary.handled ? (n / summary.handled) * 100 : 0;
+                    const p = summary.outcomes ? (n / summary.outcomes) * 100 : 0;
                     return (
                       <span key={k} className={`px-2 py-0.5 rounded-full border ${OUTCOME_BADGE_CLS[k]}`}>
-                        {OUTCOME_LABEL[k]}: <b>{n}</b> <span className="opacity-70">/ {summary.handled} — {p.toFixed(1)}%</span>
+                        {OUTCOME_LABEL[k]}: <b>{n}</b> <span className="opacity-70">/ {summary.outcomes} — {p.toFixed(1)}%</span>
                       </span>
                     );
                   })}

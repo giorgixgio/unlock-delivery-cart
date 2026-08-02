@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,10 @@ import { CANCEL_REASON_LABEL } from "@/lib/cancelReasons";
 import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
+import { tbilisiStartOfDay, tbilisiEndOfDay } from "@/lib/tbilisiTime";
 
 const DELIVERY_FEE = 6.5;
+
 
 type DateMode = "today" | "custom" | "all";
 
@@ -32,8 +34,11 @@ interface Stats {
   activeOrders: number;
   needsReview: number;
   confirmed: number;
+  autoConfirmed: number;
+  operatorConfirmed: number;
   confirmedValid: number;
   rawConfirmed: number;
+
   successful: number;
   successfulActive: number;
   fulfilled: number;
@@ -62,16 +67,17 @@ const AdminDashboard = () => {
     try {
       let query = supabase
         .from("orders")
-        .select("id, total, shipping_fee, status, is_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_attempt_count, next_call_after, final_cancel_reason")
+        .select("id, total, shipping_fee, status, is_confirmed, auto_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_outcome, call_outcome_updated_by, call_attempt_count, next_call_after, final_cancel_reason")
         .or("is_return.is.null,is_return.eq.false");
 
 
       if (dateMode === "today" || dateMode === "custom") {
         const day = dateMode === "today" ? new Date() : selectedDate;
         query = query
-          .gte("created_at", startOfDay(day).toISOString())
-          .lte("created_at", endOfDay(day).toISOString());
+          .gte("created_at", tbilisiStartOfDay(day).toISOString())
+          .lte("created_at", tbilisiEndOfDay(day).toISOString());
       }
+
 
       // Hidden history cutoff for restricted accounts (e.g. data-masked admins)
       if (hideBeforeDate) {
@@ -113,6 +119,16 @@ const AdminDashboard = () => {
       const rawConfirmedAll = all.filter((o) => o.is_confirmed).length;
       const confirmedValid = active.filter((o) => o.is_confirmed).length;
 
+      // Split confirmed orders into system-confirmed vs operator-confirmed.
+      // An order counts as operator-confirmed when an operator explicitly set
+      // call_outcome = 'confirmed'; everything else confirmed is automatic.
+      const confirmedActive = active.filter((o) => o.is_confirmed);
+      const operatorConfirmed = confirmedActive.filter(
+        (o) => (o as any).call_outcome === "confirmed" && (o as any).call_outcome_updated_by
+      ).length;
+      const autoConfirmed = confirmedActive.length - operatorConfirmed;
+
+
       // Revenue = active orders only (excludes canceled + merged).
       const revenueOrders = active;
       const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
@@ -153,6 +169,9 @@ const AdminDashboard = () => {
         activeOrders: active.length,
         needsReview: needsReview.length,
         confirmed: confirmedOrders.length,
+        autoConfirmed,
+        operatorConfirmed,
+
         confirmedValid,
         rawConfirmed: rawConfirmedAll,
         successful,
@@ -306,7 +325,14 @@ const AdminDashboard = () => {
         {/* Main statuses (mutually exclusive) */}
         <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Statuses</div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <MetricCard icon={CheckCircle} label="Confirmed" value={applyToCount(stats.confirmed)} accent="text-emerald-500" />
+          <MetricCard
+            icon={CheckCircle}
+            label="Confirmed"
+            value={applyToCount(stats.confirmed)}
+            accent="text-emerald-500"
+            subtext={`Auto: ${applyToCount(stats.autoConfirmed)} · Operator: ${applyToCount(stats.operatorConfirmed)}`}
+          />
+
           <MetricCard icon={Package} label="Fulfilled" value={applyToCount(stats.fulfilled)} accent="text-emerald-600" />
           <MetricCard icon={XCircle} label="Canceled" value={applyToCount(stats.canceled)} accent="text-red-400" />
           <MetricCard icon={Merge} label="Merged" value={applyToCount(stats.merged)} accent="text-muted-foreground" />
@@ -342,8 +368,12 @@ const AdminDashboard = () => {
         {/* Derived — cohort rates based on order creation date */}
         <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
         <p className="text-[10px] text-muted-foreground italic mb-3">
-          Rates are based on order creation date. Later confirmations update the original order's day.
+          Cohort: orders <b>created</b> in the selected Tbilisi day (00:00–24:00, UTC+4), including auto-confirmed ones.
+          Later confirmations update the original order's day. For work operators did on a given day
+          (including calls on older orders), see{" "}
+          <Link to="/admin/operator-stats" className="underline">Operator Stats</Link>.
         </p>
+
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {(() => {
             const totalReal = stats.totalRealOrders;
