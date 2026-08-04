@@ -120,6 +120,17 @@ const BundleLanding = () => {
     }
   }, [complete]);
 
+  // Collapse top announcement bars while scrolling products for more screen space.
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      setTopCollapsed(y > SCROLL_COLLAPSE_PX);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
