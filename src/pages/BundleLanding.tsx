@@ -161,64 +161,114 @@ const BundleLanding = () => {
       : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="bnd-root min-h-screen overflow-x-hidden">
       <CountdownBar />
+
+      {/* Marquee ticker under the timer, straight from the reference skin */}
+      <div
+        className="bnd-ticker fixed left-0 right-0 z-40"
+        style={{ top: "calc(36px + env(safe-area-inset-top))" }}
+      >
+        <div className="bnd-ticker-track py-1.5">
+          {[0, 1].map((k) => (
+            <div key={k} className="flex">
+              {[
+                "ნებისმიერი 5 ნივთი — 39₾",
+                "მიტანა უფასო",
+                "გადაიხდი კურიერთან",
+                "7 დღის გარანტია",
+              ].map((t) => (
+                <span
+                  key={t + k}
+                  className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
+                >
+                  {t}
+                  <span className="w-1 h-1 rounded-full bg-white/50" />
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       <main
         className="container max-w-lg mx-auto px-4"
         style={{
-          paddingTop: "calc(32px + env(safe-area-inset-top) + 16px)",
-          paddingBottom: "calc(180px + env(safe-area-inset-bottom))",
+          paddingTop: "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
+          paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
         }}
       >
-        <p className="text-[11px] font-extrabold tracking-[0.2em] text-primary mb-1">BIGMART</p>
-        <h1 className="text-[26px] leading-tight font-extrabold text-foreground">
-          აირჩიე ნებისმიერი 5 პროდუქტი — სულ 39₾
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          ცალკე გაცილებით ძვირია. დღეს — მხოლოდ 39₾. + მიტანა უფასო.
-        </p>
+        <div className="bnd-slide-up text-center">
+          <span className="bnd-kicker">
+            <span className="bnd-kicker-dot" />
+            BIGMART · მხოლოდ დღეს
+          </span>
+          <h1 className="bnd-display mt-4 text-[clamp(34px,9vw,46px)]">
+            <span className="block text-[#0b0b12]">აირჩიე ნებისმიერი 5</span>
+            <span className="block bnd-accent-text">სულ 39₾</span>
+          </h1>
+          <p className="text-[15px] text-[#6f6f85] mt-3 font-medium">
+            ცალკე გაცილებით ძვირია. დღეს — მხოლოდ <strong className="text-[#0b0b12]">39₾</strong> + მიტანა უფასო.
+          </p>
+        </div>
 
         {/* Trust strip */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="flex flex-wrap justify-center gap-2 mt-5 bnd-slide-up">
           {[
-            { icon: Truck, label: "მიტანა უფასო" },
-            { icon: HandCoins, label: "გადაიხდი მიღებისას" },
-            { icon: ShieldCheck, label: "7 დღის გარანტია" },
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="rounded-xl border border-border bg-card p-2 text-center">
-              <Icon className="w-4 h-4 mx-auto text-success mb-1" />
-              <p className="text-[11px] font-bold text-foreground leading-tight">{label}</p>
-            </div>
+            { icon: Truck, label: "მიტანა უფასო", green: true },
+            { icon: HandCoins, label: "გადაიხდი მიღებისას", green: true },
+            { icon: ShieldCheck, label: "7 დღის გარანტია", green: false },
+          ].map(({ icon: Icon, label, green }) => (
+            <span key={label} className={`bnd-pill ${green ? "bnd-pill-green" : ""}`}>
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </span>
           ))}
         </div>
 
         {/* Live anchor */}
-        <div className="mt-4 rounded-xl border-2 border-success/40 bg-success/5 p-3 text-center">
+        <div className="bnd-card mt-5 p-4 text-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[linear-gradient(90deg,#ff3b3b,#ff6b00,#ff3b3b)]" />
           {n > 0 ? (
-            <p className="text-sm font-extrabold text-foreground">
-              ცალკე <span className="line-through text-muted-foreground">{Math.round(anchorSum)}₾</span>{" "}
-              → დღეს მხოლოდ <span className="text-success">39₾</span>
-              {savings > 0 && <> · ზოგავ {savings}₾</>}
-            </p>
+            <>
+              <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-[#6f6f85]">
+                შენი ნაკრები
+              </p>
+              <p className="bnd-display mt-1.5 text-[26px]">
+                <span className="line-through text-[#6f6f85] not-italic font-bold text-[18px]">
+                  {Math.round(anchorSum)}₾
+                </span>{" "}
+                <span className="text-[#00a15a]">39₾</span>
+              </p>
+              {savings > 0 && (
+                <p className="mt-1 text-[12px] font-extrabold text-[#c2410c]">
+                  ზოგავ {savings}₾
+                </p>
+              )}
+            </>
           ) : (
-            <p className="text-sm font-bold text-muted-foreground">
+            <p className="text-[13px] font-bold text-[#6f6f85]">
               აირჩიე 5 პროდუქტი და ნახე რამდენს ზოგავ
             </p>
           )}
         </div>
 
         {/* Grid */}
-        <div ref={gridRef} className="mt-5 scroll-mt-20">
+        <div ref={gridRef} className="mt-6 scroll-mt-24">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
+            <span className="text-[11px] font-extrabold uppercase tracking-[2px] text-[#c2410c]">
+              აირჩიე შენი 5
+            </span>
+            <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
+          </div>
+
           {isLoading ? (
             <div className="py-16 flex justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
             </div>
           ) : (
-            <div
-              key={hintId}
-              className="grid grid-cols-2 gap-3 animate-fade-in"
-            >
+            <div key={hintId} className="grid grid-cols-2 gap-3 animate-fade-in">
               {pool.map((p) => (
                 <BundleTile
                   key={p.id}
@@ -231,7 +281,6 @@ const BundleLanding = () => {
                   }}
                 />
               ))}
-
             </div>
           )}
         </div>
@@ -239,28 +288,28 @@ const BundleLanding = () => {
 
       {/* Sticky bottom CTA */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+        className="bnd-root fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[rgba(11,11,18,.08)] shadow-[0_-8px_28px_rgba(11,11,18,.10)]"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="container max-w-lg mx-auto px-4 py-3 space-y-2">
           {/* Progress */}
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <span
-                  className={`text-[12px] font-extrabold ${complete ? "text-success" : "text-foreground"} ${
-                    celebrate ? "animate-scale-in" : ""
-                  }`}
+                  className={`text-[12px] font-extrabold uppercase tracking-wide ${
+                    complete ? "text-[#00a15a]" : "text-[#0b0b12]"
+                  } ${celebrate ? "bnd-pop" : ""}`}
                 >
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
-                <span className="text-[12px] font-extrabold text-foreground">
-                  39₾ · <span className="text-success">მიტანა უფასო</span>
+                <span className="text-[12px] font-extrabold text-[#0b0b12]">
+                  39₾ · <span className="text-[#00a15a]">მიტანა უფასო</span>
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-2 rounded-full bg-[#ececef] overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-success transition-all duration-500"
+                  className="bnd-progress-fill h-full rounded-full"
                   style={{ width: `${(n / BUNDLE_SIZE) * 100}%` }}
                 />
               </div>
@@ -268,12 +317,12 @@ const BundleLanding = () => {
           </div>
 
           {n === BUNDLE_SIZE - 1 && (
-            <p className="text-[12px] font-bold text-primary text-center">
+            <p className="text-[12px] font-extrabold text-[#c2410c] text-center">
               დაამატე კიდევ 1 და გადაიხდი მხოლოდ 39₾!
             </p>
           )}
           {n > 0 && (
-            <p className="text-[11px] text-muted-foreground text-center">
+            <p className="text-[11px] text-[#6f6f85] text-center font-medium">
               ცალკე <span className="line-through">{Math.round(anchorSum)}₾</span> → 39₾
               {savings > 0 && ` · ზოგავ ${savings}₾`}
             </p>
@@ -292,17 +341,18 @@ const BundleLanding = () => {
             <>
               <button
                 onClick={handleCta}
-                className="w-full h-14 rounded-xl bg-success text-success-foreground text-[15px] font-extrabold active:scale-[0.99] transition-transform"
+                className="bnd-btn-green w-full h-14 rounded-[16px] text-[15px] uppercase tracking-wide"
               >
                 {ctaLabel}
               </button>
-              <p className="text-[11px] text-muted-foreground text-center">
+              <p className="text-[11px] text-[#6f6f85] text-center font-medium">
                 გადაიხდი კურიერთან. თანხა წინასწარ არ იხდი.
               </p>
             </>
           )}
         </div>
       </div>
+
 
       {/* Quick view bottom sheet — selection only, never touches the COD flow */}
       <BundleQuickViewSheet
