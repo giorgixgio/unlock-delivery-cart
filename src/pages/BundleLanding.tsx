@@ -203,9 +203,9 @@ const BundleLanding = () => {
             <span className="bnd-kicker-dot" />
             BIGMART · მხოლოდ დღეს
           </span>
-          <h1 className="bnd-display mt-4 text-[clamp(34px,9vw,46px)]">
+          <h1 className="bnd-display mt-4 text-[clamp(30px,8vw,42px)] leading-[1.05]">
             <span className="block text-[#0b0b12]">აირჩიე ნებისმიერი 5</span>
-            <span className="block bnd-accent-text">სულ 39₾</span>
+            <span className="block bnd-accent-text">სულ&nbsp;39₾</span>
           </h1>
           <p className="text-[15px] text-[#6f6f85] mt-3 font-medium">
             ცალკე გაცილებით ძვირია. დღეს — მხოლოდ <strong className="text-[#0b0b12]">39₾</strong> + მიტანა უფასო.
