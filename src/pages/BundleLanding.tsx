@@ -48,19 +48,20 @@ const CountdownBar = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground"
+      className="fixed top-0 left-0 right-0 z-50 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_6px_20px_rgba(255,59,59,.28)]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="h-8 flex items-center justify-center gap-2 px-4">
+      <div className="h-9 flex items-center justify-center gap-2 px-4">
         <Clock className="w-3.5 h-3.5" />
-        <span className="text-[12px] font-bold">ფასი მოქმედებს:</span>
-        <span className="font-mono text-[13px] font-extrabold tabular-nums">
+        <span className="text-[11px] font-extrabold uppercase tracking-[1.2px]">ფასი მოქმედებს:</span>
+        <span className="font-mono text-[14px] font-extrabold tabular-nums">
           {mins}:{secs}
         </span>
       </div>
     </div>
   );
 };
+
 
 const BundleLanding = () => {
   const { data: products, isLoading } = useProducts();
