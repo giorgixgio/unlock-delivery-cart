@@ -17,6 +17,7 @@ const BUNDLE_PRICE = 39;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
+const SCROLL_COLLAPSE_PX = 80; // hide top bars once user scrolls past hero
 
 /** Slim sticky countdown bar. */
 const CountdownBar = () => {
@@ -48,7 +49,7 @@ const CountdownBar = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_6px_20px_rgba(255,59,59,.28)]"
+      className="text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_6px_20px_rgba(255,59,59,.28)]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="h-9 flex items-center justify-center gap-2 px-4">
