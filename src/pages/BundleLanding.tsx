@@ -75,6 +75,8 @@ const BundleLanding = () => {
 
   const gridRef = useRef<HTMLDivElement>(null);
 
+  const [topCollapsed, setTopCollapsed] = useState(false);
+
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
