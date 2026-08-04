@@ -17,6 +17,7 @@ const BUNDLE_PRICE = 39;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
+const SCROLL_COLLAPSE_PX = 80; // hide top bars once user scrolls past hero
 
 /** Slim sticky countdown bar. */
 const CountdownBar = () => {
@@ -48,7 +49,7 @@ const CountdownBar = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_6px_20px_rgba(255,59,59,.28)]"
+      className="text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_6px_20px_rgba(255,59,59,.28)]"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="h-9 flex items-center justify-center gap-2 px-4">
@@ -73,6 +74,8 @@ const BundleLanding = () => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const [topCollapsed, setTopCollapsed] = useState(false);
 
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
@@ -116,6 +119,17 @@ const BundleLanding = () => {
       return () => clearTimeout(t);
     }
   }, [complete]);
+
+  // Collapse top announcement bars while scrolling products for more screen space.
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      setTopCollapsed(y > SCROLL_COLLAPSE_PX);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
@@ -162,40 +176,46 @@ const BundleLanding = () => {
 
   return (
     <div className="bnd-root min-h-screen overflow-x-hidden">
-      <CountdownBar />
-
-      {/* Marquee ticker under the timer, straight from the reference skin */}
+      {/* Top announcement bars — collapse on scroll to free up product space */}
       <div
-        className="bnd-ticker fixed left-0 right-0 z-40"
-        style={{ top: "calc(36px + env(safe-area-inset-top))" }}
+        className={`fixed left-0 right-0 z-50 bnd-top-bar ${topCollapsed ? "bnd-top-bar--collapsed" : ""}`}
+        style={{ top: 0 }}
       >
-        <div className="bnd-ticker-track py-1.5">
-          {[0, 1].map((k) => (
-            <div key={k} className="flex">
-              {[
-                "ნებისმიერი 5 ნივთი — 39₾",
-                "მიტანა უფასო",
-                "გადაიხდი კურიერთან",
-                "7 დღის გარანტია",
-              ].map((t) => (
-                <span
-                  key={t + k}
-                  className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
-                >
-                  {t}
-                  <span className="w-1 h-1 rounded-full bg-white/50" />
-                </span>
-              ))}
-            </div>
-          ))}
+        <CountdownBar />
+
+        {/* Marquee ticker under the timer, straight from the reference skin */}
+        <div className="bnd-ticker">
+          <div className="bnd-ticker-track py-1.5">
+            {[0, 1].map((k) => (
+              <div key={k} className="flex">
+                {[
+                  "ნებისმიერი 5 ნივთი — 39₾",
+                  "მიტანა უფასო",
+                  "გადაიხდი კურიერთან",
+                  "7 დღის გარანტია",
+                ].map((t) => (
+                  <span
+                    key={t + k}
+                    className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
+                  >
+                    {t}
+                    <span className="w-1 h-1 rounded-full bg-white/50" />
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <main
         className="container max-w-lg mx-auto px-4"
         style={{
-          paddingTop: "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
+          paddingTop: topCollapsed
+            ? "calc(16px + env(safe-area-inset-top))"
+            : "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
           paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
+          transition: "padding-top .28s cubic-bezier(.4,0,.2,1)",
         }}
       >
         <div className="bnd-slide-up text-center">
