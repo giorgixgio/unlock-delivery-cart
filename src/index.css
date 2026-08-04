@@ -643,6 +643,15 @@
   transition: transform .15s ease;
 }
 .bnd-btn-green:active { transform: scale(.975); }
+.bnd-top-bar {
+  transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .22s ease;
+  will-change: transform, opacity;
+}
+.bnd-top-bar--collapsed {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
 .bnd-ticker { overflow:hidden; background: var(--bnd-grad); }
 .bnd-ticker-track { display:flex; white-space:nowrap; animation: bndMarquee 22s linear infinite; }
 .bnd-progress-fill {
