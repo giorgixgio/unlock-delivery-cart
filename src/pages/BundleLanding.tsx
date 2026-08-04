@@ -176,40 +176,46 @@ const BundleLanding = () => {
 
   return (
     <div className="bnd-root min-h-screen overflow-x-hidden">
-      <CountdownBar />
-
-      {/* Marquee ticker under the timer, straight from the reference skin */}
+      {/* Top announcement bars — collapse on scroll to free up product space */}
       <div
-        className="bnd-ticker fixed left-0 right-0 z-40"
-        style={{ top: "calc(36px + env(safe-area-inset-top))" }}
+        className={`fixed left-0 right-0 z-50 bnd-top-bar ${topCollapsed ? "bnd-top-bar--collapsed" : ""}`}
+        style={{ top: 0 }}
       >
-        <div className="bnd-ticker-track py-1.5">
-          {[0, 1].map((k) => (
-            <div key={k} className="flex">
-              {[
-                "ნებისმიერი 5 ნივთი — 39₾",
-                "მიტანა უფასო",
-                "გადაიხდი კურიერთან",
-                "7 დღის გარანტია",
-              ].map((t) => (
-                <span
-                  key={t + k}
-                  className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
-                >
-                  {t}
-                  <span className="w-1 h-1 rounded-full bg-white/50" />
-                </span>
-              ))}
-            </div>
-          ))}
+        <CountdownBar />
+
+        {/* Marquee ticker under the timer, straight from the reference skin */}
+        <div className="bnd-ticker">
+          <div className="bnd-ticker-track py-1.5">
+            {[0, 1].map((k) => (
+              <div key={k} className="flex">
+                {[
+                  "ნებისმიერი 5 ნივთი — 39₾",
+                  "მიტანა უფასო",
+                  "გადაიხდი კურიერთან",
+                  "7 დღის გარანტია",
+                ].map((t) => (
+                  <span
+                    key={t + k}
+                    className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
+                  >
+                    {t}
+                    <span className="w-1 h-1 rounded-full bg-white/50" />
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <main
         className="container max-w-lg mx-auto px-4"
         style={{
-          paddingTop: "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
+          paddingTop: topCollapsed
+            ? "calc(16px + env(safe-area-inset-top))"
+            : "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
           paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
+          transition: "padding-top .28s cubic-bezier(.4,0,.2,1)",
         }}
       >
         <div className="bnd-slide-up text-center">
