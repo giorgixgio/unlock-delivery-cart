@@ -38,6 +38,9 @@ export default function AdminProductScan() {
   const [flagged, setFlagged] = useState<any[]>([]);
   const skuRef = useRef<HTMLInputElement>(null);
 
+  // Bin defaults to the typed SKU; only diverges when the worker opts in.
+  const effectivePosition = (binCustom ? position : sku).trim();
+
   const loadStats = useCallback(async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
     const { data } = await (supabase.from("product_scan_history") as any)
