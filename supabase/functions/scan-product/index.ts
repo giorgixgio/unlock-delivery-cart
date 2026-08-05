@@ -216,14 +216,28 @@ Deno.serve(async (req) => {
         candidateProducts = found || [];
       }
 
-      const checked = await Promise.all(
-        candidateProducts.map(async (p) => {
-          const r = await compareToProduct(p, photo_url);
-          return { product: p, ...r };
-        })
-      );
+      // Keyword search too narrow -> widen to a slice of the catalog with images.
+      if (candidateProducts.length < 8) {
+        const { data: broad } = await supabase
+          .from("products")
+          .select("id, sku, title, description, image, images")
+          .not("image", "is", null)
+          .neq("id", exact?.id || "00000000-0000-0000-0000-000000000000")
+          .limit(40);
+        const seen = new Set(candidateProducts.map((p) => p.id));
+        for (const p of broad || []) {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            candidateProducts.push(p);
+          }
+        }
+      }
+
+      const checked = await mapLimit(candidateProducts, 6, async (p) => {
+        const r = await compareToProduct(p, photo_url);
+        return { product: p, ...r };
+      });
       const ranked = checked
-        .filter((c) => c.confidence > 0)
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 5)
         .map((c) => ({ id: c.product.id, sku: c.product.sku, title: c.product.title, confidence: c.confidence }));
