@@ -131,6 +131,8 @@ export default function AdminProductScan() {
     setPosition("");
     setBinCustom(false);
     setResult(null);
+    setRelabels(null);
+    setZoomImg(null);
     setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
