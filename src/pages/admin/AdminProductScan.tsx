@@ -365,6 +365,71 @@ export default function AdminProductScan() {
                   </>
                 )}
 
+                {result?.status === "duplicate_sku" && !relabels && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-amber-800 font-medium">
+                        SKU {result.sku} is assigned to multiple products — which one is physically in this bin?
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {result.products.map((p) => (
+                        <div key={p.id} className="flex items-center gap-3 border border-border rounded-lg p-2.5">
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.title}
+                              onClick={() => setZoomImg(p.image!)}
+                              className="w-16 h-16 rounded object-cover shrink-0 cursor-zoom-in"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded bg-muted shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1 text-sm">
+                            <div className="font-medium truncate">{p.title}</div>
+                            <div className="text-xs text-muted-foreground font-mono">SKU {p.sku}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={!!resolving}
+                            onClick={() => resolveConflict(p, (result as any).products, result.sku)}
+                          >
+                            {resolving === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "This one"}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Button variant="ghost" className="w-full" onClick={resetToCamera}>
+                      <RotateCcw className="w-4 h-4 mr-2" /> Retake / skip
+                    </Button>
+                  </div>
+                )}
+
+                {relabels && relabels.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-green-900 space-y-1.5">
+                        <div className="font-semibold">Resolved.</div>
+                        {relabels.map((r, i) => (
+                          <div key={i}>
+                            Relabel “{r.loser_title}” with new SKU{" "}
+                            <span className="font-mono font-bold">{r.new_sku}</span> — its old sticker is no longer valid.
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <Button className="w-full" size="lg" onClick={resetToCamera}>
+                      Got it, next scan
+                    </Button>
+                  </div>
+                )}
+
+
+
                 {result?.status === "matched" && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
