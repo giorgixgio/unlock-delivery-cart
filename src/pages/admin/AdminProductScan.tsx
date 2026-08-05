@@ -44,6 +44,10 @@ export default function AdminProductScan() {
   const [flagged, setFlagged] = useState<any[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [fp, setFp] = useState({ total: 0, done: 0, running: false, doneMsg: false });
+  const [resolving, setResolving] = useState<string | null>(null); // winner product id being resolved
+  const [relabels, setRelabels] = useState<Relabel[] | null>(null);
+  const [zoomImg, setZoomImg] = useState<string | null>(null);
+
 
   const skuRef = useRef<HTMLInputElement>(null);
 
