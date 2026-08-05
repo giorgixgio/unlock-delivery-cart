@@ -301,8 +301,9 @@ Deno.serve(async (req) => {
         status: "mismatch",
         scan_id: row?.id,
         typed_sku_found: !!exact,
-        original: exact ? { product: { id: exact.id, sku: exact.sku, title: exact.title }, confidence: originalResult?.confidence ?? 0, reasoning: originalResult?.reasoning } : null,
+        original: exact ? { product: { id: exact.id, sku: exact.sku, title: exact.title }, confidence: originalResult?.confidence ?? 0, reasoning: originalResult?.reasoning, features_compared: originalResult?.features_compared ?? "" } : null,
         candidates: ranked,
+        debug,
       });
     }
 
