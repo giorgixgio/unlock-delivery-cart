@@ -17,11 +17,17 @@ import {
  * Low confidence -> ranked candidates to pick from, or flag for review.
  */
 
+type ConflictProduct = { id: string; sku: string; title: string; image?: string | null };
+
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
-  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number }[] };
+  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number }[] }
+  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[] };
+
+type Relabel = { loser_title: string; new_sku: string | number };
 
 type Stats = { scanned: number; flagged: number };
+
 
 export default function AdminProductScan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
