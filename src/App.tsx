@@ -172,6 +172,8 @@ const App = () => (
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
                       <Route path="photo-review" element={<AdminPhotoReview />} />
+                      <Route path="scan-history" element={<AdminScanHistory />} />
+
 
 
                       
