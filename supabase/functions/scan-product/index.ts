@@ -86,14 +86,18 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 }
 
 function refImages(p: any): string[] {
-  const out: string[] = [];
-  if (p.image) out.push(p.image);
+  const raw: string[] = [];
+  if (p.image) raw.push(p.image);
   if (Array.isArray(p.images)) {
     for (const img of p.images) {
-      if (img && !out.includes(img)) out.push(img);
+      if (img && !raw.includes(img)) raw.push(img);
     }
   }
-  return out.map(toVisionUrl).filter((u): u is string => !!u).slice(0, 4);
+  return raw
+    .filter((u) => /^https?:\/\//i.test(String(u)))
+    .map(toVisionUrl)
+    .filter((u): u is string => !!u)
+    .slice(0, 4);
 }
 
 
