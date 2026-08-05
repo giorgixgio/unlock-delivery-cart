@@ -175,16 +175,27 @@ export default function AdminProductScan() {
 
                 {!result && (
                   <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-muted-foreground">SKU on box</label>
-                        <Input ref={skuRef} value={sku} onChange={(e) => setSku(e.target.value)} inputMode="numeric" placeholder="e.g. 37" className="text-base" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Position / bin</label>
-                        <Input value={position} onChange={(e) => setPosition(e.target.value)} inputMode="text" placeholder="e.g. 37" className="text-base" />
-                      </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">SKU on box</label>
+                      <Input ref={skuRef} value={sku} onChange={(e) => setSku(e.target.value)} inputMode="numeric" placeholder="e.g. 37" className="text-base" />
+                      {!binCustom ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Bin: <span className="font-mono">{sku.trim() || "—"}</span>{" "}
+                          <button type="button" className="underline text-blue-700" onClick={() => { setPosition(sku.trim()); setBinCustom(true); }}>
+                            different bin?
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2">
+                          <label className="text-xs text-muted-foreground">Position / bin</label>
+                          <Input autoFocus value={position} onChange={(e) => setPosition(e.target.value)} inputMode="text" placeholder="e.g. A12" className="text-base" />
+                          <button type="button" className="mt-1 text-xs underline text-muted-foreground" onClick={() => { setBinCustom(false); setPosition(""); }}>
+                            use SKU as bin
+                          </button>
+                        </div>
+                      )}
                     </div>
+
                     <Button className="w-full" size="lg" onClick={runCheck} disabled={checking}>
                       {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {checking ? "Checking…" : "Done"}
