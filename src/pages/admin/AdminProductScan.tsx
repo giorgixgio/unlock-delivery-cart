@@ -601,7 +601,20 @@ export default function AdminProductScan() {
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setZoomImg(null)}
         >
-          <img src={zoomImg} alt="Product" className="max-h-full max-w-full rounded-lg object-contain" />
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setZoomImg(null)}
+            className="absolute top-4 right-4 rounded-full bg-background/90 border border-border p-2"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={zoomImg}
+            alt="Product"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-lg object-contain"
+          />
         </div>
       )}
     </div>
