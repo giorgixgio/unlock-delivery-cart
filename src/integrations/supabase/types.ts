@@ -1531,6 +1531,8 @@ export type Database = {
       product_scan_history: {
         Row: {
           actor: string | null
+          applied_as_reference: boolean
+          applied_at: string | null
           candidates: Json | null
           confidence: number | null
           confirmed_product_id: string | null
@@ -1546,6 +1548,8 @@ export type Database = {
         }
         Insert: {
           actor?: string | null
+          applied_as_reference?: boolean
+          applied_at?: string | null
           candidates?: Json | null
           confidence?: number | null
           confirmed_product_id?: string | null
@@ -1561,6 +1565,8 @@ export type Database = {
         }
         Update: {
           actor?: string | null
+          applied_as_reference?: boolean
+          applied_at?: string | null
           candidates?: Json | null
           confidence?: number | null
           confirmed_product_id?: string | null
