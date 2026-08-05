@@ -114,7 +114,7 @@ const ProductImageManager = ({ open, onClose, productId, productTitle, currentIm
         .eq("id", productId);
       if (error) throw error;
       toast({ title: "Images updated" });
-      localStorage.removeItem("bigmart-products-v4");
+      localStorage.removeItem("bigmart-products-v5");
       onSaved();
       onClose();
     } catch (err: any) {

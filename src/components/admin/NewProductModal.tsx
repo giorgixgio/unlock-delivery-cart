@@ -117,7 +117,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
       if (error) throw error;
 
       toast({ title: "Product created" });
-      localStorage.removeItem("bigmart-products-v4");
+      localStorage.removeItem("bigmart-products-v5");
       onCreated();
       reset();
       onClose();

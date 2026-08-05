@@ -182,7 +182,7 @@ const AdminProducts = () => {
   // instantly without a hard reload (which is what was causing edits to
   // "sometimes not update").
   const patchProductCache = useCallback((productId: string, patch: Partial<Product>) => {
-    localStorage.removeItem("bigmart-products-v4");
+    localStorage.removeItem("bigmart-products-v5");
     queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
       prev ? prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)) : prev
     );
@@ -190,7 +190,7 @@ const AdminProducts = () => {
   }, [queryClient]);
 
   const refreshProducts = () => {
-    localStorage.removeItem("bigmart-products-v4");
+    localStorage.removeItem("bigmart-products-v5");
     queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
   };
 
@@ -492,7 +492,7 @@ const AdminProducts = () => {
       failed += phase2Results.filter((r) => !!r.error).length;
 
       // Clear cache
-      localStorage.removeItem("bigmart-products-v4");
+      localStorage.removeItem("bigmart-products-v5");
 
       toast({
         title: `${updated} SKUs updated in database${failed > 0 ? `, ${failed} failed` : ""}`,
@@ -537,7 +537,7 @@ const AdminProducts = () => {
         await supabase.from("products").update({ sku }).eq("id", fromProductId);
         throw e2;
       }
-      localStorage.removeItem("bigmart-products-v4");
+      localStorage.removeItem("bigmart-products-v5");
       toast({ title: `SKU "${sku}" moved successfully` });
       setReassignSku(null);
     } catch (err: any) {
