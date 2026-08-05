@@ -17,11 +17,17 @@ import {
  * Low confidence -> ranked candidates to pick from, or flag for review.
  */
 
+type ConflictProduct = { id: string; sku: string; title: string; image?: string | null };
+
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
-  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number }[] };
+  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number }[] }
+  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[] };
+
+type Relabel = { loser_title: string; new_sku: string | number };
 
 type Stats = { scanned: number; flagged: number };
+
 
 export default function AdminProductScan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +44,10 @@ export default function AdminProductScan() {
   const [flagged, setFlagged] = useState<any[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [fp, setFp] = useState({ total: 0, done: 0, running: false, doneMsg: false });
+  const [resolving, setResolving] = useState<string | null>(null); // winner product id being resolved
+  const [relabels, setRelabels] = useState<Relabel[] | null>(null);
+  const [zoomImg, setZoomImg] = useState<string | null>(null);
+
 
   const skuRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +131,8 @@ export default function AdminProductScan() {
     setPosition("");
     setBinCustom(false);
     setResult(null);
+    setRelabels(null);
+    setZoomImg(null);
     setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
@@ -195,6 +207,44 @@ export default function AdminProductScan() {
     loadStats();
     resetToCamera();
   };
+
+  // Two or more real products share the typed SKU. The worker points at the one
+  // physically in the bin; every other product gets a fresh SKU (one call each,
+  // sequentially, re-checking what's left after every resolution).
+  const resolveConflict = async (winner: ConflictProduct, all: ConflictProduct[], conflictSku: string) => {
+    setResolving(winner.id);
+    setErrorText(null);
+    const done: Relabel[] = [];
+    try {
+      let remaining = all.filter((p) => p.id !== winner.id);
+      while (remaining.length > 0) {
+        const loser = remaining[0];
+        const { data, error } = await supabase.functions.invoke("scan-product", {
+          body: {
+            action: "resolve_conflict",
+            sku: conflictSku,
+            winner_product_id: winner.id,
+            loser_product_id: loser.id,
+            position: effectivePosition,
+            actor: "warehouse",
+          },
+        });
+        if (error) throw error;
+        done.push({ loser_title: data?.loser_title || loser.title, new_sku: data?.new_sku });
+        remaining = remaining.slice(1);
+        if (done.length) setRelabels([...done]);
+      }
+      setRelabels(done);
+      loadStats();
+    } catch (e: any) {
+      setErrorText(await describeError(e, "Resolve failed"));
+      toast({ title: "Resolve failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+
 
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto space-y-3">
@@ -315,6 +365,71 @@ export default function AdminProductScan() {
                   </>
                 )}
 
+                {result?.status === "duplicate_sku" && !relabels && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-amber-800 font-medium">
+                        SKU {result.sku} is assigned to multiple products — which one is physically in this bin?
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {result.products.map((p) => (
+                        <div key={p.id} className="flex items-center gap-3 border border-border rounded-lg p-2.5">
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.title}
+                              onClick={() => setZoomImg(p.image!)}
+                              className="w-16 h-16 rounded object-cover shrink-0 cursor-zoom-in"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded bg-muted shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1 text-sm">
+                            <div className="font-medium truncate">{p.title}</div>
+                            <div className="text-xs text-muted-foreground font-mono">SKU {p.sku}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={!!resolving}
+                            onClick={() => resolveConflict(p, (result as any).products, result.sku)}
+                          >
+                            {resolving === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "This one"}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Button variant="ghost" className="w-full" onClick={resetToCamera}>
+                      <RotateCcw className="w-4 h-4 mr-2" /> Retake / skip
+                    </Button>
+                  </div>
+                )}
+
+                {relabels && relabels.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                      <div className="text-sm text-green-900 space-y-1.5">
+                        <div className="font-semibold">Resolved.</div>
+                        {relabels.map((r, i) => (
+                          <div key={i}>
+                            Relabel “{r.loser_title}” with new SKU{" "}
+                            <span className="font-mono font-bold">{r.new_sku}</span> — its old sticker is no longer valid.
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <Button className="w-full" size="lg" onClick={resetToCamera}>
+                      Got it, next scan
+                    </Button>
+                  </div>
+                )}
+
+
+
                 {result?.status === "matched" && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
@@ -409,6 +524,15 @@ export default function AdminProductScan() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {zoomImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setZoomImg(null)}
+        >
+          <img src={zoomImg} alt="Product" className="max-h-full max-w-full rounded-lg object-contain" />
+        </div>
       )}
     </div>
   );
