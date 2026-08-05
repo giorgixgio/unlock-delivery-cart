@@ -246,44 +246,29 @@ Deno.serve(async (req) => {
         });
       }
 
-      // ── Mismatch / not found: broader search.
-      let keywords: string[] = [];
+      // ── Mismatch / not found: fingerprint the worker's photo and find the
+      // nearest catalog fingerprints via pg_trgm (match_products_by_fingerprint).
+      let workerFingerprint = "";
       try {
-        const kwOut = await callVisionJSON(
-          `Look at this photo of a physical product. Give 3-5 short keywords (English) describing what it is, for a catalog search. Respond ONLY with JSON: {"keywords": ["...", "..."]}`,
-          [photo_url]
-        );
-        keywords = Array.isArray(kwOut.keywords) ? kwOut.keywords.map((k: string) => String(k).replace(/[^\w\s]/g, "").trim()).filter(Boolean) : [];
-      } catch { /* fall through with no keywords */ }
+        const fpOut = await callVisionJSON(FINGERPRINT_PROMPT, [photo_url]);
+        workerFingerprint = typeof fpOut.fingerprint === "string" ? fpOut.fingerprint.trim() : "";
+      } catch (err) {
+        console.error("fingerprint generation failed:", err);
+      }
 
       let candidateProducts: any[] = [];
-      if (keywords.length) {
-        const orParts = keywords.flatMap((k) => [`title.ilike.%${k}%`, `description.ilike.%${k}%`]).join(",");
-        const { data: found } = await supabase
-          .from("products")
-          .select("id, sku, title, description, image, images")
-          .or(orParts)
-          .neq("id", exact?.id || "00000000-0000-0000-0000-000000000000")
-          .limit(MAX_CANDIDATES_CHECKED);
-        candidateProducts = found || [];
+      if (workerFingerprint) {
+        const { data: matches, error: matchErr } = await supabase.rpc("match_products_by_fingerprint", {
+          query_fp: workerFingerprint,
+          exclude_id: exact?.id || "00000000-0000-0000-0000-000000000000",
+          match_limit: 10,
+        });
+        if (matchErr) console.error("match_products_by_fingerprint error:", matchErr.message);
+        candidateProducts = (matches || []).map((m: any) => ({
+          id: m.id, sku: m.sku, title: m.title, description: m.description, image: m.image, images: m.images,
+        }));
       }
 
-      // Keyword search too narrow -> widen to a slice of the catalog with images.
-      if (candidateProducts.length < 8) {
-        const { data: broad } = await supabase
-          .from("products")
-          .select("id, sku, title, description, image, images")
-          .not("image", "is", null)
-          .neq("id", exact?.id || "00000000-0000-0000-0000-000000000000")
-          .limit(40);
-        const seen = new Set(candidateProducts.map((p) => p.id));
-        for (const p of broad || []) {
-          if (!seen.has(p.id)) {
-            seen.add(p.id);
-            candidateProducts.push(p);
-          }
-        }
-      }
 
       const checked = await mapLimit(candidateProducts, 6, async (p) => {
         try {
