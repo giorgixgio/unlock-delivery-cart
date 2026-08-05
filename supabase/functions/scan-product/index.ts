@@ -140,7 +140,7 @@ Scoring rules:
 
 Respond ONLY with JSON, no markdown:
 {"features_compared": "reference: <features> | photo: <features> | verdict per feature: <matches/mismatches>", "match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
-  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No reference photo on file", features_compared: "", refs: [] as string[] };
+  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No usable reference photo (invalid image URL on file)", features_compared: "", refs: [] as string[] };
   const out = await callVisionJSON(prompt, [...refs, photoUrl]);
   return {
     match: !!out.match,
