@@ -48,6 +48,7 @@ import AdminBinLocations from "./pages/admin/AdminBinLocations";
 import AdminProductScan from "./pages/admin/AdminProductScan";
 import AdminPhotoReview from "./pages/admin/AdminPhotoReview";
 import AdminScanHistory from "./pages/admin/AdminScanHistory";
+import AdminLiveScans from "./pages/admin/AdminLiveScans";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
