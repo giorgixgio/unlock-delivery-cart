@@ -245,18 +245,11 @@ Deno.serve(async (req) => {
         corrected_sku: winner.sku,
         notes,
       };
-      // Emulated upsert on typed_sku (no unique index there — repeated scans of the
-      // same SKU must stay insertable), so: update latest row for this SKU, else insert.
-      const { data: existing } = await supabase
+      const { error: histErr } = await supabase
         .from("product_scan_history")
+        .upsert(payload, { onConflict: "typed_sku" })
         .select("id")
-        .eq("typed_sku", String(sku))
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const histErr = existing
-        ? (await supabase.from("product_scan_history").update(payload).eq("id", existing.id)).error
-        : (await supabase.from("product_scan_history").insert(payload)).error;
+        .single();
       if (histErr) return json(500, { error: histErr.message });
 
 
