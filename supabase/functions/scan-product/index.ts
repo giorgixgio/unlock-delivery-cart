@@ -235,22 +235,30 @@ Deno.serve(async (req) => {
       if (winnerErr) return json(500, { error: winnerErr.message });
 
       const notes = `SKU conflict resolved: kept SKU ${sku} for ${winner.title}; reassigned ${loser.title} to new SKU ${new_sku}`;
-      const { error: histErr } = await supabase
+      const payload = {
+        actor: actor ?? null,
+        typed_sku: String(sku),
+        position: String(position),
+        photo_url: "",
+        status: "confirmed",
+        confirmed_product_id: winner_product_id,
+        corrected_sku: winner.sku,
+        notes,
+      };
+      // Emulated upsert on typed_sku (no unique index there — repeated scans of the
+      // same SKU must stay insertable), so: update latest row for this SKU, else insert.
+      const { data: existing } = await supabase
         .from("product_scan_history")
-        .upsert(
-          {
-            actor: actor ?? null,
-            typed_sku: String(sku),
-            position: String(position),
-            photo_url: "",
-            status: "confirmed",
-            confirmed_product_id: winner_product_id,
-            corrected_sku: winner.sku,
-            notes,
-          },
-          { onConflict: "typed_sku" },
-        );
+        .select("id")
+        .eq("typed_sku", String(sku))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const histErr = existing
+        ? (await supabase.from("product_scan_history").update(payload).eq("id", existing.id)).error
+        : (await supabase.from("product_scan_history").insert(payload)).error;
       if (histErr) return json(500, { error: histErr.message });
+
 
       return json(200, { ok: true, new_sku, loser_product_id, loser_title: loser.title });
     }
