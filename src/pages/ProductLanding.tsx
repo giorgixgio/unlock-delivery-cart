@@ -29,6 +29,9 @@ import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking"
 import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
 import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderRecord } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
+import SingleUpsellSheet from "@/components/landing/SingleUpsellSheet";
+import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
+
 
 const ProductLanding = () => {
   const { slug } = useParams();
@@ -129,8 +132,21 @@ const GenericLanding = ({
   upsellOverride: boolean | null;
 }) => {
   const navigate = useNavigate();
+  const { data: allProducts = [] } = useProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
-  const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
+
+  // Per-product single-item offer (shown right after phone submit)
+  const singleOffer = getSingleUpsellOffer(product.sku);
+  const singleOfferProduct = useMemo(
+    () => (singleOffer ? allProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
+    [singleOffer, allProducts]
+  );
+  const singleOfferActive = !!(singleOffer && singleOfferProduct);
+
+  // When a single offer is configured, the generic multi-product upsell is disabled.
+  const upsellsActive =
+    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
+
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
   const discount = getDiscountPercent(product.price, oldPrice);
@@ -143,7 +159,9 @@ const GenericLanding = ({
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [singleUpsellOpen, setSingleUpsellOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
+
   const [addressOpen, setAddressOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -184,10 +202,18 @@ const GenericLanding = ({
       phone: phone || "",
       createdAt: Date.now(),
     });
-    // NEW ORDER: address first, upsell second.
+    // NEW ORDER: single offer (if configured) → address → done.
     setDeliveryFee(5);
+    if (singleOfferActive) setSingleUpsellOpen(true);
+    else setAddressOpen(true);
+  };
+
+  const handleSingleUpsellDone = (_accepted: boolean, newSubtotal: number) => {
+    setPendingOrderTotal(newSubtotal);
+    setSingleUpsellOpen(false);
     setAddressOpen(true);
   };
+
 
   const afterAddress = (onum: string) => {
     setAddressOpen(false);
@@ -320,7 +346,20 @@ const GenericLanding = ({
         }}
 
       />
+      {singleOfferActive && (
+        <SingleUpsellSheet
+          open={singleUpsellOpen}
+          orderId={pendingOrderId}
+          orderNumber={pendingOrderNumber}
+          offer={singleOffer!}
+          offerProduct={singleOfferProduct!}
+          basePrice={pendingOrderTotal}
+          deliveryFee={deliveryFee}
+          onDone={handleSingleUpsellDone}
+        />
+      )}
       <LandingUpsellSheet
+
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setDoneOpen(true); }}
         orderId={pendingOrderId}
