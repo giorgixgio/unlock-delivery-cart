@@ -196,19 +196,101 @@ Deno.serve(async (req) => {
       return json(200, { ok: true });
     }
 
+    // ── RESOLVE SKU CONFLICT ───────────────────────────────────
+    if (action === "resolve_conflict") {
+      const { sku, winner_product_id, loser_product_id, position, actor } = body;
+      if (!sku || !winner_product_id || !loser_product_id || !position) {
+        return json(400, { error: "sku, winner_product_id, loser_product_id, position required" });
+      }
+
+      const { data: parties, error: partyErr } = await supabase
+        .from("products")
+        .select("id, sku, title")
+        .in("id", [winner_product_id, loser_product_id]);
+      if (partyErr) return json(500, { error: partyErr.message });
+      const winner = (parties || []).find((p: any) => p.id === winner_product_id);
+      const loser = (parties || []).find((p: any) => p.id === loser_product_id);
+      if (!winner || !loser) return json(404, { error: "winner or loser product not found" });
+
+      // Highest purely-numeric SKU across the catalog, + 1.
+      const { data: allSkus, error: skuErr } = await supabase.from("products").select("sku");
+      if (skuErr) return json(500, { error: skuErr.message });
+      let maxNumeric = 0;
+      for (const r of allSkus || []) {
+        const s = String((r as any).sku ?? "").trim();
+        if (/^\d+$/.test(s)) maxNumeric = Math.max(maxNumeric, parseInt(s, 10));
+      }
+      const new_sku = String(maxNumeric + 1);
+
+      const { error: loserErr } = await supabase
+        .from("products")
+        .update({ sku: new_sku, bin_location: new_sku })
+        .eq("id", loser_product_id);
+      if (loserErr) return json(500, { error: loserErr.message });
+
+      const { error: winnerErr } = await supabase
+        .from("products")
+        .update({ bin_location: String(position) })
+        .eq("id", winner_product_id);
+      if (winnerErr) return json(500, { error: winnerErr.message });
+
+      const notes = `SKU conflict resolved: kept SKU ${sku} for ${winner.title}; reassigned ${loser.title} to new SKU ${new_sku}`;
+      const payload = {
+        actor: actor ?? null,
+        typed_sku: String(sku),
+        position: String(position),
+        photo_url: "",
+        status: "confirmed",
+        confirmed_product_id: winner_product_id,
+        corrected_sku: winner.sku,
+        notes,
+      };
+      // Emulated upsert on typed_sku (no unique index there — repeated scans of the
+      // same SKU must stay insertable), so: update latest row for this SKU, else insert.
+      const { data: existing } = await supabase
+        .from("product_scan_history")
+        .select("id")
+        .eq("typed_sku", String(sku))
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const histErr = existing
+        ? (await supabase.from("product_scan_history").update(payload).eq("id", existing.id)).error
+        : (await supabase.from("product_scan_history").insert(payload)).error;
+      if (histErr) return json(500, { error: histErr.message });
+
+
+      return json(200, { ok: true, new_sku, loser_product_id, loser_title: loser.title });
+    }
+
     // ── CHECK ──────────────────────────────────────────────────
     if (action === "check") {
       const { sku, position, actor } = body;
       if (!sku || !body.photo_url) return json(400, { error: "sku and photo_url required" });
       const photo_url = toVisionUrl(String(body.photo_url)) || String(body.photo_url);
 
-
-      const { data: exact } = await supabase
+      const { data: skuRows } = await supabase
         .from("products")
         .select("id, sku, title, description, image, images")
-        .ilike("sku", String(sku).trim())
-        .limit(1)
-        .maybeSingle();
+        .ilike("sku", String(sku).trim());
+
+      // ── Duplicate SKU: two or more real products share this SKU.
+      if ((skuRows?.length ?? 0) > 1) {
+        return json(200, {
+          status: "duplicate_sku",
+          sku,
+          position,
+          products: (skuRows || []).map((p: any) => ({
+            id: p.id,
+            sku: p.sku,
+            title: p.title,
+            image: refImages(p)[0] || null,
+          })),
+        });
+      }
+
+      const exact = skuRows?.[0] ?? null;
+
 
       let originalResult: { match: boolean; confidence: number; reasoning: string; features_compared?: string } | null = null;
       let debug: Record<string, unknown> | null = null;
