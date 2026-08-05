@@ -37,6 +37,8 @@ export default function AdminProductScan() {
   const [view, setView] = useState<"scan" | "review">("scan");
   const [flagged, setFlagged] = useState<any[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [fp, setFp] = useState({ total: 0, done: 0, running: false, doneMsg: false });
+
   const skuRef = useRef<HTMLInputElement>(null);
 
   // Pull the fullest possible message out of a supabase functions.invoke error.
@@ -80,8 +82,37 @@ export default function AdminProductScan() {
     setFlagged(data || []);
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  const loadFingerprintProgress = useCallback(async () => {
+    const [{ count: total }, { count: done }] = await Promise.all([
+      (supabase.from("products") as any).select("id", { count: "exact", head: true }),
+      (supabase.from("products") as any).select("id", { count: "exact", head: true }).not("fingerprint_generated_at", "is", null),
+    ]);
+    setFp((s) => ({ ...s, total: total ?? 0, done: done ?? 0 }));
+  }, []);
+
+  // Backfill fingerprints in batches of 20 until the function reports 0 remaining.
+  const runFingerprints = async () => {
+    setFp((s) => ({ ...s, running: true, doneMsg: false }));
+    try {
+      for (let i = 0; i < 100; i++) {
+        const { data, error } = await supabase.functions.invoke("generate-product-fingerprints", { body: { limit: 20 } });
+        if (error) throw error;
+        const remaining = Number(data?.remaining ?? 0);
+        setFp((s) => ({ ...s, done: Math.max(s.total - remaining, 0) }));
+        if (remaining <= 0 || Number(data?.processed ?? 0) === 0) break;
+      }
+      setFp((s) => ({ ...s, doneMsg: true }));
+      await loadFingerprintProgress();
+    } catch (e: any) {
+      setErrorText(await describeError(e, "Fingerprint generation failed"));
+    } finally {
+      setFp((s) => ({ ...s, running: false }));
+    }
+  };
+
+  useEffect(() => { loadStats(); loadFingerprintProgress(); }, [loadStats, loadFingerprintProgress]);
   useEffect(() => { if (view === "review") loadFlagged(); }, [view, loadFlagged]);
+
 
   const resetToCamera = () => {
     setPhotoFile(null);
@@ -184,6 +215,34 @@ export default function AdminProductScan() {
         <span>{stats.scanned} scanned today</span>
         <span className="text-amber-600">{stats.flagged} flagged</span>
       </div>
+
+      <Card>
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">
+              {fp.done} / {fp.total} products fingerprinted
+            </div>
+            <div className="h-1.5 bg-muted rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${fp.total ? Math.round((fp.done / fp.total) * 100) : 0}%` }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {fp.running
+                ? "Generating… keep this page open."
+                : fp.doneMsg
+                  ? "Done."
+                  : "Used to find candidate products when a SKU doesn't match."}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" disabled={fp.running} onClick={runFingerprints}>
+            {fp.running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Generate fingerprints"}
+          </Button>
+        </CardContent>
+      </Card>
+
+
 
       {errorText && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
