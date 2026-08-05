@@ -36,7 +36,28 @@ export default function AdminProductScan() {
   const [stats, setStats] = useState<Stats>({ scanned: 0, flagged: 0 });
   const [view, setView] = useState<"scan" | "review">("scan");
   const [flagged, setFlagged] = useState<any[]>([]);
+  const [errorText, setErrorText] = useState<string | null>(null);
   const skuRef = useRef<HTMLInputElement>(null);
+
+  // Pull the fullest possible message out of a supabase functions.invoke error.
+  // The useful detail usually lives in error.context (a Response), not error.message.
+  const describeError = async (e: any, label: string): Promise<string> => {
+    const parts: string[] = [`${label}: ${e?.message || String(e)}`];
+    const ctx = e?.context;
+    try {
+      if (ctx && typeof ctx.text === "function") {
+        const body = await ctx.clone?.().text?.() ?? await ctx.text();
+        if (body) parts.push(`HTTP ${ctx.status ?? "?"} body: ${body}`);
+        else if (ctx.status) parts.push(`HTTP ${ctx.status} (empty body)`);
+      } else if (ctx) {
+        parts.push(`context: ${typeof ctx === "string" ? ctx : JSON.stringify(ctx)}`);
+      }
+    } catch (inner: any) {
+      parts.push(`(could not read response body: ${inner?.message || String(inner)})`);
+    }
+    if (e?.status && !parts.some((p) => p.includes("HTTP"))) parts.push(`status: ${e.status}`);
+    return parts.join("\n");
+  };
 
   // Bin defaults to the typed SKU; only diverges when the worker opts in.
   const effectivePosition = (binCustom ? position : sku).trim();
@@ -69,6 +90,7 @@ export default function AdminProductScan() {
     setPosition("");
     setBinCustom(false);
     setResult(null);
+    setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
@@ -76,6 +98,7 @@ export default function AdminProductScan() {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
     setResult(null);
+    setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
 
@@ -85,6 +108,7 @@ export default function AdminProductScan() {
       return;
     }
     setChecking(true);
+    setErrorText(null);
     try {
       const ext = photoFile.name.split(".").pop() || "jpg";
       const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -103,7 +127,9 @@ export default function AdminProductScan() {
       if (error) throw error;
       setResult(data as CheckResult);
     } catch (e: any) {
-      toast({ title: "Check failed", description: e.message, variant: "destructive" });
+      const full = await describeError(e, "Check failed");
+      setErrorText(full);
+      toast({ title: "Check failed", description: e?.message, variant: "destructive" });
     } finally {
       setChecking(false);
     }
@@ -111,18 +137,29 @@ export default function AdminProductScan() {
 
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
+    setErrorText(null);
     const { error } = await supabase.functions.invoke("scan-product", {
       body: { action: "confirm", scan_id: scanId, product_id: productId, position: effectivePosition, actor: "warehouse" },
     });
     setConfirming(null);
-    if (error) { toast({ title: "Confirm failed", description: error.message, variant: "destructive" }); return; }
+    if (error) {
+      setErrorText(await describeError(error, "Confirm failed"));
+      toast({ title: "Confirm failed", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: `Bin ${effectivePosition} confirmed` });
     loadStats();
     resetToCamera();
   };
 
   const flagForReview = async (scanId: string) => {
-    await supabase.functions.invoke("scan-product", { body: { action: "flag", scan_id: scanId } });
+    setErrorText(null);
+    const { error } = await supabase.functions.invoke("scan-product", { body: { action: "flag", scan_id: scanId } });
+    if (error) {
+      setErrorText(await describeError(error, "Flag failed"));
+      toast({ title: "Flag failed", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: "Flagged for review" });
     loadStats();
     resetToCamera();
@@ -147,6 +184,19 @@ export default function AdminProductScan() {
         <span>{stats.scanned} scanned today</span>
         <span className="text-amber-600">{stats.flagged} flagged</span>
       </div>
+
+      {errorText && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-red-800 text-sm">Error</div>
+            <pre className="text-xs text-red-700 whitespace-pre-wrap break-words mt-1 font-mono">{errorText}</pre>
+            <button type="button" className="mt-2 text-xs underline text-red-700" onClick={() => setErrorText(null)}>dismiss</button>
+          </div>
+        </div>
+      )}
+
+
 
       {view === "scan" && (
         <>
