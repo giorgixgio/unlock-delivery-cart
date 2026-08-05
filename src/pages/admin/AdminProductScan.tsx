@@ -29,6 +29,7 @@ export default function AdminProductScan() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [sku, setSku] = useState("");
   const [position, setPosition] = useState("");
+  const [binCustom, setBinCustom] = useState(false); // bin mirrors SKU unless overridden
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null); // product id being confirmed
