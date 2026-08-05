@@ -47,6 +47,7 @@ export default function AdminProductScan() {
   const [resolving, setResolving] = useState<string | null>(null); // winner product id being resolved
   const [relabels, setRelabels] = useState<Relabel[] | null>(null);
   const [zoomImg, setZoomImg] = useState<string | null>(null);
+  const [remoteConfirmed, setRemoteConfirmed] = useState<{ id: string; sku: string; title: string } | null>(null);
 
 
   const skuRef = useRef<HTMLInputElement>(null);
