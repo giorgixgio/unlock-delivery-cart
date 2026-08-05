@@ -286,8 +286,13 @@ Deno.serve(async (req) => {
       }
 
       const checked = await mapLimit(candidateProducts, 6, async (p) => {
-        const r = await compareToProduct(p, photo_url);
-        return { product: p, ...r };
+        try {
+          const r = await compareToProduct(p, photo_url);
+          return { product: p, ...r };
+        } catch (err) {
+          console.error("compareToProduct candidate error:", p?.sku, err);
+          return { product: p, match: false, confidence: 0, reasoning: "Vision check failed", features_compared: "", refs: [] };
+        }
       });
       const ranked = checked
         .sort((a, b) => b.confidence - a.confidence)
