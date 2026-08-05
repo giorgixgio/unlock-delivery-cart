@@ -70,6 +70,21 @@ function toVisionUrl(url: string): string | null {
   return null;
 }
 
+// Run an async mapper over items with a bounded number of in-flight calls.
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 function refImages(p: any): string[] {
   const out: string[] = [];
   if (p.image) out.push(p.image);
