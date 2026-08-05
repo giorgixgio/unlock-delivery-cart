@@ -202,8 +202,17 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      let originalResult: { match: boolean; confidence: number; reasoning: string } | null = null;
+      let originalResult: { match: boolean; confidence: number; reasoning: string; features_compared?: string } | null = null;
+      let debug: Record<string, unknown> | null = null;
       if (exact) {
+        // Probe the exact URLs (post-toVisionUrl) that get sent to Gemini for the
+        // primary comparison only — not the broader candidate search.
+        const primaryRefs = refImages(exact);
+        const [referenceImages, workerPhoto] = await Promise.all([
+          Promise.all(primaryRefs.map(probeImageUrl)),
+          probeImageUrl(photo_url),
+        ]);
+        debug = { referenceImages, workerPhoto };
         originalResult = await compareToProduct(exact, photo_url);
       }
 
@@ -223,6 +232,8 @@ Deno.serve(async (req) => {
           product: { id: exact.id, sku: exact.sku, title: exact.title },
           confidence: originalResult.confidence,
           reasoning: originalResult.reasoning,
+          features_compared: originalResult.features_compared ?? "",
+          debug,
         });
       }
 
