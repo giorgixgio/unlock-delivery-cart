@@ -170,6 +170,8 @@ const App = () => (
                       <Route path="packing" element={<AdminPacking />} />
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
+                      <Route path="photo-review" element={<AdminPhotoReview />} />
+
 
                       
                       <Route path="settings" element={<AdminSettings />} />
