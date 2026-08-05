@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/packing", label: "Packing", icon: PackageCheck },
   { to: "/admin/bin-locations", label: "Bin Locations", icon: MapPin },
   { to: "/admin/product-scan", label: "Product Scan", icon: ScanLine },
+  { to: "/admin/photo-review", label: "Photo Review", icon: ImageUp },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
   { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },
