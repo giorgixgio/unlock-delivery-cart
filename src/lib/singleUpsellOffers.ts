@@ -22,10 +22,10 @@ export const SINGLE_UPSELL_OFFERS: Record<string, SingleUpsellOffer> = {
   // ფეხსაცმლის ჯადოსნური საშლელი → სფერული დეოდორანტები ფეხსაცმლისთვის 6ც
   "134": {
     offerSku: "112",
-    offerPrice: 5,
-    compareAtPrice: 9,
+    offerPrice: 9,
+    compareAtPrice: 24,
     timerSeconds: 180,
-    headline: "დაამატე ერთჯერადი შეთავაზება — მხოლოდ 5₾",
+    headline: "დაამატე ერთჯერადი შეთავაზება — მხოლოდ 9₾",
     subline: "ეს ფასი მოქმედებს მხოლოდ ახლა, ამ შეკვეთაში",
     bullets: [
       "სუნის მოცილება ფეხსაცმელში 6 თვემდე",
