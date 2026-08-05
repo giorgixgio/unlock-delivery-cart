@@ -216,6 +216,34 @@ export default function AdminProductScan() {
         <span className="text-amber-600">{stats.flagged} flagged</span>
       </div>
 
+      <Card>
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">
+              {fp.done} / {fp.total} products fingerprinted
+            </div>
+            <div className="h-1.5 bg-muted rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${fp.total ? Math.round((fp.done / fp.total) * 100) : 0}%` }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {fp.running
+                ? "Generating… keep this page open."
+                : fp.doneMsg
+                  ? "Done."
+                  : "Used to find candidate products when a SKU doesn't match."}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" disabled={fp.running} onClick={runFingerprints}>
+            {fp.running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Generate fingerprints"}
+          </Button>
+        </CardContent>
+      </Card>
+
+
+
       {errorText && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
