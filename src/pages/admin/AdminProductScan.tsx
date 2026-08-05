@@ -29,6 +29,7 @@ export default function AdminProductScan() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [sku, setSku] = useState("");
   const [position, setPosition] = useState("");
+  const [binCustom, setBinCustom] = useState(false); // bin mirrors SKU unless overridden
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null); // product id being confirmed
@@ -36,6 +37,9 @@ export default function AdminProductScan() {
   const [view, setView] = useState<"scan" | "review">("scan");
   const [flagged, setFlagged] = useState<any[]>([]);
   const skuRef = useRef<HTMLInputElement>(null);
+
+  // Bin defaults to the typed SKU; only diverges when the worker opts in.
+  const effectivePosition = (binCustom ? position : sku).trim();
 
   const loadStats = useCallback(async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
@@ -63,6 +67,7 @@ export default function AdminProductScan() {
     setPhotoPreview(null);
     setSku("");
     setPosition("");
+    setBinCustom(false);
     setResult(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
@@ -75,7 +80,7 @@ export default function AdminProductScan() {
   };
 
   const runCheck = async () => {
-    if (!photoFile || !sku.trim() || !position.trim()) {
+    if (!photoFile || !sku.trim() || !effectivePosition) {
       toast({ title: "Fill in SKU and position first", variant: "destructive" });
       return;
     }
@@ -93,7 +98,7 @@ export default function AdminProductScan() {
       const photoUrl = signed.signedUrl;
 
       const { data, error } = await supabase.functions.invoke("scan-product", {
-        body: { action: "check", sku: sku.trim(), position: position.trim(), photo_url: photoUrl, actor: "warehouse" },
+        body: { action: "check", sku: sku.trim(), position: effectivePosition, photo_url: photoUrl, actor: "warehouse" },
       });
       if (error) throw error;
       setResult(data as CheckResult);
@@ -107,11 +112,11 @@ export default function AdminProductScan() {
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
     const { error } = await supabase.functions.invoke("scan-product", {
-      body: { action: "confirm", scan_id: scanId, product_id: productId, position, actor: "warehouse" },
+      body: { action: "confirm", scan_id: scanId, product_id: productId, position: effectivePosition, actor: "warehouse" },
     });
     setConfirming(null);
     if (error) { toast({ title: "Confirm failed", description: error.message, variant: "destructive" }); return; }
-    toast({ title: `Bin ${position} confirmed` });
+    toast({ title: `Bin ${effectivePosition} confirmed` });
     loadStats();
     resetToCamera();
   };
@@ -170,16 +175,27 @@ export default function AdminProductScan() {
 
                 {!result && (
                   <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-muted-foreground">SKU on box</label>
-                        <Input ref={skuRef} value={sku} onChange={(e) => setSku(e.target.value)} inputMode="numeric" placeholder="e.g. 37" className="text-base" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Position / bin</label>
-                        <Input value={position} onChange={(e) => setPosition(e.target.value)} inputMode="text" placeholder="e.g. 37" className="text-base" />
-                      </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">SKU on box</label>
+                      <Input ref={skuRef} value={sku} onChange={(e) => setSku(e.target.value)} inputMode="numeric" placeholder="e.g. 37" className="text-base" />
+                      {!binCustom ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Bin: <span className="font-mono">{sku.trim() || "—"}</span>{" "}
+                          <button type="button" className="underline text-blue-700" onClick={() => { setPosition(sku.trim()); setBinCustom(true); }}>
+                            different bin?
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2">
+                          <label className="text-xs text-muted-foreground">Position / bin</label>
+                          <Input autoFocus value={position} onChange={(e) => setPosition(e.target.value)} inputMode="text" placeholder="e.g. A12" className="text-base" />
+                          <button type="button" className="mt-1 text-xs underline text-muted-foreground" onClick={() => { setBinCustom(false); setPosition(""); }}>
+                            use SKU as bin
+                          </button>
+                        </div>
+                      )}
                     </div>
+
                     <Button className="w-full" size="lg" onClick={runCheck} disabled={checking}>
                       {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {checking ? "Checking…" : "Done"}
@@ -196,7 +212,7 @@ export default function AdminProductScan() {
                       <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                       <div>
                         <div className="font-medium text-green-800">Matches {result.product.title}</div>
-                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {position}</div>
+                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {effectivePosition}</div>
                       </div>
                     </div>
                     <Button className="w-full" size="lg" onClick={() => confirmMatch(result.scan_id, result.product.id)} disabled={!!confirming}>
@@ -228,7 +244,14 @@ export default function AdminProductScan() {
                               disabled={!!confirming}
                               className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
                             >
-                              <span className="text-sm">{c.title} <span className="text-muted-foreground">({c.sku})</span></span>
+                              <span className="text-sm">
+                                {c.title} <span className="text-muted-foreground">({c.sku})</span>
+                                {c.sku && sku.trim() && c.sku !== sku.trim() && (
+                                  <span className="block text-xs text-amber-700">
+                                    Box labeled {sku.trim()} → actually {c.sku}
+                                  </span>
+                                )}
+                              </span>
                               <span className="text-sm font-medium text-blue-700">{Math.round(c.confidence)}%</span>
                             </button>
                           ))}
