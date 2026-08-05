@@ -212,7 +212,7 @@ export default function AdminProductScan() {
                       <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                       <div>
                         <div className="font-medium text-green-800">Matches {result.product.title}</div>
-                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {position}</div>
+                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {effectivePosition}</div>
                       </div>
                     </div>
                     <Button className="w-full" size="lg" onClick={() => confirmMatch(result.scan_id, result.product.id)} disabled={!!confirming}>
