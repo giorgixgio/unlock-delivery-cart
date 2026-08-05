@@ -70,6 +70,21 @@ function toVisionUrl(url: string): string | null {
   return null;
 }
 
+// Run an async mapper over items with a bounded number of in-flight calls.
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 function refImages(p: any): string[] {
   const out: string[] = [];
   if (p.image) out.push(p.image);
@@ -113,16 +128,23 @@ Deno.serve(async (req) => {
       const { scan_id, product_id, position, actor } = body;
       if (!scan_id || !product_id || !position) return json(400, { error: "scan_id, product_id, position required" });
 
+      const { data: confirmedProduct } = await supabase
+        .from("products")
+        .select("sku")
+        .eq("id", product_id)
+        .maybeSingle();
+      const corrected_sku = confirmedProduct?.sku ?? null;
+
       const { error: prodErr } = await supabase.from("products").update({ bin_location: String(position) }).eq("id", product_id);
       if (prodErr) return json(500, { error: prodErr.message });
 
       const { error: scanErr } = await supabase
         .from("product_scan_history")
-        .update({ confirmed_product_id: product_id, status: "confirmed", actor })
+        .update({ confirmed_product_id: product_id, corrected_sku, status: "confirmed", actor })
         .eq("id", scan_id);
       if (scanErr) return json(500, { error: scanErr.message });
 
-      return json(200, { ok: true });
+      return json(200, { ok: true, corrected_sku });
     }
 
     // ── FLAG ───────────────────────────────────────────────────
@@ -194,14 +216,28 @@ Deno.serve(async (req) => {
         candidateProducts = found || [];
       }
 
-      const checked = await Promise.all(
-        candidateProducts.map(async (p) => {
-          const r = await compareToProduct(p, photo_url);
-          return { product: p, ...r };
-        })
-      );
+      // Keyword search too narrow -> widen to a slice of the catalog with images.
+      if (candidateProducts.length < 8) {
+        const { data: broad } = await supabase
+          .from("products")
+          .select("id, sku, title, description, image, images")
+          .not("image", "is", null)
+          .neq("id", exact?.id || "00000000-0000-0000-0000-000000000000")
+          .limit(40);
+        const seen = new Set(candidateProducts.map((p) => p.id));
+        for (const p of broad || []) {
+          if (!seen.has(p.id)) {
+            seen.add(p.id);
+            candidateProducts.push(p);
+          }
+        }
+      }
+
+      const checked = await mapLimit(candidateProducts, 6, async (p) => {
+        const r = await compareToProduct(p, photo_url);
+        return { product: p, ...r };
+      });
       const ranked = checked
-        .filter((c) => c.confidence > 0)
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 5)
         .map((c) => ({ id: c.product.id, sku: c.product.sku, title: c.product.title, confidence: c.confidence }));
