@@ -185,6 +185,19 @@ export default function AdminProductScan() {
         <span className="text-amber-600">{stats.flagged} flagged</span>
       </div>
 
+      {errorText && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-red-800 text-sm">Error</div>
+            <pre className="text-xs text-red-700 whitespace-pre-wrap break-words mt-1 font-mono">{errorText}</pre>
+            <button type="button" className="mt-2 text-xs underline text-red-700" onClick={() => setErrorText(null)}>dismiss</button>
+          </div>
+        </div>
+      )}
+
+
+
       {view === "scan" && (
         <>
           <input
