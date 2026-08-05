@@ -217,7 +217,12 @@ Deno.serve(async (req) => {
           probeImageUrl(photo_url),
         ]);
         debug = { referenceImages, workerPhoto };
-        originalResult = await compareToProduct(exact, photo_url);
+        try {
+          originalResult = await compareToProduct(exact, photo_url);
+        } catch (err) {
+          console.error("compareToProduct primary error:", err);
+          originalResult = { match: false, confidence: 0, reasoning: "Vision check failed", features_compared: "", refs: [] };
+        }
       }
 
       // ── High-confidence direct match: done.
