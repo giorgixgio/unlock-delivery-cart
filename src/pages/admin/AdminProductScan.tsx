@@ -474,23 +474,33 @@ export default function AdminProductScan() {
 
 
 
-                {result?.status === "matched" && (
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-green-800">Matches {result.product.title}</div>
-                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {effectivePosition}</div>
+                {(result?.status === "matched" || remoteConfirmed) && (() => {
+                  const matched = remoteConfirmed
+                    ? { product: remoteConfirmed, confidence: null as number | null, scan_id: (result as any)?.scan_id }
+                    : { product: (result as any).product, confidence: (result as any).confidence as number, scan_id: (result as any).scan_id };
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-green-800">
+                            {remoteConfirmed ? "Confirmed remotely as " : "Matches "}{matched.product.title}
+                          </div>
+                          <div className="text-sm text-green-700">
+                            {matched.confidence != null ? `${matched.confidence}% confidence · ` : ""}
+                            SKU {matched.product.sku} → bin {effectivePosition}
+                          </div>
+                        </div>
                       </div>
+                      <Button className="w-full" size="lg" onClick={() => confirmMatch(matched.scan_id, matched.product.id)} disabled={!!confirming}>
+                        {confirming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                        Confirm & next
+                      </Button>
                     </div>
-                    <Button className="w-full" size="lg" onClick={() => confirmMatch(result.scan_id, result.product.id)} disabled={!!confirming}>
-                      {confirming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                      Confirm & next
-                    </Button>
-                  </div>
-                )}
+                  );
+                })()}
 
-                {result?.status === "mismatch" && (
+                {result?.status === "mismatch" && !remoteConfirmed && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
                       <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -506,22 +516,38 @@ export default function AdminProductScan() {
                         <div className="text-xs text-muted-foreground mb-1.5">Did you mean:</div>
                         <div className="space-y-1.5">
                           {result.candidates.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => confirmMatch(result.scan_id, c.id)}
-                              disabled={!!confirming}
-                              className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
-                            >
-                              <span className="text-sm">
-                                {c.title} <span className="text-muted-foreground">({c.sku})</span>
-                                {c.sku && sku.trim() && c.sku !== sku.trim() && (
-                                  <span className="block text-xs text-amber-700">
-                                    Box labeled {sku.trim()} → actually {c.sku}
+                            <div key={c.id} className="flex items-center gap-3 px-2.5 py-2 rounded-lg border border-border">
+                              {c.image ? (
+                                <button
+                                  type="button"
+                                  aria-label="Zoom image"
+                                  onClick={() => setZoomImg(c.image!)}
+                                  className="relative w-14 h-14 shrink-0 cursor-zoom-in"
+                                >
+                                  <img src={c.image} alt={c.title} className="w-14 h-14 rounded object-cover" />
+                                  <span className="absolute -bottom-1 -right-1 rounded-full bg-background border border-border p-1">
+                                    <ZoomIn className="w-3 h-3" />
                                   </span>
-                                )}
-                              </span>
-                              <span className="text-sm font-medium text-blue-700">{Math.round(c.confidence)}%</span>
-                            </button>
+                                </button>
+                              ) : (
+                                <div className="w-14 h-14 rounded bg-muted shrink-0" />
+                              )}
+                              <button
+                                onClick={() => confirmMatch(result.scan_id, c.id)}
+                                disabled={!!confirming}
+                                className="flex-1 min-w-0 flex items-center justify-between text-left gap-2 disabled:opacity-50"
+                              >
+                                <span className="text-sm min-w-0">
+                                  <span className="block truncate">{c.title} <span className="text-muted-foreground">({c.sku})</span></span>
+                                  {c.sku && sku.trim() && c.sku !== sku.trim() && (
+                                    <span className="block text-xs text-amber-700">
+                                      Box labeled {sku.trim()} → actually {c.sku}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-sm font-medium text-blue-700 shrink-0">{Math.round(c.confidence)}%</span>
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
