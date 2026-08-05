@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Camera, Loader2, CheckCircle2, AlertTriangle, RotateCcw,
-  Flag, ScanLine, ListChecks,
+  Flag, ScanLine, ListChecks, ZoomIn, X,
 } from "lucide-react";
 
 /**
