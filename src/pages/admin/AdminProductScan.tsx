@@ -80,8 +80,37 @@ export default function AdminProductScan() {
     setFlagged(data || []);
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  const loadFingerprintProgress = useCallback(async () => {
+    const [{ count: total }, { count: done }] = await Promise.all([
+      (supabase.from("products") as any).select("id", { count: "exact", head: true }),
+      (supabase.from("products") as any).select("id", { count: "exact", head: true }).not("fingerprint_generated_at", "is", null),
+    ]);
+    setFp((s) => ({ ...s, total: total ?? 0, done: done ?? 0 }));
+  }, []);
+
+  // Backfill fingerprints in batches of 20 until the function reports 0 remaining.
+  const runFingerprints = async () => {
+    setFp((s) => ({ ...s, running: true, doneMsg: false }));
+    try {
+      for (let i = 0; i < 100; i++) {
+        const { data, error } = await supabase.functions.invoke("generate-product-fingerprints", { body: { limit: 20 } });
+        if (error) throw error;
+        const remaining = Number(data?.remaining ?? 0);
+        setFp((s) => ({ ...s, done: Math.max(s.total - remaining, 0) }));
+        if (remaining <= 0 || Number(data?.processed ?? 0) === 0) break;
+      }
+      setFp((s) => ({ ...s, doneMsg: true }));
+      await loadFingerprintProgress();
+    } catch (e: any) {
+      setErrorText(await describeError(e, "Fingerprint generation failed"));
+    } finally {
+      setFp((s) => ({ ...s, running: false }));
+    }
+  };
+
+  useEffect(() => { loadStats(); loadFingerprintProgress(); }, [loadStats, loadFingerprintProgress]);
   useEffect(() => { if (view === "review") loadFlagged(); }, [view, loadFlagged]);
+
 
   const resetToCamera = () => {
     setPhotoFile(null);
