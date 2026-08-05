@@ -346,7 +346,20 @@ const GenericLanding = ({
         }}
 
       />
+      {singleOfferActive && (
+        <SingleUpsellSheet
+          open={singleUpsellOpen}
+          orderId={pendingOrderId}
+          orderNumber={pendingOrderNumber}
+          offer={singleOffer!}
+          offerProduct={singleOfferProduct!}
+          basePrice={pendingOrderTotal}
+          deliveryFee={deliveryFee}
+          onDone={handleSingleUpsellDone}
+        />
+      )}
       <LandingUpsellSheet
+
         open={upsellOpen}
         onClose={() => { setUpsellOpen(false); setDoneOpen(true); }}
         orderId={pendingOrderId}
