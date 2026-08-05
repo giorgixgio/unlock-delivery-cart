@@ -55,6 +55,21 @@ async function callVisionJSON(prompt: string, imageUrls: string[]): Promise<any>
   }
 }
 
+// Gemini only accepts PNG/JPEG/WebP/GIF by URL. Many catalog photos are .avif,
+// which makes the gateway 400. Supabase Storage can transcode on the fly via the
+// /render/image/ endpoint, so rewrite those; drop anything we can't convert.
+const SUPPORTED_IMG = /\.(png|jpe?g|webp|gif)(\?|$)/i;
+function toVisionUrl(url: string): string | null {
+  if (!url) return null;
+  if (SUPPORTED_IMG.test(url)) return url;
+  // Supabase Storage object URL -> transformed (JPEG) URL
+  if (url.includes("/storage/v1/object/")) {
+    const transformed = url.replace("/storage/v1/object/", "/storage/v1/render/image/");
+    return transformed + (transformed.includes("?") ? "&" : "?") + "width=800&quality=80";
+  }
+  return null;
+}
+
 function refImages(p: any): string[] {
   const out: string[] = [];
   if (p.image) out.push(p.image);
@@ -63,8 +78,9 @@ function refImages(p: any): string[] {
       if (img && !out.includes(img)) out.push(img);
     }
   }
-  return out.slice(0, 4); // cap to keep the vision call reasonably sized
+  return out.map(toVisionUrl).filter((u): u is string => !!u).slice(0, 4);
 }
+
 
 async function compareToProduct(product: any, photoUrl: string) {
   const refs = refImages(product);
@@ -120,8 +136,10 @@ Deno.serve(async (req) => {
 
     // ── CHECK ──────────────────────────────────────────────────
     if (action === "check") {
-      const { sku, position, photo_url, actor } = body;
-      if (!sku || !photo_url) return json(400, { error: "sku and photo_url required" });
+      const { sku, position, actor } = body;
+      if (!sku || !body.photo_url) return json(400, { error: "sku and photo_url required" });
+      const photo_url = toVisionUrl(String(body.photo_url)) || String(body.photo_url);
+
 
       const { data: exact } = await supabase
         .from("products")
