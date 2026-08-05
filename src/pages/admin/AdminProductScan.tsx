@@ -417,12 +417,17 @@ export default function AdminProductScan() {
                       {result.products.map((p) => (
                         <div key={p.id} className="flex items-center gap-3 border border-border rounded-lg p-2.5">
                           {p.image ? (
-                            <img
-                              src={p.image}
-                              alt={p.title}
+                            <button
+                              type="button"
+                              aria-label="Zoom image"
                               onClick={() => setZoomImg(p.image!)}
-                              className="w-16 h-16 rounded object-cover shrink-0 cursor-zoom-in"
-                            />
+                              className="relative w-16 h-16 shrink-0 cursor-zoom-in"
+                            >
+                              <img src={p.image} alt={p.title} className="w-16 h-16 rounded object-cover" />
+                              <span className="absolute -bottom-1 -right-1 rounded-full bg-background border border-border p-1">
+                                <ZoomIn className="w-3 h-3" />
+                              </span>
+                            </button>
                           ) : (
                             <div className="w-16 h-16 rounded bg-muted shrink-0" />
                           )}
