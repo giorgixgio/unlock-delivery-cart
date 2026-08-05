@@ -174,6 +174,7 @@ const App = () => (
                       <Route path="product-scan" element={<AdminProductScan />} />
                       <Route path="photo-review" element={<AdminPhotoReview />} />
                       <Route path="scan-history" element={<AdminScanHistory />} />
+                      <Route path="live-scans" element={<AdminLiveScans />} />
 
 
 
