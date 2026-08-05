@@ -136,8 +136,10 @@ Deno.serve(async (req) => {
 
     // ── CHECK ──────────────────────────────────────────────────
     if (action === "check") {
-      const { sku, position, photo_url, actor } = body;
-      if (!sku || !photo_url) return json(400, { error: "sku and photo_url required" });
+      const { sku, position, actor } = body;
+      if (!sku || !body.photo_url) return json(400, { error: "sku and photo_url required" });
+      const photo_url = toVisionUrl(String(body.photo_url)) || String(body.photo_url);
+
 
       const { data: exact } = await supabase
         .from("products")
