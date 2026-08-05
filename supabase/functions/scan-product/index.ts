@@ -86,14 +86,18 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 }
 
 function refImages(p: any): string[] {
-  const out: string[] = [];
-  if (p.image) out.push(p.image);
+  const raw: string[] = [];
+  if (p.image) raw.push(p.image);
   if (Array.isArray(p.images)) {
     for (const img of p.images) {
-      if (img && !out.includes(img)) out.push(img);
+      if (img && !raw.includes(img)) raw.push(img);
     }
   }
-  return out.map(toVisionUrl).filter((u): u is string => !!u).slice(0, 4);
+  return raw
+    .filter((u) => /^https?:\/\//i.test(String(u)))
+    .map(toVisionUrl)
+    .filter((u): u is string => !!u)
+    .slice(0, 4);
 }
 
 
@@ -136,7 +140,7 @@ Scoring rules:
 
 Respond ONLY with JSON, no markdown:
 {"features_compared": "reference: <features> | photo: <features> | verdict per feature: <matches/mismatches>", "match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
-  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No reference photo on file", features_compared: "", refs: [] as string[] };
+  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No usable reference photo (invalid image URL on file)", features_compared: "", refs: [] as string[] };
   const out = await callVisionJSON(prompt, [...refs, photoUrl]);
   return {
     match: !!out.match,
@@ -213,7 +217,12 @@ Deno.serve(async (req) => {
           probeImageUrl(photo_url),
         ]);
         debug = { referenceImages, workerPhoto };
-        originalResult = await compareToProduct(exact, photo_url);
+        try {
+          originalResult = await compareToProduct(exact, photo_url);
+        } catch (err) {
+          console.error("compareToProduct primary error:", err);
+          originalResult = { match: false, confidence: 0, reasoning: "Vision check failed", features_compared: "", refs: [] };
+        }
       }
 
       // ── High-confidence direct match: done.
@@ -277,8 +286,13 @@ Deno.serve(async (req) => {
       }
 
       const checked = await mapLimit(candidateProducts, 6, async (p) => {
-        const r = await compareToProduct(p, photo_url);
-        return { product: p, ...r };
+        try {
+          const r = await compareToProduct(p, photo_url);
+          return { product: p, ...r };
+        } catch (err) {
+          console.error("compareToProduct candidate error:", p?.sku, err);
+          return { product: p, match: false, confidence: 0, reasoning: "Vision check failed", features_compared: "", refs: [] };
+        }
       });
       const ranked = checked
         .sort((a, b) => b.confidence - a.confidence)
