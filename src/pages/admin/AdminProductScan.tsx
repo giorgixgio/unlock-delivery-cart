@@ -98,7 +98,7 @@ export default function AdminProductScan() {
       const photoUrl = signed.signedUrl;
 
       const { data, error } = await supabase.functions.invoke("scan-product", {
-        body: { action: "check", sku: sku.trim(), position: position.trim(), photo_url: photoUrl, actor: "warehouse" },
+        body: { action: "check", sku: sku.trim(), position: effectivePosition, photo_url: photoUrl, actor: "warehouse" },
       });
       if (error) throw error;
       setResult(data as CheckResult);
