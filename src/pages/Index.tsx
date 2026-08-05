@@ -44,7 +44,9 @@ const Index = () => {
   const filtered =
     activeCategory === "all"
       ? products
-      : products.filter((p) => p.category === activeCategory);
+      : products.filter((p) =>
+          (p.categories && p.categories.length > 0 ? p.categories : [p.category]).includes(activeCategory)
+        );
 
   const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered);
   const { recommendations, shouldShow, remaining } = useRecommendations(products);
