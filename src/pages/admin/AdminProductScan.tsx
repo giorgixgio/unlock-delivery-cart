@@ -244,7 +244,14 @@ export default function AdminProductScan() {
                               disabled={!!confirming}
                               className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
                             >
-                              <span className="text-sm">{c.title} <span className="text-muted-foreground">({c.sku})</span></span>
+                              <span className="text-sm">
+                                {c.title} <span className="text-muted-foreground">({c.sku})</span>
+                                {c.sku && sku.trim() && c.sku !== sku.trim() && (
+                                  <span className="block text-xs text-amber-700">
+                                    Box labeled {sku.trim()} → actually {c.sku}
+                                  </span>
+                                )}
+                              </span>
                               <span className="text-sm font-medium text-blue-700">{Math.round(c.confidence)}%</span>
                             </button>
                           ))}
