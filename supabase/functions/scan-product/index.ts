@@ -26,7 +26,11 @@ const corsHeaders = {
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const MODEL = "google/gemini-2.5-flash";
 const MATCH_THRESHOLD = 65; // lower bar: catalog refs are Temu/AliExpress supplier photos, not warehouse photos
-const MAX_CANDIDATES_CHECKED = 12;
+
+// Same prompt/format as generate-product-fingerprints, so the worker's photo is
+// described in the same "language" as the stored visual_fingerprint column.
+const FINGERPRINT_PROMPT = `Describe this product for a visual similarity index. Respond ONLY with JSON: {"fingerprint": "category, shape, primary colors, material, 2-3 distinguishing visual features — concise, comma separated, max 30 words"}`;
+
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
