@@ -525,6 +525,15 @@ export default function AdminProductScan() {
           </CardContent>
         </Card>
       )}
+
+      {zoomImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setZoomImg(null)}
+        >
+          <img src={zoomImg} alt="Product" className="max-h-full max-w-full rounded-lg object-contain" />
+        </div>
+      )}
     </div>
   );
 }
