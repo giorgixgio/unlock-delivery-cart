@@ -47,6 +47,7 @@ import AdminPacking from "./pages/admin/AdminPacking";
 import AdminBinLocations from "./pages/admin/AdminBinLocations";
 import AdminProductScan from "./pages/admin/AdminProductScan";
 import AdminPhotoReview from "./pages/admin/AdminPhotoReview";
+import AdminScanHistory from "./pages/admin/AdminScanHistory";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -171,6 +172,8 @@ const App = () => (
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
                       <Route path="photo-review" element={<AdminPhotoReview />} />
+                      <Route path="scan-history" element={<AdminScanHistory />} />
+
 
 
                       
