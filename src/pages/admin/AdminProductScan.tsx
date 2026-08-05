@@ -359,7 +359,17 @@ export default function AdminProductScan() {
           ) : (
             <Card>
               <CardContent className="p-4 space-y-3">
-                <img src={photoPreview} alt="Captured product" className="w-full rounded-lg max-h-64 object-cover" />
+                <div className="relative">
+                  <img src={photoPreview} alt="Captured product" className="w-full rounded-lg max-h-64 object-cover" />
+                  <button
+                    type="button"
+                    aria-label="Zoom photo"
+                    onClick={() => setZoomImg(photoPreview)}
+                    className="absolute bottom-2 right-2 rounded-full bg-background/90 border border-border p-2 shadow"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
 
                 {!result && (
                   <>
