@@ -308,10 +308,10 @@ Deno.serve(async (req) => {
       if (exact && originalResult && originalResult.confidence >= MATCH_THRESHOLD) {
         const { data: row } = await supabase
           .from("product_scan_history")
-          .insert({
+          .upsert({
             actor, typed_sku: sku, position, photo_url,
             matched_product_id: exact.id, confidence: originalResult.confidence, status: "matched",
-          })
+          }, { onConflict: "typed_sku" })
           .select("id")
           .single();
         return json(200, {
