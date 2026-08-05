@@ -46,6 +46,7 @@ import AdminCourierImportMapping from "./pages/admin/AdminCourierImportMapping";
 import AdminPacking from "./pages/admin/AdminPacking";
 import AdminBinLocations from "./pages/admin/AdminBinLocations";
 import AdminProductScan from "./pages/admin/AdminProductScan";
+import AdminPhotoReview from "./pages/admin/AdminPhotoReview";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -169,6 +170,8 @@ const App = () => (
                       <Route path="packing" element={<AdminPacking />} />
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
+                      <Route path="photo-review" element={<AdminPhotoReview />} />
+
 
                       
                       <Route path="settings" element={<AdminSettings />} />
