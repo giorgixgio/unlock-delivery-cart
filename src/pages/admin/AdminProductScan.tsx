@@ -112,11 +112,11 @@ export default function AdminProductScan() {
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
     const { error } = await supabase.functions.invoke("scan-product", {
-      body: { action: "confirm", scan_id: scanId, product_id: productId, position, actor: "warehouse" },
+      body: { action: "confirm", scan_id: scanId, product_id: productId, position: effectivePosition, actor: "warehouse" },
     });
     setConfirming(null);
     if (error) { toast({ title: "Confirm failed", description: error.message, variant: "destructive" }); return; }
-    toast({ title: `Bin ${position} confirmed` });
+    toast({ title: `Bin ${effectivePosition} confirmed` });
     loadStats();
     resetToCamera();
   };
