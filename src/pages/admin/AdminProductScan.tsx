@@ -67,6 +67,7 @@ export default function AdminProductScan() {
     setPhotoPreview(null);
     setSku("");
     setPosition("");
+    setBinCustom(false);
     setResult(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
