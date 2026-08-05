@@ -361,17 +361,23 @@ Deno.serve(async (req) => {
       const ranked = checked
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 5)
-        .map((c) => ({ id: c.product.id, sku: c.product.sku, title: c.product.title, confidence: c.confidence }));
+        .map((c) => ({
+          id: c.product.id,
+          sku: c.product.sku,
+          title: c.product.title,
+          confidence: c.confidence,
+          image: refImages(c.product)[0] || c.product.image || null,
+        }));
 
       const { data: row } = await supabase
         .from("product_scan_history")
-        .insert({
+        .upsert({
           actor, typed_sku: sku, position, photo_url,
           matched_product_id: exact?.id || null,
           confidence: originalResult?.confidence ?? null,
           status: "mismatch",
           candidates: ranked,
-        })
+        }, { onConflict: "typed_sku" })
         .select("id")
         .single();
 
