@@ -128,16 +128,23 @@ Deno.serve(async (req) => {
       const { scan_id, product_id, position, actor } = body;
       if (!scan_id || !product_id || !position) return json(400, { error: "scan_id, product_id, position required" });
 
+      const { data: confirmedProduct } = await supabase
+        .from("products")
+        .select("sku")
+        .eq("id", product_id)
+        .maybeSingle();
+      const corrected_sku = confirmedProduct?.sku ?? null;
+
       const { error: prodErr } = await supabase.from("products").update({ bin_location: String(position) }).eq("id", product_id);
       if (prodErr) return json(500, { error: prodErr.message });
 
       const { error: scanErr } = await supabase
         .from("product_scan_history")
-        .update({ confirmed_product_id: product_id, status: "confirmed", actor })
+        .update({ confirmed_product_id: product_id, corrected_sku, status: "confirmed", actor })
         .eq("id", scan_id);
       if (scanErr) return json(500, { error: scanErr.message });
 
-      return json(200, { ok: true });
+      return json(200, { ok: true, corrected_sku });
     }
 
     // ── FLAG ───────────────────────────────────────────────────
