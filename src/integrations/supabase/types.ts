@@ -1534,6 +1534,7 @@ export type Database = {
           candidates: Json | null
           confidence: number | null
           confirmed_product_id: string | null
+          corrected_sku: string | null
           created_at: string
           id: string
           matched_product_id: string | null
@@ -1548,6 +1549,7 @@ export type Database = {
           candidates?: Json | null
           confidence?: number | null
           confirmed_product_id?: string | null
+          corrected_sku?: string | null
           created_at?: string
           id?: string
           matched_product_id?: string | null
@@ -1562,6 +1564,7 @@ export type Database = {
           candidates?: Json | null
           confidence?: number | null
           confirmed_product_id?: string | null
+          corrected_sku?: string | null
           created_at?: string
           id?: string
           matched_product_id?: string | null
