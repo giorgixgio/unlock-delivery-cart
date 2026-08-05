@@ -97,6 +97,25 @@ function refImages(p: any): string[] {
 }
 
 
+// Probe a URL exactly as it will be sent to Gemini, so we can verify the model
+// is actually receiving a real, loadable image.
+async function probeImageUrl(url: string) {
+  try {
+    let resp = await fetch(url, { method: "HEAD" });
+    if (!resp.ok || !resp.headers.get("content-type")) {
+      resp = await fetch(url, { method: "GET" });
+    }
+    return {
+      url,
+      ok: resp.ok,
+      status: resp.status,
+      contentType: resp.headers.get("content-type"),
+    };
+  } catch (e) {
+    return { url, ok: false, status: 0, contentType: null, error: String(e) };
+  }
+}
+
 async function compareToProduct(product: any, photoUrl: string) {
   const refs = refImages(product);
   const refLabel = refs.length > 1 ? `Images 1-${refs.length} are REFERENCE catalog photos (from the supplier's listing — Temu/AliExpress style: may differ in background, lighting, staging, or angle from a real warehouse photo)` : `Image 1 is a REFERENCE catalog photo (from the supplier's listing — Temu/AliExpress style: may differ in background, lighting, staging, or angle from a real warehouse photo)`;
@@ -104,14 +123,27 @@ async function compareToProduct(product: any, photoUrl: string) {
   const prompt = `You are verifying warehouse inventory for an e-commerce store.
 ${refLabel} for product "${product.title}" (SKU ${product.sku}). Description: ${(product.description || "").slice(0, 300)}
 ${lastLabel} is a photo a warehouse worker just took of the physical product itself (unboxed).
-Judge ONLY whether it's the same physical item/design — ignore differences in background, lighting, staging, or photo angle, since the reference is a generic supplier photo, not a warehouse photo.
-Respond ONLY with JSON, no markdown: {"match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
-  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No reference photo on file" };
+
+Work in this order, actually LOOKING at the pixels:
+1. Name 2-4 SPECIFIC distinguishing visual features of the item in the reference image(s): overall shape/form factor, exact colors and where they appear, distinctive markings/text/logos/buttons/ports, material or texture.
+2. Name the same kind of specific features for the worker's photo.
+3. State explicitly, feature by feature, whether each one matches.
+
+Scoring rules:
+- confidence 70+ ONLY if MULTIPLE specific features (not just category) clearly match.
+- Generic resemblance ("both are power banks", "both are black gadgets") with no specific matching features must score well under 40.
+- Ignore background, lighting, staging, and photo angle — the reference is a generic supplier photo, not a warehouse photo.
+
+Respond ONLY with JSON, no markdown:
+{"features_compared": "reference: <features> | photo: <features> | verdict per feature: <matches/mismatches>", "match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
+  if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No reference photo on file", features_compared: "", refs: [] as string[] };
   const out = await callVisionJSON(prompt, [...refs, photoUrl]);
   return {
     match: !!out.match,
     confidence: typeof out.confidence === "number" ? out.confidence : 0,
     reasoning: out.reasoning || "",
+    features_compared: typeof out.features_compared === "string" ? out.features_compared : "",
+    refs,
   };
 }
 
