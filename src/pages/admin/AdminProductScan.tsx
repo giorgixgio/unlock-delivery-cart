@@ -80,11 +80,10 @@ export default function AdminProductScan() {
   };
 
   const runCheck = async () => {
-    if (!photoFile || !sku.trim() || !position.trim()) {
+    if (!photoFile || !sku.trim() || !effectivePosition) {
       toast({ title: "Fill in SKU and position first", variant: "destructive" });
       return;
     }
-    setChecking(true);
     try {
       const ext = photoFile.name.split(".").pop() || "jpg";
       const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
