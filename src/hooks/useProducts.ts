@@ -4,7 +4,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const CACHE_KEY = "bigmart-products-v4";
+const CACHE_KEY = "bigmart-products-v5";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping
@@ -61,10 +61,13 @@ interface DbProduct {
   available: boolean;
 }
 
-function mapDbProduct(p: DbProduct): Product {
+function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
   const category = p.category && p.category !== "uncategorized"
     ? p.category
     : categorizeByTags(p.tags || [], p.title);
+  const categories = extraCategories && extraCategories.length > 0
+    ? Array.from(new Set([category, ...extraCategories]))
+    : [category];
   return {
     id: p.id,
     title: p.title,
@@ -73,6 +76,7 @@ function mapDbProduct(p: DbProduct): Product {
     image: shopifyThumb(p.image || "/placeholder.svg", 400),
     images: Array.isArray(p.images) ? p.images : [],
     category,
+    categories,
     tags: p.tags || [],
     sku: p.sku || "",
     available: p.available ?? true,
@@ -109,17 +113,24 @@ async function fetchAllProducts(): Promise<Product[]> {
   const cached = getFromLocalCache();
   if (cached) return cached;
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("title");
+  const [productsRes, catsRes] = await Promise.all([
+    supabase.from("products").select("*").order("title"),
+    supabase.from("product_categories").select("product_id, category"),
+  ]);
 
-  if (error) {
-    console.error("Failed to fetch products from database:", error);
+  if (productsRes.error) {
+    console.error("Failed to fetch products from database:", productsRes.error);
     return [];
   }
 
-  const products = (data as DbProduct[]).map(mapDbProduct);
+  const catMap = new Map<string, string[]>();
+  for (const row of catsRes.data || []) {
+    const list = catMap.get(row.product_id) || [];
+    list.push(row.category);
+    catMap.set(row.product_id, list);
+  }
+
+  const products = (productsRes.data as DbProduct[]).map((p) => mapDbProduct(p, catMap.get(p.id)));
 
   // Deduplicate by id
   const seen = new Set<string>();

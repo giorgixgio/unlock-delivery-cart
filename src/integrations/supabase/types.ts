@@ -1451,6 +1451,47 @@ export type Database = {
         }
         Relationships: []
       }
+      product_categories: {
+        Row: {
+          category: string
+          confidence: number | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          product_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_landing_config: {
         Row: {
           created_at: string

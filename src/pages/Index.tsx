@@ -28,6 +28,11 @@ const catLabelKeys: Record<string, string> = {
   "ბაღი-ეზო": "cat_garden",
   "ელექტრონიკა-გაჯეტები": "cat_electronics",
   "აქსესუარები": "cat_accessories",
+  "ცხოველები": "cat_pets",
+  "კემპინგი-ტურიზმი": "cat_camping",
+  "უსაფრთხოება-სპეცტანსაცმელი": "cat_safety",
+  "ჩანთები-ორგანაიზერები": "cat_bags",
+  "თამბაქოს-აქსესუარები": "cat_smoking",
   "uncategorized": "cat_other",
 };
 
@@ -39,7 +44,9 @@ const Index = () => {
   const filtered =
     activeCategory === "all"
       ? products
-      : products.filter((p) => p.category === activeCategory);
+      : products.filter((p) =>
+          (p.categories && p.categories.length > 0 ? p.categories : [p.category]).includes(activeCategory)
+        );
 
   const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered);
   const { recommendations, shouldShow, remaining } = useRecommendations(products);

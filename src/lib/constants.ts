@@ -16,6 +16,11 @@ export const CATEGORIES = [
   { id: "ბაღი-ეზო", label: "ბაღი & ეზო" },
   { id: "ელექტრონიკა-გაჯეტები", label: "ელექტრონიკა" },
   { id: "აქსესუარები", label: "აქსესუარები" },
+  { id: "ცხოველები", label: "შინაური ცხოველები" },
+  { id: "კემპინგი-ტურიზმი", label: "კემპინგი & ტურიზმი" },
+  { id: "უსაფრთხოება-სპეცტანსაცმელი", label: "უსაფრთხოება & სპეცტანსაცმელი" },
+  { id: "ჩანთები-ორგანაიზერები", label: "ჩანთები & ორგანაიზერები" },
+  { id: "თამბაქოს-აქსესუარები", label: "თამბაქოს აქსესუარები" },
   { id: "uncategorized", label: "სხვა" },
 ] as const;
 
@@ -29,6 +34,7 @@ export interface Product {
   image: string;
   images: string[];
   category: string;
+  categories: string[];
   tags: string[];
   sku: string;
   available: boolean;

@@ -116,6 +116,39 @@ const SyncButton = () => {
   );
 };
 
+const ClassifyButton = () => {
+  const [running, setRunning] = useState(false);
+  const { toast } = useToast();
+
+  const handleClassify = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("classify-product-categories", {
+        body: { limit: 50, only_uncategorized: true },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: `Classified ${data.processed} products`, description: `${data.assigned} category assignments saved` });
+        localStorage.removeItem("bigmart-products-v5");
+        window.location.reload();
+      } else {
+        toast({ title: "Classification failed", description: data?.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Classification failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Button onClick={handleClassify} disabled={running} variant="outline" className="gap-2">
+      <RefreshCw className={`w-4 h-4 ${running ? "animate-spin" : ""}`} />
+      {running ? "Classifying..." : "AI categorize (50)"}
+    </Button>
+  );
+};
+
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts();
   const queryClient = useQueryClient();
@@ -805,6 +838,7 @@ const AdminProducts = () => {
                 New Product
               </Button>
               <SyncButton />
+              <ClassifyButton />
               <Button onClick={() => setBulkOpen(!bulkOpen)} variant="outline" className="gap-2">
                 <Upload className="w-4 h-4" />
                 Bulk Update SKUs

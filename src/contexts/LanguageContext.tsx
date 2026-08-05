@@ -50,6 +50,11 @@ const ge: Record<string, string> = {
   "cat_garden": "ბაღი & ეზო",
   "cat_electronics": "ელექტრონიკა",
   "cat_accessories": "აქსესუარები",
+  "cat_pets": "შინაური ცხოველები",
+  "cat_camping": "კემპინგი & ტურიზმი",
+  "cat_safety": "უსაფრთხოება & სპეცტანსაცმელი",
+  "cat_bags": "ჩანთები & ორგანაიზერები",
+  "cat_smoking": "თამბაქოს აქსესუარები",
   "cat_other": "სხვა",
 
   // Category drawer
@@ -267,6 +272,11 @@ const ru: Record<string, string> = {
   "cat_garden": "Сад и двор",
   "cat_electronics": "Электроника",
   "cat_accessories": "Аксессуары",
+  "cat_pets": "Домашние животные",
+  "cat_camping": "Кемпинг и туризм",
+  "cat_safety": "Безопасность и спецодежда",
+  "cat_bags": "Сумки и органайзеры",
+  "cat_smoking": "Табачные аксессуары",
   "cat_other": "Другое",
 
   // Category drawer
