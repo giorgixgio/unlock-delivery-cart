@@ -28,6 +28,11 @@ const catLabelKeys: Record<string, string> = {
   "ბაღი-ეზო": "cat_garden",
   "ელექტრონიკა-გაჯეტები": "cat_electronics",
   "აქსესუარები": "cat_accessories",
+  "ცხოველები": "cat_pets",
+  "კემპინგი-ტურიზმი": "cat_camping",
+  "უსაფრთხოება-სპეცტანსაცმელი": "cat_safety",
+  "ჩანთები-ორგანაიზერები": "cat_bags",
+  "თამბაქოს-აქსესუარები": "cat_smoking",
   "uncategorized": "cat_other",
 };
 

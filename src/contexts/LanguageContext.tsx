@@ -272,6 +272,11 @@ const ru: Record<string, string> = {
   "cat_garden": "Сад и двор",
   "cat_electronics": "Электроника",
   "cat_accessories": "Аксессуары",
+  "cat_pets": "Домашние животные",
+  "cat_camping": "Кемпинг и туризм",
+  "cat_safety": "Безопасность и спецодежда",
+  "cat_bags": "Сумки и органайзеры",
+  "cat_smoking": "Табачные аксессуары",
   "cat_other": "Другое",
 
   // Category drawer
