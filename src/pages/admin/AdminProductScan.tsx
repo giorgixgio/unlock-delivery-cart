@@ -36,7 +36,28 @@ export default function AdminProductScan() {
   const [stats, setStats] = useState<Stats>({ scanned: 0, flagged: 0 });
   const [view, setView] = useState<"scan" | "review">("scan");
   const [flagged, setFlagged] = useState<any[]>([]);
+  const [errorText, setErrorText] = useState<string | null>(null);
   const skuRef = useRef<HTMLInputElement>(null);
+
+  // Pull the fullest possible message out of a supabase functions.invoke error.
+  // The useful detail usually lives in error.context (a Response), not error.message.
+  const describeError = async (e: any, label: string): Promise<string> => {
+    const parts: string[] = [`${label}: ${e?.message || String(e)}`];
+    const ctx = e?.context;
+    try {
+      if (ctx && typeof ctx.text === "function") {
+        const body = await ctx.clone?.().text?.() ?? await ctx.text();
+        if (body) parts.push(`HTTP ${ctx.status ?? "?"} body: ${body}`);
+        else if (ctx.status) parts.push(`HTTP ${ctx.status} (empty body)`);
+      } else if (ctx) {
+        parts.push(`context: ${typeof ctx === "string" ? ctx : JSON.stringify(ctx)}`);
+      }
+    } catch (inner: any) {
+      parts.push(`(could not read response body: ${inner?.message || String(inner)})`);
+    }
+    if (e?.status && !parts.some((p) => p.includes("HTTP"))) parts.push(`status: ${e.status}`);
+    return parts.join("\n");
+  };
 
   // Bin defaults to the typed SKU; only diverges when the worker opts in.
   const effectivePosition = (binCustom ? position : sku).trim();
