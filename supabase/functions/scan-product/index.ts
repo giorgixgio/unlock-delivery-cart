@@ -245,18 +245,11 @@ Deno.serve(async (req) => {
         corrected_sku: winner.sku,
         notes,
       };
-      // Emulated upsert on typed_sku (no unique index there — repeated scans of the
-      // same SKU must stay insertable), so: update latest row for this SKU, else insert.
-      const { data: existing } = await supabase
+      const { error: histErr } = await supabase
         .from("product_scan_history")
+        .upsert(payload, { onConflict: "typed_sku" })
         .select("id")
-        .eq("typed_sku", String(sku))
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const histErr = existing
-        ? (await supabase.from("product_scan_history").update(payload).eq("id", existing.id)).error
-        : (await supabase.from("product_scan_history").insert(payload)).error;
+        .single();
       if (histErr) return json(500, { error: histErr.message });
 
 
@@ -315,10 +308,10 @@ Deno.serve(async (req) => {
       if (exact && originalResult && originalResult.confidence >= MATCH_THRESHOLD) {
         const { data: row } = await supabase
           .from("product_scan_history")
-          .insert({
+          .upsert({
             actor, typed_sku: sku, position, photo_url,
             matched_product_id: exact.id, confidence: originalResult.confidence, status: "matched",
-          })
+          }, { onConflict: "typed_sku" })
           .select("id")
           .single();
         return json(200, {
@@ -368,17 +361,23 @@ Deno.serve(async (req) => {
       const ranked = checked
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 5)
-        .map((c) => ({ id: c.product.id, sku: c.product.sku, title: c.product.title, confidence: c.confidence }));
+        .map((c) => ({
+          id: c.product.id,
+          sku: c.product.sku,
+          title: c.product.title,
+          confidence: c.confidence,
+          image: refImages(c.product)[0] || c.product.image || null,
+        }));
 
       const { data: row } = await supabase
         .from("product_scan_history")
-        .insert({
+        .upsert({
           actor, typed_sku: sku, position, photo_url,
           matched_product_id: exact?.id || null,
           confidence: originalResult?.confidence ?? null,
           status: "mismatch",
           candidates: ranked,
-        })
+        }, { onConflict: "typed_sku" })
         .select("id")
         .single();
 
