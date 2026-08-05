@@ -37,6 +37,8 @@ export default function AdminProductScan() {
   const [view, setView] = useState<"scan" | "review">("scan");
   const [flagged, setFlagged] = useState<any[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [fp, setFp] = useState({ total: 0, done: 0, running: false, doneMsg: false });
+
   const skuRef = useRef<HTMLInputElement>(null);
 
   // Pull the fullest possible message out of a supabase functions.invoke error.
