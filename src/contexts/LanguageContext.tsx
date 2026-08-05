@@ -50,6 +50,11 @@ const ge: Record<string, string> = {
   "cat_garden": "ბაღი & ეზო",
   "cat_electronics": "ელექტრონიკა",
   "cat_accessories": "აქსესუარები",
+  "cat_pets": "შინაური ცხოველები",
+  "cat_camping": "კემპინგი & ტურიზმი",
+  "cat_safety": "უსაფრთხოება & სპეცტანსაცმელი",
+  "cat_bags": "ჩანთები & ორგანაიზერები",
+  "cat_smoking": "თამბაქოს აქსესუარები",
   "cat_other": "სხვა",
 
   // Category drawer
