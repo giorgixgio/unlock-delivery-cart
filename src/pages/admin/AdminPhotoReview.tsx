@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ImageCheck, Loader2, RefreshCw, ZoomIn, X } from "lucide-react";
+import { ImageCheck as ImageCheckIcon, Loader2, RefreshCw, ZoomIn, X } from "lucide-react";
 
 /**
  * Photo Review — confirmed warehouse scans whose photo hasn't been promoted
