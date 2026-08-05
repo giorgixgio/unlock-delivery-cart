@@ -208,6 +208,44 @@ export default function AdminProductScan() {
     resetToCamera();
   };
 
+  // Two or more real products share the typed SKU. The worker points at the one
+  // physically in the bin; every other product gets a fresh SKU (one call each,
+  // sequentially, re-checking what's left after every resolution).
+  const resolveConflict = async (winner: ConflictProduct, all: ConflictProduct[], conflictSku: string) => {
+    setResolving(winner.id);
+    setErrorText(null);
+    const done: Relabel[] = [];
+    try {
+      let remaining = all.filter((p) => p.id !== winner.id);
+      while (remaining.length > 0) {
+        const loser = remaining[0];
+        const { data, error } = await supabase.functions.invoke("scan-product", {
+          body: {
+            action: "resolve_conflict",
+            sku: conflictSku,
+            winner_product_id: winner.id,
+            loser_product_id: loser.id,
+            position: effectivePosition,
+            actor: "warehouse",
+          },
+        });
+        if (error) throw error;
+        done.push({ loser_title: data?.loser_title || loser.title, new_sku: data?.new_sku });
+        remaining = remaining.slice(1);
+        if (done.length) setRelabels([...done]);
+      }
+      setRelabels(done);
+      loadStats();
+    } catch (e: any) {
+      setErrorText(await describeError(e, "Resolve failed"));
+      toast({ title: "Resolve failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+
+
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto space-y-3">
       <div className="flex items-center justify-between">
