@@ -85,8 +85,12 @@ export default function AdminProductScan() {
       const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
       if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("product-scans").getPublicUrl(path);
-      const photoUrl = pub.publicUrl;
+      // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("product-scans")
+        .createSignedUrl(path, 60 * 60 * 24 * 7);
+      if (signErr) throw signErr;
+      const photoUrl = signed.signedUrl;
 
       const { data, error } = await supabase.functions.invoke("scan-product", {
         body: { action: "check", sku: sku.trim(), position: position.trim(), photo_url: photoUrl, actor: "warehouse" },

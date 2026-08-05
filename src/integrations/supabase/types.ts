@@ -1528,6 +1528,66 @@ export type Database = {
         }
         Relationships: []
       }
+      product_scan_history: {
+        Row: {
+          actor: string | null
+          candidates: Json | null
+          confidence: number | null
+          confirmed_product_id: string | null
+          created_at: string
+          id: string
+          matched_product_id: string | null
+          notes: string | null
+          photo_url: string
+          position: string | null
+          status: string
+          typed_sku: string | null
+        }
+        Insert: {
+          actor?: string | null
+          candidates?: Json | null
+          confidence?: number | null
+          confirmed_product_id?: string | null
+          created_at?: string
+          id?: string
+          matched_product_id?: string | null
+          notes?: string | null
+          photo_url: string
+          position?: string | null
+          status?: string
+          typed_sku?: string | null
+        }
+        Update: {
+          actor?: string | null
+          candidates?: Json | null
+          confidence?: number | null
+          confirmed_product_id?: string | null
+          created_at?: string
+          id?: string
+          matched_product_id?: string | null
+          notes?: string | null
+          photo_url?: string
+          position?: string | null
+          status?: string
+          typed_sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_scan_history_confirmed_product_id_fkey"
+            columns: ["confirmed_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_scan_history_matched_product_id_fkey"
+            columns: ["matched_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_stats: {
         Row: {
           add_to_cart_count: number

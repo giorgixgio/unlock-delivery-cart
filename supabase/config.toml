@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.send-sms]
 verify_jwt = false
+
+[functions.scan-product]
+verify_jwt = false
