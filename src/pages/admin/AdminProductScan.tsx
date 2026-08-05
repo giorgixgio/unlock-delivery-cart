@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Camera, Loader2, CheckCircle2, AlertTriangle, RotateCcw,
-  Flag, ScanLine, ListChecks,
+  Flag, ScanLine, ListChecks, ZoomIn, X,
 } from "lucide-react";
 
 /**
@@ -21,7 +21,7 @@ type ConflictProduct = { id: string; sku: string; title: string; image?: string 
 
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
-  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number }[] }
+  | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number; image?: string | null }[] }
   | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[] };
 
 type Relabel = { loser_title: string; new_sku: string | number };
@@ -47,6 +47,7 @@ export default function AdminProductScan() {
   const [resolving, setResolving] = useState<string | null>(null); // winner product id being resolved
   const [relabels, setRelabels] = useState<Relabel[] | null>(null);
   const [zoomImg, setZoomImg] = useState<string | null>(null);
+  const [remoteConfirmed, setRemoteConfirmed] = useState<{ id: string; sku: string; title: string } | null>(null);
 
 
   const skuRef = useRef<HTMLInputElement>(null);
@@ -123,6 +124,32 @@ export default function AdminProductScan() {
   useEffect(() => { loadStats(); loadFingerprintProgress(); }, [loadStats, loadFingerprintProgress]);
   useEffect(() => { if (view === "review") loadFlagged(); }, [view, loadFlagged]);
 
+  // Remote auto-advance: while a mismatch is on screen, someone else (review desk)
+  // may resolve the same scan row. Listen for that and flip to the success UI.
+  const mismatchScanId = result?.status === "mismatch" ? result.scan_id : null;
+  useEffect(() => {
+    if (!mismatchScanId || remoteConfirmed) return;
+    const channel = supabase
+      .channel(`scan-${mismatchScanId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "product_scan_history", filter: `id=eq.${mismatchScanId}` },
+        async (payload: any) => {
+          const row = payload?.new;
+          if (!row || row.status !== "confirmed") return;
+          const pid = row.confirmed_product_id;
+          let product = { id: pid, sku: row.corrected_sku || row.typed_sku, title: "Confirmed product" };
+          if (pid) {
+            const { data } = await (supabase.from("products") as any)
+              .select("id, sku, title").eq("id", pid).maybeSingle();
+            if (data) product = data;
+          }
+          setRemoteConfirmed(product);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [mismatchScanId, remoteConfirmed]);
 
   const resetToCamera = () => {
     setPhotoFile(null);
@@ -133,6 +160,7 @@ export default function AdminProductScan() {
     setResult(null);
     setRelabels(null);
     setZoomImg(null);
+    setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
@@ -141,6 +169,7 @@ export default function AdminProductScan() {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
     setResult(null);
+    setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
@@ -330,7 +359,17 @@ export default function AdminProductScan() {
           ) : (
             <Card>
               <CardContent className="p-4 space-y-3">
-                <img src={photoPreview} alt="Captured product" className="w-full rounded-lg max-h-64 object-cover" />
+                <div className="relative">
+                  <img src={photoPreview} alt="Captured product" className="w-full rounded-lg max-h-64 object-cover" />
+                  <button
+                    type="button"
+                    aria-label="Zoom photo"
+                    onClick={() => setZoomImg(photoPreview)}
+                    className="absolute bottom-2 right-2 rounded-full bg-background/90 border border-border p-2 shadow"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
 
                 {!result && (
                   <>
@@ -378,12 +417,17 @@ export default function AdminProductScan() {
                       {result.products.map((p) => (
                         <div key={p.id} className="flex items-center gap-3 border border-border rounded-lg p-2.5">
                           {p.image ? (
-                            <img
-                              src={p.image}
-                              alt={p.title}
+                            <button
+                              type="button"
+                              aria-label="Zoom image"
                               onClick={() => setZoomImg(p.image!)}
-                              className="w-16 h-16 rounded object-cover shrink-0 cursor-zoom-in"
-                            />
+                              className="relative w-16 h-16 shrink-0 cursor-zoom-in"
+                            >
+                              <img src={p.image} alt={p.title} className="w-16 h-16 rounded object-cover" />
+                              <span className="absolute -bottom-1 -right-1 rounded-full bg-background border border-border p-1">
+                                <ZoomIn className="w-3 h-3" />
+                              </span>
+                            </button>
                           ) : (
                             <div className="w-16 h-16 rounded bg-muted shrink-0" />
                           )}
@@ -430,23 +474,33 @@ export default function AdminProductScan() {
 
 
 
-                {result?.status === "matched" && (
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-medium text-green-800">Matches {result.product.title}</div>
-                        <div className="text-sm text-green-700">{result.confidence}% confidence · SKU {result.product.sku} → bin {effectivePosition}</div>
+                {(result?.status === "matched" || remoteConfirmed) && (() => {
+                  const matched = remoteConfirmed
+                    ? { product: remoteConfirmed, confidence: null as number | null, scan_id: (result as any)?.scan_id }
+                    : { product: (result as any).product, confidence: (result as any).confidence as number, scan_id: (result as any).scan_id };
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-green-800">
+                            {remoteConfirmed ? "Confirmed remotely as " : "Matches "}{matched.product.title}
+                          </div>
+                          <div className="text-sm text-green-700">
+                            {matched.confidence != null ? `${matched.confidence}% confidence · ` : ""}
+                            SKU {matched.product.sku} → bin {effectivePosition}
+                          </div>
+                        </div>
                       </div>
+                      <Button className="w-full" size="lg" onClick={() => confirmMatch(matched.scan_id, matched.product.id)} disabled={!!confirming}>
+                        {confirming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                        Confirm & next
+                      </Button>
                     </div>
-                    <Button className="w-full" size="lg" onClick={() => confirmMatch(result.scan_id, result.product.id)} disabled={!!confirming}>
-                      {confirming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                      Confirm & next
-                    </Button>
-                  </div>
-                )}
+                  );
+                })()}
 
-                {result?.status === "mismatch" && (
+                {result?.status === "mismatch" && !remoteConfirmed && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
                       <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -462,22 +516,38 @@ export default function AdminProductScan() {
                         <div className="text-xs text-muted-foreground mb-1.5">Did you mean:</div>
                         <div className="space-y-1.5">
                           {result.candidates.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => confirmMatch(result.scan_id, c.id)}
-                              disabled={!!confirming}
-                              className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
-                            >
-                              <span className="text-sm">
-                                {c.title} <span className="text-muted-foreground">({c.sku})</span>
-                                {c.sku && sku.trim() && c.sku !== sku.trim() && (
-                                  <span className="block text-xs text-amber-700">
-                                    Box labeled {sku.trim()} → actually {c.sku}
+                            <div key={c.id} className="flex items-center gap-3 px-2.5 py-2 rounded-lg border border-border">
+                              {c.image ? (
+                                <button
+                                  type="button"
+                                  aria-label="Zoom image"
+                                  onClick={() => setZoomImg(c.image!)}
+                                  className="relative w-14 h-14 shrink-0 cursor-zoom-in"
+                                >
+                                  <img src={c.image} alt={c.title} className="w-14 h-14 rounded object-cover" />
+                                  <span className="absolute -bottom-1 -right-1 rounded-full bg-background border border-border p-1">
+                                    <ZoomIn className="w-3 h-3" />
                                   </span>
-                                )}
-                              </span>
-                              <span className="text-sm font-medium text-blue-700">{Math.round(c.confidence)}%</span>
-                            </button>
+                                </button>
+                              ) : (
+                                <div className="w-14 h-14 rounded bg-muted shrink-0" />
+                              )}
+                              <button
+                                onClick={() => confirmMatch(result.scan_id, c.id)}
+                                disabled={!!confirming}
+                                className="flex-1 min-w-0 flex items-center justify-between text-left gap-2 disabled:opacity-50"
+                              >
+                                <span className="text-sm min-w-0">
+                                  <span className="block truncate">{c.title} <span className="text-muted-foreground">({c.sku})</span></span>
+                                  {c.sku && sku.trim() && c.sku !== sku.trim() && (
+                                    <span className="block text-xs text-amber-700">
+                                      Box labeled {sku.trim()} → actually {c.sku}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-sm font-medium text-blue-700 shrink-0">{Math.round(c.confidence)}%</span>
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -531,7 +601,20 @@ export default function AdminProductScan() {
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setZoomImg(null)}
         >
-          <img src={zoomImg} alt="Product" className="max-h-full max-w-full rounded-lg object-contain" />
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setZoomImg(null)}
+            className="absolute top-4 right-4 rounded-full bg-background/90 border border-border p-2"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={zoomImg}
+            alt="Product"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-lg object-contain"
+          />
         </div>
       )}
     </div>
