@@ -159,7 +159,9 @@ const GenericLanding = ({
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [singleUpsellOpen, setSingleUpsellOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
+
   const [addressOpen, setAddressOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState("");
@@ -200,10 +202,18 @@ const GenericLanding = ({
       phone: phone || "",
       createdAt: Date.now(),
     });
-    // NEW ORDER: address first, upsell second.
+    // NEW ORDER: single offer (if configured) → address → done.
     setDeliveryFee(5);
+    if (singleOfferActive) setSingleUpsellOpen(true);
+    else setAddressOpen(true);
+  };
+
+  const handleSingleUpsellDone = (_accepted: boolean, newSubtotal: number) => {
+    setPendingOrderTotal(newSubtotal);
+    setSingleUpsellOpen(false);
     setAddressOpen(true);
   };
+
 
   const afterAddress = (onum: string) => {
     setAddressOpen(false);
