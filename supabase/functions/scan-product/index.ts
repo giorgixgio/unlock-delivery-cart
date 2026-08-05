@@ -6,9 +6,9 @@
 //   1. Look up the typed SKU's product. Compare its reference photo +
 //      title/description against the worker's new photo -> confidence.
 //   2. If confidence >= MATCH_THRESHOLD -> matched, done.
-//   3. Otherwise, derive keywords from the new photo, text-search the
-//      catalog for candidates, vision-check the shortlist in parallel,
-//      return the top matches for the worker to pick from.
+//   3. Otherwise, fingerprint the new photo and use the trigram-indexed
+//      match_products_by_fingerprint() RPC to shortlist 10 candidates,
+//      vision-check them in parallel, return the top matches to pick from.
 //
 // action=confirm { scan_id, product_id, position, actor }
 //   Writes bin_location on the chosen product, marks the scan confirmed.
