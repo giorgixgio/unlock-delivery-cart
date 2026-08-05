@@ -124,6 +124,32 @@ export default function AdminProductScan() {
   useEffect(() => { loadStats(); loadFingerprintProgress(); }, [loadStats, loadFingerprintProgress]);
   useEffect(() => { if (view === "review") loadFlagged(); }, [view, loadFlagged]);
 
+  // Remote auto-advance: while a mismatch is on screen, someone else (review desk)
+  // may resolve the same scan row. Listen for that and flip to the success UI.
+  const mismatchScanId = result?.status === "mismatch" ? result.scan_id : null;
+  useEffect(() => {
+    if (!mismatchScanId || remoteConfirmed) return;
+    const channel = supabase
+      .channel(`scan-${mismatchScanId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "product_scan_history", filter: `id=eq.${mismatchScanId}` },
+        async (payload: any) => {
+          const row = payload?.new;
+          if (!row || row.status !== "confirmed") return;
+          const pid = row.confirmed_product_id;
+          let product = { id: pid, sku: row.corrected_sku || row.typed_sku, title: "Confirmed product" };
+          if (pid) {
+            const { data } = await (supabase.from("products") as any)
+              .select("id, sku, title").eq("id", pid).maybeSingle();
+            if (data) product = data;
+          }
+          setRemoteConfirmed(product);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [mismatchScanId, remoteConfirmed]);
 
   const resetToCamera = () => {
     setPhotoFile(null);
@@ -134,6 +160,7 @@ export default function AdminProductScan() {
     setResult(null);
     setRelabels(null);
     setZoomImg(null);
+    setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
@@ -142,6 +169,7 @@ export default function AdminProductScan() {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
     setResult(null);
+    setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
