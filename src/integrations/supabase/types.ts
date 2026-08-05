@@ -1653,6 +1653,7 @@ export type Database = {
           compare_at_price: number | null
           created_at: string
           description: string
+          fingerprint_generated_at: string | null
           handle: string
           id: string
           image: string
@@ -1663,6 +1664,7 @@ export type Database = {
           tags: string[]
           title: string
           vendor: string
+          visual_fingerprint: string | null
         }
         Insert: {
           available?: boolean
@@ -1671,6 +1673,7 @@ export type Database = {
           compare_at_price?: number | null
           created_at?: string
           description?: string
+          fingerprint_generated_at?: string | null
           handle?: string
           id: string
           image?: string
@@ -1681,6 +1684,7 @@ export type Database = {
           tags?: string[]
           title?: string
           vendor?: string
+          visual_fingerprint?: string | null
         }
         Update: {
           available?: boolean
@@ -1689,6 +1693,7 @@ export type Database = {
           compare_at_price?: number | null
           created_at?: string
           description?: string
+          fingerprint_generated_at?: string | null
           handle?: string
           id?: string
           image?: string
@@ -1699,6 +1704,7 @@ export type Database = {
           tags?: string[]
           title?: string
           vendor?: string
+          visual_fingerprint?: string | null
         }
         Relationships: []
       }
@@ -1996,6 +2002,18 @@ export type Database = {
         Args: { p_attempt_id: string }
         Returns: undefined
       }
+      match_products_by_fingerprint: {
+        Args: { exclude_id?: string; match_limit?: number; query_fp: string }
+        Returns: {
+          description: string
+          id: string
+          image: string
+          images: Json
+          similarity: number
+          sku: string
+          title: string
+        }[]
+      }
       record_stockout_attempt: {
         Args: {
           p_payload: Json
@@ -2010,6 +2028,8 @@ export type Database = {
           id: string
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       storefront_add_upsell_items: {
         Args: {
           p_items: Json
