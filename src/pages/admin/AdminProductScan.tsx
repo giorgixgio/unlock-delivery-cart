@@ -90,6 +90,7 @@ export default function AdminProductScan() {
     setPosition("");
     setBinCustom(false);
     setResult(null);
+    setErrorText(null);
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
@@ -97,6 +98,7 @@ export default function AdminProductScan() {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
     setResult(null);
+    setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
 
@@ -106,6 +108,7 @@ export default function AdminProductScan() {
       return;
     }
     setChecking(true);
+    setErrorText(null);
     try {
       const ext = photoFile.name.split(".").pop() || "jpg";
       const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -124,7 +127,9 @@ export default function AdminProductScan() {
       if (error) throw error;
       setResult(data as CheckResult);
     } catch (e: any) {
-      toast({ title: "Check failed", description: e.message, variant: "destructive" });
+      const full = await describeError(e, "Check failed");
+      setErrorText(full);
+      toast({ title: "Check failed", description: e?.message, variant: "destructive" });
     } finally {
       setChecking(false);
     }
@@ -132,18 +137,29 @@ export default function AdminProductScan() {
 
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
+    setErrorText(null);
     const { error } = await supabase.functions.invoke("scan-product", {
       body: { action: "confirm", scan_id: scanId, product_id: productId, position: effectivePosition, actor: "warehouse" },
     });
     setConfirming(null);
-    if (error) { toast({ title: "Confirm failed", description: error.message, variant: "destructive" }); return; }
+    if (error) {
+      setErrorText(await describeError(error, "Confirm failed"));
+      toast({ title: "Confirm failed", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: `Bin ${effectivePosition} confirmed` });
     loadStats();
     resetToCamera();
   };
 
   const flagForReview = async (scanId: string) => {
-    await supabase.functions.invoke("scan-product", { body: { action: "flag", scan_id: scanId } });
+    setErrorText(null);
+    const { error } = await supabase.functions.invoke("scan-product", { body: { action: "flag", scan_id: scanId } });
+    if (error) {
+      setErrorText(await describeError(error, "Flag failed"));
+      toast({ title: "Flag failed", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: "Flagged for review" });
     loadStats();
     resetToCamera();
