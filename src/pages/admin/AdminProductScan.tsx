@@ -463,9 +463,20 @@ export default function AdminProductScan() {
                       ))}
                     </div>
 
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={checking || !!resolving}
+                      onClick={() => runCheck({ skipSkuLookup: true })}
+                    >
+                      {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Neither of these — search full catalog instead
+                    </Button>
+
                     <Button variant="ghost" className="w-full" onClick={resetToCamera}>
                       <RotateCcw className="w-4 h-4 mr-2" /> Retake / skip
                     </Button>
+
                   </div>
                 )}
 
