@@ -19,7 +19,7 @@ import {
  * Low confidence -> ranked candidates to pick from, or flag for review.
  */
 
-type ConflictProduct = { id: string; sku: string; title: string; image?: string | null };
+type ConflictProduct = { id: string; sku: string; title: string; image?: string | null; confidence?: number };
 
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
