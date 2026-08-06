@@ -15,7 +15,7 @@
 //
 // action=flag    { scan_id, notes }
 //   Marks a scan as flagged for manual review (no product match).
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
