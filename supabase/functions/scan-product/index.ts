@@ -195,6 +195,8 @@ async function searchCatalogCandidates(supabase: any, photoUrl: string, excludeI
       sku: c.product.sku,
       title: c.product.title,
       confidence: c.confidence,
+      reasoning: c.reasoning ?? "",
+      features_compared: c.features_compared ?? "",
       image: refImages(c.product)[0] || c.product.image || null,
     }));
 }
@@ -324,10 +326,10 @@ Deno.serve(async (req) => {
         const dupChecked = await mapLimit(skuRows || [], 6, async (p: any) => {
           try {
             const r = await compareToProduct(p, photo_url);
-            return { product: p, confidence: r.confidence };
+            return { product: p, confidence: r.confidence, reasoning: r.reasoning ?? "", features_compared: r.features_compared ?? "" };
           } catch (err) {
             console.error("compareToProduct duplicate_sku error:", p?.sku, err);
-            return { product: p, confidence: 0 };
+            return { product: p, confidence: 0, reasoning: "Vision check failed", features_compared: "" };
           }
         });
         const dupRanked = dupChecked
@@ -338,6 +340,8 @@ Deno.serve(async (req) => {
             title: c.product.title,
             image: refImages(c.product)[0] || c.product.image || null,
             confidence: c.confidence,
+            reasoning: c.reasoning ?? "",
+            features_compared: c.features_compared ?? "",
           }));
         // Neither duplicate looks like the photo → also search the whole catalog
         // by visual fingerprint so the worker gets real similar matches inline.
@@ -406,6 +410,8 @@ Deno.serve(async (req) => {
           .upsert({
             actor, typed_sku: sku, position, photo_url,
             matched_product_id: exact.id, confidence: originalResult.confidence, status: "matched",
+            primary_reasoning: originalResult.reasoning ?? null,
+            primary_features_compared: originalResult.features_compared ?? null,
           }, { onConflict: "typed_sku" })
           .select("id")
           .single();
@@ -461,6 +467,8 @@ Deno.serve(async (req) => {
           sku: c.product.sku,
           title: c.product.title,
           confidence: c.confidence,
+          reasoning: c.reasoning ?? "",
+          features_compared: c.features_compared ?? "",
           image: refImages(c.product)[0] || c.product.image || null,
         }));
 
@@ -472,6 +480,8 @@ Deno.serve(async (req) => {
           confidence: originalResult?.confidence ?? null,
           status: "mismatch",
           candidates: ranked,
+          primary_reasoning: originalResult?.reasoning ?? null,
+          primary_features_compared: originalResult?.features_compared ?? null,
         }, { onConflict: "typed_sku" })
         .select("id")
         .single();
