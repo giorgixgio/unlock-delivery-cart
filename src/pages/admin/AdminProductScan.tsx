@@ -156,6 +156,7 @@ export default function AdminProductScan() {
   const resetToCamera = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setLastPhotoUrl(null);
     setSku("");
     setPosition("");
     setBinCustom(false);
@@ -170,11 +171,13 @@ export default function AdminProductScan() {
   const onPhotoSelected = (file: File) => {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+    setLastPhotoUrl(null);
     setResult(null);
     setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
+
 
   const runCheck = async (opts?: { skipSkuLookup?: boolean }) => {
     if (!photoFile || !sku.trim() || !effectivePosition) {
