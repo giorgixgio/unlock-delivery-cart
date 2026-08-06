@@ -24,7 +24,7 @@ type ConflictProduct = { id: string; sku: string; title: string; image?: string 
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
   | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number; image?: string | null }[] }
-  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[] };
+  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[]; candidates?: { id: string; sku: string; title: string; confidence: number; image?: string | null }[]; scan_id?: string | null };
 
 type Relabel = { loser_title: string; new_sku: string | number };
 
