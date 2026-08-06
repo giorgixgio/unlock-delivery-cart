@@ -273,17 +273,31 @@ Deno.serve(async (req) => {
           ).data;
 
       // ── Duplicate SKU: two or more real products share this SKU.
+      // Rank them with the same vision comparison used for mismatch candidates.
       if (!skipSkuLookup && (skuRows?.length ?? 0) > 1) {
+        const dupChecked = await mapLimit(skuRows || [], 6, async (p: any) => {
+          try {
+            const r = await compareToProduct(p, photo_url);
+            return { product: p, confidence: r.confidence };
+          } catch (err) {
+            console.error("compareToProduct duplicate_sku error:", p?.sku, err);
+            return { product: p, confidence: 0 };
+          }
+        });
+        const dupRanked = dupChecked
+          .sort((a, b) => b.confidence - a.confidence)
+          .map((c) => ({
+            id: c.product.id,
+            sku: c.product.sku,
+            title: c.product.title,
+            image: refImages(c.product)[0] || c.product.image || null,
+            confidence: c.confidence,
+          }));
         return json(200, {
           status: "duplicate_sku",
           sku,
           position,
-          products: (skuRows || []).map((p: any) => ({
-            id: p.id,
-            sku: p.sku,
-            title: p.title,
-            image: refImages(p)[0] || null,
-          })),
+          products: dupRanked,
         });
       }
 
