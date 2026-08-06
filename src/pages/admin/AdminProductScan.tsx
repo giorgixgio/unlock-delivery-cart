@@ -33,6 +33,8 @@ export default function AdminProductScan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [lastPhotoUrl, setLastPhotoUrl] = useState<string | null>(null);
+
   const [sku, setSku] = useState("");
   const [position, setPosition] = useState("");
   const [binCustom, setBinCustom] = useState(false); // bin mirrors SKU unless overridden
@@ -154,6 +156,7 @@ export default function AdminProductScan() {
   const resetToCamera = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setLastPhotoUrl(null);
     setSku("");
     setPosition("");
     setBinCustom(false);
@@ -168,13 +171,15 @@ export default function AdminProductScan() {
   const onPhotoSelected = (file: File) => {
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+    setLastPhotoUrl(null);
     setResult(null);
     setRemoteConfirmed(null);
     setErrorText(null);
     setTimeout(() => skuRef.current?.focus(), 100);
   };
 
-  const runCheck = async () => {
+
+  const runCheck = async (opts?: { skipSkuLookup?: boolean }) => {
     if (!photoFile || !sku.trim() || !effectivePosition) {
       toast({ title: "Fill in SKU and position first", variant: "destructive" });
       return;
@@ -182,19 +187,30 @@ export default function AdminProductScan() {
     setChecking(true);
     setErrorText(null);
     try {
-      const ext = photoFile.name.split(".").pop() || "jpg";
-      const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
-      if (upErr) throw upErr;
-      // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
-      const { data: signed, error: signErr } = await supabase.storage
-        .from("product-scans")
-        .createSignedUrl(path, 60 * 60 * 24 * 7);
-      if (signErr) throw signErr;
-      const photoUrl = signed.signedUrl;
+      let photoUrl = opts?.skipSkuLookup ? lastPhotoUrl : null;
+      if (!photoUrl) {
+        const ext = photoFile.name.split(".").pop() || "jpg";
+        const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
+        if (upErr) throw upErr;
+        // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("product-scans")
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
+        if (signErr) throw signErr;
+        photoUrl = signed.signedUrl;
+        setLastPhotoUrl(photoUrl);
+      }
 
       const { data, error } = await supabase.functions.invoke("scan-product", {
-        body: { action: "check", sku: sku.trim(), position: effectivePosition, photo_url: photoUrl, actor: "warehouse" },
+        body: {
+          action: "check",
+          sku: sku.trim(),
+          position: effectivePosition,
+          photo_url: photoUrl,
+          actor: "warehouse",
+          ...(opts?.skipSkuLookup ? { skip_sku_lookup: true } : {}),
+        },
       });
       if (error) throw error;
       setResult(data as CheckResult);
@@ -206,6 +222,7 @@ export default function AdminProductScan() {
       setChecking(false);
     }
   };
+
 
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
@@ -394,7 +411,7 @@ export default function AdminProductScan() {
                       )}
                     </div>
 
-                    <Button className="w-full" size="lg" onClick={runCheck} disabled={checking}>
+                    <Button className="w-full" size="lg" onClick={() => runCheck()} disabled={checking}>
                       {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {checking ? "Checking…" : "Done"}
                     </Button>
@@ -446,9 +463,20 @@ export default function AdminProductScan() {
                       ))}
                     </div>
 
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={checking || !!resolving}
+                      onClick={() => runCheck({ skipSkuLookup: true })}
+                    >
+                      {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Neither of these — search full catalog instead
+                    </Button>
+
                     <Button variant="ghost" className="w-full" onClick={resetToCamera}>
                       <RotateCcw className="w-4 h-4 mr-2" /> Retake / skip
                     </Button>
+
                   </div>
                 )}
 

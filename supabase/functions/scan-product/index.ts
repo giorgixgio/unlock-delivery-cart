@@ -261,14 +261,19 @@ Deno.serve(async (req) => {
       const { sku, position, actor } = body;
       if (!sku || !body.photo_url) return json(400, { error: "sku and photo_url required" });
       const photo_url = toVisionUrl(String(body.photo_url)) || String(body.photo_url);
+      const skipSkuLookup = body.skip_sku_lookup === true;
 
-      const { data: skuRows } = await supabase
-        .from("products")
-        .select("id, sku, title, description, image, images")
-        .ilike("sku", String(sku).trim());
+      const skuRows = skipSkuLookup
+        ? null
+        : (
+            await supabase
+              .from("products")
+              .select("id, sku, title, description, image, images")
+              .ilike("sku", String(sku).trim())
+          ).data;
 
       // ── Duplicate SKU: two or more real products share this SKU.
-      if ((skuRows?.length ?? 0) > 1) {
+      if (!skipSkuLookup && (skuRows?.length ?? 0) > 1) {
         return json(200, {
           status: "duplicate_sku",
           sku,
@@ -283,6 +288,7 @@ Deno.serve(async (req) => {
       }
 
       const exact = skuRows?.[0] ?? null;
+
 
 
       let originalResult: { match: boolean; confidence: number; reasoning: string; features_compared?: string } | null = null;
