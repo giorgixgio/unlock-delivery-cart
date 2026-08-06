@@ -25,5 +25,5 @@ export function roleHomePath(role: string | null | undefined): string {
 export function canAccessPath(role: string | null | undefined, pathname: string): boolean {
   const allowed = role ? ROLE_ALLOWED_PATHS[role] : undefined;
   if (!allowed) return true;
-  return allowed.some((p) => pathname.startsWith(p));
+  return allowed.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
