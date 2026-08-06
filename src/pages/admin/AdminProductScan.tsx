@@ -24,7 +24,7 @@ type ConflictProduct = { id: string; sku: string; title: string; image?: string 
 type CheckResult =
   | { status: "matched"; scan_id: string; product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string }
   | { status: "mismatch"; scan_id: string; typed_sku_found: boolean; original: { product: { id: string; sku: string; title: string }; confidence: number; reasoning?: string } | null; candidates: { id: string; sku: string; title: string; confidence: number; image?: string | null }[] }
-  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[] };
+  | { status: "duplicate_sku"; sku: string; position: string; products: ConflictProduct[]; candidates?: { id: string; sku: string; title: string; confidence: number; image?: string | null }[]; scan_id?: string | null };
 
 type Relabel = { loser_title: string; new_sku: string | number };
 
@@ -472,6 +472,46 @@ export default function AdminProductScan() {
                       ))}
                     </div>
 
+                    {result.candidates && result.candidates.length > 0 && (
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1.5">
+                          Neither matches the photo well — closest products in the whole catalog:
+                        </div>
+                        <div className="space-y-1.5">
+                          {result.candidates.map((c) => (
+                            <div key={c.id} className="flex items-center gap-3 px-2.5 py-2 rounded-lg border border-border">
+                              {c.image ? (
+                                <button
+                                  type="button"
+                                  aria-label="Zoom image"
+                                  onClick={() => setZoomImg(c.image!)}
+                                  className="relative w-14 h-14 shrink-0 cursor-zoom-in"
+                                >
+                                  <img src={c.image} alt={c.title} className="w-14 h-14 rounded object-cover" />
+                                  <span className="absolute -bottom-1 -right-1 rounded-full bg-background border border-border p-1">
+                                    <ZoomIn className="w-3 h-3" />
+                                  </span>
+                                </button>
+                              ) : (
+                                <div className="w-14 h-14 rounded bg-muted shrink-0" />
+                              )}
+                              <button
+                                onClick={() => result.scan_id && confirmMatch(result.scan_id, c.id)}
+                                disabled={!!confirming || !result.scan_id}
+                                className="flex-1 min-w-0 flex items-center justify-between text-left gap-2 disabled:opacity-50"
+                              >
+                                <span className="text-sm min-w-0">
+                                  <span className="block truncate">{c.title}</span>
+                                  <span className="block text-xs text-muted-foreground font-mono">SKU {c.sku}</span>
+                                </span>
+                                <span className="text-sm font-medium text-blue-700 shrink-0">{Math.round(c.confidence)}%</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <Button
                       variant="outline"
                       className="w-full"
@@ -481,6 +521,7 @@ export default function AdminProductScan() {
                       {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       Neither of these — search full catalog instead
                     </Button>
+
 
                     <Button variant="ghost" className="w-full" onClick={resetToCamera}>
                       <RotateCcw className="w-4 h-4 mr-2" /> Retake / skip
