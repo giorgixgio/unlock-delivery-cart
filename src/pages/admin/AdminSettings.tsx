@@ -212,6 +212,8 @@ const AdminSettings = () => {
               <option value="admin">Admin</option>
               <option value="operator">Operator</option>
               <option value="warehouse">Warehouse</option>
+                      <option value="scanner">Scanner (Product Scan)</option>
+              <option value="scanner">Scanner (Product Scan)</option>
             </select>
           </div>
           <Button onClick={addUser} disabled={adding} className="h-10">
