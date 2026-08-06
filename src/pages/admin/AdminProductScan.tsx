@@ -189,10 +189,11 @@ export default function AdminProductScan() {
     try {
       let photoUrl = opts?.skipSkuLookup ? lastPhotoUrl : null;
       if (!photoUrl) {
-        const ext = photoFile.name.split(".").pop() || "jpg";
-        const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
+        const compressed = await compressImage(photoFile, 1280, 0.82);
+        const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const { error: upErr } = await supabase.storage.from("product-scans").upload(path, compressed, { contentType: "image/jpeg" });
         if (upErr) throw upErr;
+
         // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
         const { data: signed, error: signErr } = await supabase.storage
           .from("product-scans")
