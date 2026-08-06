@@ -155,6 +155,52 @@ Respond ONLY with JSON, no markdown:
   };
 }
 
+// Fingerprint the worker photo and vision-rank the nearest catalog products.
+async function searchCatalogCandidates(supabase: any, photoUrl: string, excludeIds: string[] = []) {
+  let workerFingerprint = "";
+  try {
+    const fpOut = await callVisionJSON(FINGERPRINT_PROMPT, [photoUrl]);
+    workerFingerprint = typeof fpOut.fingerprint === "string" ? fpOut.fingerprint.trim() : "";
+  } catch (err) {
+    console.error("fingerprint generation failed:", err);
+  }
+  if (!workerFingerprint) return [];
+
+  const { data: matches, error: matchErr } = await supabase.rpc("match_products_by_fingerprint", {
+    query_fp: workerFingerprint,
+    exclude_id: excludeIds[0] || "00000000-0000-0000-0000-000000000000",
+    match_limit: 12,
+  });
+  if (matchErr) console.error("match_products_by_fingerprint error:", matchErr.message);
+
+  const pool = (matches || [])
+    .filter((m: any) => !excludeIds.includes(m.id))
+    .slice(0, 10);
+
+  const checked = await mapLimit(pool, 6, async (p: any) => {
+    try {
+      const r = await compareToProduct(p, photoUrl);
+      return { product: p, ...r };
+    } catch (err) {
+      console.error("compareToProduct candidate error:", p?.sku, err);
+      return { product: p, match: false, confidence: 0, reasoning: "Vision check failed", features_compared: "" };
+    }
+  });
+
+  return checked
+    .sort((a: any, b: any) => b.confidence - a.confidence)
+    .slice(0, 5)
+    .map((c: any) => ({
+      id: c.product.id,
+      sku: c.product.sku,
+      title: c.product.title,
+      confidence: c.confidence,
+      image: refImages(c.product)[0] || c.product.image || null,
+    }));
+}
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
