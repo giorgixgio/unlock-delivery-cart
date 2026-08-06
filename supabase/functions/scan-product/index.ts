@@ -129,21 +129,30 @@ async function compareToProduct(product: any, photoUrl: string) {
   const refLabel = refs.length > 1 ? `Images 1-${refs.length} are REFERENCE catalog photos (from the supplier's listing — Temu/AliExpress style: may differ in background, lighting, staging, or angle from a real warehouse photo)` : `Image 1 is a REFERENCE catalog photo (from the supplier's listing — Temu/AliExpress style: may differ in background, lighting, staging, or angle from a real warehouse photo)`;
   const lastLabel = `Image ${refs.length + 1}`;
   const prompt = `You are verifying warehouse inventory for an e-commerce store.
+
+IMPORTANT CONTEXT: This is a generic/white-label product catalog. The same physical item is frequently resold across different supplier batches under different printed brand names, logos, or packaging text/color — the box or sleeve is not a reliable identity signal on its own.
+
 ${refLabel} for product "${product.title}" (SKU ${product.sku}). Description: ${(product.description || "").slice(0, 300)}
 ${lastLabel} is a photo a warehouse worker just took of the physical product itself (unboxed).
 
-Work in this order, actually LOOKING at the pixels:
-1. Name 2-4 SPECIFIC distinguishing visual features of the item in the reference image(s): overall shape/form factor, exact colors and where they appear, distinctive markings/text/logos/buttons/ports, material or texture.
-2. Name the same kind of specific features for the worker's photo.
-3. State explicitly, feature by feature, whether each one matches.
+Work in this order, actually LOOKING at the pixels, and keep two categories SEPARATE:
+(1) THE PHYSICAL ITEM — overall shape/form factor, size and proportions, material or texture, functional design (buttons, ports, moving parts), and the actual color of the item itself (not the packaging color).
+(2) PACKAGING / BRANDING — printed logo, brand name, box or sleeve color and printed text.
+
+1. Name 2-4 specific features of category (1) for the reference image(s), then separately note category (2).
+2. Name the same for the worker's photo.
+3. State, feature by feature, whether each matches.
 
 Scoring rules:
-- confidence 70+ ONLY if MULTIPLE specific features (not just category) clearly match.
-- Generic resemblance ("both are power banks", "both are black gadgets") with no specific matching features must score well under 40.
+- Base the match PRIMARILY on category (1), the physical item.
+- If the physical item's shape/material/functional design clearly match, do NOT reject the match solely because of different logos, brand names, or packaging text/color. Packaging differences alone must NOT drag confidence below a moderate score (~60).
+- Packaging counts as negative evidence only when it is the sole basis — i.e. the physical item itself also looks uncertain.
+- confidence 70+ ONLY if MULTIPLE specific physical features (not just category) clearly match.
+- Generic resemblance ("both are power banks", "both are black gadgets") with no specific matching physical features must score well under 40.
 - Ignore background, lighting, staging, and photo angle — the reference is a generic supplier photo, not a warehouse photo.
 
 Respond ONLY with JSON, no markdown:
-{"features_compared": "reference: <features> | photo: <features> | verdict per feature: <matches/mismatches>", "match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
+{"features_compared": "physical: <shape/material/design/color match or not> | packaging: <branding differs or matches, and whether it was counted against the match>", "match": true or false, "confidence": 0-100, "reasoning": "short phrase, max 12 words"}`;
   if (refs.length === 0) return { match: false, confidence: 0, reasoning: "No usable reference photo (invalid image URL on file)", features_compared: "", refs: [] as string[] };
   const out = await callVisionJSON(prompt, [...refs, photoUrl]);
   return {
