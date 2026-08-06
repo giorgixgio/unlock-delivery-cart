@@ -1543,6 +1543,8 @@ export type Database = {
           notes: string | null
           photo_url: string
           position: string | null
+          primary_features_compared: string | null
+          primary_reasoning: string | null
           status: string
           typed_sku: string | null
         }
@@ -1560,6 +1562,8 @@ export type Database = {
           notes?: string | null
           photo_url: string
           position?: string | null
+          primary_features_compared?: string | null
+          primary_reasoning?: string | null
           status?: string
           typed_sku?: string | null
         }
@@ -1577,6 +1581,8 @@ export type Database = {
           notes?: string | null
           photo_url?: string
           position?: string | null
+          primary_features_compared?: string | null
+          primary_reasoning?: string | null
           status?: string
           typed_sku?: string | null
         }
