@@ -60,6 +60,8 @@ const LandingPageRoute = () => {
   );
 };
 
+import { canAccessPath, roleHomePath } from "@/lib/adminPermissions";
+
 const queryClient = new QueryClient();
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
@@ -67,9 +69,9 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!session || !isAdmin) return <Navigate to="/admin/login" replace />;
-  // Warehouse role: restrict to /admin/products only
-  if (role === "warehouse" && !location.pathname.startsWith("/admin/products")) {
-    return <Navigate to="/admin/products" replace />;
+  // Restricted roles (warehouse, scanner): only their allowed sections
+  if (!canAccessPath(role, location.pathname)) {
+    return <Navigate to={roleHomePath(role)} replace />;
   }
   return <>{children}</>;
 };
@@ -78,7 +80,7 @@ const AdminLoginGuard = () => {
   const { loading, isAdmin, session, role } = useAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (session && isAdmin) {
-    return <Navigate to={role === "warehouse" ? "/admin/products" : "/admin/orders"} replace />;
+    return <Navigate to={roleHomePath(role)} replace />;
   }
   return <AdminLogin />;
 };

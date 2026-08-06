@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
+import { canAccessPath } from "@/lib/adminPermissions";
 
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,9 +36,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const visibleNavItems = role === "warehouse"
-    ? navItems.filter((n) => n.to === "/admin/products")
-    : navItems;
+  const visibleNavItems = navItems.filter((n) => canAccessPath(role, n.to));
 
   const handleSignOut = async () => {
     await signOut();
