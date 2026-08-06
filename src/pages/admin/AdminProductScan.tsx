@@ -174,7 +174,7 @@ export default function AdminProductScan() {
     setTimeout(() => skuRef.current?.focus(), 100);
   };
 
-  const runCheck = async () => {
+  const runCheck = async (opts?: { skipSkuLookup?: boolean }) => {
     if (!photoFile || !sku.trim() || !effectivePosition) {
       toast({ title: "Fill in SKU and position first", variant: "destructive" });
       return;
@@ -182,19 +182,30 @@ export default function AdminProductScan() {
     setChecking(true);
     setErrorText(null);
     try {
-      const ext = photoFile.name.split(".").pop() || "jpg";
-      const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
-      if (upErr) throw upErr;
-      // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
-      const { data: signed, error: signErr } = await supabase.storage
-        .from("product-scans")
-        .createSignedUrl(path, 60 * 60 * 24 * 7);
-      if (signErr) throw signErr;
-      const photoUrl = signed.signedUrl;
+      let photoUrl = opts?.skipSkuLookup ? lastPhotoUrl : null;
+      if (!photoUrl) {
+        const ext = photoFile.name.split(".").pop() || "jpg";
+        const path = `scans/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("product-scans").upload(path, photoFile, { contentType: photoFile.type || "image/jpeg" });
+        if (upErr) throw upErr;
+        // bucket is private — use a signed URL (valid 7 days) so the AI vision call can fetch it
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("product-scans")
+          .createSignedUrl(path, 60 * 60 * 24 * 7);
+        if (signErr) throw signErr;
+        photoUrl = signed.signedUrl;
+        setLastPhotoUrl(photoUrl);
+      }
 
       const { data, error } = await supabase.functions.invoke("scan-product", {
-        body: { action: "check", sku: sku.trim(), position: effectivePosition, photo_url: photoUrl, actor: "warehouse" },
+        body: {
+          action: "check",
+          sku: sku.trim(),
+          position: effectivePosition,
+          photo_url: photoUrl,
+          actor: "warehouse",
+          ...(opts?.skipSkuLookup ? { skip_sku_lookup: true } : {}),
+        },
       });
       if (error) throw error;
       setResult(data as CheckResult);
@@ -206,6 +217,7 @@ export default function AdminProductScan() {
       setChecking(false);
     }
   };
+
 
   const confirmMatch = async (scanId: string, productId: string) => {
     setConfirming(productId);
