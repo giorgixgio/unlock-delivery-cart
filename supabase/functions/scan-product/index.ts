@@ -339,11 +339,23 @@ Deno.serve(async (req) => {
             image: refImages(c.product)[0] || c.product.image || null,
             confidence: c.confidence,
           }));
+        // Neither duplicate looks like the photo → also search the whole catalog
+        // by visual fingerprint so the worker gets real similar matches inline.
+        const topDup = dupRanked[0]?.confidence ?? 0;
+        const catalogCandidates = topDup >= MATCH_THRESHOLD
+          ? []
+          : await searchCatalogCandidates(
+              supabase,
+              photo_url,
+              dupRanked.map((d) => d.id),
+            );
+
         return json(200, {
           status: "duplicate_sku",
           sku,
           position,
           products: dupRanked,
+          candidates: catalogCandidates,
         });
       }
 
