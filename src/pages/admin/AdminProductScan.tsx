@@ -408,7 +408,7 @@ export default function AdminProductScan() {
                       )}
                     </div>
 
-                    <Button className="w-full" size="lg" onClick={runCheck} disabled={checking}>
+                    <Button className="w-full" size="lg" onClick={() => runCheck()} disabled={checking}>
                       {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {checking ? "Checking…" : "Done"}
                     </Button>
