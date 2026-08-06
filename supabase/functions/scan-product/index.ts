@@ -350,12 +350,29 @@ Deno.serve(async (req) => {
               dupRanked.map((d) => d.id),
             );
 
+        let dupScanId: string | null = null;
+        if (catalogCandidates.length > 0) {
+          const { data: row } = await supabase
+            .from("product_scan_history")
+            .upsert({
+              actor, typed_sku: sku, position, photo_url,
+              matched_product_id: null,
+              confidence: topDup || null,
+              status: "mismatch",
+              candidates: catalogCandidates,
+            }, { onConflict: "typed_sku" })
+            .select("id")
+            .single();
+          dupScanId = row?.id ?? null;
+        }
+
         return json(200, {
           status: "duplicate_sku",
           sku,
           position,
           products: dupRanked,
           candidates: catalogCandidates,
+          scan_id: dupScanId,
         });
       }
 
