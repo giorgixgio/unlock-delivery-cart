@@ -6,12 +6,12 @@
 //   Packer visually confirms the product at `position` IS the typed SKU.
 //   Sets products.bin_location = position and records a confirmed scan.
 //
-// action=reject  { sku, position, photo_url, actor }
-//   Packer says the item at `position` is NOT that SKU. Frees the SKU on EVERY
-//   product currently holding it (duplicate-SKU case included: none of them are
-//   physically here, so none keep squatting on the number), queues an
-//   unidentified_items row, responds
-//   immediately, and fingerprint-matches the photo in the background.
+// action=reject  { sku, position, photo_url, actor, reason? }
+//   Packer says the item at `position` is NOT that SKU. Optional reason is
+//   'wrong_item' (default) or 'not_found'. Frees the SKU on EVERY product
+//   currently holding it (duplicate-SKU case included: none of them are physically
+//   here, so none keep squatting on the number), queues an unidentified_items row,
+//   responds immediately, and fingerprint-matches the photo in the background.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
