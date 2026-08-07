@@ -30,12 +30,28 @@ type Row = {
   resolved_at: string | null;
   resolution: string | null;
   notes: string | null;
+  reason: string | null;
 };
 
 type ProductLite = { id: string; sku: string | null; title: string; image: string | null };
 
 const SELECT =
-  "id, created_at, typed_sku, position, photo_url, actor, status, fingerprint_candidates, fingerprint_status, resolved_product_id, resolved_at, resolution, notes";
+  "id, created_at, typed_sku, position, photo_url, actor, status, fingerprint_candidates, fingerprint_status, resolved_product_id, resolved_at, resolution, notes, reason";
+
+function ReasonBadge({ reason }: { reason: string | null }) {
+  const notFound = reason === "not_found";
+  return (
+    <span
+      className={`rounded border px-2 py-0.5 text-xs font-semibold ${
+        notFound
+          ? "border-amber-300 bg-amber-100 text-amber-800"
+          : "border-red-300 bg-red-100 text-red-800"
+      }`}
+    >
+      {notFound ? "Not in catalog" : "Wrong item"}
+    </span>
+  );
+}
 
 function normalize(raw: any): Row {
   return {
@@ -275,7 +291,10 @@ export default function AdminUnidentifiedItems() {
                 />
               </button>
               <div className="min-w-0 flex-1 text-sm">
-                <div className="text-lg font-semibold">SKU {row.typed_sku}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-lg font-semibold">SKU {row.typed_sku}</div>
+                  <ReasonBadge reason={row.reason} />
+                </div>
                 <div className="text-muted-foreground">Position: {row.position ?? "—"}</div>
                 <div className="text-muted-foreground">
                   {new Date(row.created_at).toLocaleString()}
@@ -379,7 +398,10 @@ export default function AdminUnidentifiedItems() {
                   onClick={() => setZoomImg(r.photo_url)}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">SKU {r.typed_sku}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">SKU {r.typed_sku}</span>
+                    <ReasonBadge reason={r.reason} />
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {r.resolution === "needs_new_product" ? "Needs new product" : "Matched existing"}
                     {r.resolved_at ? ` · ${new Date(r.resolved_at).toLocaleString()}` : ""}

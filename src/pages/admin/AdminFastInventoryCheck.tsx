@@ -4,7 +4,7 @@ import { compressImage } from "@/lib/imageCompression";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Check, X, Delete, Loader2, Zap } from "lucide-react";
+import { Check, X, Delete, Loader2, Zap, AlertTriangle } from "lucide-react";
 
 type MatchedProduct = { id: string; sku: string; title: string; image: string | null };
 
@@ -28,6 +28,8 @@ export default function AdminFastInventoryCheck() {
   const [counts, setCounts] = useState({ confirmed: 0, flagged: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const reqRef = useRef(0);
+  const reasonRef = useRef<"wrong_item" | "not_found">("wrong_item");
+
 
   const loadCounts = useCallback(async () => {
     const since = startOfToday();
@@ -158,6 +160,13 @@ export default function AdminFastInventoryCheck() {
   const onRejectClick = () => {
     if (busy) return;
     if (!matched && duplicates.length < 2) return;
+    reasonRef.current = "wrong_item";
+    fileRef.current?.click();
+  };
+
+  const onNotFoundClick = () => {
+    if (busy || !notFound) return;
+    reasonRef.current = "not_found";
     fileRef.current?.click();
   };
 
@@ -165,6 +174,7 @@ export default function AdminFastInventoryCheck() {
     const file = e.target.files?.[0];
     e.target.value = "";
     const typedSku = matched?.sku ?? sku.trim();
+    const reason = reasonRef.current;
     if (!file || !typedSku) return;
     setBusy(true);
     try {
@@ -187,21 +197,29 @@ export default function AdminFastInventoryCheck() {
           position: typedSku,
           photo_url: signed.signedUrl,
           actor: "warehouse",
+          reason,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      showFlash("reject", "გაიგზავნა — მონიშნულია შესამოწმებლად");
+      showFlash(
+        "reject",
+        reason === "not_found" ? "Flagged — no product in DB" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
+      );
       setCounts((c) => ({ ...c, flagged: c.flagged + 1 }));
       reset();
     } catch (err: any) {
       toast({ title: "Reject failed", description: err?.message ?? String(err), variant: "destructive" });
     } finally {
+      reasonRef.current = "wrong_item";
       setBusy(false);
     }
   };
 
+
   const ready = !!matched && !busy;
+  const notFound = !looking && !matched && duplicates.length === 0 && sku.trim().length >= 3;
+
 
 
   return (
@@ -278,11 +296,25 @@ export default function AdminFastInventoryCheck() {
             )}
             <p className="line-clamp-3 flex-1 text-base font-semibold leading-tight">{matched.title}</p>
           </Card>
+        ) : notFound ? (
+          <Card className="border-amber-400 bg-amber-50 p-2">
+            <p className="mb-2 text-center text-sm font-bold text-amber-700">
+              No product exists for SKU {sku.trim()}
+            </p>
+            <Button
+              onClick={onNotFoundClick}
+              disabled={busy}
+              className="h-14 w-full bg-amber-500 text-lg font-bold text-white hover:bg-amber-600 disabled:opacity-40"
+            >
+              <AlertTriangle className="mr-2 h-6 w-6" /> NOT FOUND — flag it
+            </Button>
+          </Card>
         ) : (
           <Card className="flex h-[104px] items-center justify-center text-base text-muted-foreground">
-            {looking && sku ? <Loader2 className="h-5 w-5 animate-spin" /> : sku ? "პროდუქტი ვერ მოიძებნა" : "აკრიფე SKU"}
+            {looking && sku ? <Loader2 className="h-5 w-5 animate-spin" /> : "აკრიფე SKU"}
           </Card>
         )}
+
       </div>
 
       {/* Keypad */}

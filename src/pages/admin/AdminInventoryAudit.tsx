@@ -27,11 +27,14 @@ type Entry = {
   resolution: string | null;
   resolved_title: string | null;
   notes: string | null;
+  reason: string | null;
 };
 
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "confirmed", label: "Confirmed / Match" },
+  { value: "rejected_wrong", label: "Rejected — Wrong item" },
+  { value: "rejected_notfound", label: "Rejected — Not in catalog" },
   { value: "rejected_resolved", label: "Rejected — Resolved" },
   { value: "rejected_new", label: "Rejected — Needs New Product" },
   { value: "duplicates", label: "Duplicates Resolved" },
@@ -78,7 +81,7 @@ export default function AdminInventoryAudit() {
         .order("created_at", { ascending: false }),
       supabase
         .from("unidentified_items")
-        .select("id, created_at, actor, typed_sku, position, photo_url, status, resolution, notes, resolved_product_id, products:resolved_product_id (title, sku)")
+        .select("id, created_at, actor, typed_sku, position, photo_url, status, resolution, notes, reason, resolved_product_id, products:resolved_product_id (title, sku)")
         .gte("created_at", fromISO)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false }),
@@ -108,6 +111,7 @@ export default function AdminInventoryAudit() {
         resolution: null,
         resolved_title: null,
         notes: r.notes,
+        reason: null,
       })),
       ...((unidentified.data || []) as any[]).map((r) => ({
         id: `u-${r.id}`,
@@ -122,6 +126,7 @@ export default function AdminInventoryAudit() {
         resolution: r.resolution,
         resolved_title: r.products?.title ?? null,
         notes: r.notes,
+        reason: r.reason ?? "wrong_item",
       })),
     ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
@@ -141,6 +146,10 @@ export default function AdminInventoryAudit() {
       switch (filter) {
         case "confirmed":
           return e.source === "scan";
+        case "rejected_wrong":
+          return e.source === "unidentified" && e.reason !== "not_found";
+        case "rejected_notfound":
+          return e.source === "unidentified" && e.reason === "not_found";
         case "rejected_resolved":
           return e.source === "unidentified" && e.resolution === "matched_existing";
         case "rejected_new":
@@ -163,7 +172,7 @@ export default function AdminInventoryAudit() {
 
   const exportCsv = () => {
     const header = [
-      "timestamp", "type", "typed_sku", "corrected_sku", "position",
+      "timestamp", "type", "reason", "typed_sku", "corrected_sku", "position",
       "status", "resolution", "matched_product", "actor", "notes", "photo_url",
     ];
     const lines = [header.join(",")];
@@ -171,6 +180,7 @@ export default function AdminInventoryAudit() {
       lines.push([
         new Date(e.created_at).toISOString(),
         e.source === "scan" ? "Confirmed" : "Rejected",
+        e.source === "scan" ? "" : e.reason === "not_found" ? "Not in catalog" : "Wrong item",
         e.typed_sku, e.corrected_sku, e.position,
         e.status, e.resolution, e.resolved_title, e.actor, e.notes, e.photo_url,
       ].map(csvCell).join(","));
@@ -277,6 +287,17 @@ export default function AdminInventoryAudit() {
                   >
                     {e.source === "scan" ? "Confirmed / Match" : "Rejected"}
                   </span>
+                  {e.source === "unidentified" && (
+                    <span
+                      className={`rounded border px-2 py-0.5 text-xs font-semibold ${
+                        e.reason === "not_found"
+                          ? "border-amber-300 bg-amber-100 text-amber-800"
+                          : "border-red-300 bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {e.reason === "not_found" ? "Not in catalog" : "Wrong item"}
+                    </span>
+                  )}
                   <span className="font-mono text-base font-bold">{e.typed_sku ?? "—"}</span>
                   {e.corrected_sku && e.corrected_sku !== e.typed_sku && (
                     <span className="font-mono text-sm text-blue-700">→ {e.corrected_sku}</span>
