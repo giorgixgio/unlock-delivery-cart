@@ -355,14 +355,14 @@ export default function AdminFastInventoryCheck() {
           disabled={!ready}
           className="h-20 bg-green-600 text-xl font-bold text-white hover:bg-green-700 disabled:opacity-40"
         >
-          {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="mr-2 h-7 w-7" /> Confirm</>}
+          {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="mr-2 h-7 w-7" /> დადასტურება</>}
         </Button>
         <Button
           onClick={onRejectClick}
           disabled={!ready}
           className="h-20 bg-red-600 text-xl font-bold text-white hover:bg-red-700 disabled:opacity-40"
         >
-          <X className="mr-2 h-7 w-7" /> Reject
+          <X className="mr-2 h-7 w-7" /> უარყოფა
         </Button>
       </div>
 
