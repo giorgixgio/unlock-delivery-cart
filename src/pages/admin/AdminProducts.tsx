@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/useProducts";
 import { setStockOverride, getStockOverrides } from "@/lib/stockOverrideStore";
 import { Product } from "@/lib/constants";
@@ -213,9 +213,39 @@ const AdminProducts = () => {
   const conflictRows = useMemo(() => allRows.filter(r => r.skuConflict), [allRows]);
   const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
 
+  // Products already touched by the warehouse verification process
+  // (locked SKU, confirmed by a packer scan, or resolved from the queue).
+  const { data: verifiedIds } = useQuery({
+    queryKey: ["verified-product-ids"],
+    queryFn: async () => {
+      const ids = new Set<string>();
+      const [locked, scans, resolved] = await Promise.all([
+        supabase.from("products").select("id").eq("sku_locked", true),
+        supabase.from("product_scan_history").select("confirmed_product_id,matched_product_id,status"),
+        supabase.from("unidentified_items").select("resolved_product_id").not("resolved_product_id", "is", null),
+      ]);
+      (locked.data || []).forEach((r: any) => ids.add(r.id));
+      (scans.data || []).forEach((r: any) => {
+        if (r.confirmed_product_id) ids.add(r.confirmed_product_id);
+        else if (r.matched_product_id && r.status === "confirmed") ids.add(r.matched_product_id);
+      });
+      (resolved.data || []).forEach((r: any) => r.resolved_product_id && ids.add(r.resolved_product_id));
+      return Array.from(ids);
+    },
+    staleTime: 60_000,
+  });
+
+  const unverifiedRows = useMemo(() => {
+    const set = new Set(verifiedIds || []);
+    return allRows.filter(r => !set.has(r.productId));
+  }, [allRows, verifiedIds]);
+
   // SKU-first search
   const filtered = useMemo(() => {
-    const source = activeTab === "conflicts" ? conflictRows : activeTab === "oos" ? oosRows : allRows;
+    const source = activeTab === "conflicts" ? conflictRows
+      : activeTab === "oos" ? oosRows
+      : activeTab === "unverified" ? unverifiedRows
+      : allRows;
     const q = search.trim().toLowerCase();
     if (!q) return source;
 
@@ -232,7 +262,7 @@ const AdminProducts = () => {
         r.sku.toLowerCase().includes(q) ||
         r.vendor.toLowerCase().includes(q)
     );
-  }, [allRows, conflictRows, oosRows, search, activeTab]);
+  }, [allRows, conflictRows, oosRows, unverifiedRows, search, activeTab]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -1009,6 +1039,14 @@ const AdminProducts = () => {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="unverified" className="gap-1.5">
+            Not Verified
+            {unverifiedRows.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                {unverifiedRows.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-3 mt-3">
@@ -1107,6 +1145,33 @@ const AdminProducts = () => {
                 </div>
               )}
             </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="unverified" className="space-y-3 mt-3">
+          <p className="text-sm text-muted-foreground">
+            {unverifiedRows.length} product{unverifiedRows.length === 1 ? "" : "s"} never confirmed by a packer scan or locked SKU — review these manually.
+          </p>
+
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search unverified..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              className="pl-9 h-10"
+            />
+          </div>
+
+          {renderProductTable(pageRows)}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>Next</Button>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
