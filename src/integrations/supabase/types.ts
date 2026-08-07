@@ -1670,9 +1670,12 @@ export type Database = {
           id: string
           image: string
           images: Json
+          previous_sku: string | null
           price: number
           sku: string
           sku_locked: boolean
+          sku_reassigned: boolean
+          sku_reassigned_at: string | null
           synced_at: string
           tags: string[]
           title: string
@@ -1691,9 +1694,12 @@ export type Database = {
           id: string
           image?: string
           images?: Json
+          previous_sku?: string | null
           price?: number
           sku?: string
           sku_locked?: boolean
+          sku_reassigned?: boolean
+          sku_reassigned_at?: string | null
           synced_at?: string
           tags?: string[]
           title?: string
@@ -1712,9 +1718,12 @@ export type Database = {
           id?: string
           image?: string
           images?: Json
+          previous_sku?: string | null
           price?: number
           sku?: string
           sku_locked?: boolean
+          sku_reassigned?: boolean
+          sku_reassigned_at?: string | null
           synced_at?: string
           tags?: string[]
           title?: string
