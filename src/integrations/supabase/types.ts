@@ -1723,6 +1723,33 @@ export type Database = {
         }
         Relationships: []
       }
+      products_sku_backup_20260807: {
+        Row: {
+          backed_up_at: string | null
+          bin_location: string | null
+          id: string | null
+          sku: string | null
+          sku_locked: boolean | null
+          title: string | null
+        }
+        Insert: {
+          backed_up_at?: string | null
+          bin_location?: string | null
+          id?: string | null
+          sku?: string | null
+          sku_locked?: boolean | null
+          title?: string | null
+        }
+        Update: {
+          backed_up_at?: string | null
+          bin_location?: string | null
+          id?: string | null
+          sku?: string | null
+          sku_locked?: boolean | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       return_matches: {
         Row: {
           confidence_score: number
