@@ -1039,6 +1039,14 @@ const AdminProducts = () => {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="unverified" className="gap-1.5">
+            Not Verified
+            {unverifiedRows.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                {unverifiedRows.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-3 mt-3">
