@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -18,6 +18,7 @@ const navItems = [
   { to: "/admin/photo-review", label: "Photo Review", icon: ImageUp },
   { to: "/admin/scan-history", label: "Scan History", icon: History },
   { to: "/admin/live-scans", label: "Live Scans", icon: Radio },
+  { to: "/admin/unidentified-items", label: "Unidentified Items", icon: HelpCircle },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
   { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
   { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },

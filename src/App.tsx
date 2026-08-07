@@ -49,6 +49,7 @@ import AdminProductScan from "./pages/admin/AdminProductScan";
 import AdminPhotoReview from "./pages/admin/AdminPhotoReview";
 import AdminScanHistory from "./pages/admin/AdminScanHistory";
 import AdminLiveScans from "./pages/admin/AdminLiveScans";
+import AdminUnidentifiedItems from "./pages/admin/AdminUnidentifiedItems";
 import AdminFastInventoryCheck from "./pages/admin/AdminFastInventoryCheck";
 
 /** Landing page wrapper — provides LandingPageContext */
@@ -179,6 +180,7 @@ const App = () => (
                       <Route path="scan-history" element={<AdminScanHistory />} />
                       <Route path="live-scans" element={<AdminLiveScans />} />
                       <Route path="fast-check" element={<AdminFastInventoryCheck />} />
+                      <Route path="unidentified-items" element={<AdminUnidentifiedItems />} />
 
 
 
