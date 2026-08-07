@@ -245,15 +245,24 @@ const AdminProducts = () => {
     staleTime: 60_000,
   });
 
-  const unverifiedRows = useMemo(() => {
-    const set = new Set(verifiedIds || []);
-    return baseRows.filter(r => !set.has(r.productId));
-  }, [baseRows, verifiedIds]);
+  // A product only counts as verified if it also holds a REAL sku:
+  // blank SKUs (cleared duplicates) and auto-assigned 1000+ placeholders
+  // (given to duplicate losers) are not physically verified.
+  const hasRealSku = (s: string) => {
+    const v = (s || "").trim();
+    if (!v || v === "-") return false;
+    return !/^1\d{3,}$/.test(v);
+  };
 
-  const verifiedRows = useMemo(() => {
+  const isVerified = useMemo(() => {
     const set = new Set(verifiedIds || []);
-    return baseRows.filter(r => set.has(r.productId));
-  }, [baseRows, verifiedIds]);
+    return (r: { productId: string; sku: string }) => set.has(r.productId) && hasRealSku(r.sku);
+  }, [verifiedIds]);
+
+  const unverifiedRows = useMemo(() => baseRows.filter(r => !isVerified(r)), [baseRows, isVerified]);
+
+  const verifiedRows = useMemo(() => baseRows.filter(r => isVerified(r)), [baseRows, isVerified]);
+
 
   // SKU-first search
   const filtered = useMemo(() => {
