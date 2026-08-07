@@ -213,9 +213,39 @@ const AdminProducts = () => {
   const conflictRows = useMemo(() => allRows.filter(r => r.skuConflict), [allRows]);
   const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
 
+  // Products already touched by the warehouse verification process
+  // (locked SKU, confirmed by a packer scan, or resolved from the queue).
+  const { data: verifiedIds } = useQuery({
+    queryKey: ["verified-product-ids"],
+    queryFn: async () => {
+      const ids = new Set<string>();
+      const [locked, scans, resolved] = await Promise.all([
+        supabase.from("products").select("id").eq("sku_locked", true),
+        supabase.from("product_scan_history").select("confirmed_product_id,matched_product_id,status"),
+        supabase.from("unidentified_items").select("resolved_product_id").not("resolved_product_id", "is", null),
+      ]);
+      (locked.data || []).forEach((r: any) => ids.add(r.id));
+      (scans.data || []).forEach((r: any) => {
+        if (r.confirmed_product_id) ids.add(r.confirmed_product_id);
+        else if (r.matched_product_id && r.status === "confirmed") ids.add(r.matched_product_id);
+      });
+      (resolved.data || []).forEach((r: any) => r.resolved_product_id && ids.add(r.resolved_product_id));
+      return Array.from(ids);
+    },
+    staleTime: 60_000,
+  });
+
+  const unverifiedRows = useMemo(() => {
+    const set = new Set(verifiedIds || []);
+    return allRows.filter(r => !set.has(r.productId));
+  }, [allRows, verifiedIds]);
+
   // SKU-first search
   const filtered = useMemo(() => {
-    const source = activeTab === "conflicts" ? conflictRows : activeTab === "oos" ? oosRows : allRows;
+    const source = activeTab === "conflicts" ? conflictRows
+      : activeTab === "oos" ? oosRows
+      : activeTab === "unverified" ? unverifiedRows
+      : allRows;
     const q = search.trim().toLowerCase();
     if (!q) return source;
 
