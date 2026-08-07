@@ -158,6 +158,13 @@ export default function AdminFastInventoryCheck() {
   const onRejectClick = () => {
     if (busy) return;
     if (!matched && duplicates.length < 2) return;
+    reasonRef.current = "wrong_item";
+    fileRef.current?.click();
+  };
+
+  const onNotFoundClick = () => {
+    if (busy || !notFound) return;
+    reasonRef.current = "not_found";
     fileRef.current?.click();
   };
 
@@ -165,6 +172,7 @@ export default function AdminFastInventoryCheck() {
     const file = e.target.files?.[0];
     e.target.value = "";
     const typedSku = matched?.sku ?? sku.trim();
+    const reason = reasonRef.current;
     if (!file || !typedSku) return;
     setBusy(true);
     try {
@@ -187,19 +195,25 @@ export default function AdminFastInventoryCheck() {
           position: typedSku,
           photo_url: signed.signedUrl,
           actor: "warehouse",
+          reason,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      showFlash("reject", "გაიგზავნა — მონიშნულია შესამოწმებლად");
+      showFlash(
+        "reject",
+        reason === "not_found" ? "Flagged — no product in DB" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
+      );
       setCounts((c) => ({ ...c, flagged: c.flagged + 1 }));
       reset();
     } catch (err: any) {
       toast({ title: "Reject failed", description: err?.message ?? String(err), variant: "destructive" });
     } finally {
+      reasonRef.current = "wrong_item";
       setBusy(false);
     }
   };
+
 
   const ready = !!matched && !busy;
 
