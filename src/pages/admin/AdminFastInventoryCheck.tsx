@@ -28,6 +28,8 @@ export default function AdminFastInventoryCheck() {
   const [counts, setCounts] = useState({ confirmed: 0, flagged: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const reqRef = useRef(0);
+  const reasonRef = useRef<"wrong_item" | "not_found">("wrong_item");
+
 
   const loadCounts = useCallback(async () => {
     const since = startOfToday();
