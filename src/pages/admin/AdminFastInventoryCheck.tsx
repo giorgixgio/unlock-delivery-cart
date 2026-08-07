@@ -257,7 +257,15 @@ export default function AdminFastInventoryCheck() {
                 </button>
               ))}
             </div>
+            <Button
+              onClick={onRejectClick}
+              disabled={busy}
+              className="mt-2 h-14 w-full bg-red-600 text-lg font-bold text-white hover:bg-red-700 disabled:opacity-40"
+            >
+              <X className="mr-2 h-6 w-6" /> Neither — reject
+            </Button>
           </Card>
+
         ) : matched ? (
 
           <Card className="flex h-[104px] items-center gap-3 overflow-hidden p-2">
