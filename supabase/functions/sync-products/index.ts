@@ -91,7 +91,7 @@ serve(async (req) => {
     // Fetch existing image overrides so we don't overwrite locally-hosted images
     const { data: existingRows } = await supabase
       .from("products")
-      .select("id, image");
+      .select("id, image, sku_locked");
     const localOverrideIds = new Set(
       (existingRows || [])
         .filter((r: any) => {
@@ -99,6 +99,13 @@ serve(async (req) => {
           // Local /images/ assets OR images uploaded to our Supabase storage bucket
           return img.startsWith("/images/") || img.includes("/storage/v1/object/public/product-images/");
         })
+        .map((r: any) => String(r.id))
+    );
+
+    // Products whose SKU was manually corrected — never overwrite their sku from Shopify
+    const skuLockedIds = new Set(
+      (existingRows || [])
+        .filter((r: any) => r.sku_locked === true)
         .map((r: any) => String(r.id))
     );
 
@@ -133,6 +140,8 @@ serve(async (req) => {
           row.image = p.images?.[0]?.src || "/placeholder.svg";
           row.images = (p.images || []).map((img: any) => img.src);
         }
+        // Keep manually corrected SKUs; sync everything else as normal
+        if (skuLockedIds.has(id)) delete row.sku;
         return row;
       });
 

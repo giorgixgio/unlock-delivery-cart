@@ -176,7 +176,7 @@ export default function AdminUnidentifiedItems() {
   const matchExisting = async (row: Row, product: { id: string; title: string }) => {
     setBusyId(row.id);
     const { error: pErr } = await (supabase.from("products") as any)
-      .update({ sku: row.typed_sku, bin_location: row.position })
+      .update({ sku: row.typed_sku, bin_location: row.position, sku_locked: true })
       .eq("id", product.id);
     if (pErr) {
       setBusyId(null);

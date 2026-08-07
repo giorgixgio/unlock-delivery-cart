@@ -281,13 +281,13 @@ Deno.serve(async (req) => {
 
       const { error: loserErr } = await supabase
         .from("products")
-        .update({ sku: new_sku, bin_location: new_sku })
+        .update({ sku: new_sku, bin_location: new_sku, sku_locked: true })
         .eq("id", loser_product_id);
       if (loserErr) return json(500, { error: loserErr.message });
 
       const { error: winnerErr } = await supabase
         .from("products")
-        .update({ bin_location: String(position) })
+        .update({ bin_location: String(position), sku_locked: true })
         .eq("id", winner_product_id);
       if (winnerErr) return json(500, { error: winnerErr.message });
 
