@@ -81,7 +81,7 @@ export default function AdminInventoryAudit() {
         .order("created_at", { ascending: false }),
       supabase
         .from("unidentified_items")
-        .select("id, created_at, actor, typed_sku, position, photo_url, status, resolution, notes, resolved_product_id, products:resolved_product_id (title, sku)")
+        .select("id, created_at, actor, typed_sku, position, photo_url, status, resolution, notes, reason, resolved_product_id, products:resolved_product_id (title, sku)")
         .gte("created_at", fromISO)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false }),
