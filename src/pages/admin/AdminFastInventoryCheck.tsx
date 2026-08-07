@@ -218,7 +218,7 @@ export default function AdminFastInventoryCheck() {
 
 
   const ready = !!matched && !busy;
-  const notFound = !looking && !matched && duplicates.length === 0 && sku.trim().length >= 3;
+  const notFound = !looking && !matched && duplicates.length === 0 && sku.trim().length >= 1;
 
 
 
