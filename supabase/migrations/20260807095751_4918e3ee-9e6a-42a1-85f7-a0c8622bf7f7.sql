@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS sku_locked boolean NOT NULL DEFAULT false;

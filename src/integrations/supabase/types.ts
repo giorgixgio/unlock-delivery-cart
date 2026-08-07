@@ -1672,6 +1672,7 @@ export type Database = {
           images: Json
           price: number
           sku: string
+          sku_locked: boolean
           synced_at: string
           tags: string[]
           title: string
@@ -1692,6 +1693,7 @@ export type Database = {
           images?: Json
           price?: number
           sku?: string
+          sku_locked?: boolean
           synced_at?: string
           tags?: string[]
           title?: string
@@ -1712,6 +1714,7 @@ export type Database = {
           images?: Json
           price?: number
           sku?: string
+          sku_locked?: boolean
           synced_at?: string
           tags?: string[]
           title?: string
