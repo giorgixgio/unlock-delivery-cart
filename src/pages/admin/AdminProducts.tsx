@@ -1217,7 +1217,35 @@ const AdminProducts = () => {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="verified" className="space-y-3 mt-3">
+          <p className="text-sm text-muted-foreground">
+            {verifiedRows.length} product{verifiedRows.length === 1 ? "" : "s"} confirmed by a packer scan, resolved from the queue, or with a locked SKU.
+          </p>
+
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search verified..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              className="pl-9 h-10"
+            />
+          </div>
+
+          {renderProductTable(pageRows)}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>Next</Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
 
       {/* SKU Reassignment Dialog */}
       <Dialog open={!!reassignSku} onOpenChange={(open) => { if (!open) setReassignSku(null); }}>
