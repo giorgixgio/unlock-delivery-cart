@@ -21,11 +21,13 @@ export default function AdminFastInventoryCheck() {
   const { toast } = useToast();
   const [sku, setSku] = useState("");
   const [matched, setMatched] = useState<MatchedProduct | null>(null);
+  const [duplicates, setDuplicates] = useState<MatchedProduct[]>([]);
   const [looking, setLooking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<{ kind: "confirm" | "reject"; text: string } | null>(null);
   const [counts, setCounts] = useState({ confirmed: 0, flagged: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
+  const reqRef = useRef(0);
 
   const loadCounts = useCallback(async () => {
     const since = startOfToday();
@@ -50,8 +52,10 @@ export default function AdminFastInventoryCheck() {
   // Debounced exact-SKU lookup as digits are typed.
   useEffect(() => {
     const value = sku.trim();
+    const reqId = ++reqRef.current;
     if (!value) {
       setMatched(null);
+      setDuplicates([]);
       setLooking(false);
       return;
     }
@@ -61,22 +65,32 @@ export default function AdminFastInventoryCheck() {
         .from("products")
         .select("id, sku, title, image")
         .eq("sku", value)
-        .limit(1);
-      const p = data?.[0];
-      setMatched(p ? { id: p.id, sku: p.sku, title: p.title, image: p.image || null } : null);
+        .order("id", { ascending: true });
+      // Ignore stale responses from earlier keystrokes.
+      if (reqId !== reqRef.current) return;
+      const rows = (data ?? []).map((p) => ({ id: p.id, sku: p.sku, title: p.title, image: p.image || null }));
+      if (rows.length > 1) {
+        setDuplicates(rows);
+        setMatched(null);
+      } else {
+        setDuplicates([]);
+        setMatched(rows[0] ?? null);
+      }
       setLooking(false);
     }, 250);
     return () => clearTimeout(t);
   }, [sku]);
 
   const reset = () => {
+    reqRef.current++;
     setSku("");
     setMatched(null);
+    setDuplicates([]);
   };
 
   const showFlash = (kind: "confirm" | "reject", text: string) => {
     setFlash({ kind, text });
-    setTimeout(() => setFlash(null), 1400);
+    setTimeout(() => setFlash(null), 2600);
   };
 
   const press = (d: string) => {
@@ -97,11 +111,45 @@ export default function AdminFastInventoryCheck() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.status === "duplicate") {
+        setDuplicates(((data as any).products ?? []) as MatchedProduct[]);
+        setMatched(null);
+        return;
+      }
       showFlash("confirm", `SKU ${matched.sku} დადასტურდა`);
       setCounts((c) => ({ ...c, confirmed: c.confirmed + 1 }));
       reset();
     } catch (e: any) {
       toast({ title: "Confirm failed", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickWinner = async (winner: MatchedProduct) => {
+    if (busy) return;
+    const loser = duplicates.find((p) => p.id !== winner.id);
+    if (!loser) return;
+    const disputed = sku.trim();
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fast-inventory-check", {
+        body: {
+          action: "resolve_duplicate",
+          sku: disputed,
+          position: disputed,
+          winner_product_id: winner.id,
+          loser_product_id: loser.id,
+          actor: "warehouse",
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      showFlash("confirm", `Resolved — relabel "${(data as any).loser_title}" with new SKU ${(data as any).new_sku}`);
+      setCounts((c) => ({ ...c, confirmed: c.confirmed + 1 }));
+      reset();
+    } catch (e: any) {
+      toast({ title: "Resolve failed", description: e?.message ?? String(e), variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -154,6 +202,7 @@ export default function AdminFastInventoryCheck() {
 
   const ready = !!matched && !busy;
 
+
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-3 p-3 select-none">
       <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
@@ -177,13 +226,39 @@ export default function AdminFastInventoryCheck() {
       <div className="min-h-[104px]">
         {flash ? (
           <Card
-            className={`flex h-[104px] items-center justify-center text-xl font-bold text-white ${
+            className={`flex min-h-[104px] items-center justify-center p-3 text-center text-lg font-bold text-white ${
               flash.kind === "confirm" ? "bg-green-600" : "bg-red-600"
             }`}
           >
             {flash.text}
           </Card>
+        ) : duplicates.length > 1 ? (
+          <Card className="p-2">
+            <p className="mb-2 text-center text-sm font-bold text-amber-600">
+              Duplicate SKU — tap the correct product
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {duplicates.map((p) => (
+                <button
+                  key={p.id}
+                  disabled={busy}
+                  onClick={() => onPickWinner(p)}
+                  className="flex flex-col items-center gap-1 rounded-lg border p-2 text-left active:scale-95 disabled:opacity-50"
+                >
+                  {p.image ? (
+                    <img src={p.image} alt={p.title} className="h-20 w-full rounded object-cover" loading="lazy" />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                      no photo
+                    </div>
+                  )}
+                  <span className="line-clamp-2 text-xs font-semibold leading-tight">{p.title}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
         ) : matched ? (
+
           <Card className="flex h-[104px] items-center gap-3 overflow-hidden p-2">
             {matched.image ? (
               <img src={matched.image} alt={matched.title} className="h-full w-24 rounded object-cover" loading="lazy" />
