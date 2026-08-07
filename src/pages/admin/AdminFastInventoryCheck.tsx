@@ -147,7 +147,7 @@ export default function AdminFastInventoryCheck() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      showFlash("confirm", `Resolved — relabel "${(data as any).loser_title}" with new SKU ${(data as any).new_sku}`);
+      showFlash("confirm", `მოგვარდა — "${(data as any).loser_title}" გადაინომრე ახალი SKU-ით ${(data as any).new_sku}`);
       setCounts((c) => ({ ...c, confirmed: c.confirmed + 1 }));
       reset();
     } catch (e: any) {
