@@ -210,8 +210,16 @@ const AdminProducts = () => {
     }));
   }, [products, skuConflicts]);
 
-  const conflictRows = useMemo(() => allRows.filter(r => r.skuConflict), [allRows]);
   const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
+
+  // Base pool for every tab except "Out of Stock": hides OOS items unless the
+  // checkbox is ticked.
+  const baseRows = useMemo(
+    () => (showOOS ? allRows : allRows.filter(r => r.available)),
+    [allRows, showOOS]
+  );
+
+  const conflictRows = useMemo(() => baseRows.filter(r => r.skuConflict), [baseRows]);
 
   // Products already touched by the warehouse verification process
   // (locked SKU, confirmed by a packer scan, or resolved from the queue).
@@ -237,15 +245,22 @@ const AdminProducts = () => {
 
   const unverifiedRows = useMemo(() => {
     const set = new Set(verifiedIds || []);
-    return allRows.filter(r => !set.has(r.productId));
-  }, [allRows, verifiedIds]);
+    return baseRows.filter(r => !set.has(r.productId));
+  }, [baseRows, verifiedIds]);
+
+  const verifiedRows = useMemo(() => {
+    const set = new Set(verifiedIds || []);
+    return baseRows.filter(r => set.has(r.productId));
+  }, [baseRows, verifiedIds]);
 
   // SKU-first search
   const filtered = useMemo(() => {
     const source = activeTab === "conflicts" ? conflictRows
       : activeTab === "oos" ? oosRows
       : activeTab === "unverified" ? unverifiedRows
-      : allRows;
+      : activeTab === "verified" ? verifiedRows
+      : baseRows;
+
     const q = search.trim().toLowerCase();
     if (!q) return source;
 
