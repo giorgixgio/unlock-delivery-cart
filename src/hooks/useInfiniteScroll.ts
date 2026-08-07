@@ -3,7 +3,7 @@ import { Product } from "@/lib/constants";
 
 const PAGE_SIZE = 20;
 
-export function useInfiniteScroll(items: Product[]) {
+export function useInfiniteScroll(items: Product[], resetKey?: string) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
@@ -14,10 +14,10 @@ export function useInfiniteScroll(items: Product[]) {
     setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, items.length));
   }, [items.length]);
 
-  // Reset when items change (e.g. category switch)
+  // Reset only on an actual category/list change, not on array identity churn
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [items]);
+  }, [resetKey]);
 
   useEffect(() => {
     const node = loaderRef.current;
