@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CATEGORIES, CategoryId } from "@/lib/constants";
 import { useProducts } from "@/hooks/useProducts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -41,14 +41,17 @@ const Index = () => {
   const { data: products = [], isLoading } = useProducts();
   const { t } = useLanguage();
 
-  const filtered =
-    activeCategory === "all"
-      ? products
-      : products.filter((p) =>
-          (p.categories && p.categories.length > 0 ? p.categories : [p.category]).includes(activeCategory)
-        );
+  const filtered = useMemo(
+    () =>
+      activeCategory === "all"
+        ? products
+        : products.filter((p) =>
+            (p.categories && p.categories.length > 0 ? p.categories : [p.category]).includes(activeCategory)
+          ),
+    [products, activeCategory]
+  );
 
-  const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered);
+  const { visibleItems, hasMore, loaderRef } = useInfiniteScroll(filtered, activeCategory);
   const { recommendations, shouldShow, remaining } = useRecommendations(products);
 
   const renderFeed = () => {
