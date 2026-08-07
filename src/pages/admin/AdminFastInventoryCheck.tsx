@@ -147,7 +147,7 @@ export default function AdminFastInventoryCheck() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      showFlash("confirm", `Resolved — relabel "${(data as any).loser_title}" with new SKU ${(data as any).new_sku}`);
+      showFlash("confirm", `მოგვარდა — "${(data as any).loser_title}" გადაინომრე ახალი SKU-ით ${(data as any).new_sku}`);
       setCounts((c) => ({ ...c, confirmed: c.confirmed + 1 }));
       reset();
     } catch (e: any) {
@@ -204,7 +204,7 @@ export default function AdminFastInventoryCheck() {
       if ((data as any)?.error) throw new Error((data as any).error);
       showFlash(
         "reject",
-        reason === "not_found" ? "Flagged — no product in DB" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
+        reason === "not_found" ? "მონიშნულია — ბაზაში არ არის" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
       );
       setCounts((c) => ({ ...c, flagged: c.flagged + 1 }));
       reset();
@@ -226,11 +226,11 @@ export default function AdminFastInventoryCheck() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-3 p-3 select-none">
       <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5 text-foreground">
-          <Zap className="h-4 w-4" /> Fast Check
+          <Zap className="h-4 w-4" /> სწრაფი შემოწმება
         </span>
         <span>
-          <span className="text-green-600 font-bold">{counts.confirmed}</span> confirmed ·{" "}
-          <span className="text-red-600 font-bold">{counts.flagged}</span> flagged today
+          <span className="text-green-600 font-bold">{counts.confirmed}</span> დადასტურდა ·{" "}
+          <span className="text-red-600 font-bold">{counts.flagged}</span> მონიშნული დღეს
         </span>
       </div>
 
@@ -254,7 +254,7 @@ export default function AdminFastInventoryCheck() {
         ) : duplicates.length > 1 ? (
           <Card className="p-2">
             <p className="mb-2 text-center text-sm font-bold text-amber-600">
-              Duplicate SKU — tap the correct product
+              დუბლირებული SKU — აირჩიე სწორი პროდუქტი
             </p>
             <div className="grid grid-cols-2 gap-2">
               {duplicates.map((p) => (
@@ -268,7 +268,7 @@ export default function AdminFastInventoryCheck() {
                     <img src={p.image} alt={p.title} className="h-20 w-full rounded object-cover" loading="lazy" />
                   ) : (
                     <div className="flex h-20 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                      no photo
+                      ფოტო არ არის
                     </div>
                   )}
                   <span className="line-clamp-2 text-xs font-semibold leading-tight">{p.title}</span>
@@ -280,7 +280,7 @@ export default function AdminFastInventoryCheck() {
               disabled={busy}
               className="mt-2 h-14 w-full bg-red-600 text-lg font-bold text-white hover:bg-red-700 disabled:opacity-40"
             >
-              <X className="mr-2 h-6 w-6" /> Neither — reject
+              <X className="mr-2 h-6 w-6" /> არცერთი — უარყოფა
             </Button>
           </Card>
 
@@ -291,7 +291,7 @@ export default function AdminFastInventoryCheck() {
               <img src={matched.image} alt={matched.title} className="h-full w-24 rounded object-cover" loading="lazy" />
             ) : (
               <div className="flex h-full w-24 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                no photo
+                ფოტო არ არის
               </div>
             )}
             <p className="line-clamp-3 flex-1 text-base font-semibold leading-tight">{matched.title}</p>
@@ -299,14 +299,14 @@ export default function AdminFastInventoryCheck() {
         ) : notFound ? (
           <Card className="border-amber-400 bg-amber-50 p-2">
             <p className="mb-2 text-center text-sm font-bold text-amber-700">
-              No product exists for SKU {sku.trim()}
+              SKU {sku.trim()} ბაზაში არ არსებობს
             </p>
             <Button
               onClick={onNotFoundClick}
               disabled={busy}
               className="h-14 w-full bg-amber-500 text-lg font-bold text-white hover:bg-amber-600 disabled:opacity-40"
             >
-              <AlertTriangle className="mr-2 h-6 w-6" /> NOT FOUND — flag it
+              <AlertTriangle className="mr-2 h-6 w-6" /> ვერ მოიძებნა — მონიშნე
             </Button>
           </Card>
         ) : (
@@ -332,7 +332,7 @@ export default function AdminFastInventoryCheck() {
           onClick={reset}
           className="h-16 rounded-xl bg-muted text-base font-bold text-muted-foreground active:scale-95"
         >
-          CLR
+          წაშლა
         </button>
         <button
           onClick={() => press("0")}
@@ -355,14 +355,14 @@ export default function AdminFastInventoryCheck() {
           disabled={!ready}
           className="h-20 bg-green-600 text-xl font-bold text-white hover:bg-green-700 disabled:opacity-40"
         >
-          {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="mr-2 h-7 w-7" /> Confirm</>}
+          {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Check className="mr-2 h-7 w-7" /> დადასტურება</>}
         </Button>
         <Button
           onClick={onRejectClick}
           disabled={!ready}
           className="h-20 bg-red-600 text-xl font-bold text-white hover:bg-red-700 disabled:opacity-40"
         >
-          <X className="mr-2 h-7 w-7" /> Reject
+          <X className="mr-2 h-7 w-7" /> უარყოფა
         </Button>
       </div>
 
