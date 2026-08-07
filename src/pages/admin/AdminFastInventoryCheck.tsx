@@ -226,13 +226,39 @@ export default function AdminFastInventoryCheck() {
       <div className="min-h-[104px]">
         {flash ? (
           <Card
-            className={`flex h-[104px] items-center justify-center text-xl font-bold text-white ${
+            className={`flex min-h-[104px] items-center justify-center p-3 text-center text-lg font-bold text-white ${
               flash.kind === "confirm" ? "bg-green-600" : "bg-red-600"
             }`}
           >
             {flash.text}
           </Card>
+        ) : duplicates.length > 1 ? (
+          <Card className="p-2">
+            <p className="mb-2 text-center text-sm font-bold text-amber-600">
+              Duplicate SKU — tap the correct product
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {duplicates.map((p) => (
+                <button
+                  key={p.id}
+                  disabled={busy}
+                  onClick={() => onPickWinner(p)}
+                  className="flex flex-col items-center gap-1 rounded-lg border p-2 text-left active:scale-95 disabled:opacity-50"
+                >
+                  {p.image ? (
+                    <img src={p.image} alt={p.title} className="h-20 w-full rounded object-cover" loading="lazy" />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                      no photo
+                    </div>
+                  )}
+                  <span className="line-clamp-2 text-xs font-semibold leading-tight">{p.title}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
         ) : matched ? (
+
           <Card className="flex h-[104px] items-center gap-3 overflow-hidden p-2">
             {matched.image ? (
               <img src={matched.image} alt={matched.title} className="h-full w-24 rounded object-cover" loading="lazy" />
