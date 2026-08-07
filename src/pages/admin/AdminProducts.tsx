@@ -171,6 +171,8 @@ const AdminProducts = () => {
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [showOOS, setShowOOS] = useState(false);
+
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
   // SKU reassignment state
