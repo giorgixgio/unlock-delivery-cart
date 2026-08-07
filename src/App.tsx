@@ -51,6 +51,7 @@ import AdminScanHistory from "./pages/admin/AdminScanHistory";
 import AdminLiveScans from "./pages/admin/AdminLiveScans";
 import AdminUnidentifiedItems from "./pages/admin/AdminUnidentifiedItems";
 import AdminInventoryAudit from "./pages/admin/AdminInventoryAudit";
+import AdminSkuHealth from "./pages/admin/AdminSkuHealth";
 import AdminFastInventoryCheck from "./pages/admin/AdminFastInventoryCheck";
 
 /** Landing page wrapper — provides LandingPageContext */
@@ -183,6 +184,7 @@ const App = () => (
                       <Route path="fast-check" element={<AdminFastInventoryCheck />} />
                       <Route path="unidentified-items" element={<AdminUnidentifiedItems />} />
                       <Route path="inventory-audit" element={<AdminInventoryAudit />} />
+                      <Route path="sku-health" element={<AdminSkuHealth />} />
 
 
 

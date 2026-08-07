@@ -1,0 +1,323 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, HeartPulse, Loader2, Search } from "lucide-react";
+
+/** SKU Health — products never verified, and products whose SKU was reassigned. */
+
+type Product = {
+  id: string;
+  title: string;
+  sku: string | null;
+  image: string | null;
+  bin_location: string | null;
+  sku_reassigned: boolean | null;
+  previous_sku: string | null;
+  sku_reassigned_at: string | null;
+};
+
+const SELECT =
+  "id, title, sku, image, bin_location, sku_reassigned, previous_sku, sku_reassigned_at";
+
+function toCsv(rows: string[][]) {
+  return rows
+    .map((r) =>
+      r
+        .map((c) => {
+          const v = c ?? "";
+          return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+        })
+        .join(","),
+    )
+    .join("\n");
+}
+
+function downloadCsv(filename: string, rows: string[][]) {
+  const blob = new Blob(["\uFEFF" + toCsv(rows)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function Thumb({ src, alt }: { src: string | null; alt: string }) {
+  return (
+    <div className="h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-muted">
+      {src ? (
+        <img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" />
+      ) : null}
+    </div>
+  );
+}
+
+function BinInput({
+  product,
+  onSaved,
+}: {
+  product: Product;
+  onSaved: (bin: string) => void;
+}) {
+  const [bin, setBin] = useState(product.bin_location ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const value = bin.trim();
+    if (!value) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("products")
+      .update({ bin_location: value })
+      .eq("id", product.id);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Bin saved", description: `${product.sku ?? product.title} → ${value}` });
+    onSaved(value);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={bin}
+        onChange={(e) => setBin(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+        }}
+        placeholder="Bin"
+        className="h-9 w-28 text-base"
+      />
+      <Button size="sm" onClick={save} disabled={saving || !bin.trim()}>
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Found it — set bin"}
+      </Button>
+    </div>
+  );
+}
+
+const AdminSkuHealth = () => {
+  const [loading, setLoading] = useState(true);
+  const [unverified, setUnverified] = useState<Product[]>([]);
+  const [reassigned, setReassigned] = useState<Product[]>([]);
+  const [qUnverified, setQUnverified] = useState("");
+  const [qReassigned, setQReassigned] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [confirmedRes, notReassignedRes, reassignedRes] = await Promise.all([
+      supabase
+        .from("product_scan_history")
+        .select("confirmed_product_id")
+        .eq("status", "confirmed")
+        .not("confirmed_product_id", "is", null),
+      supabase.from("products").select(SELECT).or("sku_reassigned.is.null,sku_reassigned.eq.false"),
+      supabase.from("products").select(SELECT).eq("sku_reassigned", true),
+    ]);
+
+    const err = confirmedRes.error || notReassignedRes.error || reassignedRes.error;
+    if (err) {
+      toast({ title: "Load failed", description: err.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    const confirmedIds = new Set(
+      (confirmedRes.data ?? []).map((r: any) => r.confirmed_product_id as string),
+    );
+    setUnverified(
+      ((notReassignedRes.data ?? []) as Product[])
+        .filter((p) => !confirmedIds.has(p.id))
+        .sort((a, b) => (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true })),
+    );
+    setReassigned(
+      ((reassignedRes.data ?? []) as Product[]).sort((a, b) =>
+        (b.sku_reassigned_at ?? "").localeCompare(a.sku_reassigned_at ?? ""),
+      ),
+    );
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filteredUnverified = useMemo(() => {
+    const t = qUnverified.trim().toLowerCase();
+    if (!t) return unverified;
+    return unverified.filter(
+      (p) =>
+        p.title.toLowerCase().includes(t) ||
+        (p.sku ?? "").toLowerCase().includes(t) ||
+        (p.bin_location ?? "").toLowerCase().includes(t),
+    );
+  }, [unverified, qUnverified]);
+
+  const filteredReassigned = useMemo(() => {
+    const t = qReassigned.trim().toLowerCase();
+    if (!t) return reassigned;
+    return reassigned.filter(
+      (p) =>
+        p.title.toLowerCase().includes(t) ||
+        (p.sku ?? "").toLowerCase().includes(t) ||
+        (p.previous_sku ?? "").toLowerCase().includes(t),
+    );
+  }, [reassigned, qReassigned]);
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex items-center gap-2">
+        <HeartPulse className="h-5 w-5 text-primary" />
+        <h1 className="text-xl font-extrabold text-foreground">SKU Health</h1>
+      </div>
+
+      <Tabs defaultValue="unverified">
+        <TabsList>
+          <TabsTrigger value="unverified">
+            Unverified Original SKUs
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
+              {unverified.length}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="reassigned">
+            Reassigned SKUs
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
+              {reassigned.length}
+            </span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="unverified" className="space-y-3 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={qUnverified}
+                onChange={(e) => setQUnverified(e.target.value)}
+                placeholder="Search title, SKU, bin…"
+                className="pl-8 text-base"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                downloadCsv("unverified_skus.csv", [
+                  ["id", "title", "sku", "bin_location"],
+                  ...filteredUnverified.map((p) => [
+                    p.id,
+                    p.title,
+                    p.sku ?? "",
+                    p.bin_location ?? "",
+                  ]),
+                ])
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : filteredUnverified.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing here.</p>
+          ) : (
+            <div className="space-y-2">
+              {filteredUnverified.map((p) => (
+                <Card key={p.id}>
+                  <CardContent className="flex items-center gap-3 p-3">
+                    <Thumb src={p.image} alt={p.title} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        SKU: <span className="font-mono">{p.sku || "—"}</span> · Bin:{" "}
+                        <span className="font-mono">{p.bin_location || "—"}</span>
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reassigned" className="space-y-3 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={qReassigned}
+                onChange={(e) => setQReassigned(e.target.value)}
+                placeholder="Search title, SKU, previous SKU…"
+                className="pl-8 text-base"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                downloadCsv("reassigned_skus.csv", [
+                  ["id", "title", "sku", "previous_sku", "bin_location", "sku_reassigned_at"],
+                  ...filteredReassigned.map((p) => [
+                    p.id,
+                    p.title,
+                    p.sku ?? "",
+                    p.previous_sku ?? "",
+                    p.bin_location ?? "",
+                    p.sku_reassigned_at ?? "",
+                  ]),
+                ])
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : filteredReassigned.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing here.</p>
+          ) : (
+            <div className="space-y-2">
+              {filteredReassigned.map((p) => (
+                <Card key={p.id}>
+                  <CardContent className="flex flex-wrap items-center gap-3 p-3">
+                    <Thumb src={p.image} alt={p.title} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        SKU: <span className="font-mono">{p.sku || "—"}</span> · was{" "}
+                        <span className="font-mono line-through">{p.previous_sku || "—"}</span> ·
+                        Bin: <span className="font-mono">{p.bin_location || "—"}</span>
+                      </p>
+                      {p.sku_reassigned_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(p.sku_reassigned_at).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <BinInput
+                      product={p}
+                      onSaved={(bin) =>
+                        setReassigned((prev) =>
+                          prev.map((x) => (x.id === p.id ? { ...x, bin_location: bin } : x)),
+                        )
+                      }
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default AdminSkuHealth;
