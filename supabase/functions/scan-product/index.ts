@@ -281,7 +281,14 @@ Deno.serve(async (req) => {
 
       const { error: loserErr } = await supabase
         .from("products")
-        .update({ sku: new_sku, bin_location: new_sku, sku_locked: true })
+        .update({
+          sku: new_sku,
+          bin_location: new_sku,
+          sku_locked: true,
+          sku_reassigned: true,
+          previous_sku: loser.sku ?? null,
+          sku_reassigned_at: new Date().toISOString(),
+        })
         .eq("id", loser_product_id);
       if (loserErr) return json(500, { error: loserErr.message });
 
