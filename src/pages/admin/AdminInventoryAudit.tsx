@@ -111,6 +111,7 @@ export default function AdminInventoryAudit() {
         resolution: null,
         resolved_title: null,
         notes: r.notes,
+        reason: null,
       })),
       ...((unidentified.data || []) as any[]).map((r) => ({
         id: `u-${r.id}`,
@@ -125,6 +126,7 @@ export default function AdminInventoryAudit() {
         resolution: r.resolution,
         resolved_title: r.products?.title ?? null,
         notes: r.notes,
+        reason: r.reason ?? "wrong_item",
       })),
     ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
