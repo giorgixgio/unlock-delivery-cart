@@ -156,15 +156,16 @@ export default function AdminFastInventoryCheck() {
   };
 
   const onRejectClick = () => {
-    if (!matched || busy) return;
+    if (busy) return;
+    if (!matched && duplicates.length < 2) return;
     fileRef.current?.click();
   };
 
   const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !matched) return;
-    const typedSku = matched.sku;
+    const typedSku = matched?.sku ?? sku.trim();
+    if (!file || !typedSku) return;
     setBusy(true);
     try {
       const compressed = await compressImage(file, 1280, 0.82);
