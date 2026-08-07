@@ -332,7 +332,7 @@ export default function AdminFastInventoryCheck() {
           onClick={reset}
           className="h-16 rounded-xl bg-muted text-base font-bold text-muted-foreground active:scale-95"
         >
-          CLR
+          წაშლა
         </button>
         <button
           onClick={() => press("0")}
