@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
 
       const { error: histErr } = await supabase
         .from("product_scan_history")
-        .upsert({
+        .insert({
           actor: actor ?? null,
           typed_sku: String(sku).trim(),
           position: String(position),
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
           status: "confirmed",
           confirmed_product_id: product.id,
           corrected_sku: product.sku,
-        }, { onConflict: "typed_sku" });
+        });
       if (histErr) return json(500, { error: histErr.message });
 
       return json(200, { ok: true });
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
 
       const { error: histErr } = await supabase
         .from("product_scan_history")
-        .upsert({
+        .insert({
           actor: actor ?? null,
           typed_sku: String(sku).trim(),
           position: String(position),
@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
           confirmed_product_id: winner_product_id,
           corrected_sku: String(sku).trim(),
           notes: `Duplicate SKU resolved via Fast Check: kept ${String(sku).trim()} for ${winnerTitle}; reassigned ${loserTitle} to ${newSku}`,
-        }, { onConflict: "typed_sku" });
+        });
       if (histErr) return json(500, { error: histErr.message });
 
       return json(200, { ok: true, new_sku: newSku, loser_title: loserTitle });

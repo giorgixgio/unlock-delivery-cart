@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
       };
       const { error: histErr } = await supabase
         .from("product_scan_history")
-        .upsert(payload, { onConflict: "typed_sku" })
+        .insert(payload)
         .select("id")
         .single();
       if (histErr) return json(500, { error: histErr.message });
@@ -374,13 +374,13 @@ Deno.serve(async (req) => {
         if (catalogCandidates.length > 0) {
           const { data: row } = await supabase
             .from("product_scan_history")
-            .upsert({
+            .insert({
               actor, typed_sku: sku, position, photo_url,
               matched_product_id: null,
               confidence: topDup || null,
               status: "mismatch",
               candidates: catalogCandidates,
-            }, { onConflict: "typed_sku" })
+            })
             .select("id")
             .single();
           dupScanId = row?.id ?? null;
@@ -423,12 +423,12 @@ Deno.serve(async (req) => {
       if (exact && originalResult && originalResult.confidence >= MATCH_THRESHOLD) {
         const { data: row } = await supabase
           .from("product_scan_history")
-          .upsert({
+          .insert({
             actor, typed_sku: sku, position, photo_url,
             matched_product_id: exact.id, confidence: originalResult.confidence, status: "matched",
             primary_reasoning: originalResult.reasoning ?? null,
             primary_features_compared: originalResult.features_compared ?? null,
-          }, { onConflict: "typed_sku" })
+          })
           .select("id")
           .single();
         return json(200, {
@@ -490,7 +490,7 @@ Deno.serve(async (req) => {
 
       const { data: row } = await supabase
         .from("product_scan_history")
-        .upsert({
+        .insert({
           actor, typed_sku: sku, position, photo_url,
           matched_product_id: exact?.id || null,
           confidence: originalResult?.confidence ?? null,
@@ -498,7 +498,7 @@ Deno.serve(async (req) => {
           candidates: ranked,
           primary_reasoning: originalResult?.reasoning ?? null,
           primary_features_compared: originalResult?.features_compared ?? null,
-        }, { onConflict: "typed_sku" })
+        })
         .select("id")
         .single();
 
