@@ -9,6 +9,7 @@ export const SCANNER_PATHS = [
   "/admin/scan-history",
   "/admin/live-scans",
   "/admin/unidentified-items",
+  "/admin/inventory-audit",
   "/admin/bin-locations",
 ];
 
