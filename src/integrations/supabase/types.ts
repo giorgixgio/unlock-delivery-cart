@@ -1985,6 +1985,7 @@ export type Database = {
           notes: string | null
           photo_url: string
           position: string | null
+          reason: string
           resolution: string | null
           resolved_at: string | null
           resolved_product_id: string | null
@@ -2000,6 +2001,7 @@ export type Database = {
           notes?: string | null
           photo_url: string
           position?: string | null
+          reason?: string
           resolution?: string | null
           resolved_at?: string | null
           resolved_product_id?: string | null
@@ -2015,6 +2017,7 @@ export type Database = {
           notes?: string | null
           photo_url?: string
           position?: string | null
+          reason?: string
           resolution?: string | null
           resolved_at?: string | null
           resolved_product_id?: string | null
