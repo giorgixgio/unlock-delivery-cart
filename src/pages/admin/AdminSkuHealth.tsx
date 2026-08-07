@@ -18,10 +18,11 @@ type Product = {
   sku_reassigned: boolean | null;
   previous_sku: string | null;
   sku_reassigned_at: string | null;
+  available: boolean | null;
 };
 
 const SELECT =
-  "id, title, sku, image, bin_location, sku_reassigned, previous_sku, sku_reassigned_at";
+  "id, title, sku, image, bin_location, sku_reassigned, previous_sku, sku_reassigned_at, available";
 
 function toCsv(rows: string[][]) {
   return rows
