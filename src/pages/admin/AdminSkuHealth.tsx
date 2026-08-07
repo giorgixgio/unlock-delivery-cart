@@ -102,6 +102,15 @@ function BinInput({
   );
 }
 
+/** Auto-generated placeholder SKUs (>= 1000) are not real warehouse SKUs — show blank. */
+const displaySku = (sku?: string | null) => {
+  const s = (sku ?? "").trim();
+  if (!s) return "";
+  if (/^\d+$/.test(s) && Number(s) >= 1000) return "";
+  return s;
+};
+
+
 const AdminSkuHealth = () => {
   const [loading, setLoading] = useState(true);
   const [unverified, setUnverified] = useState<Product[]>([]);
