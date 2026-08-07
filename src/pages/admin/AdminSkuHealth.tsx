@@ -111,17 +111,32 @@ const AdminSkuHealth = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [confirmedRes, notReassignedRes, reassignedRes] = await Promise.all([
-      supabase
-        .from("product_scan_history")
-        .select("confirmed_product_id")
-        .eq("status", "confirmed")
-        .not("confirmed_product_id", "is", null),
-      supabase.from("products").select(SELECT).or("sku_reassigned.is.null,sku_reassigned.eq.false"),
-      supabase.from("products").select(SELECT).eq("sku_reassigned", true),
-    ]);
+    const [confirmedRes, notReassignedRes, reassignedRes, resolvedRes, overridesRes] =
+      await Promise.all([
+        supabase
+          .from("product_scan_history")
+          .select("confirmed_product_id")
+          .eq("status", "confirmed")
+          .not("confirmed_product_id", "is", null),
+        supabase
+          .from("products")
+          .select(SELECT)
+          .or("sku_reassigned.is.null,sku_reassigned.eq.false"),
+        supabase.from("products").select(SELECT).eq("sku_reassigned", true),
+        supabase
+          .from("unidentified_items")
+          .select("resolved_product_id")
+          .eq("status", "resolved")
+          .not("resolved_product_id", "is", null),
+        supabase.from("product_stock_overrides").select("product_id, available"),
+      ]);
 
-    const err = confirmedRes.error || notReassignedRes.error || reassignedRes.error;
+    const err =
+      confirmedRes.error ||
+      notReassignedRes.error ||
+      reassignedRes.error ||
+      resolvedRes.error ||
+      overridesRes.error;
     if (err) {
       toast({ title: "Load failed", description: err.message, variant: "destructive" });
       setLoading(false);
@@ -131,15 +146,23 @@ const AdminSkuHealth = () => {
     const confirmedIds = new Set(
       (confirmedRes.data ?? []).map((r: any) => r.confirmed_product_id as string),
     );
+    const resolvedIds = new Set(
+      (resolvedRes.data ?? []).map((r: any) => r.resolved_product_id as string),
+    );
+    const overrides = new Map<string, boolean>(
+      (overridesRes.data ?? []).map((r: any) => [r.product_id as string, r.available as boolean]),
+    );
+    const inStock = (p: Product) => overrides.get(p.id) ?? p.available !== false;
+
     setUnverified(
       ((notReassignedRes.data ?? []) as Product[])
-        .filter((p) => !confirmedIds.has(p.id))
+        .filter((p) => !confirmedIds.has(p.id) && !resolvedIds.has(p.id) && inStock(p))
         .sort((a, b) => (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true })),
     );
     setReassigned(
-      ((reassignedRes.data ?? []) as Product[]).sort((a, b) =>
-        (b.sku_reassigned_at ?? "").localeCompare(a.sku_reassigned_at ?? ""),
-      ),
+      ((reassignedRes.data ?? []) as Product[])
+        .filter(inStock)
+        .sort((a, b) => (b.sku_reassigned_at ?? "").localeCompare(a.sku_reassigned_at ?? "")),
     );
     setLoading(false);
   }, []);
