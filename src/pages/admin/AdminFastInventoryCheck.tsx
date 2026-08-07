@@ -296,11 +296,25 @@ export default function AdminFastInventoryCheck() {
             )}
             <p className="line-clamp-3 flex-1 text-base font-semibold leading-tight">{matched.title}</p>
           </Card>
+        ) : notFound ? (
+          <Card className="border-amber-400 bg-amber-50 p-2">
+            <p className="mb-2 text-center text-sm font-bold text-amber-700">
+              No product exists for SKU {sku.trim()}
+            </p>
+            <Button
+              onClick={onNotFoundClick}
+              disabled={busy}
+              className="h-14 w-full bg-amber-500 text-lg font-bold text-white hover:bg-amber-600 disabled:opacity-40"
+            >
+              <AlertTriangle className="mr-2 h-6 w-6" /> NOT FOUND — flag it
+            </Button>
+          </Card>
         ) : (
           <Card className="flex h-[104px] items-center justify-center text-base text-muted-foreground">
-            {looking && sku ? <Loader2 className="h-5 w-5 animate-spin" /> : sku ? "პროდუქტი ვერ მოიძებნა" : "აკრიფე SKU"}
+            {looking && sku ? <Loader2 className="h-5 w-5 animate-spin" /> : "აკრიფე SKU"}
           </Card>
         )}
+
       </div>
 
       {/* Keypad */}
