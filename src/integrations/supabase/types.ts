@@ -1972,6 +1972,56 @@ export type Database = {
         }
         Relationships: []
       }
+      unidentified_items: {
+        Row: {
+          actor: string | null
+          created_at: string | null
+          fingerprint_candidates: Json | null
+          fingerprint_status: string | null
+          id: string
+          photo_url: string
+          position: string | null
+          resolved_at: string | null
+          resolved_product_id: string | null
+          status: string
+          typed_sku: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string | null
+          fingerprint_candidates?: Json | null
+          fingerprint_status?: string | null
+          id?: string
+          photo_url: string
+          position?: string | null
+          resolved_at?: string | null
+          resolved_product_id?: string | null
+          status?: string
+          typed_sku: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string | null
+          fingerprint_candidates?: Json | null
+          fingerprint_status?: string | null
+          id?: string
+          photo_url?: string
+          position?: string | null
+          resolved_at?: string | null
+          resolved_product_id?: string | null
+          status?: string
+          typed_sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unidentified_items_resolved_product_id_fkey"
+            columns: ["resolved_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
