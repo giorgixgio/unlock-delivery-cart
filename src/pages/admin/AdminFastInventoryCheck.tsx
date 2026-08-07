@@ -156,15 +156,16 @@ export default function AdminFastInventoryCheck() {
   };
 
   const onRejectClick = () => {
-    if (!matched || busy) return;
+    if (busy) return;
+    if (!matched && duplicates.length < 2) return;
     fileRef.current?.click();
   };
 
   const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !matched) return;
-    const typedSku = matched.sku;
+    const typedSku = matched?.sku ?? sku.trim();
+    if (!file || !typedSku) return;
     setBusy(true);
     try {
       const compressed = await compressImage(file, 1280, 0.82);
@@ -256,7 +257,15 @@ export default function AdminFastInventoryCheck() {
                 </button>
               ))}
             </div>
+            <Button
+              onClick={onRejectClick}
+              disabled={busy}
+              className="mt-2 h-14 w-full bg-red-600 text-lg font-bold text-white hover:bg-red-700 disabled:opacity-40"
+            >
+              <X className="mr-2 h-6 w-6" /> Neither — reject
+            </Button>
           </Card>
+
         ) : matched ? (
 
           <Card className="flex h-[104px] items-center gap-3 overflow-hidden p-2">
