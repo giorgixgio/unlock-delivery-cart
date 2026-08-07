@@ -262,7 +262,7 @@ const AdminProducts = () => {
         r.sku.toLowerCase().includes(q) ||
         r.vendor.toLowerCase().includes(q)
     );
-  }, [allRows, conflictRows, oosRows, search, activeTab]);
+  }, [allRows, conflictRows, oosRows, unverifiedRows, search, activeTab]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
