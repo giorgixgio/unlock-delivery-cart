@@ -204,7 +204,7 @@ export default function AdminFastInventoryCheck() {
       if ((data as any)?.error) throw new Error((data as any).error);
       showFlash(
         "reject",
-        reason === "not_found" ? "Flagged — no product in DB" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
+        reason === "not_found" ? "მონიშნულია — ბაზაში არ არის" : "გაიგზავნა — მონიშნულია შესამოწმებლად",
       );
       setCounts((c) => ({ ...c, flagged: c.flagged + 1 }));
       reset();
