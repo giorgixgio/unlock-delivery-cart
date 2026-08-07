@@ -244,7 +244,8 @@ const AdminSkuHealth = () => {
                   ...filteredUnverified.map((p) => [
                     p.id,
                     p.title,
-                    p.sku ?? "",
+                    displaySku(p.sku),
+
                     p.bin_location ?? "",
                   ]),
                 ])
