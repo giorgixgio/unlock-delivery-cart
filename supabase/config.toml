@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.generate-product-fingerprints]
 verify_jwt = false
+
+[functions.fast-inventory-check]
+verify_jwt = false
