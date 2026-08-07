@@ -146,6 +146,10 @@ export default function AdminInventoryAudit() {
       switch (filter) {
         case "confirmed":
           return e.source === "scan";
+        case "rejected_wrong":
+          return e.source === "unidentified" && e.reason !== "not_found";
+        case "rejected_notfound":
+          return e.source === "unidentified" && e.reason === "not_found";
         case "rejected_resolved":
           return e.source === "unidentified" && e.resolution === "matched_existing";
         case "rejected_new":
@@ -168,7 +172,7 @@ export default function AdminInventoryAudit() {
 
   const exportCsv = () => {
     const header = [
-      "timestamp", "type", "typed_sku", "corrected_sku", "position",
+      "timestamp", "type", "reason", "typed_sku", "corrected_sku", "position",
       "status", "resolution", "matched_product", "actor", "notes", "photo_url",
     ];
     const lines = [header.join(",")];
@@ -176,6 +180,7 @@ export default function AdminInventoryAudit() {
       lines.push([
         new Date(e.created_at).toISOString(),
         e.source === "scan" ? "Confirmed" : "Rejected",
+        e.source === "scan" ? "" : e.reason === "not_found" ? "Not in catalog" : "Wrong item",
         e.typed_sku, e.corrected_sku, e.position,
         e.status, e.resolution, e.resolved_title, e.actor, e.notes, e.photo_url,
       ].map(csvCell).join(","));
