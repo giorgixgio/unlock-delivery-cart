@@ -257,12 +257,18 @@ const AdminSkuHealth = () => {
                   <CardContent className="flex items-center gap-3 p-3">
                     <Thumb src={p.image} alt={p.title} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
+                        <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                          Unverified
+                        </span>
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         SKU: <span className="font-mono">{p.sku || "—"}</span> · Bin:{" "}
                         <span className="font-mono">{p.bin_location || "—"}</span>
                       </p>
                     </div>
+
                   </CardContent>
                 </Card>
               ))}
