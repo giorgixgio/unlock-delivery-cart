@@ -3,6 +3,7 @@
  * Roles not listed here (admin, operator) get full access.
  */
 export const SCANNER_PATHS = [
+  "/admin/fast-check",
   "/admin/product-scan",
   "/admin/photo-review",
   "/admin/scan-history",

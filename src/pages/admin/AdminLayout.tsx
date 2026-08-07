@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/operator-stats", label: "Operator Stats", icon: BarChart3 },
   { to: "/admin/packing", label: "Packing", icon: PackageCheck },
   { to: "/admin/bin-locations", label: "Bin Locations", icon: MapPin },
+  { to: "/admin/fast-check", label: "Fast Check", icon: Zap },
   { to: "/admin/product-scan", label: "Product Scan", icon: ScanLine },
   { to: "/admin/photo-review", label: "Photo Review", icon: ImageUp },
   { to: "/admin/scan-history", label: "Scan History", icon: History },
