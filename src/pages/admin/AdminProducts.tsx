@@ -171,6 +171,8 @@ const AdminProducts = () => {
   const [bulkData, setBulkData] = useState<BulkRow[] | null>(null);
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [showOOS, setShowOOS] = useState(false);
+
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
   // SKU reassignment state
@@ -210,8 +212,16 @@ const AdminProducts = () => {
     }));
   }, [products, skuConflicts]);
 
-  const conflictRows = useMemo(() => allRows.filter(r => r.skuConflict), [allRows]);
   const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
+
+  // Base pool for every tab except "Out of Stock": hides OOS items unless the
+  // checkbox is ticked.
+  const baseRows = useMemo(
+    () => (showOOS ? allRows : allRows.filter(r => r.available)),
+    [allRows, showOOS]
+  );
+
+  const conflictRows = useMemo(() => baseRows.filter(r => r.skuConflict), [baseRows]);
 
   // Products already touched by the warehouse verification process
   // (locked SKU, confirmed by a packer scan, or resolved from the queue).
@@ -237,15 +247,22 @@ const AdminProducts = () => {
 
   const unverifiedRows = useMemo(() => {
     const set = new Set(verifiedIds || []);
-    return allRows.filter(r => !set.has(r.productId));
-  }, [allRows, verifiedIds]);
+    return baseRows.filter(r => !set.has(r.productId));
+  }, [baseRows, verifiedIds]);
+
+  const verifiedRows = useMemo(() => {
+    const set = new Set(verifiedIds || []);
+    return baseRows.filter(r => set.has(r.productId));
+  }, [baseRows, verifiedIds]);
 
   // SKU-first search
   const filtered = useMemo(() => {
     const source = activeTab === "conflicts" ? conflictRows
       : activeTab === "oos" ? oosRows
       : activeTab === "unverified" ? unverifiedRows
-      : allRows;
+      : activeTab === "verified" ? verifiedRows
+      : baseRows;
+
     const q = search.trim().toLowerCase();
     if (!q) return source;
 
@@ -262,7 +279,7 @@ const AdminProducts = () => {
         r.sku.toLowerCase().includes(q) ||
         r.vendor.toLowerCase().includes(q)
     );
-  }, [allRows, conflictRows, oosRows, unverifiedRows, search, activeTab]);
+  }, [baseRows, conflictRows, oosRows, unverifiedRows, verifiedRows, search, activeTab]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -1021,33 +1038,59 @@ const AdminProducts = () => {
 
       {/* Tabs: All Products / Conflicting SKUs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(0); }}>
-        <TabsList>
-          <TabsTrigger value="all">All Products</TabsTrigger>
-          <TabsTrigger value="oos" className="gap-1.5">
-            Out of Stock
-            {oosRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <TabsList>
+            <TabsTrigger value="all" className="gap-1.5">
+              All Products
               <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {oosRows.length}
+                {baseRows.length}
               </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="conflicts" className="gap-1.5">
-            Conflicting SKUs
-            {conflictRows.length > 0 && (
-              <Badge variant="destructive" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {conflictRows.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="unverified" className="gap-1.5">
-            Not Verified
-            {unverifiedRows.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {unverifiedRows.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+            </TabsTrigger>
+            <TabsTrigger value="oos" className="gap-1.5">
+              Out of Stock
+              {oosRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {oosRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="conflicts" className="gap-1.5">
+              Conflicting SKUs
+              {conflictRows.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {conflictRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="gap-1.5">
+              Verified
+              {verifiedRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {verifiedRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="unverified" className="gap-1.5">
+              Not Verified
+              {unverifiedRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {unverifiedRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-primary cursor-pointer"
+              checked={showOOS}
+              onChange={(e) => { setShowOOS(e.target.checked); setPage(0); }}
+            />
+            Show out of stock items
+          </label>
+        </div>
+
 
         <TabsContent value="all" className="space-y-3 mt-3">
           {/* Search */}
@@ -1067,7 +1110,7 @@ const AdminProducts = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {filtered.length} products {search && `(filtered from ${allRows.length})`}
+            {filtered.length} products {search && `(filtered from ${baseRows.length})`}
           </p>
 
           {isLoading ? (
@@ -1174,7 +1217,35 @@ const AdminProducts = () => {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="verified" className="space-y-3 mt-3">
+          <p className="text-sm text-muted-foreground">
+            {verifiedRows.length} product{verifiedRows.length === 1 ? "" : "s"} confirmed by a packer scan, resolved from the queue, or with a locked SKU.
+          </p>
+
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search verified..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              className="pl-9 h-10"
+            />
+          </div>
+
+          {renderProductTable(pageRows)}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Page {page + 1} of {totalPages}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>Next</Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
 
       {/* SKU Reassignment Dialog */}
       <Dialog open={!!reassignSku} onOpenChange={(open) => { if (!open) setReassignSku(null); }}>
