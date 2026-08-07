@@ -716,6 +716,11 @@ const AdminProducts = () => {
                       <AlertTriangle className="w-3 h-3" /> SKU Conflict
                     </Badge>
                   )}
+                  {isVerified(row) && (
+                    <Badge variant="outline" className="mt-1 text-[10px] gap-1 bg-emerald-50 text-emerald-700 border-emerald-200">
+                      <Check className="w-3 h-3" /> Verified
+                    </Badge>
+                  )}
                 </td>
                 <td className="px-1 py-2">
                   <button
