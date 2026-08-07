@@ -1038,33 +1038,59 @@ const AdminProducts = () => {
 
       {/* Tabs: All Products / Conflicting SKUs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(0); }}>
-        <TabsList>
-          <TabsTrigger value="all">All Products</TabsTrigger>
-          <TabsTrigger value="oos" className="gap-1.5">
-            Out of Stock
-            {oosRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <TabsList>
+            <TabsTrigger value="all" className="gap-1.5">
+              All Products
               <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {oosRows.length}
+                {baseRows.length}
               </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="conflicts" className="gap-1.5">
-            Conflicting SKUs
-            {conflictRows.length > 0 && (
-              <Badge variant="destructive" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {conflictRows.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="unverified" className="gap-1.5">
-            Not Verified
-            {unverifiedRows.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
-                {unverifiedRows.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+            </TabsTrigger>
+            <TabsTrigger value="oos" className="gap-1.5">
+              Out of Stock
+              {oosRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {oosRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="conflicts" className="gap-1.5">
+              Conflicting SKUs
+              {conflictRows.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {conflictRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="verified" className="gap-1.5">
+              Verified
+              {verifiedRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {verifiedRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="unverified" className="gap-1.5">
+              Not Verified
+              {unverifiedRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] h-5 min-w-5 px-1.5">
+                  {unverifiedRows.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-primary cursor-pointer"
+              checked={showOOS}
+              onChange={(e) => { setShowOOS(e.target.checked); setPage(0); }}
+            />
+            Show out of stock items
+          </label>
+        </div>
+
 
         <TabsContent value="all" className="space-y-3 mt-3">
           {/* Search */}
