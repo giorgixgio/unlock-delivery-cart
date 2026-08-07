@@ -252,26 +252,36 @@ const AdminSkuHealth = () => {
             <p className="text-sm text-muted-foreground">Nothing here.</p>
           ) : (
             <div className="space-y-2">
-              {filteredUnverified.map((p) => (
+              {filteredUnverified.map((p) => {
+                const sku = displaySku(p.sku);
+                return (
                 <Card key={p.id}>
                   <CardContent className="flex items-center gap-3 p-3">
                     <Thumb src={p.image} alt={p.title} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
-                        <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
-                          Unverified
-                        </span>
+                        {sku ? (
+                          <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                            Unverified
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                            No SKU
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        SKU: <span className="font-mono">{p.sku || "—"}</span> · Bin:{" "}
+                        SKU: <span className="font-mono">{sku || "—"}</span> · Bin:{" "}
                         <span className="font-mono">{p.bin_location || "—"}</span>
                       </p>
                     </div>
 
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
+
             </div>
           )}
         </TabsContent>
