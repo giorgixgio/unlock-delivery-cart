@@ -27,11 +27,14 @@ type Entry = {
   resolution: string | null;
   resolved_title: string | null;
   notes: string | null;
+  reason: string | null;
 };
 
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "confirmed", label: "Confirmed / Match" },
+  { value: "rejected_wrong", label: "Rejected — Wrong item" },
+  { value: "rejected_notfound", label: "Rejected — Not in catalog" },
   { value: "rejected_resolved", label: "Rejected — Resolved" },
   { value: "rejected_new", label: "Rejected — Needs New Product" },
   { value: "duplicates", label: "Duplicates Resolved" },
