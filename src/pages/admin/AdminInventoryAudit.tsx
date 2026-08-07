@@ -287,6 +287,17 @@ export default function AdminInventoryAudit() {
                   >
                     {e.source === "scan" ? "Confirmed / Match" : "Rejected"}
                   </span>
+                  {e.source === "unidentified" && (
+                    <span
+                      className={`rounded border px-2 py-0.5 text-xs font-semibold ${
+                        e.reason === "not_found"
+                          ? "border-amber-300 bg-amber-100 text-amber-800"
+                          : "border-red-300 bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {e.reason === "not_found" ? "Not in catalog" : "Wrong item"}
+                    </span>
+                  )}
                   <span className="font-mono text-base font-bold">{e.typed_sku ?? "—"}</span>
                   {e.corrected_sku && e.corrected_sku !== e.typed_sku && (
                     <span className="font-mono text-sm text-blue-700">→ {e.corrected_sku}</span>
