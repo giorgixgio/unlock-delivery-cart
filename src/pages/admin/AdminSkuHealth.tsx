@@ -116,8 +116,8 @@ const AdminSkuHealth = () => {
         supabase
           .from("product_scan_history")
           .select("confirmed_product_id")
-          .eq("status", "confirmed")
           .not("confirmed_product_id", "is", null),
+
         supabase
           .from("products")
           .select(SELECT)
