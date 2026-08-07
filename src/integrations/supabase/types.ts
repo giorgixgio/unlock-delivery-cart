@@ -1979,8 +1979,10 @@ export type Database = {
           fingerprint_candidates: Json | null
           fingerprint_status: string | null
           id: string
+          notes: string | null
           photo_url: string
           position: string | null
+          resolution: string | null
           resolved_at: string | null
           resolved_product_id: string | null
           status: string
@@ -1992,8 +1994,10 @@ export type Database = {
           fingerprint_candidates?: Json | null
           fingerprint_status?: string | null
           id?: string
+          notes?: string | null
           photo_url: string
           position?: string | null
+          resolution?: string | null
           resolved_at?: string | null
           resolved_product_id?: string | null
           status?: string
@@ -2005,8 +2009,10 @@ export type Database = {
           fingerprint_candidates?: Json | null
           fingerprint_status?: string | null
           id?: string
+          notes?: string | null
           photo_url?: string
           position?: string | null
+          resolution?: string | null
           resolved_at?: string | null
           resolved_product_id?: string | null
           status?: string
