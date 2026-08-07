@@ -266,15 +266,23 @@ Deno.serve(async (req) => {
 
       const { data: pair, error: pairErr } = await supabase
         .from("products")
-        .select("id, title")
+        .select("id, title, sku")
         .in("id", [winner_product_id, loser_product_id]);
       if (pairErr) return json(500, { error: pairErr.message });
       const winnerTitle = pair?.find((p: any) => p.id === winner_product_id)?.title ?? winner_product_id;
-      const loserTitle = pair?.find((p: any) => p.id === loser_product_id)?.title ?? loser_product_id;
+      const loserRow = pair?.find((p: any) => p.id === loser_product_id);
+      const loserTitle = loserRow?.title ?? loser_product_id;
 
       const { error: loserErr } = await supabase
         .from("products")
-        .update({ sku: newSku, bin_location: newSku, sku_locked: true })
+        .update({
+          sku: newSku,
+          bin_location: newSku,
+          sku_locked: true,
+          sku_reassigned: true,
+          previous_sku: loserRow?.sku ?? String(sku).trim(),
+          sku_reassigned_at: new Date().toISOString(),
+        })
         .eq("id", loser_product_id);
       if (loserErr) return json(500, { error: loserErr.message });
 
