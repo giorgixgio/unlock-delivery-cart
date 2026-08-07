@@ -254,7 +254,7 @@ export default function AdminFastInventoryCheck() {
         ) : duplicates.length > 1 ? (
           <Card className="p-2">
             <p className="mb-2 text-center text-sm font-bold text-amber-600">
-              Duplicate SKU — tap the correct product
+              დუბლირებული SKU — აირჩიე სწორი პროდუქტი
             </p>
             <div className="grid grid-cols-2 gap-2">
               {duplicates.map((p) => (
@@ -268,7 +268,7 @@ export default function AdminFastInventoryCheck() {
                     <img src={p.image} alt={p.title} className="h-20 w-full rounded object-cover" loading="lazy" />
                   ) : (
                     <div className="flex h-20 w-full items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                      no photo
+                      ფოტო არ არის
                     </div>
                   )}
                   <span className="line-clamp-2 text-xs font-semibold leading-tight">{p.title}</span>
@@ -280,7 +280,7 @@ export default function AdminFastInventoryCheck() {
               disabled={busy}
               className="mt-2 h-14 w-full bg-red-600 text-lg font-bold text-white hover:bg-red-700 disabled:opacity-40"
             >
-              <X className="mr-2 h-6 w-6" /> Neither — reject
+              <X className="mr-2 h-6 w-6" /> არცერთი — უარყოფა
             </Button>
           </Card>
 
@@ -291,7 +291,7 @@ export default function AdminFastInventoryCheck() {
               <img src={matched.image} alt={matched.title} className="h-full w-24 rounded object-cover" loading="lazy" />
             ) : (
               <div className="flex h-full w-24 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                no photo
+                ფოტო არ არის
               </div>
             )}
             <p className="line-clamp-3 flex-1 text-base font-semibold leading-tight">{matched.title}</p>
@@ -299,14 +299,14 @@ export default function AdminFastInventoryCheck() {
         ) : notFound ? (
           <Card className="border-amber-400 bg-amber-50 p-2">
             <p className="mb-2 text-center text-sm font-bold text-amber-700">
-              No product exists for SKU {sku.trim()}
+              SKU {sku.trim()} ბაზაში არ არსებობს
             </p>
             <Button
               onClick={onNotFoundClick}
               disabled={busy}
               className="h-14 w-full bg-amber-500 text-lg font-bold text-white hover:bg-amber-600 disabled:opacity-40"
             >
-              <AlertTriangle className="mr-2 h-6 w-6" /> NOT FOUND — flag it
+              <AlertTriangle className="mr-2 h-6 w-6" /> ვერ მოიძებნა — მონიშნე
             </Button>
           </Card>
         ) : (
