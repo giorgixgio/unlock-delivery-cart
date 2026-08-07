@@ -203,9 +203,17 @@ Deno.serve(async (req) => {
 
       const { data: products, error: lookupErr } = await supabase
         .from("products")
-        .select("id, sku, title")
-        .ilike("sku", String(sku).trim());
+        .select("id, sku, title, image")
+        .eq("sku", String(sku).trim())
+        .order("id", { ascending: true });
       if (lookupErr) return json(500, { error: lookupErr.message });
+
+      if ((products?.length ?? 0) > 1) {
+        return json(200, {
+          status: "duplicate",
+          products: products!.map((p: any) => ({ id: p.id, sku: p.sku, title: p.title, image: p.image || null })),
+        });
+      }
 
       const product = products?.[0];
       if (!product) {
@@ -233,6 +241,64 @@ Deno.serve(async (req) => {
 
       return json(200, { ok: true });
     }
+
+    // ── RESOLVE DUPLICATE ──────────────────────────────────────
+    if (action === "resolve_duplicate") {
+      const { sku, position, winner_product_id, loser_product_id, actor } = body;
+      if (!sku || !position || !winner_product_id || !loser_product_id) {
+        return json(400, { error: "sku, position, winner_product_id and loser_product_id required" });
+      }
+
+      const { data: skuRows, error: skuErr } = await supabase
+        .from("products")
+        .select("sku")
+        .not("sku", "is", null);
+      if (skuErr) return json(500, { error: skuErr.message });
+
+      let maxNum = 0;
+      for (const r of skuRows || []) {
+        const s = String(r.sku ?? "").trim();
+        if (/^\d+$/.test(s)) maxNum = Math.max(maxNum, parseInt(s, 10));
+      }
+      const newSku = String(maxNum + 1);
+
+      const { data: pair, error: pairErr } = await supabase
+        .from("products")
+        .select("id, title")
+        .in("id", [winner_product_id, loser_product_id]);
+      if (pairErr) return json(500, { error: pairErr.message });
+      const winnerTitle = pair?.find((p: any) => p.id === winner_product_id)?.title ?? winner_product_id;
+      const loserTitle = pair?.find((p: any) => p.id === loser_product_id)?.title ?? loser_product_id;
+
+      const { error: loserErr } = await supabase
+        .from("products")
+        .update({ sku: newSku, bin_location: newSku })
+        .eq("id", loser_product_id);
+      if (loserErr) return json(500, { error: loserErr.message });
+
+      const { error: winErr } = await supabase
+        .from("products")
+        .update({ bin_location: String(position) })
+        .eq("id", winner_product_id);
+      if (winErr) return json(500, { error: winErr.message });
+
+      const { error: histErr } = await supabase
+        .from("product_scan_history")
+        .upsert({
+          actor: actor ?? null,
+          typed_sku: String(sku).trim(),
+          position: String(position),
+          photo_url: "",
+          status: "confirmed",
+          confirmed_product_id: winner_product_id,
+          corrected_sku: String(sku).trim(),
+          notes: `Duplicate SKU resolved via Fast Check: kept ${String(sku).trim()} for ${winnerTitle}; reassigned ${loserTitle} to ${newSku}`,
+        }, { onConflict: "typed_sku" });
+      if (histErr) return json(500, { error: histErr.message });
+
+      return json(200, { ok: true, new_sku: newSku, loser_title: loserTitle });
+    }
+
 
     // ── REJECT ─────────────────────────────────────────────────
     if (action === "reject") {
