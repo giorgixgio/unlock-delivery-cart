@@ -1110,7 +1110,7 @@ const AdminProducts = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {filtered.length} products {search && `(filtered from ${allRows.length})`}
+            {filtered.length} products {search && `(filtered from ${baseRows.length})`}
           </p>
 
           {isLoading ? (
