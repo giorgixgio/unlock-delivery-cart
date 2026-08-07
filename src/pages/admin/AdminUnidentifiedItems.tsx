@@ -30,12 +30,28 @@ type Row = {
   resolved_at: string | null;
   resolution: string | null;
   notes: string | null;
+  reason: string | null;
 };
 
 type ProductLite = { id: string; sku: string | null; title: string; image: string | null };
 
 const SELECT =
-  "id, created_at, typed_sku, position, photo_url, actor, status, fingerprint_candidates, fingerprint_status, resolved_product_id, resolved_at, resolution, notes";
+  "id, created_at, typed_sku, position, photo_url, actor, status, fingerprint_candidates, fingerprint_status, resolved_product_id, resolved_at, resolution, notes, reason";
+
+function ReasonBadge({ reason }: { reason: string | null }) {
+  const notFound = reason === "not_found";
+  return (
+    <span
+      className={`rounded border px-2 py-0.5 text-xs font-semibold ${
+        notFound
+          ? "border-amber-300 bg-amber-100 text-amber-800"
+          : "border-red-300 bg-red-100 text-red-800"
+      }`}
+    >
+      {notFound ? "Not in catalog" : "Wrong item"}
+    </span>
+  );
+}
 
 function normalize(raw: any): Row {
   return {

@@ -4,7 +4,7 @@ import { compressImage } from "@/lib/imageCompression";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Check, X, Delete, Loader2, Zap } from "lucide-react";
+import { Check, X, Delete, Loader2, Zap, AlertTriangle } from "lucide-react";
 
 type MatchedProduct = { id: string; sku: string; title: string; image: string | null };
 
