@@ -226,11 +226,11 @@ export default function AdminFastInventoryCheck() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-3 p-3 select-none">
       <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5 text-foreground">
-          <Zap className="h-4 w-4" /> Fast Check
+          <Zap className="h-4 w-4" /> სწრაფი შემოწმება
         </span>
         <span>
-          <span className="text-green-600 font-bold">{counts.confirmed}</span> confirmed ·{" "}
-          <span className="text-red-600 font-bold">{counts.flagged}</span> flagged today
+          <span className="text-green-600 font-bold">{counts.confirmed}</span> დადასტურდა ·{" "}
+          <span className="text-red-600 font-bold">{counts.flagged}</span> მონიშნული დღეს
         </span>
       </div>
 
