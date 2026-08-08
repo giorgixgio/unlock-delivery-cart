@@ -267,6 +267,21 @@ const AdminSkuHealth = () => {
             </div>
             <Button
               variant="outline"
+              size="sm"
+              onClick={() => setShowHidden((s) => !s)}
+              className={showHidden ? "bg-muted" : ""}
+            >
+              {showHidden ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+              {showHidden ? "Hide hidden" : "Show hidden"} ({hiddenIds.size})
+            </Button>
+            {hiddenIds.size > 0 && (
+              <Button variant="outline" size="sm" onClick={unhideAll}>
+                Unhide all
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() =>
                 downloadCsv("unverified_skus.csv", [
                   ["id", "title", "sku", "bin_location"],
