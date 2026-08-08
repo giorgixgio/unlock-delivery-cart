@@ -118,6 +118,8 @@ const AdminSkuHealth = () => {
   const [reassigned, setReassigned] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
   const [qReassigned, setQReassigned] = useState("");
+  const [checking, setChecking] = useState<SkuCheckProduct | null>(null);
+
 
   const load = useCallback(async () => {
     setLoading(true);
