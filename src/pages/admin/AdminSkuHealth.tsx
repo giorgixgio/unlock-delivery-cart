@@ -340,6 +340,23 @@ const AdminSkuHealth = () => {
                         <span className="font-mono">{p.bin_location || "—"}</span>
                       </p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={hiddenIds.has(p.id) ? "Unhide row" : "Hide row"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hiddenIds.has(p.id)) unhideRow(p.id);
+                        else hideRow(p.id);
+                      }}
+                    >
+                      {hiddenIds.has(p.id) ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
 
