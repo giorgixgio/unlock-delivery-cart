@@ -122,15 +122,13 @@ const isRealSku = (sku?: string | null) => {
 const AdminSkuHealth = () => {
   const [loading, setLoading] = useState(true);
   const [unverified, setUnverified] = useState<Product[]>([]);
-  const [reassigned, setReassigned] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
-  const [qReassigned, setQReassigned] = useState("");
   const [checking, setChecking] = useState<SkuCheckProduct | null>(null);
 
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [confirmedRes, notReassignedRes, reassignedRes, resolvedRes, overridesRes] =
+    const [confirmedRes, notReassignedRes, resolvedRes, overridesRes] =
       await Promise.all([
         supabase
           .from("product_scan_history")
@@ -138,7 +136,6 @@ const AdminSkuHealth = () => {
           .not("confirmed_product_id", "is", null),
 
         supabase.from("products").select(SELECT),
-        supabase.from("products").select(SELECT).eq("sku_reassigned", true),
 
         supabase
           .from("unidentified_items")
@@ -151,9 +148,9 @@ const AdminSkuHealth = () => {
     const err =
       confirmedRes.error ||
       notReassignedRes.error ||
-      reassignedRes.error ||
       resolvedRes.error ||
       overridesRes.error;
+
     if (err) {
       toast({ title: "Load failed", description: err.message, variant: "destructive" });
       setLoading(false);
@@ -181,12 +178,8 @@ const AdminSkuHealth = () => {
           return (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true });
         }),
     );
-    setReassigned(
-      ((reassignedRes.data ?? []) as Product[])
-        .filter(inStock)
-        .sort((a, b) => (b.sku_reassigned_at ?? "").localeCompare(a.sku_reassigned_at ?? "")),
-    );
     setLoading(false);
+
   }, []);
 
   useEffect(() => {
@@ -204,16 +197,6 @@ const AdminSkuHealth = () => {
     );
   }, [unverified, qUnverified]);
 
-  const filteredReassigned = useMemo(() => {
-    const t = qReassigned.trim().toLowerCase();
-    if (!t) return reassigned;
-    return reassigned.filter(
-      (p) =>
-        p.title.toLowerCase().includes(t) ||
-        (p.sku ?? "").toLowerCase().includes(t) ||
-        (p.previous_sku ?? "").toLowerCase().includes(t),
-    );
-  }, [reassigned, qReassigned]);
 
   return (
     <div className="space-y-4 p-4">
@@ -228,12 +211,6 @@ const AdminSkuHealth = () => {
             Unverified Original SKUs
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
               {unverified.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="reassigned">
-            Reassigned SKUs
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
-              {reassigned.length}
             </span>
           </TabsTrigger>
         </TabsList>
@@ -319,75 +296,6 @@ const AdminSkuHealth = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="reassigned" className="space-y-3 pt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={qReassigned}
-                onChange={(e) => setQReassigned(e.target.value)}
-                placeholder="Search title, SKU, previous SKU…"
-                className="pl-8 text-base"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={() =>
-                downloadCsv("reassigned_skus.csv", [
-                  ["id", "title", "sku", "previous_sku", "bin_location", "sku_reassigned_at"],
-                  ...filteredReassigned.map((p) => [
-                    p.id,
-                    p.title,
-                    p.sku ?? "",
-                    p.previous_sku ?? "",
-                    p.bin_location ?? "",
-                    p.sku_reassigned_at ?? "",
-                  ]),
-                ])
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-
-          {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : filteredReassigned.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing here.</p>
-          ) : (
-            <div className="space-y-2">
-              {filteredReassigned.map((p) => (
-                <Card key={p.id}>
-                  <CardContent className="flex flex-wrap items-center gap-3 p-3">
-                    <Thumb src={p.image} alt={p.title} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">{p.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        SKU: <span className="font-mono">{p.sku || "—"}</span> · was{" "}
-                        <span className="font-mono line-through">{p.previous_sku || "—"}</span> ·
-                        Bin: <span className="font-mono">{p.bin_location || "—"}</span>
-                      </p>
-                      {p.sku_reassigned_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(p.sku_reassigned_at).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                    <BinInput
-                      product={p}
-                      onSaved={(bin) =>
-                        setReassigned((prev) =>
-                          prev.map((x) => (x.id === p.id ? { ...x, bin_location: bin } : x)),
-                        )
-                      }
-                    />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
 
       <SkuCheckDialog
