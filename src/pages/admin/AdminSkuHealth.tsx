@@ -122,15 +122,13 @@ const isRealSku = (sku?: string | null) => {
 const AdminSkuHealth = () => {
   const [loading, setLoading] = useState(true);
   const [unverified, setUnverified] = useState<Product[]>([]);
-  const [reassigned, setReassigned] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
-  const [qReassigned, setQReassigned] = useState("");
   const [checking, setChecking] = useState<SkuCheckProduct | null>(null);
 
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [confirmedRes, notReassignedRes, reassignedRes, resolvedRes, overridesRes] =
+    const [confirmedRes, notReassignedRes, resolvedRes, overridesRes] =
       await Promise.all([
         supabase
           .from("product_scan_history")
@@ -138,7 +136,6 @@ const AdminSkuHealth = () => {
           .not("confirmed_product_id", "is", null),
 
         supabase.from("products").select(SELECT),
-        supabase.from("products").select(SELECT).eq("sku_reassigned", true),
 
         supabase
           .from("unidentified_items")
@@ -151,9 +148,9 @@ const AdminSkuHealth = () => {
     const err =
       confirmedRes.error ||
       notReassignedRes.error ||
-      reassignedRes.error ||
       resolvedRes.error ||
       overridesRes.error;
+
     if (err) {
       toast({ title: "Load failed", description: err.message, variant: "destructive" });
       setLoading(false);
