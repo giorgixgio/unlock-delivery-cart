@@ -181,12 +181,8 @@ const AdminSkuHealth = () => {
           return (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true });
         }),
     );
-    setReassigned(
-      ((reassignedRes.data ?? []) as Product[])
-        .filter(inStock)
-        .sort((a, b) => (b.sku_reassigned_at ?? "").localeCompare(a.sku_reassigned_at ?? "")),
-    );
     setLoading(false);
+
   }, []);
 
   useEffect(() => {
