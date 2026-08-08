@@ -225,14 +225,16 @@ const AdminSkuHealth = () => {
 
   const filteredUnverified = useMemo(() => {
     const t = qUnverified.trim().toLowerCase();
-    if (!t) return unverified;
-    return unverified.filter(
-      (p) =>
-        p.title.toLowerCase().includes(t) ||
-        (p.sku ?? "").toLowerCase().includes(t) ||
-        (p.bin_location ?? "").toLowerCase().includes(t),
-    );
-  }, [unverified, qUnverified]);
+    return unverified
+      .filter((p) => showHidden || !hiddenIds.has(p.id))
+      .filter(
+        (p) =>
+          !t ||
+          p.title.toLowerCase().includes(t) ||
+          (p.sku ?? "").toLowerCase().includes(t) ||
+          (p.bin_location ?? "").toLowerCase().includes(t),
+      );
+  }, [unverified, qUnverified, hiddenIds, showHidden]);
 
 
   return (
