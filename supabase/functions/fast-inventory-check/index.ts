@@ -251,18 +251,20 @@ Deno.serve(async (req) => {
         return json(400, { error: "sku, position, winner_product_id and loser_product_id required" });
       }
 
+      const base = String(sku).trim();
+
       const { data: skuRows, error: skuErr } = await supabase
         .from("products")
         .select("sku")
         .not("sku", "is", null);
       if (skuErr) return json(500, { error: skuErr.message });
 
-      let maxNum = 0;
-      for (const r of skuRows || []) {
-        const s = String(r.sku ?? "").trim();
-        if (/^\d+$/.test(s)) maxNum = Math.max(maxNum, parseInt(s, 10));
-      }
-      const newSku = String(maxNum + 1);
+      // Duplicates keep the same base SKU with a _1 / _2 / ... suffix.
+      const taken = new Set((skuRows || []).map((r: any) => String(r.sku ?? "").trim()));
+      let suffix = 1;
+      while (taken.has(`${base}_${suffix}`)) suffix++;
+      const newSku = `${base}_${suffix}`;
+
 
       const { data: pair, error: pairErr } = await supabase
         .from("products")
