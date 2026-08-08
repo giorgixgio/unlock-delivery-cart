@@ -230,12 +230,6 @@ const AdminSkuHealth = () => {
               {unverified.length}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="reassigned">
-            Reassigned SKUs
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
-              {reassigned.length}
-            </span>
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="unverified" className="space-y-3 pt-4">
