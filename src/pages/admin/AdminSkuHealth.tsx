@@ -126,6 +126,41 @@ const AdminSkuHealth = () => {
   const [unverified, setUnverified] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
   const [checking, setChecking] = useState<SkuCheckProduct | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"));
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [showHidden, setShowHidden] = useState(false);
+
+  const persistHidden = useCallback((next: Set<string>) => {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next)));
+    setHiddenIds(next);
+  }, []);
+
+  const hideRow = useCallback(
+    (id: string) => {
+      const next = new Set(hiddenIds);
+      next.add(id);
+      persistHidden(next);
+    },
+    [hiddenIds, persistHidden],
+  );
+
+  const unhideRow = useCallback(
+    (id: string) => {
+      const next = new Set(hiddenIds);
+      next.delete(id);
+      persistHidden(next);
+    },
+    [hiddenIds, persistHidden],
+  );
+
+  const unhideAll = useCallback(() => {
+    persistHidden(new Set<string>());
+  }, [persistHidden]);
 
 
   const load = useCallback(async () => {
