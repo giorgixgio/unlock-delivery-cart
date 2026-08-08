@@ -176,7 +176,12 @@ const AdminSkuHealth = () => {
     setUnverified(
       ((notReassignedRes.data ?? []) as Product[])
         .filter((p) => !confirmedIds.has(p.id) && !resolvedIds.has(p.id) && inStock(p))
-        .sort((a, b) => (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true })),
+        .sort((a, b) => {
+          const aReal = isRealSku(a.sku);
+          const bReal = isRealSku(b.sku);
+          if (aReal !== bReal) return aReal ? -1 : 1;
+          return (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true });
+        }),
     );
     setReassigned(
       ((reassignedRes.data ?? []) as Product[])
