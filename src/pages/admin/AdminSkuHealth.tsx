@@ -111,6 +111,13 @@ const displaySku = (sku?: string | null) => {
   return s;
 };
 
+const isRealSku = (sku?: string | null) => {
+  const s = (sku ?? "").trim();
+  if (!s) return false;
+  if (/^\d+$/.test(s) && Number(s) >= 1000) return false;
+  return true;
+};
+
 
 const AdminSkuHealth = () => {
   const [loading, setLoading] = useState(true);
