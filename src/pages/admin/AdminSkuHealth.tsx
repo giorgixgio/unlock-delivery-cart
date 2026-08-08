@@ -268,7 +268,17 @@ const AdminSkuHealth = () => {
               {filteredUnverified.map((p) => {
                 const sku = displaySku(p.sku);
                 return (
-                <Card key={p.id}>
+                <Card
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setChecking({ id: p.id, title: p.title, sku: p.sku, image: p.image })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      setChecking({ id: p.id, title: p.title, sku: p.sku, image: p.image });
+                  }}
+                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                >
                   <CardContent className="flex items-center gap-3 p-3">
                     <Thumb src={p.image} alt={p.title} />
                     <div className="min-w-0 flex-1">
@@ -289,9 +299,9 @@ const AdminSkuHealth = () => {
                         <span className="font-mono">{p.bin_location || "—"}</span>
                       </p>
                     </div>
-
                   </CardContent>
                 </Card>
+
                 );
               })}
 
