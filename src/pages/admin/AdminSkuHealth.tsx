@@ -111,6 +111,13 @@ const displaySku = (sku?: string | null) => {
   return s;
 };
 
+const isRealSku = (sku?: string | null) => {
+  const s = (sku ?? "").trim();
+  if (!s) return false;
+  if (/^\d+$/.test(s) && Number(s) >= 1000) return false;
+  return true;
+};
+
 
 const AdminSkuHealth = () => {
   const [loading, setLoading] = useState(true);
@@ -169,7 +176,12 @@ const AdminSkuHealth = () => {
     setUnverified(
       ((notReassignedRes.data ?? []) as Product[])
         .filter((p) => !confirmedIds.has(p.id) && !resolvedIds.has(p.id) && inStock(p))
-        .sort((a, b) => (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true })),
+        .sort((a, b) => {
+          const aReal = isRealSku(a.sku);
+          const bReal = isRealSku(b.sku);
+          if (aReal !== bReal) return aReal ? -1 : 1;
+          return (a.sku ?? "").localeCompare(b.sku ?? "", undefined, { numeric: true });
+        }),
     );
     setReassigned(
       ((reassignedRes.data ?? []) as Product[])
