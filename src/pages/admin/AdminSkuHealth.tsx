@@ -204,16 +204,6 @@ const AdminSkuHealth = () => {
     );
   }, [unverified, qUnverified]);
 
-  const filteredReassigned = useMemo(() => {
-    const t = qReassigned.trim().toLowerCase();
-    if (!t) return reassigned;
-    return reassigned.filter(
-      (p) =>
-        p.title.toLowerCase().includes(t) ||
-        (p.sku ?? "").toLowerCase().includes(t) ||
-        (p.previous_sku ?? "").toLowerCase().includes(t),
-    );
-  }, [reassigned, qReassigned]);
 
   return (
     <div className="space-y-4 p-4">
