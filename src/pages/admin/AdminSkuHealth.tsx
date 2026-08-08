@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, HeartPulse, Loader2, Search } from "lucide-react";
+import SkuCheckDialog, { type SkuCheckProduct } from "@/components/admin/SkuCheckDialog";
 
 /** SKU Health — products never verified, and products whose SKU was reassigned. */
 
