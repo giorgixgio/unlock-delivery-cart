@@ -379,7 +379,14 @@ const AdminSkuHealth = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      <SkuCheckDialog
+        product={checking}
+        onClose={() => setChecking(null)}
+        onDone={(id) => setUnverified((prev) => prev.filter((x) => x.id !== id))}
+      />
     </div>
+
   );
 };
 
