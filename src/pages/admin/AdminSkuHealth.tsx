@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, HeartPulse, Loader2, Search } from "lucide-react";
+import { Download, Eye, EyeOff, HeartPulse, Loader2, Search, X } from "lucide-react";
 import SkuCheckDialog, { type SkuCheckProduct } from "@/components/admin/SkuCheckDialog";
+
+const HIDDEN_KEY = "skuHealth:hiddenIds";
 
 /** SKU Health — products never verified, and products whose SKU was reassigned. */
 
@@ -124,6 +126,41 @@ const AdminSkuHealth = () => {
   const [unverified, setUnverified] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
   const [checking, setChecking] = useState<SkuCheckProduct | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"));
+    } catch {
+      return new Set<string>();
+    }
+  });
+  const [showHidden, setShowHidden] = useState(false);
+
+  const persistHidden = useCallback((next: Set<string>) => {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next)));
+    setHiddenIds(next);
+  }, []);
+
+  const hideRow = useCallback(
+    (id: string) => {
+      const next = new Set(hiddenIds);
+      next.add(id);
+      persistHidden(next);
+    },
+    [hiddenIds, persistHidden],
+  );
+
+  const unhideRow = useCallback(
+    (id: string) => {
+      const next = new Set(hiddenIds);
+      next.delete(id);
+      persistHidden(next);
+    },
+    [hiddenIds, persistHidden],
+  );
+
+  const unhideAll = useCallback(() => {
+    persistHidden(new Set<string>());
+  }, [persistHidden]);
 
 
   const load = useCallback(async () => {
@@ -188,14 +225,16 @@ const AdminSkuHealth = () => {
 
   const filteredUnverified = useMemo(() => {
     const t = qUnverified.trim().toLowerCase();
-    if (!t) return unverified;
-    return unverified.filter(
-      (p) =>
-        p.title.toLowerCase().includes(t) ||
-        (p.sku ?? "").toLowerCase().includes(t) ||
-        (p.bin_location ?? "").toLowerCase().includes(t),
-    );
-  }, [unverified, qUnverified]);
+    return unverified
+      .filter((p) => showHidden || !hiddenIds.has(p.id))
+      .filter(
+        (p) =>
+          !t ||
+          p.title.toLowerCase().includes(t) ||
+          (p.sku ?? "").toLowerCase().includes(t) ||
+          (p.bin_location ?? "").toLowerCase().includes(t),
+      );
+  }, [unverified, qUnverified, hiddenIds, showHidden]);
 
 
   return (
@@ -228,6 +267,21 @@ const AdminSkuHealth = () => {
             </div>
             <Button
               variant="outline"
+              size="sm"
+              onClick={() => setShowHidden((s) => !s)}
+              className={showHidden ? "bg-muted" : ""}
+            >
+              {showHidden ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+              {showHidden ? "Hide hidden" : "Show hidden"} ({hiddenIds.size})
+            </Button>
+            {hiddenIds.size > 0 && (
+              <Button variant="outline" size="sm" onClick={unhideAll}>
+                Unhide all
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() =>
                 downloadCsv("unverified_skus.csv", [
                   ["id", "title", "sku", "bin_location"],
@@ -286,6 +340,23 @@ const AdminSkuHealth = () => {
                         <span className="font-mono">{p.bin_location || "—"}</span>
                       </p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={hiddenIds.has(p.id) ? "Unhide row" : "Hide row"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hiddenIds.has(p.id)) unhideRow(p.id);
+                        else hideRow(p.id);
+                      }}
+                    >
+                      {hiddenIds.has(p.id) ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
 
