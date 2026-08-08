@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, HeartPulse, Loader2, Search } from "lucide-react";
+import { Download, Eye, EyeOff, HeartPulse, Loader2, Search, X } from "lucide-react";
 import SkuCheckDialog, { type SkuCheckProduct } from "@/components/admin/SkuCheckDialog";
+
+const HIDDEN_KEY = "skuHealth:hiddenIds";
 
 /** SKU Health — products never verified, and products whose SKU was reassigned. */
 
