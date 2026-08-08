@@ -137,11 +137,9 @@ const AdminSkuHealth = () => {
           .select("confirmed_product_id")
           .not("confirmed_product_id", "is", null),
 
-        supabase
-          .from("products")
-          .select(SELECT)
-          .or("sku_reassigned.is.null,sku_reassigned.eq.false"),
+        supabase.from("products").select(SELECT),
         supabase.from("products").select(SELECT).eq("sku_reassigned", true),
+
         supabase
           .from("unidentified_items")
           .select("resolved_product_id")
