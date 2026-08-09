@@ -323,12 +323,15 @@ const GenericLanding = ({
           <LandingBulletDescription description={product.description} />
         )}
 
-        {/* Quantity selector */}
-        <LandingQuantitySelector
-          unitPrice={product.price}
-          selectedQty={selectedQty}
-          onSelect={setSelectedQty}
-        />
+        {/* Quantity selector (hidden while the 1+1 offer fixes qty at 2) */}
+        {!onePlusOneEnabled && (
+          <LandingQuantitySelector
+            unitPrice={product.price}
+            selectedQty={selectedQty}
+            onSelect={setSelectedQty}
+          />
+        )}
+
 
         {/* Reviews */}
         <LandingReviews />
