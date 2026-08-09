@@ -31,6 +31,8 @@ import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderReco
 import { trackEvent } from "@/lib/analytics";
 import SingleUpsellSheet from "@/components/landing/SingleUpsellSheet";
 import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
+import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
+
 
 
 const ProductLanding = () => {
@@ -117,6 +119,8 @@ const ProductLanding = () => {
       product={product}
       landingSlug={landingSlug || slug || ""}
       upsellOverride={landingConfig?.landing_upsell_enabled ?? null}
+      onePlusOneEnabled={landingConfig?.offer_1plus1_enabled ?? false}
+      offerTimerMinutes={landingConfig?.offer_timer_minutes ?? 59}
     />
   );
 };
@@ -126,11 +130,16 @@ const GenericLanding = ({
   product,
   landingSlug,
   upsellOverride,
+  onePlusOneEnabled,
+  offerTimerMinutes,
 }: {
   product: Product;
   landingSlug: string;
   upsellOverride: boolean | null;
+  onePlusOneEnabled: boolean;
+  offerTimerMinutes: number;
 }) => {
+
   const navigate = useNavigate();
   const { data: allProducts = [] } = useProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
@@ -153,9 +162,14 @@ const GenericLanding = ({
   const badges = getDemoBadges(product.id);
 
   const [selectedQty, setSelectedQty] = useState(1);
-  const totalPrice = getDiscountedTotal(product.price, selectedQty);
-  
-  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
+
+  // 1+1 offer: 2 units for the price of one (50% off the 2-unit total)
+  const effectiveQty = onePlusOneEnabled ? 2 : selectedQty;
+  const qtyDiscountPct = onePlusOneEnabled ? 50 : getQtyDiscountPct(selectedQty);
+  const totalPrice = onePlusOneEnabled
+    ? product.price
+    : getDiscountedTotal(product.price, selectedQty);
+
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
@@ -249,7 +263,20 @@ const GenericLanding = ({
         className="container max-w-lg mx-auto px-4 space-y-5"
         style={{ paddingTop: "calc(28px + env(safe-area-inset-top))" }}
       >
+        {/* 1+1 sticky offer banner (per-product) */}
+        {onePlusOneEnabled && !repeatBlocked && (
+          <div className="sticky top-[80px] z-30 -mx-1 px-1 pt-1">
+            <OnePlusOneOffer
+              slug={product.handle || landingSlug}
+              unitPrice={product.price}
+              timerMinutes={offerTimerMinutes}
+              onOrder={handleCTA}
+            />
+          </div>
+        )}
+
         {/* Product image slider */}
+
         <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title}>
           {discount > 0 && (
             <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
@@ -276,12 +303,16 @@ const GenericLanding = ({
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
             <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
             {(qtyDiscountPct > 0 || discount > 0) && (
-              <span className="text-base text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
+              <span className="text-base text-muted-foreground line-through">{(oldPrice * effectiveQty).toFixed(0)} ₾</span>
             )}
             {qtyDiscountPct > 0 && (
               <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{qtyDiscountPct}%</span>
             )}
+            {onePlusOneEnabled && (
+              <span className="text-xs font-bold text-destructive">2 ცალი ერთი ფასად</span>
+            )}
           </div>
+
         </div>
 
         {/* Trust row */}
@@ -292,12 +323,15 @@ const GenericLanding = ({
           <LandingBulletDescription description={product.description} />
         )}
 
-        {/* Quantity selector */}
-        <LandingQuantitySelector
-          unitPrice={product.price}
-          selectedQty={selectedQty}
-          onSelect={setSelectedQty}
-        />
+        {/* Quantity selector (hidden while the 1+1 offer fixes qty at 2) */}
+        {!onePlusOneEnabled && (
+          <LandingQuantitySelector
+            unitPrice={product.price}
+            selectedQty={selectedQty}
+            onSelect={setSelectedQty}
+          />
+        )}
+
 
         {/* Reviews */}
         <LandingReviews />
@@ -312,8 +346,8 @@ const GenericLanding = ({
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
-                {selectedQty > 1 && (
-                  <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+                {effectiveQty > 1 && (
+                  <p className="text-[10px] text-muted-foreground">{effectiveQty} ცალი</p>
                 )}
               </div>
               <Button
@@ -321,8 +355,10 @@ const GenericLanding = ({
                 className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
                 size="lg"
               >
-                <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
               </Button>
+
             </div>
           )}
         </div>
@@ -333,7 +369,7 @@ const GenericLanding = ({
         open={codOpen}
         onClose={() => setCodOpen(false)}
         product={product}
-        quantity={selectedQty}
+        quantity={effectiveQty}
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="generic"
@@ -385,7 +421,7 @@ const GenericLanding = ({
         orderTotal={pendingOrderTotal}
         deliveryFee={deliveryFee}
         productId={product.id}
-        quantity={selectedQty}
+        quantity={effectiveQty}
         unitPrice={product.price}
         landingSlug={landingSlug}
         onComplete={handleAddressComplete}
