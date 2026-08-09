@@ -265,7 +265,7 @@ const GenericLanding = ({
       >
         {/* 1+1 sticky offer banner (per-product) */}
         {onePlusOneEnabled && !repeatBlocked && (
-          <div className="sticky top-[80px] z-30 -mx-1 px-1 pt-1">
+          <div className="sticky top-[80px] z-30 pt-1">
             <OnePlusOneOffer
               slug={product.handle || landingSlug}
               unitPrice={product.price}
