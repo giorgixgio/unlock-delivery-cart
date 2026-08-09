@@ -1,4 +1,4 @@
-import { Check, Plus, Search } from "lucide-react";
+import { Check, Plus, Search, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
 
 interface BundleTileProps {
@@ -6,10 +6,12 @@ interface BundleTileProps {
   selected: boolean;
   onToggle: () => void;
   onQuickView?: () => void;
+  /** Highlighted as the product the visitor arrived for (?featured=SKU). */
+  featured?: boolean;
 }
 
 /** Hybrid tile: card body opens quick view, the big button adds/removes instantly. */
-const BundleTile = ({ product, selected, onToggle, onQuickView }: BundleTileProps) => {
+const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: BundleTileProps) => {
   return (
     <div
       role="button"
@@ -24,7 +26,7 @@ const BundleTile = ({ product, selected, onToggle, onQuickView }: BundleTileProp
       aria-label={`${product.title} — დეტალურად`}
       className={`bnd-card relative w-full text-left overflow-hidden transition-all active:scale-[0.98] cursor-pointer ${
         selected ? "bnd-card-selected" : ""
-      }`}
+      } ${featured ? "ring-2 ring-[#ff6b00] shadow-[0_10px_30px_rgba(255,107,0,.25)]" : ""}`}
     >
       <div className="relative aspect-square bg-[#f2f2f7]">
         <img
@@ -33,6 +35,12 @@ const BundleTile = ({ product, selected, onToggle, onQuickView }: BundleTileProp
           loading="lazy"
           className="w-full h-full object-cover"
         />
+        {featured && (
+          <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] px-2 py-1 rounded-full shadow-[0_4px_14px_rgba(255,107,0,.45)]">
+            <Star className="w-3 h-3" strokeWidth={3} />
+            თქვენთვის შერჩეული
+          </span>
+        )}
         <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[#0b0b12] bg-white/92 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm">
           <Search className="w-3 h-3" strokeWidth={3} />
           დეტალურად
