@@ -160,9 +160,14 @@ const GenericLanding = ({
   const badges = getDemoBadges(product.id);
 
   const [selectedQty, setSelectedQty] = useState(1);
-  const totalPrice = getDiscountedTotal(product.price, selectedQty);
-  
-  const qtyDiscountPct = getQtyDiscountPct(selectedQty);
+
+  // 1+1 offer: 2 units for the price of one (50% off the 2-unit total)
+  const effectiveQty = onePlusOneEnabled ? 2 : selectedQty;
+  const qtyDiscountPct = onePlusOneEnabled ? 50 : getQtyDiscountPct(selectedQty);
+  const totalPrice = onePlusOneEnabled
+    ? product.price
+    : getDiscountedTotal(product.price, selectedQty);
+
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
