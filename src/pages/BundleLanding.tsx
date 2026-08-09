@@ -89,19 +89,22 @@ const BundleLanding = () => {
   const featuredParam = (searchParams.get("featured") || "").trim();
 
   const pool = useMemo(() => {
-    const base = (products || []).filter((p) => p.available && p.price > 0).slice(0, 60);
-    if (!featuredParam) return base;
-    const idx = base.findIndex(
+    const all = (products || []).filter((p) => p.available && p.price > 0);
+    if (!featuredParam) return all.slice(0, 60);
+    // Search the whole eligible catalog, not just the first 60, so a featured
+    // SKU deep in the list still gets promoted to position 1.
+    const idx = all.findIndex(
       (p) =>
         String(p.sku || "").toLowerCase() === featuredParam.toLowerCase() ||
         String(p.id) === featuredParam,
     );
     // No match → grid renders normally, no error surfaced.
-    if (idx <= 0) return base;
-    const copy = [...base];
+    if (idx < 0) return all.slice(0, 60);
+    const copy = [...all];
     const [hit] = copy.splice(idx, 1);
-    return [hit, ...copy];
+    return [hit, ...copy].slice(0, 60);
   }, [products, featuredParam]);
+
 
   const featuredId = useMemo(() => {
     if (!featuredParam) return null;
