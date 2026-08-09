@@ -111,6 +111,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
         id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
         image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
         description: description.trim(), tags: [], available: true,
+        is_verified: isVerified,
       };
       if (binLocation.trim()) payload.bin_location = binLocation.trim();
 
