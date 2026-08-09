@@ -38,6 +38,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const [images, setImages] = useState<string[]>([]);
   const [primary, setPrimary] = useState<string>("");
   const [binLocation, setBinLocation] = useState("");
+  const [isVerified, setIsVerified] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -45,7 +46,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
-    setImages([]); setPrimary(""); setBinLocation("");
+    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true);
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
