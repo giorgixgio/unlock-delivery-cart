@@ -31,6 +31,8 @@ import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderReco
 import { trackEvent } from "@/lib/analytics";
 import SingleUpsellSheet from "@/components/landing/SingleUpsellSheet";
 import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
+import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
+
 
 
 const ProductLanding = () => {
