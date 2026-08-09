@@ -1,4 +1,4 @@
-import { Check, Plus, Search, Star } from "lucide-react";
+import { Check, HandCoins, Plus, Search, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
 
 interface BundleTileProps {
