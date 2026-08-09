@@ -303,12 +303,16 @@ const GenericLanding = ({
           <div className="flex items-baseline gap-2.5 mt-2 flex-wrap">
             <span className="text-3xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</span>
             {(qtyDiscountPct > 0 || discount > 0) && (
-              <span className="text-base text-muted-foreground line-through">{(oldPrice * selectedQty).toFixed(0)} ₾</span>
+              <span className="text-base text-muted-foreground line-through">{(oldPrice * effectiveQty).toFixed(0)} ₾</span>
             )}
             {qtyDiscountPct > 0 && (
               <span className="bg-deal text-deal-foreground text-xs font-extrabold px-2 py-0.5 rounded">-{qtyDiscountPct}%</span>
             )}
+            {onePlusOneEnabled && (
+              <span className="text-xs font-bold text-destructive">2 ცალი ერთი ფასად</span>
+            )}
           </div>
+
         </div>
 
         {/* Trust row */}
