@@ -117,6 +117,8 @@ const ProductLanding = () => {
       product={product}
       landingSlug={landingSlug || slug || ""}
       upsellOverride={landingConfig?.landing_upsell_enabled ?? null}
+      onePlusOneEnabled={landingConfig?.offer_1plus1_enabled ?? false}
+      offerTimerMinutes={landingConfig?.offer_timer_minutes ?? 59}
     />
   );
 };
@@ -126,11 +128,16 @@ const GenericLanding = ({
   product,
   landingSlug,
   upsellOverride,
+  onePlusOneEnabled,
+  offerTimerMinutes,
 }: {
   product: Product;
   landingSlug: string;
   upsellOverride: boolean | null;
+  onePlusOneEnabled: boolean;
+  offerTimerMinutes: number;
 }) => {
+
   const navigate = useNavigate();
   const { data: allProducts = [] } = useProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
