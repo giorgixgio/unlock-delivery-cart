@@ -369,7 +369,7 @@ const GenericLanding = ({
         open={codOpen}
         onClose={() => setCodOpen(false)}
         product={product}
-        quantity={selectedQty}
+        quantity={effectiveQty}
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="generic"
@@ -421,7 +421,7 @@ const GenericLanding = ({
         orderTotal={pendingOrderTotal}
         deliveryFee={deliveryFee}
         productId={product.id}
-        quantity={selectedQty}
+        quantity={effectiveQty}
         unitPrice={product.price}
         landingSlug={landingSlug}
         onComplete={handleAddressComplete}
