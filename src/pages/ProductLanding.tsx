@@ -261,7 +261,20 @@ const GenericLanding = ({
         className="container max-w-lg mx-auto px-4 space-y-5"
         style={{ paddingTop: "calc(28px + env(safe-area-inset-top))" }}
       >
+        {/* 1+1 sticky offer banner (per-product) */}
+        {onePlusOneEnabled && !repeatBlocked && (
+          <div className="sticky top-[80px] z-30 -mx-1 px-1 pt-1">
+            <OnePlusOneOffer
+              slug={product.handle || landingSlug}
+              unitPrice={product.price}
+              timerMinutes={offerTimerMinutes}
+              onOrder={handleCTA}
+            />
+          </div>
+        )}
+
         {/* Product image slider */}
+
         <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title}>
           {discount > 0 && (
             <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
