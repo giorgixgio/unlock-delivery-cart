@@ -265,7 +265,7 @@ const GenericLanding = ({
       >
         {/* 1+1 sticky offer banner (per-product) */}
         {onePlusOneEnabled && !repeatBlocked && (
-          <div className="sticky top-[80px] z-30 -mx-1 px-1 pt-1">
+          <div className="sticky top-[80px] z-30 pt-1">
             <OnePlusOneOffer
               slug={product.handle || landingSlug}
               unitPrice={product.price}
@@ -352,11 +352,13 @@ const GenericLanding = ({
               </div>
               <Button
                 onClick={handleCTA}
-                className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
+                className="flex-1 min-h-14 rounded-xl bg-success px-2 text-sm font-bold leading-tight text-success-foreground shadow-lg hover:bg-success/90 animate-cta-pulse-success sm:text-base"
                 size="lg"
               >
-                <ShoppingCart className="w-5 h-5 mr-2" />
-                {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
+                <ShoppingCart className="h-5 w-5 mr-1.5 flex-shrink-0" />
+                <span className="whitespace-normal">
+                  {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
+                </span>
               </Button>
 
             </div>

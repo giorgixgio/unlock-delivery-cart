@@ -94,10 +94,10 @@ const OnePlusOneOffer = ({ slug, unitPrice, timerMinutes, onOrder }: OnePlusOneO
       <Button
         onClick={onOrder}
         size="lg"
-        className="mt-2.5 h-12 w-full rounded-xl bg-destructive text-base font-bold text-destructive-foreground hover:bg-destructive/90"
+        className="mt-2.5 min-h-12 w-full rounded-xl bg-destructive px-2 text-sm font-bold leading-tight text-destructive-foreground hover:bg-destructive/90 sm:text-base"
       >
-        <ShoppingCart className="mr-2 h-5 w-5" />
-        შეუკვეთე 2 ცალი ერთი ფასად
+        <ShoppingCart className="mr-1.5 h-5 w-5 flex-shrink-0" />
+        <span className="whitespace-normal">შეუკვეთე 2 ცალი ერთი ფასად</span>
       </Button>
     </div>
   );
