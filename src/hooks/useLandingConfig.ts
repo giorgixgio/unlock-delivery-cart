@@ -69,8 +69,10 @@ export function useLandingConfig(handle: string | undefined) {
       return {
         ...data,
         landing_config: data.landing_config as LandingConfig | null,
+        offer_1plus1_enabled: (data as any).offer_1plus1_enabled ?? false,
+        offer_timer_minutes: (data as any).offer_timer_minutes ?? 59,
       };
-    },
+
     staleTime: 5 * 60 * 1000,
     enabled: !!handle,
   });
