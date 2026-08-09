@@ -173,3 +173,16 @@ export function useProducts() {
 
   return { data, isLoading, error };
 }
+
+/**
+ * Storefront-facing product list: only products verified by the warehouse.
+ * Admin surfaces keep using useProducts() to see everything.
+ */
+export function useStorefrontProducts() {
+  const { data, isLoading, error } = useProducts();
+  const filtered = useMemo(
+    () => (data ? data.filter(p => p.isVerified) : undefined),
+    [data]
+  );
+  return { data: filtered, isLoading, error };
+}
