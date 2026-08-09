@@ -129,7 +129,7 @@ const ClassifyButton = () => {
       if (error) throw error;
       if (data?.success) {
         toast({ title: `Classified ${data.processed} products`, description: `${data.assigned} category assignments saved` });
-        localStorage.removeItem("bigmart-products-v5");
+        localStorage.removeItem("bigmart-products-v6");
         window.location.reload();
       } else {
         toast({ title: "Classification failed", description: data?.error || "Unknown error", variant: "destructive" });
@@ -184,7 +184,7 @@ const AdminProducts = () => {
   // instantly without a hard reload (which is what was causing edits to
   // "sometimes not update").
   const patchProductCache = useCallback((productId: string, patch: Partial<Product>) => {
-    localStorage.removeItem("bigmart-products-v5");
+    localStorage.removeItem("bigmart-products-v6");
     queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
       prev ? prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)) : prev
     );
@@ -192,7 +192,7 @@ const AdminProducts = () => {
   }, [queryClient]);
 
   const refreshProducts = () => {
-    localStorage.removeItem("bigmart-products-v5");
+    localStorage.removeItem("bigmart-products-v6");
     queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
   };
 
@@ -548,7 +548,7 @@ const AdminProducts = () => {
       failed += phase2Results.filter((r) => !!r.error).length;
 
       // Clear cache
-      localStorage.removeItem("bigmart-products-v5");
+      localStorage.removeItem("bigmart-products-v6");
 
       toast({
         title: `${updated} SKUs updated in database${failed > 0 ? `, ${failed} failed` : ""}`,
@@ -593,7 +593,7 @@ const AdminProducts = () => {
         await supabase.from("products").update({ sku }).eq("id", fromProductId);
         throw e2;
       }
-      localStorage.removeItem("bigmart-products-v5");
+      localStorage.removeItem("bigmart-products-v6");
       toast({ title: `SKU "${sku}" moved successfully` });
       setReassignSku(null);
     } catch (err: any) {

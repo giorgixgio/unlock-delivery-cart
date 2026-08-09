@@ -38,6 +38,7 @@ export interface Product {
   tags: string[];
   sku: string;
   available: boolean;
+  isVerified: boolean;
   description: string;
   vendor: string;
   handle: string;

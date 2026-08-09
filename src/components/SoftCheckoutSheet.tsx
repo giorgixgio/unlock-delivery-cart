@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
-import { useProducts } from "@/hooks/useProducts";
+import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
 import { Plus, Check, Sparkles, ShoppingCart, X, Loader2, CheckCircle2, Gift, Lock, PartyPopper, Star } from "lucide-react";
 import { toast } from "sonner";

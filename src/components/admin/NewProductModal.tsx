@@ -38,6 +38,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const [images, setImages] = useState<string[]>([]);
   const [primary, setPrimary] = useState<string>("");
   const [binLocation, setBinLocation] = useState("");
+  const [isVerified, setIsVerified] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -45,7 +46,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
-    setImages([]); setPrimary(""); setBinLocation("");
+    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true);
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
@@ -110,6 +111,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
         id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
         image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
         description: description.trim(), tags: [], available: true,
+        is_verified: isVerified,
       };
       if (binLocation.trim()) payload.bin_location = binLocation.trim();
 
@@ -117,7 +119,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
       if (error) throw error;
 
       toast({ title: "Product created" });
-      localStorage.removeItem("bigmart-products-v5");
+      localStorage.removeItem("bigmart-products-v6");
       onCreated();
       reset();
       onClose();
@@ -174,7 +176,22 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
             <Label className="text-xs font-bold">Description</Label>
             <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isVerified}
+                onChange={(e) => setIsVerified(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              <span className="text-xs font-bold">Verified (visible on the live website)</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Uncheck if the SKU still needs to be confirmed by a packer — unverified products stay hidden from the storefront.
+            </p>
+          </div>
         </div>
+
 
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}

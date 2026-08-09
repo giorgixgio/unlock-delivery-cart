@@ -4,7 +4,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const CACHE_KEY = "bigmart-products-v5";
+const CACHE_KEY = "bigmart-products-v6";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping
@@ -80,6 +80,7 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
     tags: p.tags || [],
     sku: p.sku || "",
     available: p.available ?? true,
+    isVerified: (p as any).is_verified ?? true,
     description: p.description || "",
     vendor: p.vendor || "",
     handle: p.handle || "",
@@ -171,4 +172,17 @@ export function useProducts() {
   }, [rawProducts, overrides]);
 
   return { data, isLoading, error };
+}
+
+/**
+ * Storefront-facing product list: only products verified by the warehouse.
+ * Admin surfaces keep using useProducts() to see everything.
+ */
+export function useStorefrontProducts() {
+  const { data, isLoading, error } = useProducts();
+  const filtered = useMemo(
+    () => (data ? data.filter(p => p.isVerified) : undefined),
+    [data]
+  );
+  return { data: filtered, isLoading, error };
 }

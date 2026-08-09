@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useProducts } from "@/hooks/useProducts";
+import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { rankingEngine, getWeightedRandom } from "@/lib/rankingEngine";
 import { trackScrollDepth } from "@/lib/gridTracker";
 import { Product } from "@/lib/constants";
