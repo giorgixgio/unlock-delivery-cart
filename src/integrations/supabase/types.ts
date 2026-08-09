@@ -1501,6 +1501,8 @@ export type Database = {
           landing_upsell_enabled: boolean | null
           landing_use_cod_modal: boolean
           landing_variant: string
+          offer_1plus1_enabled: boolean
+          offer_timer_minutes: number
           product_handle: string
           updated_at: string
         }
@@ -1512,6 +1514,8 @@ export type Database = {
           landing_upsell_enabled?: boolean | null
           landing_use_cod_modal?: boolean
           landing_variant?: string
+          offer_1plus1_enabled?: boolean
+          offer_timer_minutes?: number
           product_handle: string
           updated_at?: string
         }
@@ -1523,6 +1527,8 @@ export type Database = {
           landing_upsell_enabled?: boolean | null
           landing_use_cod_modal?: boolean
           landing_variant?: string
+          offer_1plus1_enabled?: boolean
+          offer_timer_minutes?: number
           product_handle?: string
           updated_at?: string
         }
