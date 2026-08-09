@@ -68,7 +68,7 @@ const BundleQuickViewSheet = ({
       setRender(true);
       return;
     }
-    const t = setTimeout(() => setRender(false), 320);
+    const t = setTimeout(() => setRender(false), 210);
     return () => clearTimeout(t);
   }, [open]);
 
@@ -85,7 +85,7 @@ const BundleQuickViewSheet = ({
       {/* Scrim */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-[#0b0b12]/55 transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-[#0b0b12]/55 transition-opacity duration-200 ${
           open ? "opacity-100 backdrop-blur-[2px]" : "opacity-0"
         }`}
       />
@@ -95,7 +95,7 @@ const BundleQuickViewSheet = ({
         role="dialog"
         aria-modal="true"
         aria-label={product.title}
-        className={`absolute inset-x-0 bottom-0 bg-white rounded-t-[28px] shadow-[0_-16px_50px_rgba(11,11,18,.25)] transition-transform duration-300 ease-out flex flex-col ${
+        className={`absolute inset-x-0 bottom-0 bg-white rounded-t-[28px] shadow-[0_-16px_50px_rgba(11,11,18,.25)] transition-transform duration-200 ease-out flex flex-col ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
@@ -153,7 +153,7 @@ const BundleQuickViewSheet = ({
 
           <div className="mt-3 bnd-pill bnd-pill-green">
             <Truck className="w-4 h-4" />
-            მიტანა უფასო · გადაიხდი კურიერთან
+            მიტანა ყველა სოფელში და ქალაქში · გადახდა კურიერთან
           </div>
 
           {desc && (
