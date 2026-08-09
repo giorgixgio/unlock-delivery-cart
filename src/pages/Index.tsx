@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CATEGORIES, CategoryId } from "@/lib/constants";
-import { useProducts } from "@/hooks/useProducts";
+import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useLanguage } from "@/contexts/LanguageContext";

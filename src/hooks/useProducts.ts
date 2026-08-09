@@ -4,7 +4,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const CACHE_KEY = "bigmart-products-v5";
+const CACHE_KEY = "bigmart-products-v6";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Check, X } from "lucide-react";
 import { Product } from "@/lib/constants";
-import { useProducts } from "@/hooks/useProducts";
+import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { getRelated } from "@/lib/rankingEngine";
 import { addUpsellItems } from "@/lib/orderService";
 import {

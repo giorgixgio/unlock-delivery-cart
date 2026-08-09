@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Truck, HandCoins, ShieldCheck, Clock, Loader2 } from "lucide-react";
-import { useProducts } from "@/hooks/useProducts";
+import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
