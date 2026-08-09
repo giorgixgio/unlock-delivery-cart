@@ -75,7 +75,7 @@ const OnePlusOneOffer = ({ slug, unitPrice, timerMinutes, onOrder }: OnePlusOneO
   const price = unitPrice.toFixed(0);
 
   return (
-    <div className="rounded-xl border-2 border-destructive bg-destructive/10 p-3 shadow-lg">
+    <div className="rounded-xl border-2 border-destructive bg-card p-3 shadow-lg">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-sm font-extrabold text-destructive">
           <Flame className="h-4 w-4" />
