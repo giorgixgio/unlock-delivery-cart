@@ -64,6 +64,10 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
             შედის 5-ის ნაკრებში
           </span>
         </div>
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#007a45] bg-[rgba(0,161,90,.1)] border border-[rgba(0,161,90,.25)] px-1.5 py-0.5 rounded-full">
+          <HandCoins className="w-3 h-3" strokeWidth={3} />
+          გადახდა კურიერთან
+        </span>
         <button
           type="button"
           aria-pressed={selected}
