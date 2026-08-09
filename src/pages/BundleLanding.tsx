@@ -198,7 +198,7 @@ const BundleLanding = () => {
   const ctaLabel = n === 0
     ? `აირჩიე ${BUNDLE_SIZE} პროდუქტი — ${BUNDLE_PRICE}₾`
     : complete
-      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · მიტანა უფასო`
+      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · მიტანა ყველგან`
       : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
 
   return (
@@ -217,7 +217,7 @@ const BundleLanding = () => {
               <div key={k} className="flex">
                 {[
                   "ნებისმიერი 5 ნივთი — 39₾",
-                  "მიტანა უფასო",
+                  "მიტანა ყველა სოფელში და ქალაქში",
                   "გადაიხდი კურიერთან",
                   "7 დღის გარანტია",
                 ].map((t) => (
@@ -251,18 +251,18 @@ const BundleLanding = () => {
             BIGMART · მხოლოდ დღეს
           </span>
           <h1 className="bnd-display mt-4 text-[clamp(30px,8vw,42px)] leading-[1.05]">
-            <span className="block text-[#0b0b12]">აირჩიე ნებისმიერი 5</span>
-            <span className="block bnd-accent-text">სულ&nbsp;39₾</span>
+            <span className="block text-[#0b0b12]">აირჩიე ნებისმიერი 5 ნივთი</span>
+            <span className="block bnd-accent-text">სულ&nbsp;39₾-ად</span>
           </h1>
           <p className="text-[15px] text-[#6f6f85] mt-3 font-medium">
-            ცალკე გაცილებით ძვირია. დღეს — მხოლოდ <strong className="text-[#0b0b12]">39₾</strong> + მიტანა უფასო.
+            ცალკე გაცილებით ძვირია. დღეს — მხოლოდ <strong className="text-[#0b0b12]">39₾</strong> · მიტანა ყველა სოფელში და ქალაქში.
           </p>
         </div>
 
         {/* Trust strip */}
         <div className="flex flex-wrap justify-center gap-2 mt-5 bnd-slide-up">
           {[
-            { icon: Truck, label: "მიტანა უფასო", green: true },
+            { icon: Truck, label: "მიტანა ყველგან", green: true },
             { icon: HandCoins, label: "გადაიხდი მიღებისას", green: true },
             { icon: ShieldCheck, label: "7 დღის გარანტია", green: false },
           ].map(({ icon: Icon, label, green }) => (
@@ -352,7 +352,7 @@ const BundleLanding = () => {
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
                 <span className="text-[12px] font-extrabold text-[#0b0b12]">
-                  39₾ · <span className="text-[#00a15a]">მიტანა უფასო</span>
+                  39₾ · <span className="text-[#00a15a]">მიტანა ყველგან</span>
                 </span>
               </div>
               <div className="h-2 rounded-full bg-[#ececef] overflow-hidden">
