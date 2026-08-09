@@ -80,6 +80,7 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
     tags: p.tags || [],
     sku: p.sku || "",
     available: p.available ?? true,
+    isVerified: (p as any).is_verified ?? true,
     description: p.description || "",
     vendor: p.vendor || "",
     handle: p.handle || "",
