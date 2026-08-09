@@ -346,8 +346,8 @@ const GenericLanding = ({
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
-                {selectedQty > 1 && (
-                  <p className="text-[10px] text-muted-foreground">{selectedQty} ცალი</p>
+                {effectiveQty > 1 && (
+                  <p className="text-[10px] text-muted-foreground">{effectiveQty} ცალი</p>
                 )}
               </div>
               <Button
@@ -355,8 +355,10 @@ const GenericLanding = ({
                 className="flex-1 h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground shadow-lg animate-cta-pulse-success"
                 size="lg"
               >
-                <ShoppingCart className="w-5 h-5 mr-2" /> შეუკვეთე ახლა
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
               </Button>
+
             </div>
           )}
         </div>
