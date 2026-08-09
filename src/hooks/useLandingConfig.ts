@@ -44,7 +44,12 @@ export interface ProductLandingConfig {
   landing_bypass_min_cart: boolean;
   /** Per-product upsell override. TRUE forces ON even when global is OFF. */
   landing_upsell_enabled: boolean | null;
+  /** 1+1 offer (buy 1 get 1 free) — gated per product. */
+  offer_1plus1_enabled: boolean;
+  /** Evergreen countdown length in minutes for the 1+1 offer. */
+  offer_timer_minutes: number;
 }
+
 
 export function useLandingConfig(handle: string | undefined) {
   return useQuery({
