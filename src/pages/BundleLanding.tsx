@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Truck, HandCoins, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product } from "@/lib/constants";
@@ -84,10 +85,33 @@ const BundleLanding = () => {
   const [orderNumber, setOrderNumber] = useState("");
   const [repeatOrder, setRepeatOrder] = useState<{ orderNumber: string } | null>(null);
 
-  const pool = useMemo(
-    () => (products || []).filter((p) => p.available && p.price > 0).slice(0, 60),
-    [products],
-  );
+  const [searchParams] = useSearchParams();
+  const featuredParam = (searchParams.get("featured") || "").trim();
+
+  const pool = useMemo(() => {
+    const base = (products || []).filter((p) => p.available && p.price > 0).slice(0, 60);
+    if (!featuredParam) return base;
+    const idx = base.findIndex(
+      (p) =>
+        String(p.sku || "").toLowerCase() === featuredParam.toLowerCase() ||
+        String(p.id) === featuredParam,
+    );
+    // No match → grid renders normally, no error surfaced.
+    if (idx <= 0) return base;
+    const copy = [...base];
+    const [hit] = copy.splice(idx, 1);
+    return [hit, ...copy];
+  }, [products, featuredParam]);
+
+  const featuredId = useMemo(() => {
+    if (!featuredParam) return null;
+    const hit = pool[0];
+    if (!hit) return null;
+    const matches =
+      String(hit.sku || "").toLowerCase() === featuredParam.toLowerCase() ||
+      String(hit.id) === featuredParam;
+    return matches ? hit.id : null;
+  }, [pool, featuredParam]);
 
   const selected: Product[] = useMemo(
     () => selectedIds.map((id) => pool.find((p) => p.id === id)).filter(Boolean) as Product[],
@@ -293,6 +317,7 @@ const BundleLanding = () => {
                 <BundleTile
                   key={p.id}
                   product={p}
+                  featured={p.id === featuredId}
                   selected={selectedIds.includes(p.id)}
                   onToggle={() => toggle(p.id)}
                   onQuickView={() => {
