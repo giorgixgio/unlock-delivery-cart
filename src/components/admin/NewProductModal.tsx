@@ -176,7 +176,22 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
             <Label className="text-xs font-bold">Description</Label>
             <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isVerified}
+                onChange={(e) => setIsVerified(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              <span className="text-xs font-bold">Verified (visible on the live website)</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Uncheck if the SKU still needs to be confirmed by a packer — unverified products stay hidden from the storefront.
+            </p>
+          </div>
         </div>
+
 
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
