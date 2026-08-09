@@ -262,7 +262,7 @@ const BundleLanding = () => {
         {/* Trust strip */}
         <div className="flex flex-wrap justify-center gap-2 mt-5 bnd-slide-up">
           {[
-            { icon: Truck, label: "მიტანა ყველა სოფელში და ქალაქში", green: true },
+            { icon: Truck, label: "მიტანა ყველგან", green: true },
             { icon: HandCoins, label: "გადაიხდი მიღებისას", green: true },
             { icon: ShieldCheck, label: "7 დღის გარანტია", green: false },
           ].map(({ icon: Icon, label, green }) => (
