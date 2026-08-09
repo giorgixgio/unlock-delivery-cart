@@ -45,6 +45,7 @@ const BundleQuickViewSheet = ({
 }: BundleQuickViewSheetProps) => {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [dragY, setDragY] = useState(0);
+  const [render, setRender] = useState(open);
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +60,19 @@ const BundleQuickViewSheet = ({
     if (open) setDragY(0);
   }, [open, product?.id]);
 
-  if (!product) return null;
+  // Keep mounted through the 300ms exit transition, then fully unmount.
+  // Without this the fixed inset-0 wrapper (and its backdrop-blur scrim)
+  // stayed in the tree after closing and blurred the whole page white.
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      return;
+    }
+    const t = setTimeout(() => setRender(false), 320);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  if (!render || !product) return null;
 
   const full = selectedCount >= bundleSize && !selected;
   const desc = plainText(product.description || "");
@@ -72,8 +85,8 @@ const BundleQuickViewSheet = ({
       {/* Scrim */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-[#0b0b12]/55 backdrop-blur-[2px] transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0"
+        className={`absolute inset-0 bg-[#0b0b12]/55 transition-opacity duration-300 ${
+          open ? "opacity-100 backdrop-blur-[2px]" : "opacity-0"
         }`}
       />
 
