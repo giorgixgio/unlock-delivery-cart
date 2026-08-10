@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.mark_stockout_waitlist(uuid) TO anon, authenticated, service_role;
