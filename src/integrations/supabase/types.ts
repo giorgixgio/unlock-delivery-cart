@@ -2117,6 +2117,7 @@ export type Database = {
         }[]
       }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
+      is_active_staff: { Args: { user_id: string }; Returns: boolean }
       mark_stockout_waitlist: {
         Args: { p_attempt_id: string }
         Returns: undefined
