@@ -122,24 +122,45 @@ export default function AdminCourierLabels() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <Button variant="outline" size="sm" onClick={toggleAll} disabled={rows.length === 0}>
-              {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
-            </Button>
-            <span className="text-muted-foreground">{rows.length} ready to print</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
+                {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
+              </Button>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={onlyUnfulfilled}
+                  onChange={(e) => setOnlyUnfulfilled(e.target.checked)}
+                />
+                Only unfulfilled
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search order / phone / tracking"
+                className="h-9 w-56 rounded-md border bg-background px-3 text-sm"
+              />
+              <span className="text-muted-foreground">{visibleRows.length} shown</span>
+            </div>
           </div>
 
           {loading ? (
             <div className="flex items-center gap-2 py-8 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
-          ) : rows.length === 0 ? (
+          ) : visibleRows.length === 0 ? (
             <div className="py-8 text-sm text-muted-foreground">
-              No orders with a tracking number yet — import the courier's tracking CSV first.
+              {rows.length === 0
+                ? "No orders with a tracking number yet — import the courier's tracking file first."
+                : "No orders match your search."}
             </div>
           ) : (
             <div className="divide-y">
-              {rows.map((r) => (
+              {visibleRows.map((r) => (
                 <label key={r.id} className="flex items-start gap-3 py-3 cursor-pointer">
                   <input
                     type="checkbox"
