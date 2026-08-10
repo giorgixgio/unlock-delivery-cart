@@ -31,16 +31,18 @@ export default function AdminCourierLabels() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [onlyUnfulfilled, setOnlyUnfulfilled] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await (supabase.from("orders") as any)
+    let q = (supabase.from("orders") as any)
       .select(
         "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city"
       )
-      .not("tracking_number", "is", null)
-      .eq("is_fulfilled", false)
-      .order("created_at", { ascending: false });
+      .not("tracking_number", "is", null);
+    if (onlyUnfulfilled) q = q.eq("is_fulfilled", false);
+    const { data, error } = await q.order("created_at", { ascending: false }).limit(500);
     if (error) {
       toast({ title: "Failed to load", description: error.message, variant: "destructive" });
     } else {
