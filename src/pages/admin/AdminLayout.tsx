@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, Layers, LayoutTemplate, Wand2, BarChart3, Waves, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,6 +22,7 @@ const navItems = [
   { to: "/admin/inventory-audit", label: "Inventory Audit", icon: ClipboardList },
   { to: "/admin/sku-health", label: "SKU Health", icon: HeartPulse },
   { to: "/admin/shipping", label: "Shipping", icon: Truck },
+  { to: "/admin/courier-labels", label: "Courier Labels", icon: Tags },
   { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
   { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },
   { to: "/admin/courier-import/return-matching", label: "Return Matching", icon: GitMerge },
