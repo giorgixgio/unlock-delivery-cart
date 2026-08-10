@@ -53,7 +53,8 @@ export default function AdminCourierLabels() {
 
   useEffect(() => {
     load();
-  }, []);
+    setSelected(new Set());
+  }, [onlyUnfulfilled]);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
