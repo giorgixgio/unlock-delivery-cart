@@ -8,6 +8,7 @@ import { Plus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import PresentationSettingsPanel from "@/components/admin/PresentationSettingsPanel";
+import StaffPasswordPanel from "@/components/admin/StaffPasswordPanel";
 
 interface AdminUser {
   id: string;
@@ -132,6 +133,9 @@ const AdminSettings = () => {
 
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}
+      {isSuperAdmin && users.length > 0 && (
+        <StaffPasswordPanel emails={users.map((u) => u.email)} />
+      )}
       {/* Minimum product quantity */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
         <h3 className="font-bold text-sm">მინიმალური პროდუქტების რაოდენობა</h3>
