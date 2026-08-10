@@ -509,25 +509,25 @@ export type Database = {
       }
       courier_zone_codes: {
         Row: {
+          branch: string | null
           city_name: string
           created_at: string
           id: string
-          updated_at: string
-          zone_id: string
+          zone_id: number
         }
         Insert: {
+          branch?: string | null
           city_name: string
           created_at?: string
           id?: string
-          updated_at?: string
-          zone_id: string
+          zone_id: number
         }
         Update: {
+          branch?: string | null
           city_name?: string
           created_at?: string
           id?: string
-          updated_at?: string
-          zone_id?: string
+          zone_id?: number
         }
         Relationships: []
       }
