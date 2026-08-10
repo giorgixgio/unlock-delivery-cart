@@ -1,186 +1,156 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Loader2, Printer, Download, Search } from "lucide-react";
-import CourierLabel, { CourierLabelData } from "@/components/admin/CourierLabel";
-import { downloadLabelPdf, printLabelPdf } from "@/lib/courierLabelPdf";
+import { Card, CardContent } from "@/components/ui/card";
+import { Printer, Loader2 } from "lucide-react";
+import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 
-const SELECT =
-  "id, public_order_number, customer_name, customer_phone, city, address_line1, address_line2, total, tracking_number, courier_zone_id, courier_label_text, courier_label_date";
+/**
+ * Print courier shipping labels for orders that already have a tracking
+ * number (imported back from the courier's tracking-augmented CSV).
+ * Select some or all, then Print — one label per physical sticker.
+ */
 
-const AdminCourierLabels = () => {
-  const [query, setQuery] = useState("");
-  const [date, setDate] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [orders, setOrders] = useState<CourierLabelData[]>([]);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
+interface Row {
+  id: string;
+  public_order_number: string | null;
+  customer_phone: string | null;
+  tracking_number: string | null;
+  courier_zone_id: number | null;
+  courier_label_text: string | null;
+  courier_label_date: string | null;
+  normalized_address: string | null;
+  raw_address: string | null;
+  normalized_city: string | null;
+  raw_city: string | null;
+}
 
-  const selectedOrders = useMemo(
-    () => orders.filter((o) => selected[o.id]),
-    [orders, selected]
-  );
+export default function AdminCourierLabels() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
-  const search = async () => {
+  const load = async () => {
     setLoading(true);
-    try {
-      let q = supabase.from("orders").select(SELECT).order("created_at", { ascending: false }).limit(200);
-      const term = query.trim();
-      if (term) {
-        q = q.or(
-          `public_order_number.ilike.%${term}%,tracking_number.ilike.%${term}%,customer_phone.ilike.%${term}%,customer_name.ilike.%${term}%`
-        );
-      }
-      if (date) q = q.eq("courier_label_date", date);
-      const { data, error } = await q;
-      if (error) throw error;
-      const rows = (data || []) as unknown as CourierLabelData[];
-      setOrders(rows);
-      setSelected(Object.fromEntries(rows.map((r) => [r.id, true])));
-      if (!rows.length) toast.info("ჩანაწერი ვერ მოიძებნა");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Search failed");
-    } finally {
-      setLoading(false);
+    const { data, error } = await (supabase.from("orders") as any)
+      .select(
+        "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city"
+      )
+      .not("tracking_number", "is", null)
+      .eq("is_fulfilled", false)
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast({ title: "Failed to load", description: error.message, variant: "destructive" });
+    } else {
+      setRows((data as Row[]) || []);
     }
+    setLoading(false);
   };
 
-  const nodes = () =>
-    selectedOrders
-      .map((o) => nodeRefs.current[o.id])
-      .filter((n): n is HTMLDivElement => !!n);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const run = async (mode: "print" | "download") => {
-    if (!selectedOrders.length) {
-      toast.error("აირჩიე მინიმუმ ერთი შეკვეთა");
-      return;
-    }
-    setBusy(true);
-    try {
-      const list = nodes();
-      if (mode === "print") await printLabelPdf(list);
-      else
-        await downloadLabelPdf(
-          list,
-          `courier-labels-${new Date().toISOString().slice(0, 10)}.pdf`
-        );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "PDF generation failed");
-    } finally {
-      setBusy(false);
-    }
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  const allSelected = orders.length > 0 && selectedOrders.length === orders.length;
+  const toggleAll = () => {
+    setSelected((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
+  };
+
+  const toLabelOrder = (r: Row): CourierLabelOrder => ({
+    id: r.id,
+    tracking_number: r.tracking_number,
+    courier_zone_id: r.courier_zone_id,
+    courier_label_text: r.courier_label_text,
+    courier_label_date: r.courier_label_date,
+    customer_phone: r.customer_phone,
+    address: r.normalized_address || r.raw_address || "",
+    city: r.normalized_city || r.raw_city || "",
+  });
+
+  const selectedRows = rows.filter((r) => selected.has(r.id));
+
+  const handleDownload = async () => {
+    setGenerating(true);
+    try {
+      await downloadCourierLabelsPdf(
+        selectedRows.map(toLabelOrder),
+        `courier-labels-${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+    } catch (e: any) {
+      toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-extrabold">Courier Labels</h1>
-        <p className="text-sm text-muted-foreground">
-          Reprint OnWay thermal stickers (76 × 92 mm) exactly as exported.
-        </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Courier labels</h1>
+        <Button onClick={handleDownload} disabled={generating || selectedRows.length === 0}>
+          {generating ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Printer className="mr-2 h-4 w-4" />
+          )}
+          {generating
+            ? "Generating…"
+            : `Download PDF ${selectedRows.length > 0 ? `(${selectedRows.length})` : ""}`}
+        </Button>
       </div>
 
-      <Card className="p-4 space-y-3">
-        <div className="flex flex-col md:flex-row gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && search()}
-            placeholder="Order number, tracking, phone or name"
-            className="text-base"
-          />
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="md:w-48 text-base"
-          />
-          <Button onClick={search} disabled={loading} className="md:w-32">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-            Search
-          </Button>
-        </div>
-
-        {orders.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setSelected(
-                  allSelected ? {} : Object.fromEntries(orders.map((o) => [o.id, true]))
-                )
-              }
-            >
-              {allSelected ? "Deselect all" : "Select all"}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <Button variant="outline" size="sm" onClick={toggleAll} disabled={rows.length === 0}>
+              {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
             </Button>
-            <span className="text-sm text-muted-foreground">
-              {selectedOrders.length} / {orders.length} selected
-            </span>
-            <div className="ml-auto flex gap-2">
-              <Button onClick={() => run("print")} disabled={busy}>
-                {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
-                Print
-              </Button>
-              <Button variant="outline" onClick={() => run("download")} disabled={busy}>
-                <Download className="w-4 h-4 mr-2" />
-                PDF
-              </Button>
-            </div>
+            <span className="text-muted-foreground">{rows.length} ready to print</span>
           </div>
-        )}
-      </Card>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {orders.map((o) => (
-          <Card key={o.id} className="p-3 space-y-2">
-            <div className="flex items-start gap-2">
-              <Checkbox
-                checked={!!selected[o.id]}
-                onCheckedChange={(v) =>
-                  setSelected((s) => ({ ...s, [o.id]: !!v }))
-                }
-              />
-              <div className="min-w-0 text-sm">
-                <div className="font-bold">{o.public_order_number}</div>
-                <div className="text-muted-foreground truncate">
-                  {o.customer_name} · {o.customer_phone}
-                </div>
-                <div className="text-muted-foreground truncate">
-                  {o.city} · zone {o.courier_zone_id ?? "—"}
-                </div>
-                <div className="font-mono text-xs truncate">
-                  {o.tracking_number || "no tracking"}
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex items-center gap-2 py-8 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
-            <div className="overflow-hidden rounded border bg-white">
-              <div
-                style={{
-                  width: 608,
-                  transform: "scale(0.42)",
-                  transformOrigin: "top left",
-                  height: 736 * 0.42,
-                }}
-              >
-                <CourierLabel
-                  data={o}
-                  ref={(el) => (nodeRefs.current[o.id] = el)}
-                />
-              </div>
+          ) : rows.length === 0 ? (
+            <div className="py-8 text-sm text-muted-foreground">
+              No orders with a tracking number yet — import the courier's tracking CSV first.
             </div>
-          </Card>
-        ))}
-      </div>
+          ) : (
+            <div className="divide-y">
+              {rows.map((r) => (
+                <label key={r.id} className="flex items-start gap-3 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4"
+                    checked={selected.has(r.id)}
+                    onChange={() => toggle(r.id)}
+                  />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">
+                      {r.public_order_number} · {r.customer_phone}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {r.normalized_city || r.raw_city} · zone {r.courier_zone_id ?? "?"} · #
+                      {r.tracking_number}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default AdminCourierLabels;
+}
