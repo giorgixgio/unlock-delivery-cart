@@ -80,6 +80,14 @@ export default function AdminCourierLabels() {
     city: r.normalized_city || r.raw_city || "",
   });
 
+  const term = search.trim().toLowerCase();
+  const visibleRows = term
+    ? rows.filter((r) =>
+        [r.public_order_number, r.customer_phone, r.tracking_number, r.normalized_city, r.raw_city]
+          .some((v) => (v || "").toLowerCase().includes(term))
+      )
+    : rows;
+
   const selectedRows = rows.filter((r) => selected.has(r.id));
 
   const handleDownload = async () => {
