@@ -502,7 +502,9 @@ Deno.serve(async (req) => {
       `${rows.length} rows checked — ${newCount} new, ${updatedCount} updated ` +
       `(${pendingToDelivered} pending→delivered, ${pendingToFailed} pending→failed), ` +
       `${skippedCount} unchanged, ${newHistoryRows} new history rows` +
+      (ordersTrackingUpdated ? `, ${ordersTrackingUpdated} orders got tracking numbers` : "") +
       (errored ? `, ${errored} errors` : "");
+
 
     return json(200, {
       success: true,
