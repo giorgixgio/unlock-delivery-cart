@@ -304,6 +304,20 @@ Deno.serve(async (req) => {
     const fixedMap = (template?.fixed_columns_map || {}) as Record<string, string>;
     const includeHeaders = template?.include_headers !== false;
 
+    // ── Zone code lookup (city_name -> zone_id), case-insensitive / trimmed.
+    //    Best-effort: a missing table or unmatched city never fails the export.
+    const zoneByCity: Record<string, string> = {};
+    try {
+      const { data: zones } = await supabase.from("courier_zone_codes").select("city_name, zone_id");
+      for (const z of zones || []) {
+        const key = String((z as any).city_name || "").trim().toLowerCase();
+        if (key) zoneByCity[key] = String((z as any).zone_id ?? "");
+      }
+    } catch (_e) { /* ignore — export continues without zone codes */ }
+
+    const labelUpdates: { id: string; courier_zone_id: string | null; courier_label_text: string }[] = [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+
     const rows: string[][] = [];
     const orderIds: string[] = [];
 
