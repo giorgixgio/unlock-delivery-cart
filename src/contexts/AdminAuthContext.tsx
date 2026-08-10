@@ -15,6 +15,8 @@ interface AdminAuthContextType {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
+  /** Any active staff member (admin, operator, warehouse, scanner). */
+  isStaff: boolean;
   isDemo: boolean;
   /** Admin role from admin_users.role (e.g. 'admin', 'operator', 'warehouse'). */
   role: string | null;
@@ -33,6 +35,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [isPresentation, setIsPresentation] = useState(false);
@@ -45,6 +48,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     if (!nextSession?.user?.id) {
       setIsAdmin(false);
+      setIsStaff(false);
       setIsDemo(false);
       setRole(null);
       setDemoMode(false);
@@ -56,21 +60,24 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     try {
-      const { data, error } = await supabase.rpc("is_active_admin", {
-        user_id: nextSession.user.id,
-      });
+      const [{ data, error }, { data: staffData }] = await Promise.all([
+        supabase.rpc("is_active_admin", { user_id: nextSession.user.id }),
+        supabase.rpc("is_active_staff", { user_id: nextSession.user.id }),
+      ]);
 
       if (error) throw error;
 
       const adminActive = data === true;
+      const staffActive = staffData === true || adminActive;
       setIsAdmin(adminActive);
+      setIsStaff(staffActive);
 
       const email = nextSession.user.email?.toLowerCase() ?? null;
 
       // Demo flag + role (legacy — leaves real data intact, just labels the UI)
       let demoActive = false;
       let userRole: string | null = null;
-      if (adminActive && email) {
+      if (staffActive && email) {
         const { data: row } = await supabase
           .from("admin_users")
           .select("is_demo, role")
@@ -102,9 +109,10 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setPresentationMode(pres && email ? { email, multiplier: mult } : null);
 
       setLoading(false);
-      return adminActive;
+      return staffActive;
     } catch {
       setIsAdmin(false);
+      setIsStaff(false);
       setIsDemo(false);
       setRole(null);
       setDemoMode(false);
@@ -158,8 +166,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return { error: error.message };
     }
 
-    const adminActive = await resolveAdminState(data.session);
-    if (!adminActive) {
+    const staffActive = await resolveAdminState(data.session);
+    if (!staffActive) {
       await supabase.auth.signOut();
       return { error: "This account does not have admin access." };
     }
@@ -172,6 +180,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSession(null);
     setUser(null);
     setIsAdmin(false);
+    setIsStaff(false);
     setIsDemo(false);
     setRole(null);
     setDemoMode(false);
@@ -186,6 +195,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         session,
         user,
         isAdmin,
+        isStaff,
         isDemo,
         role,
         isPresentation,
