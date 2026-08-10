@@ -69,10 +69,10 @@ import { canAccessPath, roleHomePath } from "@/lib/adminPermissions";
 const queryClient = new QueryClient();
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { loading, isAdmin, session, role } = useAdminAuth();
+  const { loading, isStaff, session, role } = useAdminAuth();
   const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (!session || !isAdmin) return <Navigate to="/admin/login" replace />;
+  if (!session || !isStaff) return <Navigate to="/admin/login" replace />;
   // Restricted roles (warehouse, scanner): only their allowed sections
   if (!canAccessPath(role, location.pathname)) {
     return <Navigate to={roleHomePath(role)} replace />;
@@ -81,9 +81,9 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AdminLoginGuard = () => {
-  const { loading, isAdmin, session, role } = useAdminAuth();
+  const { loading, isStaff, session, role } = useAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (session && isAdmin) {
+  if (session && isStaff) {
     return <Navigate to={roleHomePath(role)} replace />;
   }
   return <AdminLogin />;
