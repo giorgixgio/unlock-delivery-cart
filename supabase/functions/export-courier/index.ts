@@ -304,6 +304,20 @@ Deno.serve(async (req) => {
     const fixedMap = (template?.fixed_columns_map || {}) as Record<string, string>;
     const includeHeaders = template?.include_headers !== false;
 
+    // ── Zone code lookup (city_name -> zone_id), case-insensitive / trimmed.
+    //    Best-effort: a missing table or unmatched city never fails the export.
+    const zoneByCity: Record<string, string> = {};
+    try {
+      const { data: zones } = await supabase.from("courier_zone_codes").select("city_name, zone_id");
+      for (const z of zones || []) {
+        const key = String((z as any).city_name || "").trim().toLowerCase();
+        if (key) zoneByCity[key] = String((z as any).zone_id ?? "");
+      }
+    } catch (_e) { /* ignore — export continues without zone codes */ }
+
+    const labelUpdates: { id: string; courier_zone_id: string | null; courier_label_text: string }[] = [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+
     const rows: string[][] = [];
     const orderIds: string[] = [];
 
@@ -362,6 +376,11 @@ Deno.serve(async (req) => {
         ];
         rows.push(row);
       } else {
+        const labelText = `${tag} ${skuWithQty}`;
+        const cityKey = String(order.normalized_city || order.raw_city || "").trim().toLowerCase();
+        const zoneId = cityKey && zoneByCity[cityKey] !== undefined ? zoneByCity[cityKey] : null;
+        labelUpdates.push({ id: order.id, courier_zone_id: zoneId, courier_label_text: labelText });
+
         const dynamicValues: Record<string, string> = {
           A: order.customer_name || "",
           B: order.normalized_address || order.raw_address || order.address_line1 || "",
@@ -369,7 +388,7 @@ Deno.serve(async (req) => {
           E: order.customer_phone || "",
           G: quantityColumn,
           H: order.public_order_number,
-          I: `${tag} ${skuWithQty}`, // SKU column — tag prepended so it prints on the slip
+          I: labelText, // SKU column — tag prepended so it prints on the slip
           K: String(Number(order.total || 0)),
           O: noteText,
         };
@@ -381,6 +400,21 @@ Deno.serve(async (req) => {
         rows.push(row);
       }
     }
+
+    // Persist zone + printed label info alongside the export (best-effort).
+    for (const u of labelUpdates) {
+      try {
+        await supabase
+          .from("orders")
+          .update({
+            courier_zone_id: u.courier_zone_id,
+            courier_label_text: u.courier_label_text,
+            courier_label_date: todayIso,
+          })
+          .eq("id", u.id);
+      } catch (_e) { /* never block the export on this */ }
+    }
+
 
     // Log export events
     for (const a of assigned) {
