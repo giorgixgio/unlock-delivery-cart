@@ -507,6 +507,30 @@ export type Database = {
           },
         ]
       }
+      courier_zone_codes: {
+        Row: {
+          city_name: string
+          created_at: string
+          id: string
+          updated_at: string
+          zone_id: string
+        }
+        Insert: {
+          city_name: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          zone_id: string
+        }
+        Update: {
+          city_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          zone_id?: string
+        }
+        Relationships: []
+      }
       dashboard_view_modifiers: {
         Row: {
           created_at: string
@@ -954,8 +978,11 @@ export type Database = {
           channel: string
           city: string
           cookie_id_hash: string | null
+          courier_label_date: string | null
+          courier_label_text: string | null
           courier_name: string | null
           courier_status: string | null
+          courier_zone_id: string | null
           created_at: string
           currency: string
           customer_email: string | null
@@ -1032,8 +1059,11 @@ export type Database = {
           channel?: string
           city?: string
           cookie_id_hash?: string | null
+          courier_label_date?: string | null
+          courier_label_text?: string | null
           courier_name?: string | null
           courier_status?: string | null
+          courier_zone_id?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
@@ -1110,8 +1140,11 @@ export type Database = {
           channel?: string
           city?: string
           cookie_id_hash?: string | null
+          courier_label_date?: string | null
+          courier_label_text?: string | null
           courier_name?: string | null
           courier_status?: string | null
+          courier_zone_id?: string | null
           created_at?: string
           currency?: string
           customer_email?: string | null
