@@ -25,6 +25,34 @@ Deno.serve(async (req) => {
       .single();
     if (orderErr || !order) return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
 
+    // === AUTHORIZATION GATE ===
+    // Anonymous callers may only process a *fresh, not-yet-confirmed* order
+    // (mirrors the anon RLS rules). Anything else requires an active admin JWT.
+    const ageMs = Date.now() - new Date(order.created_at).getTime();
+    const isFresh = ageMs < 2 * 60 * 60 * 1000; // 2 hours
+    const anonAllowed = isFresh && !order.is_confirmed && !order.is_fulfilled && order.status !== "merged";
+
+    if (!anonAllowed) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const jwt = authHeader.replace(/^Bearer\s+/i, "");
+      let allowed = false;
+      if (jwt) {
+        const { data: userData } = await supabase.auth.getUser(jwt);
+        const uid = userData?.user?.id;
+        if (uid) {
+          const { data: isAdmin } = await supabase.rpc("is_active_admin", { user_id: uid });
+          allowed = isAdmin === true;
+        }
+      }
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
     // Store IP if provided
     if (ip_address && !order.ip_address) {
       await supabase.from("orders").update({ ip_address }).eq("id", order_id);
