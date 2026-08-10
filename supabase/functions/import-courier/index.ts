@@ -398,6 +398,47 @@ Deno.serve(async (req) => {
       if (upErr) throw upErr;
     }
 
+    // ---- Write tracking numbers back onto matched orders ----
+    // Match by the courier's "order number" column -> orders.public_order_number.
+    // Best-effort: unmatched rows are counted, never fatal.
+    stage = "write_order_tracking";
+    let ordersTrackingUpdated = 0;
+    let ordersTrackingUnmatched = 0;
+    try {
+      const byOrderNumber = new Map<string, string>(); // public_order_number -> tracking
+      for (const p of parsedRows) {
+        const on = (p.orderNumber || "").trim();
+        if (on && !byOrderNumber.has(on)) byOrderNumber.set(on, p.tracking);
+      }
+      const orderNumbers = [...byOrderNumber.keys()];
+      for (const nchunk of chunk(orderNumbers, 500)) {
+        const { data: oRows, error: oErr } = await admin
+          .from("orders")
+          .select("id, public_order_number, tracking_number")
+          .in("public_order_number", nchunk);
+        if (oErr) throw oErr;
+        const found = new Set<string>();
+        for (const o of (oRows || []) as any[]) {
+          found.add(o.public_order_number);
+          const want = byOrderNumber.get(o.public_order_number);
+          if (!want || o.tracking_number === want) continue;
+          const { error: uErr } = await admin
+            .from("orders")
+            .update({ tracking_number: want })
+            .eq("id", o.id);
+          if (!uErr) ordersTrackingUpdated++;
+        }
+        ordersTrackingUnmatched += nchunk.filter((n) => !found.has(n)).length;
+      }
+    } catch (e: any) {
+      console.error("write_order_tracking failed", e?.message || e);
+      debug.order_tracking_error = e?.message || String(e);
+    }
+    debug.orders_tracking_updated = ordersTrackingUpdated;
+    debug.orders_tracking_unmatched = ordersTrackingUnmatched;
+
+
+
     // ---- Re-fetch ids for history insert ----
     stage = "fetch_ids";
     const trackingToId = new Map<string, string>();
@@ -461,7 +502,9 @@ Deno.serve(async (req) => {
       `${rows.length} rows checked — ${newCount} new, ${updatedCount} updated ` +
       `(${pendingToDelivered} pending→delivered, ${pendingToFailed} pending→failed), ` +
       `${skippedCount} unchanged, ${newHistoryRows} new history rows` +
+      (ordersTrackingUpdated ? `, ${ordersTrackingUpdated} orders got tracking numbers` : "") +
       (errored ? `, ${errored} errors` : "");
+
 
     return json(200, {
       success: true,
