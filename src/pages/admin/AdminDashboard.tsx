@@ -59,6 +59,7 @@ const AdminDashboard = () => {
   const [spinning, setSpinning] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("today");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [range, setRange] = useState<{ from?: Date; to?: Date }>({});
   const { applyToRevenue, applyToCount, hideBeforeDate, loaded: modifierLoaded } = useViewModifier();
 
   const fetchStats = useCallback(async () => {
