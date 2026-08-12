@@ -213,11 +213,12 @@ const AdminDashboard = () => {
 
   if (loading && !stats) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="h-8 w-40 bg-muted animate-pulse rounded" />
+      <div className="dash-glow p-6 space-y-6">
+        <DashboardStyles />
+        <div className="h-8 w-40 bg-white/5 animate-pulse rounded" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />
+            <div key={i} className="h-28 bg-white/5 animate-pulse rounded-xl" />
           ))}
         </div>
       </div>
@@ -227,33 +228,32 @@ const AdminDashboard = () => {
   if (!stats) return null;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+    <div className="dash-glow p-4 sm:p-6 space-y-6 sm:space-y-8 -m-4 sm:-m-6">
+      <DashboardStyles />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Showing: <span className="font-semibold text-foreground">{dateLabel}</span>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm dg-muted mt-0.5 dg-live">
+            <span className="dg-dot" />
+            Showing: <span className="font-semibold text-white">{dateLabel}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Date mode buttons */}
-          <div className="flex rounded-lg border border-border overflow-hidden text-sm">
+          <div className="flex dg-chip text-sm">
             <button
               onClick={() => setDateMode("today")}
-              className={cn(
-                "px-3 py-1.5 font-medium transition-colors",
-                dateMode === "today" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              )}
+              data-active={dateMode === "today"}
+              className="px-3 py-1.5 font-medium transition-colors"
             >
               Today
             </button>
             <button
               onClick={() => setDateMode("all")}
-              className={cn(
-                "px-3 py-1.5 font-medium transition-colors border-l border-border",
-                dateMode === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-              )}
+              data-active={dateMode === "all"}
+              className="px-3 py-1.5 font-medium transition-colors border-l border-white/10"
             >
               All Time
             </button>
@@ -265,7 +265,10 @@ const AdminDashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className={cn(dateMode === "custom" && "border-primary text-primary")}
+                className={cn(
+                  "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white",
+                  dateMode === "custom" && "border-sky-400/60 text-sky-300"
+                )}
               >
                 <CalendarIcon className="w-4 h-4 mr-1.5" />
                 {dateMode === "custom" ? format(selectedDate, "dd MMM") : "Pick date"}
@@ -288,7 +291,12 @@ const AdminDashboard = () => {
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="sm" onClick={fetchStats}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchStats}
+            className="bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white"
+          >
             <RefreshCw className={`w-4 h-4 mr-2 ${spinning ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -300,78 +308,78 @@ const AdminDashboard = () => {
 
       {/* Revenue — all live orders (review + confirmed) */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Revenue <span className="text-foreground">({applyToCount(stats.activeOrders)} active orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
+        <h2 className="text-xs font-semibold uppercase tracking-wider dg-muted mb-3">
+          Revenue <span className="text-slate-200">({applyToCount(stats.activeOrders)} active orders · {applyToCount(stats.tbilisiCount)} Tbilisi · {applyToCount(stats.regionCount)} Region)</span>
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard icon={DollarSign} label="Total Revenue" value={gel(applyToRevenue(stats.totalRevenue))} accent="text-emerald-500" size="lg" />
-          <MetricCard icon={ShoppingCart} label="AOV" value={gel(applyToCount(stats.activeOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.activeOrders) : 0)} accent="text-blue-500" size="lg" />
-          <MetricCard icon={Banknote} label="Product Revenue" value={gel(applyToRevenue(stats.productRevenue))} accent="text-emerald-600" />
-          <MetricCard icon={TruckIcon} label="Delivery Revenue" value={gel(applyToRevenue(stats.deliveryRevenue))} accent="text-sky-500" />
+          <MetricCard icon={DollarSign} label="Total Revenue" numeric={applyToRevenue(stats.totalRevenue)} format={gel} size="lg" hero />
+          <MetricCard icon={ShoppingCart} label="AOV" numeric={applyToCount(stats.activeOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.activeOrders) : 0} format={gel} size="lg" hero />
+          <MetricCard icon={Banknote} label="Product Revenue" numeric={applyToRevenue(stats.productRevenue)} format={gel} accent="text-emerald-400" />
+          <MetricCard icon={TruckIcon} label="Delivery Revenue" numeric={applyToRevenue(stats.deliveryRevenue)} format={gel} accent="text-sky-400" />
         </div>
       </section>
 
-      <Separator />
+      <div className="dg-sep" />
 
       {/* Order Status & Flags */}
       <section>
         <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wider dg-muted">
             Order Status & Flags
           </h2>
-          <span className="text-[10px] text-muted-foreground italic">Flags may overlap with statuses</span>
+          <span className="text-[10px] dg-muted italic">Flags may overlap with statuses</span>
         </div>
 
         {/* Main statuses (mutually exclusive) */}
-        <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Statuses</div>
+        <div className="mb-2 text-[11px] font-medium dg-muted uppercase tracking-wide">Statuses</div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard
             icon={CheckCircle}
             label="Confirmed"
-            value={applyToCount(stats.confirmed)}
-            accent="text-emerald-500"
+            numeric={applyToCount(stats.confirmed)}
+            accent="text-emerald-400"
             subtext={`Auto: ${applyToCount(stats.autoConfirmed)} · Operator: ${applyToCount(stats.operatorConfirmed)}`}
           />
 
-          <MetricCard icon={Package} label="Fulfilled" value={applyToCount(stats.fulfilled)} accent="text-emerald-600" />
-          <MetricCard icon={XCircle} label="Canceled" value={applyToCount(stats.canceled)} accent="text-red-400" />
-          <MetricCard icon={Merge} label="Merged" value={applyToCount(stats.merged)} accent="text-muted-foreground" />
+          <MetricCard icon={Package} label="Fulfilled" numeric={applyToCount(stats.fulfilled)} accent="text-emerald-300" />
+          <MetricCard icon={XCircle} label="Canceled" numeric={applyToCount(stats.canceled)} accent="text-red-400" />
+          <MetricCard icon={Merge} label="Merged" numeric={applyToCount(stats.merged)} accent="text-slate-400" />
         </div>
 
         {/* Operational flags (can overlap) */}
-        <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Operational Flags</div>
+        <div className="mt-5 mb-2 text-[11px] font-medium dg-muted uppercase tracking-wide">Operational Flags</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
             icon={AlertTriangle}
             label="Needs Operator Action"
-            value={applyToCount(stats.needsReview)}
-            accent="text-amber-600"
+            numeric={applyToCount(stats.needsReview)}
+            accent="text-amber-400"
             highlight={stats.needsReview > 0}
             subtext={`Needs Review: ${applyToCount(stats.needsReview)} · On Hold: ${applyToCount(stats.onHold)} · flags may overlap`}
           />
           <MetricCard
             icon={AlertTriangle}
             label="Needs Review"
-            value={applyToCount(stats.needsReview)}
-            accent="text-amber-500"
+            numeric={applyToCount(stats.needsReview)}
+            accent="text-amber-300"
             subtext="Includes on-hold orders"
           />
           <MetricCard
             icon={AlertTriangle}
             label="On Hold"
-            value={applyToCount(stats.onHold)}
-            accent="text-orange-500"
+            numeric={applyToCount(stats.onHold)}
+            accent="text-orange-400"
             subtext="Can also be Needs Review"
           />
         </div>
 
         {/* Derived — cohort rates based on order creation date */}
-        <div className="mt-5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Derived</div>
-        <p className="text-[10px] text-muted-foreground italic mb-3">
+        <div className="mt-5 mb-2 text-[11px] font-medium dg-muted uppercase tracking-wide">Derived</div>
+        <p className="text-[10px] dg-muted italic mb-3">
           Cohort: orders <b>created</b> in the selected Tbilisi day (00:00–24:00, UTC+4), including auto-confirmed ones.
           Later confirmations update the original order's day. For work operators did on a given day
           (including calls on older orders), see{" "}
-          <Link to="/admin/operator-stats" className="underline">Operator Stats</Link>.
+          <Link to="/admin/operator-stats" className="underline text-sky-300">Operator Stats</Link>.
         </p>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -384,49 +392,58 @@ const AdminDashboard = () => {
             const activeRate = activeOrders > 0 ? Math.min(1, successfulActive / activeOrders) : 0;
             const cancelRate = totalReal > 0 ? stats.canceled / totalReal : 0;
             const needsActionRate = totalReal > 0 ? stats.needsReview / totalReal : 0;
+            const pct = (n: number) => `${n.toFixed(1)}%`;
             return (
               <>
                 <MetricCard
                   icon={ShoppingCart}
                   label="Total Real Orders"
-                  value={applyToCount(totalReal)}
-                  accent="text-foreground"
+                  numeric={applyToCount(totalReal)}
+                  accent="text-slate-100"
                   subtext={`Created in selected period · excludes ${applyToCount(stats.merged)} merged`}
                 />
                 <MetricCard
                   icon={ShoppingCart}
                   label="Active Orders"
-                  value={applyToCount(activeOrders)}
-                  accent="text-blue-500"
+                  numeric={applyToCount(activeOrders)}
+                  accent="text-blue-400"
                   subtext={`${applyToCount(stats.totalOrders)} total − ${applyToCount(stats.canceled)} canceled − ${applyToCount(stats.merged)} merged`}
                 />
                 <MetricCard
                   icon={CheckCircle}
                   label="Lead-to-Confirm Rate"
-                  value={totalReal > 0 ? `${(leadRate * 100).toFixed(1)}%` : "—"}
-                  accent="text-emerald-500"
+                  numeric={totalReal > 0 ? leadRate * 100 : undefined}
+                  format={pct}
+                  value={totalReal > 0 ? undefined : "—"}
                   size="lg"
+                  hero
                   subtext={`${applyToCount(successful)} / ${applyToCount(totalReal)} total orders · confirmed or fulfilled (canceled included in denominator)`}
                 />
                 <MetricCard
                   icon={CheckCircle}
                   label="Active Confirm Rate"
-                  value={activeOrders > 0 ? `${(activeRate * 100).toFixed(1)}%` : "—"}
-                  accent="text-emerald-600"
+                  numeric={activeOrders > 0 ? activeRate * 100 : undefined}
+                  format={pct}
+                  value={activeOrders > 0 ? undefined : "—"}
+                  accent="text-emerald-400"
                   subtext={`${applyToCount(successfulActive)} / ${applyToCount(activeOrders)} active · operational view, excludes canceled`}
                 />
                 <MetricCard
                   icon={XCircle}
                   label="Cancel Rate"
-                  value={totalReal > 0 ? `${(cancelRate * 100).toFixed(1)}%` : "—"}
+                  numeric={totalReal > 0 ? cancelRate * 100 : undefined}
+                  format={pct}
+                  value={totalReal > 0 ? undefined : "—"}
                   accent="text-red-400"
                   subtext={`${applyToCount(stats.canceled)} canceled / ${applyToCount(totalReal)} total orders`}
                 />
                 <MetricCard
                   icon={AlertTriangle}
                   label="Needs Action Rate"
-                  value={totalReal > 0 ? `${(needsActionRate * 100).toFixed(1)}%` : "—"}
-                  accent="text-amber-500"
+                  numeric={totalReal > 0 ? needsActionRate * 100 : undefined}
+                  format={pct}
+                  value={totalReal > 0 ? undefined : "—"}
+                  accent="text-amber-300"
                   subtext={`${applyToCount(stats.needsReview)} pending / ${applyToCount(totalReal)} total orders`}
                 />
               </>
@@ -436,11 +453,11 @@ const AdminDashboard = () => {
       </section>
 
 
-      <Separator />
+      <div className="dg-sep" />
 
       {/* End-of-Day / Call attempts */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider dg-muted mb-3">
           End of Day & Call Attempts
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -448,8 +465,8 @@ const AdminDashboard = () => {
             <MetricCard
               icon={AlertTriangle}
               label="End of Day Remaining"
-              value={applyToCount(stats.eodRemaining)}
-              accent="text-amber-600"
+              numeric={applyToCount(stats.eodRemaining)}
+              accent="text-amber-400"
               highlight={stats.eodRemaining > 0}
               size="lg"
               subtext="Not confirmed, canceled, fulfilled or merged · excludes future callbacks"
@@ -459,49 +476,47 @@ const AdminDashboard = () => {
             <MetricCard
               icon={PhoneOff}
               label="Retry Needed"
-              value={applyToCount(stats.retryNeeded)}
-              accent="text-orange-500"
+              numeric={applyToCount(stats.retryNeeded)}
+              accent="text-orange-400"
               subtext="No-answer attempts pending finalization"
             />
           </Link>
           <MetricCard
             icon={XCircle}
             label="Canceled after Attempts"
-            value={applyToCount(stats.cancelReasonBreakdown.find((r) => r.reason === "no_answer_after_attempts")?.count || 0)}
-            accent="text-red-500"
+            numeric={applyToCount(stats.cancelReasonBreakdown.find((r) => r.reason === "no_answer_after_attempts")?.count || 0)}
+            accent="text-red-400"
             subtext="Finalized after max no-answer attempts"
           />
         </div>
 
         {stats.cancelReasonBreakdown.length > 0 && (
           <div className="mt-4">
-            <div className="mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="mb-2 text-[11px] font-medium dg-muted uppercase tracking-wide">
               Cancellation Reasons
             </div>
-            <Card>
-              <CardContent className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {stats.cancelReasonBreakdown.map((r) => (
-                  <div key={r.reason} className="flex items-center justify-between text-sm border-b border-border/40 last:border-0 py-1.5">
-                    <span className="text-muted-foreground truncate pr-2">
-                      {CANCEL_REASON_LABEL[r.reason] || r.reason}
-                    </span>
-                    <span className="font-bold tabular-nums">{applyToCount(r.count)}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <div className="dg-card p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {stats.cancelReasonBreakdown.map((r) => (
+                <div key={r.reason} className="flex items-center justify-between text-sm border-b border-white/5 last:border-0 py-1.5">
+                  <span className="dg-muted truncate pr-2">
+                    {CANCEL_REASON_LABEL[r.reason] || r.reason}
+                  </span>
+                  <span className="font-bold tabular-nums text-slate-100">{applyToCount(r.count)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>
 
-      <Separator />
+      <div className="dg-sep" />
 
 
       {/* Shipped */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Shipping</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider dg-muted mb-3">Shipping</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <MetricCard icon={TruckIcon} label="Shipped" value={applyToCount(stats.shipped)} accent="text-purple-500" size="lg" />
+          <MetricCard icon={TruckIcon} label="Shipped" numeric={applyToCount(stats.shipped)} accent="text-purple-400" size="lg" />
         </div>
       </section>
     </div>
@@ -511,24 +526,45 @@ const AdminDashboard = () => {
 interface MetricCardProps {
   icon: React.ElementType;
   label: string;
-  value: string | number;
-  accent: string;
+  value?: string | number;
+  numeric?: number;
+  format?: (n: number) => string;
+  accent?: string;
   size?: "sm" | "lg";
   highlight?: boolean;
+  hero?: boolean;
   subtext?: string;
 }
 
-const MetricCard = ({ icon: Icon, label, value, accent, size = "sm", highlight, subtext }: MetricCardProps) => (
-  <Card className={`transition-shadow hover:shadow-md ${highlight ? "ring-2 ring-amber-400/50 bg-amber-50/30 dark:bg-amber-950/10" : ""}`}>
-    <CardContent className="p-3 sm:p-4">
-      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-        <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${accent}`} />
-        <span className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">{label}</span>
-      </div>
-      <p className={`font-bold ${accent} ${size === "lg" ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}`}>{value}</p>
-      {subtext && <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{subtext}</p>}
-    </CardContent>
-  </Card>
+const MetricCard = ({
+  icon: Icon,
+  label,
+  value,
+  numeric,
+  format: fmt,
+  accent = "text-slate-100",
+  size = "sm",
+  highlight,
+  hero,
+  subtext,
+}: MetricCardProps) => (
+  <div className={cn("dg-card p-3 sm:p-4 h-full", hero && "dg-card-hero", highlight && "dg-card-alert")}>
+    <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+      <Icon className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0", hero ? "text-sky-300" : accent)} />
+      <span className="text-[11px] sm:text-xs font-medium dg-muted truncate">{label}</span>
+    </div>
+    <p
+      className={cn(
+        "font-bold tabular-nums",
+        hero ? "dg-grad-text" : accent,
+        size === "lg" ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl"
+      )}
+    >
+      {numeric !== undefined ? <CountUp value={numeric} format={fmt} /> : value}
+    </p>
+    {subtext && <p className="text-[10px] dg-muted mt-1 leading-tight">{subtext}</p>}
+  </div>
 );
 
 export default AdminDashboard;
+
