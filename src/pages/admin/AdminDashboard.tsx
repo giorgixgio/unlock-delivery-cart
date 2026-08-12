@@ -71,11 +71,20 @@ const AdminDashboard = () => {
         .or("is_return.is.null,is_return.eq.false");
 
 
-      if (dateMode === "today" || dateMode === "custom") {
-        const day = dateMode === "today" ? new Date() : selectedDate;
+      if (dateMode === "today" || dateMode === "yesterday" || dateMode === "custom") {
+        const day =
+          dateMode === "today"
+            ? new Date()
+            : dateMode === "yesterday"
+              ? new Date(Date.now() - 86400000)
+              : selectedDate;
         query = query
           .gte("created_at", tbilisiStartOfDay(day).toISOString())
           .lte("created_at", tbilisiEndOfDay(day).toISOString());
+      } else if (dateMode === "range" && range.from) {
+        query = query
+          .gte("created_at", tbilisiStartOfDay(range.from).toISOString())
+          .lte("created_at", tbilisiEndOfDay(range.to || range.from).toISOString());
       }
 
 
