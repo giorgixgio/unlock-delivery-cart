@@ -264,6 +264,13 @@ const AdminDashboard = () => {
               Today
             </button>
             <button
+              onClick={() => setDateMode("yesterday")}
+              data-active={dateMode === "yesterday"}
+              className="px-3 py-1.5 font-medium transition-colors border-l border-white/10"
+            >
+              Yesterday
+            </button>
+            <button
               onClick={() => setDateMode("all")}
               data-active={dateMode === "all"}
               className="px-3 py-1.5 font-medium transition-colors border-l border-white/10"
@@ -272,7 +279,7 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* Date picker */}
+          {/* Single-day picker */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -303,6 +310,40 @@ const AdminDashboard = () => {
               />
             </PopoverContent>
           </Popover>
+
+          {/* Range picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white",
+                  dateMode === "range" && "border-sky-400/60 text-sky-300"
+                )}
+              >
+                <CalendarIcon className="w-4 h-4 mr-1.5" />
+                {dateMode === "range" && range.from
+                  ? `${format(range.from, "dd MMM")} – ${format(range.to || range.from, "dd MMM")}`
+                  : "Pick range"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={{ from: range.from, to: range.to }}
+                onSelect={(r) => {
+                  setRange({ from: r?.from, to: r?.to });
+                  if (r?.from) setDateMode("range");
+                }}
+                numberOfMonths={1}
+                disabled={(d) => d > new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
 
           <Button
             variant="outline"
