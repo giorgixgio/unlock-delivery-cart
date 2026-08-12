@@ -203,7 +203,7 @@ const AdminDashboard = () => {
       setLoading(false);
       setTimeout(() => setSpinning(false), 500);
     }
-  }, [dateMode, selectedDate, hideBeforeDate]);
+  }, [dateMode, selectedDate, range.from, range.to, hideBeforeDate]);
 
   useEffect(() => {
     if (!modifierLoaded) return;
