@@ -17,6 +17,7 @@ import { DeliveryZoneList } from "@/components/admin/DeliveryZoneList";
 import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { tbilisiStartOfDay, tbilisiEndOfDay } from "@/lib/tbilisiTime";
+import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
 
 const DELIVERY_FEE = 6.5;
 
