@@ -86,7 +86,11 @@ export const DeliveryZoneList = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white"
+        >
           <MapPin className="w-4 h-4 mr-1.5" />
           Delivery Zones
         </Button>

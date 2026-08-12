@@ -20,7 +20,7 @@ import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
 const DELIVERY_FEE = 6.5;
 
 
-type DateMode = "today" | "custom" | "all";
+type DateMode = "today" | "yesterday" | "custom" | "range" | "all";
 
 interface Stats {
   totalRevenue: number;
@@ -59,6 +59,7 @@ const AdminDashboard = () => {
   const [spinning, setSpinning] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("today");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [range, setRange] = useState<{ from?: Date; to?: Date }>({});
   const { applyToRevenue, applyToCount, hideBeforeDate, loaded: modifierLoaded } = useViewModifier();
 
   const fetchStats = useCallback(async () => {
@@ -70,11 +71,20 @@ const AdminDashboard = () => {
         .or("is_return.is.null,is_return.eq.false");
 
 
-      if (dateMode === "today" || dateMode === "custom") {
-        const day = dateMode === "today" ? new Date() : selectedDate;
+      if (dateMode === "today" || dateMode === "yesterday" || dateMode === "custom") {
+        const day =
+          dateMode === "today"
+            ? new Date()
+            : dateMode === "yesterday"
+              ? new Date(Date.now() - 86400000)
+              : selectedDate;
         query = query
           .gte("created_at", tbilisiStartOfDay(day).toISOString())
           .lte("created_at", tbilisiEndOfDay(day).toISOString());
+      } else if (dateMode === "range" && range.from) {
+        query = query
+          .gte("created_at", tbilisiStartOfDay(range.from).toISOString())
+          .lte("created_at", tbilisiEndOfDay(range.to || range.from).toISOString());
       }
 
 
@@ -193,7 +203,7 @@ const AdminDashboard = () => {
       setLoading(false);
       setTimeout(() => setSpinning(false), 500);
     }
-  }, [dateMode, selectedDate, hideBeforeDate]);
+  }, [dateMode, selectedDate, range.from, range.to, hideBeforeDate]);
 
   useEffect(() => {
     if (!modifierLoaded) return;
@@ -206,9 +216,13 @@ const AdminDashboard = () => {
   const dateLabel =
     dateMode === "today"
       ? "Today"
-      : dateMode === "custom"
-        ? format(selectedDate, "dd MMM yyyy")
-        : "All Time";
+      : dateMode === "yesterday"
+        ? "Yesterday"
+        : dateMode === "custom"
+          ? format(selectedDate, "dd MMM yyyy")
+          : dateMode === "range" && range.from
+            ? `${format(range.from, "dd MMM")} – ${format(range.to || range.from, "dd MMM yyyy")}`
+            : "All Time";
 
   if (loading && !stats) {
     return (
@@ -250,6 +264,13 @@ const AdminDashboard = () => {
               Today
             </button>
             <button
+              onClick={() => setDateMode("yesterday")}
+              data-active={dateMode === "yesterday"}
+              className="px-3 py-1.5 font-medium transition-colors border-l border-white/10"
+            >
+              Yesterday
+            </button>
+            <button
               onClick={() => setDateMode("all")}
               data-active={dateMode === "all"}
               className="px-3 py-1.5 font-medium transition-colors border-l border-white/10"
@@ -258,7 +279,7 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          {/* Date picker */}
+          {/* Single-day picker */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -289,6 +310,40 @@ const AdminDashboard = () => {
               />
             </PopoverContent>
           </Popover>
+
+          {/* Range picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10 hover:text-white",
+                  dateMode === "range" && "border-sky-400/60 text-sky-300"
+                )}
+              >
+                <CalendarIcon className="w-4 h-4 mr-1.5" />
+                {dateMode === "range" && range.from
+                  ? `${format(range.from, "dd MMM")} – ${format(range.to || range.from, "dd MMM")}`
+                  : "Pick range"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={{ from: range.from, to: range.to }}
+                onSelect={(r) => {
+                  setRange({ from: r?.from, to: r?.to });
+                  if (r?.from) setDateMode("range");
+                }}
+                numberOfMonths={1}
+                disabled={(d) => d > new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
 
           <Button
             variant="outline"
