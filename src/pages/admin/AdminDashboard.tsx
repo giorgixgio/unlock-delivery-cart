@@ -20,7 +20,7 @@ import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
 const DELIVERY_FEE = 6.5;
 
 
-type DateMode = "today" | "custom" | "all";
+type DateMode = "today" | "yesterday" | "custom" | "range" | "all";
 
 interface Stats {
   totalRevenue: number;
