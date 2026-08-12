@@ -15,7 +15,6 @@ import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import OrderSuccess from "./pages/OrderSuccess";
 import StickyCartHUD from "./components/StickyCartHUD";
-import DashPreview from "./pages/__DashPreview";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -195,7 +194,6 @@ const App = () => (
                       <Route path="settings/courier-export" element={<CourierExportSettings />} />
                     </Route>
 
-                    <Route path="/__dash-preview" element={<DashPreview />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <StickyCartHUD />
