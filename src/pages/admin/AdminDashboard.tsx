@@ -227,7 +227,7 @@ const AdminDashboard = () => {
   if (!stats) return null;
 
   return (
-    <div className="dash-glow p-4 sm:p-6 space-y-6 sm:space-y-8 -m-4 sm:-m-6">
+    <div className="dash-glow p-4 sm:p-6 space-y-6 sm:space-y-8 min-h-full">
       <DashboardStyles />
 
       {/* Header */}
