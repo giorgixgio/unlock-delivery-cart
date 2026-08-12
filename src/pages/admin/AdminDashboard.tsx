@@ -216,9 +216,13 @@ const AdminDashboard = () => {
   const dateLabel =
     dateMode === "today"
       ? "Today"
-      : dateMode === "custom"
-        ? format(selectedDate, "dd MMM yyyy")
-        : "All Time";
+      : dateMode === "yesterday"
+        ? "Yesterday"
+        : dateMode === "custom"
+          ? format(selectedDate, "dd MMM yyyy")
+          : dateMode === "range" && range.from
+            ? `${format(range.from, "dd MMM")} – ${format(range.to || range.from, "dd MMM yyyy")}`
+            : "All Time";
 
   if (loading && !stats) {
     return (
