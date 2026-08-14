@@ -241,10 +241,10 @@ const BundleLanding = () => {
   }, [selected]);
 
   const ctaLabel = n === 0
-    ? `აირჩიე ${BUNDLE_SIZE} პროდუქტი — ${BUNDLE_PRICE}₾`
+    ? "აირჩიეთ პროდუქტები ქვემოთ 👇"
     : complete
-      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · უფასო მიტანა`
-      : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
+      ? `გადასვლა შეკვეთაზე — ${BUNDLE_PRICE}₾`
+      : `დაამატეთ კიდევ ${BUNDLE_SIZE - n} პროდუქტი`;
 
   return (
     <div className="bnd-root min-h-screen overflow-x-clip">
