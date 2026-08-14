@@ -275,6 +275,14 @@ const BundleLanding = () => {
         className={`fixed left-0 right-0 z-50 bnd-top-bar ${topCollapsed ? "bnd-top-bar--collapsed" : ""}`}
         style={{ top: 0 }}
       >
+        {/* COD trust announcement */}
+        <div className="bg-[#0b0b12] text-white">
+          <div className="h-8 flex items-center justify-center px-4">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.6px]">
+              ⚡ შეუკვეთე ახლა და გადაიხადე კურიერთან!
+            </span>
+          </div>
+        </div>
         <CountdownBar />
 
         {/* Marquee ticker under the timer, straight from the reference skin */}
@@ -304,13 +312,13 @@ const BundleLanding = () => {
 
       <main
         className="container max-w-lg mx-auto px-4"
-        style={{
-          paddingTop: topCollapsed
-            ? "calc(16px + env(safe-area-inset-top))"
-            : "calc(36px + 28px + env(safe-area-inset-top) + 20px)",
-          paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
-          transition: "padding-top .28s cubic-bezier(.4,0,.2,1)",
-        }}
+          style={{
+            paddingTop: topCollapsed
+              ? "calc(16px + env(safe-area-inset-top))"
+              : "calc(32px + 36px + 28px + env(safe-area-inset-top) + 20px)",
+            paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
+            transition: "padding-top .28s cubic-bezier(.4,0,.2,1)",
+          }}
       >
         <div className="bnd-slide-up text-center">
           <p className="text-[11px] font-extrabold uppercase tracking-[2.5px] text-[#6f6f85]">
@@ -387,7 +395,7 @@ const BundleLanding = () => {
               style={{
                 top: topCollapsed
                   ? "env(safe-area-inset-top)"
-                  : "calc(36px + 28px + env(safe-area-inset-top))",
+                  : "calc(32px + 36px + 28px + env(safe-area-inset-top))",
                 transition: "top .28s cubic-bezier(.4,0,.2,1)",
               }}
             >
@@ -470,8 +478,9 @@ const BundleLanding = () => {
                 >
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
-                <span className="text-[12px] font-extrabold text-[#0b0b12]">
+                <span className="text-[12px] font-extrabold text-[#0b0b12] flex items-center gap-1.5">
                   {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
+                  <span className="text-[10px] font-extrabold text-[#6f6f85] bg-[#f2f2f7] rounded-full px-2 py-0.5">💵 კურიერთან</span>
                 </span>
               </div>
               <div className="bnd-progress-track relative h-2 rounded-full bg-[#ececef] overflow-hidden">
@@ -525,8 +534,8 @@ const BundleLanding = () => {
                 {ctaLabel}
               </button>
 
-              <p className="text-[11px] text-[#6f6f85] text-center font-medium">
-                გადაიხდი კურიერთან. თანხა წინასწარ არ იხდი.
+              <p className="text-[12px] text-[#0b0b12] text-center font-extrabold">
+                💵 კურიერთან გადახდა
               </p>
             </>
           )}
