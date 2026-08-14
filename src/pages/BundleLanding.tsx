@@ -139,30 +139,33 @@ const BundleLanding = () => {
     return hit ? hit.id : null;
   }, [eligible, featuredParam]);
 
-  // Category of the most recent pick — drives the "rabbit hole" phase.
-  const lastCategory = useMemo(() => {
-    const lastId = selectedIds[selectedIds.length - 1];
-    if (!lastId) return null;
-    const p = eligible.find((x) => x.id === lastId);
-    if (!p) return null;
-    return (p.categories?.length ? p.categories : [p.category])[0] || null;
-  }, [selectedIds, eligible]);
+  // Stable catalog order — never reshuffles when the user selects/deselects.
+  const baseOrder = useMemo(
+    () => buildBaseOrder({ pool: eligible, seed: seedRef.current, featuredId }),
+    [eligible, featuredId],
+  );
 
-  // Full state-driven ordering (whole catalog, lazily rendered below).
+  // Same-category suggestions spliced in right after each selected card.
   const grid = useMemo(
     () =>
-      buildBundleGrid({
-        pool: eligible,
+      insertCategoryStrips({
+        base: baseOrder,
         selectedIds,
-        lastCategory,
         seed: seedRef.current,
-        featuredId,
+        enabled: activeCat === "all",
       }),
-    [eligible, selectedIds, lastCategory, featuredId],
+    [baseOrder, selectedIds, activeCat],
   );
 
   const ordered = grid.items;
-  const dividerAfterId = grid.dividerAfterId;
+  /** first suggestion id of each strip → renders the small label above it. */
+  const stripHeadIds = useMemo(() => {
+    const s = new Set<string>();
+    grid.strips.forEach((ids) => {
+      if (ids[0]) s.add(ids[0]);
+    });
+    return s;
+  }, [grid]);
 
   const pool = ordered;
 
