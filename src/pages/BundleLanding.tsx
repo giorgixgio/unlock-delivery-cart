@@ -565,7 +565,7 @@ const BundleLanding = () => {
         flatTotal={BUNDLE_PRICE}
         landingSlug={LANDING_SLUG}
         onOrderCreated={handleOrderCreated}
-        onDuplicateBlocked={(num) => setRepeatOrder({ orderNumber: num })}
+        onDuplicateBlocked={(num) => setRepeatOrder({ orderNumber: num, sku: dupSku })}
       />
 
       {orderId && (
