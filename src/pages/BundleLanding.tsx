@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Truck, HandCoins, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
-import { Product } from "@/lib/constants";
+import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 
@@ -155,8 +155,8 @@ const BundleLanding = () => {
   }, [pool, featuredParam]);
 
   const selected: Product[] = useMemo(
-    () => selectedIds.map((id) => pool.find((p) => p.id === id)).filter(Boolean) as Product[],
-    [selectedIds, pool],
+    () => selectedIds.map((id) => eligible.find((p) => p.id === id)).filter(Boolean) as Product[],
+    [selectedIds, eligible],
   );
 
   const anchorSum = selected.reduce((s, p) => s + p.price, 0);
@@ -354,7 +354,7 @@ const BundleLanding = () => {
             </div>
           ) : (
             <div key={hintId} className="grid grid-cols-2 gap-3 animate-fade-in">
-              {pool.map((p) => (
+              {visible.map((p) => (
                 <BundleTile
                   key={p.id}
                   product={p}
@@ -442,7 +442,7 @@ const BundleLanding = () => {
 
       {/* Quick view bottom sheet — selection only, never touches the COD flow */}
       <BundleQuickViewSheet
-        product={pool.find((p) => p.id === quickViewId) || null}
+        product={eligible.find((p) => p.id === quickViewId) || null}
         open={quickViewOpen}
         onClose={() => setQuickViewOpen(false)}
         selected={quickViewId ? selectedIds.includes(quickViewId) : false}
