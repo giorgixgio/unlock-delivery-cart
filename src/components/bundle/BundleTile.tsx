@@ -30,8 +30,6 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
   const anchorPrice = getBundleDisplayPrice(product.id);
   const images = extractImages(product);
   const [idx, setIdx] = useState(0);
-  const touchX = useRef<number | null>(null);
-  const swiped = useRef(false);
 
   const go = (next: number) => setIdx((next + images.length) % images.length);
 
@@ -39,13 +37,7 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
     <div
       role="button"
       tabIndex={0}
-      onClick={() => {
-        if (swiped.current) {
-          swiped.current = false;
-          return;
-        }
-        onQuickView?.();
-      }}
+      onClick={() => onQuickView?.()}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
