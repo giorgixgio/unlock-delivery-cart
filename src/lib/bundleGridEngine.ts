@@ -75,6 +75,18 @@ export interface BundleGridInput {
   featuredId?: string | null;
 }
 
+export interface BundleGridResult {
+  items: Product[];
+  /**
+   * Id of the last same-category item when that category ran dry and general /
+   * impulse recommendations take over right after it. Drives the soft divider.
+   */
+  dividerAfterId: string | null;
+}
+
+/** How many unselected items a category needs before it counts as "deep". */
+const CATEGORY_DEPLETED_BELOW = 4;
+
 /** Returns the full ordered grid for the current bundle state. */
 export function buildBundleGrid({
   pool,
@@ -82,7 +94,7 @@ export function buildBundleGrid({
   lastCategory,
   seed,
   featuredId,
-}: BundleGridInput): Product[] {
+}: BundleGridInput): BundleGridResult {
   const selected = new Set(selectedIds);
   const n = selectedIds.length;
 
@@ -93,12 +105,27 @@ export function buildBundleGrid({
   const base = [...seededShuffle(impulse, seed), ...evenlyMixed(rest, seed)];
 
   let head: Product[] = [];
+  let dividerAfterId: string | null = null;
 
   if (n >= 1 && n <= 2 && lastCategory) {
-    // Phase 2 — match intent: 2–3 unselected products from the same category.
-    head = base
-      .filter((p) => !selected.has(p.id) && catsOf(p).includes(lastCategory))
-      .slice(0, 3);
+    // Phase 2 — match intent: unselected products from the same category.
+    const sameCat = base.filter(
+      (p) => !selected.has(p.id) && catsOf(p).includes(lastCategory),
+    );
+
+    if (sameCat.length > 0 && sameCat.length < CATEGORY_DEPLETED_BELOW) {
+      // Shallow category — show everything it has, then seamlessly continue
+      // with impulse/general picks so the grid never feels like a dead end.
+      const catIds = new Set(sameCat.map((p) => p.id));
+      const filler = seededShuffle(
+        impulse.filter((p) => !selected.has(p.id) && !catIds.has(p.id)),
+        seed + n,
+      ).slice(0, 6);
+      head = [...sameCat, ...filler];
+      dividerAfterId = sameCat[sameCat.length - 1].id;
+    } else {
+      head = sameCat.slice(0, 3);
+    }
   } else if (n >= 3) {
     // Phase 3 — filler: remaining impulse items, shuffled.
     head = seededShuffle(
@@ -119,5 +146,5 @@ export function buildBundleGrid({
     }
   }
 
-  return ordered;
+  return { items: ordered, dividerAfterId };
 }
