@@ -474,6 +474,16 @@ const BundleLanding = () => {
 
               {visible.map((p) => (
                 <Fragment key={p.id}>
+                  {stripHeadIds.has(p.id) && (
+                    /* Same-category suggestions right where the user tapped */
+                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
+                        🔥 მსგავსი ნივთები
+                      </span>
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                    </div>
+                  )}
                   <div className="bnd-cv h-full">
                   <BundleTile
                     product={p}
@@ -486,16 +496,6 @@ const BundleLanding = () => {
                     }}
                   />
                   </div>
-                  {activeCat === "all" && dividerAfterId === p.id && (
-                    /* Soft transition into general recommendations */
-                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
-                        🔥 სხვა პოპულარული ნივთები
-                      </span>
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                    </div>
-                  )}
                 </Fragment>
               ))}
             </div>
