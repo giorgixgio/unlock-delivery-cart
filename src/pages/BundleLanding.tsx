@@ -4,7 +4,7 @@ import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
-import { buildBundleGrid } from "@/lib/bundleGridEngine";
+import { buildBaseOrder, insertCategoryStrips } from "@/lib/bundleGridEngine";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 import BundleSwapModal from "@/components/bundle/BundleSwapModal";
@@ -139,30 +139,33 @@ const BundleLanding = () => {
     return hit ? hit.id : null;
   }, [eligible, featuredParam]);
 
-  // Category of the most recent pick — drives the "rabbit hole" phase.
-  const lastCategory = useMemo(() => {
-    const lastId = selectedIds[selectedIds.length - 1];
-    if (!lastId) return null;
-    const p = eligible.find((x) => x.id === lastId);
-    if (!p) return null;
-    return (p.categories?.length ? p.categories : [p.category])[0] || null;
-  }, [selectedIds, eligible]);
+  // Stable catalog order — never reshuffles when the user selects/deselects.
+  const baseOrder = useMemo(
+    () => buildBaseOrder({ pool: eligible, seed: seedRef.current, featuredId }),
+    [eligible, featuredId],
+  );
 
-  // Full state-driven ordering (whole catalog, lazily rendered below).
+  // Same-category suggestions spliced in right after each selected card.
   const grid = useMemo(
     () =>
-      buildBundleGrid({
-        pool: eligible,
+      insertCategoryStrips({
+        base: baseOrder,
         selectedIds,
-        lastCategory,
         seed: seedRef.current,
-        featuredId,
+        enabled: activeCat === "all",
       }),
-    [eligible, selectedIds, lastCategory, featuredId],
+    [baseOrder, selectedIds, activeCat],
   );
 
   const ordered = grid.items;
-  const dividerAfterId = grid.dividerAfterId;
+  /** first suggestion id of each strip → renders the small label above it. */
+  const stripHeadIds = useMemo(() => {
+    const s = new Set<string>();
+    grid.strips.forEach((ids) => {
+      if (ids[0]) s.add(ids[0]);
+    });
+    return s;
+  }, [grid]);
 
   const pool = ordered;
 
@@ -471,6 +474,16 @@ const BundleLanding = () => {
 
               {visible.map((p) => (
                 <Fragment key={p.id}>
+                  {stripHeadIds.has(p.id) && (
+                    /* Same-category suggestions right where the user tapped */
+                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
+                        🔥 მსგავსი ნივთები
+                      </span>
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                    </div>
+                  )}
                   <div className="bnd-cv h-full">
                   <BundleTile
                     product={p}
@@ -483,16 +496,6 @@ const BundleLanding = () => {
                     }}
                   />
                   </div>
-                  {activeCat === "all" && dividerAfterId === p.id && (
-                    /* Soft transition into general recommendations */
-                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
-                        🔥 სხვა პოპულარული ნივთები
-                      </span>
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                    </div>
-                  )}
                 </Fragment>
               ))}
             </div>
