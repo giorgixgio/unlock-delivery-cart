@@ -194,7 +194,7 @@ const BundleQuickViewSheet = ({
 
           {full && (
             <p className="text-[11px] font-bold text-[#c2410c] text-center">
-              უკვე არჩეულია {bundleSize} პროდუქტი — დამატებისას პირველი შეიცვლება.
+              უკვე არჩეულია {bundleSize} პროდუქტი — დამატებისას აირჩევი შესაცვლელი.
             </p>
           )}
 

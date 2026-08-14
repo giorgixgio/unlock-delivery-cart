@@ -5,6 +5,7 @@ import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
+import BundleSwapModal from "@/components/bundle/BundleSwapModal";
 
 import BundlePhoneSheet from "@/components/bundle/BundlePhoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
@@ -74,6 +75,9 @@ const BundleLanding = () => {
 
   const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+
+  const [swapIncoming, setSwapIncoming] = useState<Product | null>(null);
+  const [swapOpen, setSwapOpen] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -201,12 +205,30 @@ const BundleLanding = () => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= BUNDLE_SIZE) {
-        // Smoothest: swap out the oldest selection.
-        setHintId(Date.now());
-        return [...prev.slice(1), id];
+        // Bundle is full — open the swap modal so the user explicitly
+        // chooses which item to replace, instead of silently dropping one.
+        const incoming = eligible.find((p) => p.id === id);
+        if (incoming) {
+          setSwapIncoming(incoming);
+          setSwapOpen(true);
+        }
+        return prev;
       }
       return [...prev, id];
     });
+  };
+
+  const performSwap = (outgoingId: string) => {
+    if (!swapIncoming) return;
+    const incomingId = swapIncoming.id;
+    setSelectedIds((prev) => {
+      const withoutOut = prev.filter((x) => x !== outgoingId);
+      if (withoutOut.includes(incomingId)) return withoutOut;
+      return [...withoutOut, incomingId];
+    });
+    setHintId(Date.now());
+    setSwapOpen(false);
+    setSwapIncoming(null);
   };
 
   const handleCta = () => {
@@ -522,6 +544,18 @@ const BundleLanding = () => {
         bundleSize={BUNDLE_SIZE}
         bundlePrice={BUNDLE_PRICE}
         onToggle={() => quickViewId && toggle(quickViewId)}
+      />
+
+      {/* Swap modal — opened when the user tries to add a 6th item */}
+      <BundleSwapModal
+        incoming={swapIncoming}
+        selected={selected}
+        open={swapOpen}
+        onClose={() => {
+          setSwapOpen(false);
+          setSwapIncoming(null);
+        }}
+        onSwap={performSwap}
       />
 
       {/* Existing COD flow — reused as-is */}
