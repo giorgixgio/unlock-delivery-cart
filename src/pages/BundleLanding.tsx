@@ -149,7 +149,7 @@ const BundleLanding = () => {
   }, [selectedIds, eligible]);
 
   // Full state-driven ordering (whole catalog, lazily rendered below).
-  const ordered = useMemo(
+  const grid = useMemo(
     () =>
       buildBundleGrid({
         pool: eligible,
@@ -160,6 +160,9 @@ const BundleLanding = () => {
       }),
     [eligible, selectedIds, lastCategory, featuredId],
   );
+
+  const ordered = grid.items;
+  const dividerAfterId = grid.dividerAfterId;
 
   const pool = ordered;
 
@@ -467,17 +470,28 @@ const BundleLanding = () => {
             <div key={`${hintId}-${activeCat}`} className="grid grid-cols-2 gap-3 bnd-cat-swap">
 
               {visible.map((p) => (
-                <BundleTile
-                  key={p.id}
-                  product={p}
-                  featured={p.id === featuredId}
-                  selected={selectedIds.includes(p.id)}
-                  onToggle={() => toggle(p.id)}
-                  onQuickView={() => {
-                    setQuickViewId(p.id);
-                    setQuickViewOpen(true);
-                  }}
-                />
+                <Fragment key={p.id}>
+                  <BundleTile
+                    product={p}
+                    featured={p.id === featuredId}
+                    selected={selectedIds.includes(p.id)}
+                    onToggle={() => toggle(p.id)}
+                    onQuickView={() => {
+                      setQuickViewId(p.id);
+                      setQuickViewOpen(true);
+                    }}
+                  />
+                  {activeCat === "all" && dividerAfterId === p.id && (
+                    /* Soft transition into general recommendations */
+                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
+                        🔥 სხვა პოპულარული ნივთები
+                      </span>
+                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
+                    </div>
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
