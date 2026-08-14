@@ -62,6 +62,13 @@ const BundleQuickViewSheet = ({
     if (open) setDragY(0);
   }, [open, product?.id]);
 
+  // Fire Meta Pixel ViewContent when the quick-view sheet opens for a product.
+  useEffect(() => {
+    if (open && product) {
+      trackViewContent(product);
+    }
+  }, [open, product?.id]);
+
   // Keep mounted through the 300ms exit transition, then fully unmount.
   // Without this the fixed inset-0 wrapper (and its backdrop-blur scrim)
   // stayed in the tree after closing and blurred the whole page white.
