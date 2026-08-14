@@ -59,18 +59,6 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
     >
       <div
         className="relative aspect-square bg-[#f7f7fb] border-b border-[rgba(11,11,18,.07)] overflow-hidden"
-        onTouchStart={(e) => {
-          touchX.current = e.touches[0].clientX;
-        }}
-        onTouchEnd={(e) => {
-          if (touchX.current === null) return;
-          const dx = e.changedTouches[0].clientX - touchX.current;
-          touchX.current = null;
-          if (images.length > 1 && Math.abs(dx) > 40) {
-            swiped.current = true;
-            go(idx + (dx < 0 ? 1 : -1));
-          }
-        }}
       >
         <div
           className="flex h-full w-full transition-transform duration-300 ease-out"
@@ -104,40 +92,22 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
         </div>
 
         {images.length > 1 && (
-          <>
-            <button
-              type="button"
-              aria-label="წინა ფოტო"
-              onClick={(e) => {
-                e.stopPropagation();
-                go(idx - 1);
-              }}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/85 backdrop-blur-sm shadow-sm flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <ChevronLeft className="w-4 h-4 text-[#0b0b12]" strokeWidth={3} />
-            </button>
-            <button
-              type="button"
-              aria-label="შემდეგი ფოტო"
-              onClick={(e) => {
-                e.stopPropagation();
-                go(idx + 1);
-              }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/85 backdrop-blur-sm shadow-sm flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <ChevronRight className="w-4 h-4 text-[#0b0b12]" strokeWidth={3} />
-            </button>
-            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex gap-1">
-              {images.slice(0, 6).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1 rounded-full transition-all ${
-                    i === idx ? "w-3 bg-[#0b0b12]" : "w-1 bg-[#0b0b12]/25"
-                  }`}
-                />
-              ))}
-            </div>
-          </>
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+            {images.slice(0, 6).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`ფოტო ${i + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go(i);
+                }}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === idx ? "w-4 bg-[#0b0b12]" : "w-1.5 bg-[#0b0b12]/25"
+                }`}
+              />
+            ))}
+          </div>
         )}
 
         {featured && (
