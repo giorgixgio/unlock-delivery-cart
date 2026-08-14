@@ -433,10 +433,10 @@ const BundleLanding = () => {
                       key={c.id}
                       type="button"
                       onClick={() => setActiveCat(c.id)}
-                      className={`bnd-pill whitespace-nowrap shrink-0 text-[14px] font-extrabold px-4 py-2.5 transition-colors ${
+                      className={`bnd-pill whitespace-nowrap shrink-0 text-[14px] font-extrabold px-4 py-2.5 transition-all duration-200 ${
                         active
-                          ? "bg-[#0b0b12] text-white border-[#0b0b12]"
-                          : "text-[#6f6f85]"
+                          ? "bg-[#0b0b12] text-white border-[#0b0b12] shadow-[0_3px_10px_rgba(11,11,18,.28)] scale-[1.04]"
+                          : "bg-white text-[#6f6f85] border-[rgba(11,11,18,.16)] hover:border-[rgba(11,11,18,.3)]"
                       }`}
                     >
                       {c.label}
