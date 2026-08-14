@@ -138,8 +138,9 @@ const App = () => (
                     <Route path="/shop" element={<Shop />} />
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
-                    {/* 5-for-39 bundle builder */}
+                    {/* 5-for-49 bundle builder */}
                     <Route path="/5for39" element={<BundleLanding />} />
+                    <Route path="/bundle" element={<BundleLanding />} />
 
                     {/* Legacy Shopify product URLs → redirect to shop with handle */}
                     <Route path="/products/:handle" element={<LegacyProductRedirect />} />
