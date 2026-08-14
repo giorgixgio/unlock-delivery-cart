@@ -481,6 +481,10 @@ const BundleLanding = () => {
               ))}
             </div>
           )}
+
+          {/* Lazy-load sentinel — keeps 500+ SKUs smooth */}
+          <div ref={sentinelRef} className="h-8" />
+
         </div>
       </main>
 
