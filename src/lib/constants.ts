@@ -39,6 +39,7 @@ export interface Product {
   sku: string;
   available: boolean;
   isVerified: boolean;
+  isPriorityImpulse: boolean;
   description: string;
   vendor: string;
   handle: string;
