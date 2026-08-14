@@ -242,6 +242,9 @@ const BundleLanding = () => {
       setHintId(Date.now());
       return;
     }
+    // The new bundle may start with a different product, so transfer the
+    // customer's explicit reorder choice to the SKU used by server dedupe.
+    if (intentionalReorder && dupSku) markIntentionalRepeat(dupSku);
     setPhoneOpen(true);
   };
 
