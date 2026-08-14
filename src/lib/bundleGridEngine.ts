@@ -1,16 +1,17 @@
 /**
- * State-driven ordering for the /5for39 bundle grid.
+ * Ordering for the /5for39 bundle grid.
  *
- * The order reacts to how many items the visitor has already picked:
- *   Phase 1 (0 selected)   — shuffled `isPriorityImpulse` hooks first, then an
- *                            evenly mixed round-robin of every other category.
- *   Phase 2 (1–2 selected) — inject 2–3 unselected products from the exact
- *                            category of the last pick right at the top.
- *   Phase 3 (3–4 selected) — decision fatigue: inject the remaining shuffled
- *                            impulse items as brain-dead easy filler.
+ * Two independent steps so the grid never jumps under the user's finger:
  *
- * Everything is pure and deterministic for a given seed, so re-renders never
- * reshuffle the grid (no jitter) and lazy loading stays stable.
+ *   1. `buildBaseOrder` — a stable, session-deterministic catalog order
+ *      (priority impulse hooks first, then an evenly mixed round-robin of every
+ *      other category). It only depends on the catalog + seed, so selecting or
+ *      deselecting products never reshuffles it.
+ *
+ *   2. `insertCategoryStrips` — splices a short strip of same-category
+ *      suggestions *directly after* each selected card, pulling only items that
+ *      already sat below that card. Everything above the tapped card keeps its
+ *      exact index, so the scroll position stays anchored.
  */
 
 import { Product } from "@/lib/constants";
@@ -64,78 +65,20 @@ function evenlyMixed(items: Product[], seed: number): Product[] {
   return out;
 }
 
-export interface BundleGridInput {
+export interface BaseOrderInput {
   pool: Product[];
-  selectedIds: string[];
-  /** Category of the most recently selected product (drives phase 2). */
-  lastCategory?: string | null;
   /** Stable per-session seed. */
   seed: number;
   /** Product promoted by ?featured=SKU — always stays first. */
   featuredId?: string | null;
 }
 
-export interface BundleGridResult {
-  items: Product[];
-  /**
-   * Id of the last same-category item when that category ran dry and general /
-   * impulse recommendations take over right after it. Drives the soft divider.
-   */
-  dividerAfterId: string | null;
-}
-
-/** How many unselected items a category needs before it counts as "deep". */
-const CATEGORY_DEPLETED_BELOW = 4;
-
-/** Returns the full ordered grid for the current bundle state. */
-export function buildBundleGrid({
-  pool,
-  selectedIds,
-  lastCategory,
-  seed,
-  featuredId,
-}: BundleGridInput): BundleGridResult {
-  const selected = new Set(selectedIds);
-  const n = selectedIds.length;
-
+/** Stable catalog order. Depends on the catalog + seed only — never selection. */
+export function buildBaseOrder({ pool, seed, featuredId }: BaseOrderInput): Product[] {
   const impulse = pool.filter((p) => p.isPriorityImpulse);
   const rest = pool.filter((p) => !p.isPriorityImpulse);
 
-  // Phase 1 base order: hooks up top, everything else evenly mixed below.
-  const base = [...seededShuffle(impulse, seed), ...evenlyMixed(rest, seed)];
-
-  let head: Product[] = [];
-  let dividerAfterId: string | null = null;
-
-  if (n >= 1 && n <= 2 && lastCategory) {
-    // Phase 2 — match intent: unselected products from the same category.
-    const sameCat = base.filter(
-      (p) => !selected.has(p.id) && catsOf(p).includes(lastCategory),
-    );
-
-    if (sameCat.length > 0 && sameCat.length < CATEGORY_DEPLETED_BELOW) {
-      // Shallow category — show everything it has, then seamlessly continue
-      // with impulse/general picks so the grid never feels like a dead end.
-      const catIds = new Set(sameCat.map((p) => p.id));
-      const filler = seededShuffle(
-        impulse.filter((p) => !selected.has(p.id) && !catIds.has(p.id)),
-        seed + n,
-      ).slice(0, 6);
-      head = [...sameCat, ...filler];
-      dividerAfterId = sameCat[sameCat.length - 1].id;
-    } else {
-      head = sameCat.slice(0, 3);
-    }
-  } else if (n >= 3) {
-    // Phase 3 — filler: remaining impulse items, shuffled.
-    head = seededShuffle(
-      impulse.filter((p) => !selected.has(p.id)),
-      seed + n,
-    ).slice(0, 6);
-  }
-
-  const headIds = new Set(head.map((p) => p.id));
-  let ordered = [...head, ...base.filter((p) => !headIds.has(p.id))];
+  let ordered = [...seededShuffle(impulse, seed), ...evenlyMixed(rest, seed)];
 
   if (featuredId) {
     const idx = ordered.findIndex((p) => p.id === featuredId);
@@ -145,6 +88,112 @@ export function buildBundleGrid({
       ordered = [hit, ...copy];
     }
   }
+  return ordered;
+}
 
-  return { items: ordered, dividerAfterId };
+export interface CategoryStripInput {
+  base: Product[];
+  selectedIds: string[];
+  /** Stable per-session seed (used for filler shuffling). */
+  seed: number;
+  /** Disable strips entirely (e.g. a category filter is already active). */
+  enabled?: boolean;
+}
+
+export interface BundleGridResult {
+  items: Product[];
+  /** anchor product id -> ids of the suggestion cards that follow it. */
+  strips: Map<string, string[]>;
+  /** Ids rendered as part of a suggestion strip (for subtle styling). */
+  suggestionIds: Set<string>;
+}
+
+/** Max suggestions injected right after a selected card. */
+const STRIP_SIZE = 4;
+
+/**
+ * Splices same-category suggestions in place after each selected product.
+ * Only items that already sat *below* the anchor get moved, so nothing above
+ * the tapped card ever shifts.
+ */
+export function insertCategoryStrips({
+  base,
+  selectedIds,
+  seed,
+  enabled = true,
+}: CategoryStripInput): BundleGridResult {
+  const strips = new Map<string, string[]>();
+  const suggestionIds = new Set<string>();
+
+  if (!enabled || selectedIds.length === 0) {
+    return { items: base, strips, suggestionIds };
+  }
+
+  const selected = new Set(selectedIds);
+  const indexOf = new Map(base.map((p, i) => [p.id, i] as const));
+  const moved = new Set<string>();
+
+  // Anchors in grid order so earlier strips don't steal from later ones oddly.
+  const anchors = selectedIds
+    .filter((id) => indexOf.has(id))
+    .sort((a, b) => indexOf.get(a)! - indexOf.get(b)!);
+
+  for (const anchorId of anchors) {
+    const anchorIdx = indexOf.get(anchorId)!;
+    const anchor = base[anchorIdx];
+    const cats = new Set(catsOf(anchor));
+
+    const below = base.slice(anchorIdx + 1);
+
+    const sameCat = below.filter(
+      (p) =>
+        !selected.has(p.id) &&
+        !moved.has(p.id) &&
+        catsOf(p).some((c) => cats.has(c)),
+    );
+
+    let picks = sameCat.slice(0, STRIP_SIZE);
+
+    if (picks.length < STRIP_SIZE) {
+      // Shallow category — top up with impulse hooks so it never dead-ends.
+      const pickIds = new Set(picks.map((p) => p.id));
+      const filler = seededShuffle(
+        below.filter(
+          (p) =>
+            p.isPriorityImpulse &&
+            !selected.has(p.id) &&
+            !moved.has(p.id) &&
+            !pickIds.has(p.id),
+        ),
+        seed + anchorIdx,
+      ).slice(0, STRIP_SIZE - picks.length);
+      picks = [...picks, ...filler];
+    }
+
+    if (picks.length === 0) continue;
+
+    for (const p of picks) {
+      moved.add(p.id);
+      suggestionIds.add(p.id);
+    }
+    strips.set(anchorId, picks.map((p) => p.id));
+  }
+
+  if (moved.size === 0) return { items: base, strips, suggestionIds };
+
+  const byId = new Map(base.map((p) => [p.id, p] as const));
+  const items: Product[] = [];
+  for (const p of base) {
+    if (moved.has(p.id) && !strips.has(p.id)) continue;
+    items.push(p);
+    const strip = strips.get(p.id);
+    if (strip) {
+      for (const id of strip) {
+        const hit = byId.get(id);
+        if (hit) items.push(hit);
+      }
+    }
+  }
+
+  return { items, strips, suggestionIds };
 }
