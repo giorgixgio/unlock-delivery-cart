@@ -53,7 +53,8 @@ function evenlyMixed(items: Product[], seed: number): Product[] {
   while (added) {
     added = false;
     for (const k of keys) {
-      const list = buckets.get(k)!;
+      const list = buckets.get(k);
+      if (!list) continue;
       if (i < list.length) {
         out.push(list[i]);
         added = true;
