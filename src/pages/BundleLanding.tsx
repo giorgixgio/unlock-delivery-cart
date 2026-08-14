@@ -546,6 +546,18 @@ const BundleLanding = () => {
         onToggle={() => quickViewId && toggle(quickViewId)}
       />
 
+      {/* Swap modal — opened when the user tries to add a 6th item */}
+      <BundleSwapModal
+        incoming={swapIncoming}
+        selected={selected}
+        open={swapOpen}
+        onClose={() => {
+          setSwapOpen(false);
+          setSwapIncoming(null);
+        }}
+        onSwap={performSwap}
+      />
+
       {/* Existing COD flow — reused as-is */}
       <BundlePhoneSheet
         open={phoneOpen}
