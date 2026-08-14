@@ -111,6 +111,9 @@ export interface BundleGridResult {
 /** Max suggestions injected right after a selected card. */
 const STRIP_SIZE = 4;
 
+/** Cards after the selected one that are never re-ordered (visual buffer). */
+const BUFFER_SIZE = 4;
+
 /**
  * Re-ranks only the feed after the latest selection. This deliberately avoids
  * dividers and nested grid rows: cards always occupy the normal two-column flow,
@@ -136,8 +139,12 @@ export function insertCategoryStrips({
   const anchorIdx = base.findIndex((p) => p.id === anchorId);
   const anchor = base[anchorIdx];
   const categories = new Set(catsOf(anchor));
-  const prefix = base.slice(0, anchorIdx + 1);
-  const remainder = base.slice(anchorIdx + 1);
+  // Visual buffer zone: the cards the user is currently looking at (the anchor
+  // plus the next few) stay exactly where they were, so selecting never shifts
+  // the layout under the finger. Re-ranking starts below that buffer.
+  const bufferEnd = Math.min(base.length, anchorIdx + 1 + BUFFER_SIZE);
+  const prefix = base.slice(0, bufferEnd);
+  const remainder = base.slice(bufferEnd);
 
   const similar = remainder
     .filter((p) => !selected.has(p.id) && catsOf(p).some((category) => categories.has(category)))
