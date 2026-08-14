@@ -87,19 +87,21 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
   };
 }
 
-function getFromLocalCache(): Product[] | null {
+function readCache(): { data: Product[]; fresh: boolean } | null {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) return null;
     const { data, timestamp } = JSON.parse(cached);
-    if (Date.now() - timestamp > CACHE_TTL) {
-      localStorage.removeItem(CACHE_KEY);
-      return null;
-    }
-    return data;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return { data, fresh: Date.now() - timestamp <= CACHE_TTL };
   } catch {
     return null;
   }
+}
+
+function getFromLocalCache(): Product[] | null {
+  const c = readCache();
+  return c && c.fresh ? c.data : null;
 }
 
 function saveToLocalCache(products: Product[]) {
@@ -113,6 +115,7 @@ function saveToLocalCache(products: Product[]) {
 async function fetchAllProducts(): Promise<Product[]> {
   const cached = getFromLocalCache();
   if (cached) return cached;
+
 
   const [productsRes, catsRes] = await Promise.all([
     supabase.from("products").select("*").order("title"),
