@@ -4,7 +4,7 @@ import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
-import { buildBundleGrid } from "@/lib/bundleGridEngine";
+import { buildBaseOrder, insertCategoryStrips } from "@/lib/bundleGridEngine";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 import BundleSwapModal from "@/components/bundle/BundleSwapModal";
