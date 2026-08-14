@@ -441,6 +441,14 @@ const AddressFormModal = ({
             className="sticky bottom-0 left-0 right-0 z-10 bg-background border-t border-border px-5 pt-3"
             style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
           >
+            <div className="flex items-center justify-center gap-2 mb-2.5">
+              <span className="text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                გადახდის მეთოდი:
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[12px] font-extrabold text-emerald-700">
+                💵 კურიერთან გადახდა
+              </span>
+            </div>
             <Button
               onClick={handleSubmit}
               disabled={submitting || !form.region.trim()}

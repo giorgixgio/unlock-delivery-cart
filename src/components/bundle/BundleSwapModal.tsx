@@ -88,11 +88,10 @@ const BundleSwapModal = ({
             <ArrowLeftRight className="w-6 h-6 text-[#ff3b3b]" strokeWidth={2.5} />
           </div>
           <h2 className="bnd-display text-[22px] text-[#0b0b12] leading-tight">
-            ნაკრები სრულია
+            მაქსიმუმ 5 ნივთი შეგიძლია აირჩიო
           </h2>
           <p className="mt-1.5 text-[13px] font-semibold text-[#6f6f85] leading-relaxed">
-            უკვე არჩეულია 5 პროდუქტი. "{incoming.title}" დასამატებლად
-            აირჩიე ერთი შესაცვლელი, ან შეინარჩუნე მიმდინარე ნაკრები.
+            ახალი პროდუქტის დასამატებლად, გთხოვ, ამოშალე ან შეცვალე ქვემოდან ერთ-ერთი:
           </p>
         </div>
 
@@ -170,8 +169,8 @@ const BundleSwapModal = ({
             onClick={onClose}
             className="w-full h-12 rounded-2xl border border-[rgba(11,11,18,.12)] bg-[#f7f7fb] text-[#0b0b12] text-[14px] font-extrabold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
-            <Check className="w-4 h-4" strokeWidth={3} />
-            შეინარჩუნე მიმდინარე ნაკრები
+            <X className="w-4 h-4" strokeWidth={3} />
+            დახურვა
           </button>
         </div>
       </div>
