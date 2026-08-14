@@ -1,6 +1,9 @@
-import { Check, Plus, Star } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Plus, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
+import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
+import { shopifyThumb } from "@/hooks/useProducts";
 
 interface BundleTileProps {
   product: Product;
@@ -11,15 +14,38 @@ interface BundleTileProps {
   featured?: boolean;
 }
 
+/** Reads image list from the products table shape (string[] or [{src}]). */
+function extractImages(product: Product): string[] {
+  const raw: any[] = Array.isArray(product.images) ? product.images : [];
+  const urls = raw
+    .map((im) => (typeof im === "string" ? im : im?.src || im?.url || ""))
+    .filter(Boolean);
+  if (urls.length === 0) return product.image ? [product.image] : ["/placeholder.svg"];
+  return urls;
+}
+
 /** Hybrid tile: card body opens quick view, the big button adds/removes instantly. */
 const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: BundleTileProps) => {
   const urgency = getUrgencySignal(product.id);
+  const anchorPrice = getBundleDisplayPrice(product.id);
+  const images = extractImages(product);
+  const [idx, setIdx] = useState(0);
+  const touchX = useRef<number | null>(null);
+  const swiped = useRef(false);
+
+  const go = (next: number) => setIdx((next + images.length) % images.length);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onQuickView?.()}
+      onClick={() => {
+        if (swiped.current) {
+          swiped.current = false;
+          return;
+        }
+        onQuickView?.();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -31,13 +57,75 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
         selected ? "bnd-card-selected" : ""
       } ${featured ? "ring-2 ring-[#ff6b00]" : ""}`}
     >
-      <div className="relative aspect-square bg-[#f7f7fb] border-b border-[rgba(11,11,18,.07)]">
-        <img
-          src={product.image}
-          alt={product.title}
-          loading="lazy"
-          className="w-full h-full object-cover"
-        />
+      <div
+        className="relative aspect-square bg-[#f7f7fb] border-b border-[rgba(11,11,18,.07)] overflow-hidden"
+        onTouchStart={(e) => {
+          touchX.current = e.touches[0].clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (touchX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          touchX.current = null;
+          if (images.length > 1 && Math.abs(dx) > 40) {
+            swiped.current = true;
+            go(idx + (dx < 0 ? 1 : -1));
+          }
+        }}
+      >
+        <div
+          className="flex h-full w-full transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${idx * 100}%)` }}
+        >
+          {images.map((src, i) => (
+            <img
+              key={i}
+              src={shopifyThumb(src, 400)}
+              alt={`${product.title} ${i + 1}`}
+              loading={i === 0 ? "lazy" : "lazy"}
+              decoding="async"
+              className="w-full h-full object-cover flex-shrink-0"
+              style={{ minWidth: "100%" }}
+            />
+          ))}
+        </div>
+
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="წინა ფოტო"
+              onClick={(e) => {
+                e.stopPropagation();
+                go(idx - 1);
+              }}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/85 backdrop-blur-sm shadow-sm flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#0b0b12]" strokeWidth={3} />
+            </button>
+            <button
+              type="button"
+              aria-label="შემდეგი ფოტო"
+              onClick={(e) => {
+                e.stopPropagation();
+                go(idx + 1);
+              }}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white/85 backdrop-blur-sm shadow-sm flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <ChevronRight className="w-4 h-4 text-[#0b0b12]" strokeWidth={3} />
+            </button>
+            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex gap-1">
+              {images.slice(0, 6).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1 rounded-full transition-all ${
+                    i === idx ? "w-3 bg-[#0b0b12]" : "w-1 bg-[#0b0b12]/25"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         {featured && (
           <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] px-2 py-1 rounded-full">
             <Star className="w-3 h-3" strokeWidth={3} />
@@ -45,7 +133,7 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
           </span>
         )}
         {selected && (
-          <span className="bnd-pop absolute top-2 right-2 w-7 h-7 rounded-full bg-[#00a15a] flex items-center justify-center shadow-[0_4px_14px_rgba(0,161,90,.45)]">
+          <span className="bnd-pop absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-[#00a15a] flex items-center justify-center shadow-[0_4px_14px_rgba(0,161,90,.45)]">
             <Check className="w-4 h-4 text-white" strokeWidth={3} />
           </span>
         )}
@@ -58,7 +146,7 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
 
         <div className="flex items-baseline gap-1.5">
           <span className="text-[15px] font-extrabold text-[#c2410c] line-through decoration-[#c2410c] decoration-2">
-            {Math.round(product.price)}₾
+            {anchorPrice}₾
           </span>
         </div>
 
@@ -100,4 +188,3 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
 };
 
 export default BundleTile;
-
