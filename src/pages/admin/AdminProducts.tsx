@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
@@ -26,6 +26,7 @@ interface VariantRow {
   price: number;
   compareAtPrice: number | null;
   available: boolean;
+  isPriorityImpulse: boolean;
   vendor: string;
   category: string;
   tags: string[];
@@ -44,6 +45,7 @@ function productsToVariantRows(products: Product[]): VariantRow[] {
     price: p.price,
     compareAtPrice: p.compareAtPrice,
     available: p.available,
+    isPriorityImpulse: p.isPriorityImpulse,
     vendor: p.vendor,
     category: p.category,
     tags: p.tags,
@@ -129,7 +131,7 @@ const ClassifyButton = () => {
       if (error) throw error;
       if (data?.success) {
         toast({ title: `Classified ${data.processed} products`, description: `${data.assigned} category assignments saved` });
-        localStorage.removeItem("bigmart-products-v6");
+        localStorage.removeItem("bigmart-products-v7");
         window.location.reload();
       } else {
         toast({ title: "Classification failed", description: data?.error || "Unknown error", variant: "destructive" });
@@ -184,7 +186,7 @@ const AdminProducts = () => {
   // instantly without a hard reload (which is what was causing edits to
   // "sometimes not update").
   const patchProductCache = useCallback((productId: string, patch: Partial<Product>) => {
-    localStorage.removeItem("bigmart-products-v6");
+    localStorage.removeItem("bigmart-products-v7");
     queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
       prev ? prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)) : prev
     );
@@ -192,13 +194,31 @@ const AdminProducts = () => {
   }, [queryClient]);
 
   const refreshProducts = () => {
-    localStorage.removeItem("bigmart-products-v6");
+    localStorage.removeItem("bigmart-products-v7");
     queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
   };
 
   const handleToggleStock = async (productId: string, currentlyAvailable: boolean) => {
     await setStockOverride(productId, !currentlyAvailable);
     toast({ title: !currentlyAvailable ? "Marked as In Stock" : "Marked as Out of Stock" });
+  };
+
+  // Priority impulse flag — pushes the product to the top of the bundle grid.
+  const handleTogglePriority = async (productId: string, current: boolean) => {
+    const { error } = await supabase
+      .from("products")
+      .update({ is_priority_impulse: !current } as any)
+      .eq("id", productId);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+      return;
+    }
+    localStorage.removeItem("bigmart-products-v7");
+    queryClient.setQueryData<Product[] | undefined>(["bigmart-products"], (prev) =>
+      prev ? prev.map((p) => (p.id === productId ? { ...p, isPriorityImpulse: !current } : p)) : prev,
+    );
+    queryClient.invalidateQueries({ queryKey: ["bigmart-products"] });
+    toast({ title: !current ? "Marked as Priority Impulse" : "Removed from Priority Impulse" });
   };
 
   const oosCount = useMemo(() => Object.values(getStockOverrides()).filter(v => v === false).length, [products]);
@@ -548,7 +568,7 @@ const AdminProducts = () => {
       failed += phase2Results.filter((r) => !!r.error).length;
 
       // Clear cache
-      localStorage.removeItem("bigmart-products-v6");
+      localStorage.removeItem("bigmart-products-v7");
 
       toast({
         title: `${updated} SKUs updated in database${failed > 0 ? `, ${failed} failed` : ""}`,
@@ -593,7 +613,7 @@ const AdminProducts = () => {
         await supabase.from("products").update({ sku }).eq("id", fromProductId);
         throw e2;
       }
-      localStorage.removeItem("bigmart-products-v6");
+      localStorage.removeItem("bigmart-products-v7");
       toast({ title: `SKU "${sku}" moved successfully` });
       setReassignSku(null);
     } catch (err: any) {
@@ -655,6 +675,7 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
+            <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
             <th className="text-left px-3 py-3 font-bold">Category</th>
             {activeTab === "conflicts" && <th className="text-left px-3 py-3 font-bold">Conflict Details</th>}
@@ -853,6 +874,15 @@ const AdminProducts = () => {
                     title={row.available ? "Click to mark Out of Stock" : "Click to mark In Stock"}
                   >
                     {row.available ? "Active" : "Out of Stock"}
+                  </button>
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleTogglePriority(row.productId, row.isPriorityImpulse); }}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold transition-colors hover:opacity-80 ${row.isPriorityImpulse ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}
+                    title={row.isPriorityImpulse ? "Click to remove impulse priority" : "Click to flag as priority impulse item"}
+                  >
+                    <Zap className="w-3 h-3" /> {row.isPriorityImpulse ? "Impulse" : "Normal"}
                   </button>
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[100px]">{row.vendor || "—"}</td>
