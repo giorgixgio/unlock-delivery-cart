@@ -240,7 +240,7 @@ const BundleLanding = () => {
       : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
 
   return (
-    <div className="bnd-root min-h-screen overflow-x-hidden">
+    <div className="bnd-root min-h-screen overflow-x-clip">
       {/* Top announcement bars — collapse on scroll to free up product space */}
       <div
         className={`fixed left-0 right-0 z-50 bnd-top-bar ${topCollapsed ? "bnd-top-bar--collapsed" : ""}`}
