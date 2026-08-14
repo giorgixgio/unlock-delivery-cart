@@ -452,9 +452,10 @@ const BundleLanding = () => {
                   {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-[#ececef] overflow-hidden">
+              <div className="bnd-progress-track h-2 rounded-full bg-[#ececef] overflow-hidden">
                 <div
-                  className="bnd-progress-fill h-full rounded-full"
+                  key={`fill-${n}`}
+                  className="bnd-progress-fill bnd-progress-bump h-full rounded-full"
                   style={{ width: `${(n / BUNDLE_SIZE) * 100}%` }}
                 />
               </div>
