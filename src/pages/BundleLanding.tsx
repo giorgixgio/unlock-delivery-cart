@@ -351,7 +351,7 @@ const BundleLanding = () => {
           {/* Sticky category filter — visual only, never affects selection */}
           {catChips.length > 0 && (
             <div
-              className="sticky z-40 -mx-4 px-4 py-2 bg-white/92 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
+              className="sticky z-40 -mx-4 px-4 py-2.5 bg-white/95 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
               style={{
                 top: topCollapsed
                   ? "env(safe-area-inset-top)"
@@ -367,7 +367,7 @@ const BundleLanding = () => {
                       key={c.id}
                       type="button"
                       onClick={() => setActiveCat(c.id)}
-                      className={`bnd-pill whitespace-nowrap shrink-0 text-[12px] px-3.5 py-2 transition-colors ${
+                      className={`bnd-pill whitespace-nowrap shrink-0 text-[14px] font-extrabold px-4 py-2.5 transition-colors ${
                         active
                           ? "bg-[#0b0b12] text-white border-[#0b0b12]"
                           : "text-[#6f6f85]"
@@ -388,7 +388,8 @@ const BundleLanding = () => {
               <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
             </div>
           ) : (
-            <div key={hintId} className="grid grid-cols-2 gap-3 animate-fade-in">
+            <div key={`${hintId}-${activeCat}`} className="grid grid-cols-2 gap-3 bnd-cat-swap">
+
               {visible.map((p) => (
                 <BundleTile
                   key={p.id}
