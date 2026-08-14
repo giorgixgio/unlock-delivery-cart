@@ -241,10 +241,10 @@ const BundleLanding = () => {
   }, [selected]);
 
   const ctaLabel = n === 0
-    ? `აირჩიე ${BUNDLE_SIZE} პროდუქტი — ${BUNDLE_PRICE}₾`
+    ? "აირჩიეთ პროდუქტები ქვემოთ 👇"
     : complete
-      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · უფასო მიტანა`
-      : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
+      ? `გადასვლა შეკვეთაზე — ${BUNDLE_PRICE}₾`
+      : `დაამატეთ კიდევ ${BUNDLE_SIZE - n} პროდუქტი`;
 
   return (
     <div className="bnd-root min-h-screen overflow-x-clip">
@@ -452,11 +452,18 @@ const BundleLanding = () => {
                   {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-[#ececef] overflow-hidden">
+              <div className="bnd-progress-track relative h-2 rounded-full bg-[#ececef] overflow-hidden">
                 <div
                   className="bnd-progress-fill h-full rounded-full"
                   style={{ width: `${(n / BUNDLE_SIZE) * 100}%` }}
                 />
+                {n > 0 && (
+                  <span
+                    key={`burst-${n}`}
+                    className="bnd-progress-burst"
+                    style={{ left: `${(n / BUNDLE_SIZE) * 100}%` }}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -480,7 +487,13 @@ const BundleLanding = () => {
             <>
               <button
                 onClick={handleCta}
-                className="bnd-btn-green w-full h-14 rounded-[16px] text-[15px] uppercase tracking-wide"
+                className={`w-full h-14 rounded-[16px] text-[15px] uppercase tracking-wide ${
+                  complete
+                    ? "bnd-btn-green bnd-cta-pulse"
+                    : n === 0
+                      ? "bnd-btn-grad opacity-95"
+                      : "bnd-btn-grad"
+                }`}
               >
                 {ctaLabel}
               </button>
