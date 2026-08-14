@@ -384,10 +384,23 @@ const BundleLanding = () => {
 
 
           {isLoading ? (
-            <div className="py-16 flex justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-[rgba(11,11,18,.08)] overflow-hidden bg-white"
+                >
+                  <div className="aspect-square bg-[rgba(11,11,18,.06)] animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 rounded bg-[rgba(11,11,18,.08)] animate-pulse" />
+                    <div className="h-3 w-2/3 rounded bg-[rgba(11,11,18,.08)] animate-pulse" />
+                    <div className="h-9 rounded-xl bg-[rgba(11,11,18,.06)] animate-pulse" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
+
             <div key={`${hintId}-${activeCat}`} className="grid grid-cols-2 gap-3 bnd-cat-swap">
 
               {visible.map((p) => (
