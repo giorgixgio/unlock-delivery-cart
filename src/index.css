@@ -672,3 +672,11 @@
 /* horizontal chip rows on the bundle landing page */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* subtle slide+fade when switching bundle categories */
+@keyframes bnd-cat-swap-in {
+  from { opacity: 0; transform: translate3d(10px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.bnd-cat-swap { animation: bnd-cat-swap-in .22s cubic-bezier(.4,0,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .bnd-cat-swap { animation: none; } }
