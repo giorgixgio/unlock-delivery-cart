@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X, Check, Plus, Truck } from "lucide-react";
 import { Product } from "@/lib/constants";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 
 interface BundleQuickViewSheetProps {
   product: Product | null;
@@ -144,7 +145,7 @@ const BundleQuickViewSheet = ({
 
           <div className="mt-2.5 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-[#6f6f85] line-through font-bold">
-              {Math.round(product.price)}₾
+              {getBundleDisplayPrice(product.id)}₾
             </span>
             <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#c2410c] bg-[rgba(255,107,0,.1)] border border-[rgba(255,107,0,.25)] px-2 py-1 rounded-full">
               შედის {bundleSize}-ის ნაკრებში — სულ {bundlePrice}₾
