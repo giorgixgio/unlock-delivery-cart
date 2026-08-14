@@ -487,7 +487,13 @@ const BundleLanding = () => {
             <>
               <button
                 onClick={handleCta}
-                className="bnd-btn-green w-full h-14 rounded-[16px] text-[15px] uppercase tracking-wide"
+                className={`w-full h-14 rounded-[16px] text-[15px] uppercase tracking-wide ${
+                  complete
+                    ? "bnd-btn-green bnd-cta-pulse"
+                    : n === 0
+                      ? "bnd-btn-grad opacity-95"
+                      : "bnd-btn-grad"
+                }`}
               >
                 {ctaLabel}
               </button>
