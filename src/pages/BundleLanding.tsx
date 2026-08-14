@@ -471,6 +471,7 @@ const BundleLanding = () => {
 
               {visible.map((p) => (
                 <Fragment key={p.id}>
+                  <div className="bnd-cv">
                   <BundleTile
                     product={p}
                     featured={p.id === featuredId}
@@ -481,6 +482,7 @@ const BundleLanding = () => {
                       setQuickViewOpen(true);
                     }}
                   />
+                  </div>
                   {activeCat === "all" && dividerAfterId === p.id && (
                     /* Soft transition into general recommendations */
                     <div className="col-span-2 flex items-center gap-2.5 py-1.5">
