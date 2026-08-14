@@ -160,7 +160,10 @@ export function useProducts() {
     queryFn: fetchAllProducts,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    // Paint the last known catalog immediately, refresh it in the background
+    placeholderData: () => readCache()?.data,
   });
+
 
   // Subscribe to the override store — triggers re-render on every toggle
   const overrides = useSyncExternalStore(subscribeOverrides, getStockOverrides);
