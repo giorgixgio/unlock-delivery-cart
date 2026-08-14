@@ -118,15 +118,30 @@ async function fetchAllProducts(): Promise<Product[]> {
   if (cached) return cached;
 
 
-  const [productsRes, catsRes] = await Promise.all([
-    supabase.from("products").select("*").order("title"),
-    supabase.from("product_categories").select("product_id, category"),
-  ]);
-
-  if (productsRes.error) {
-    console.error("Failed to fetch products from database:", productsRes.error);
-    return [];
+  // PostgREST caps one request at 1000 rows — page through so 500+ SKUs
+  // (and beyond) all land in local state on the very first load.
+  const PAGE = 1000;
+  const rows: DbProduct[] = [];
+  let from = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("title")
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("Failed to fetch products from database:", error);
+      return rows.length ? rows.map((r) => mapDbProduct(r)) : [];
+    }
+    rows.push(...((data || []) as DbProduct[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
+
+  const catsRes = await supabase
+    .from("product_categories")
+    .select("product_id, category");
 
   const catMap = new Map<string, string[]>();
   for (const row of catsRes.data || []) {
@@ -135,7 +150,7 @@ async function fetchAllProducts(): Promise<Product[]> {
     catMap.set(row.product_id, list);
   }
 
-  const products = (productsRes.data as DbProduct[]).map((p) => mapDbProduct(p, catMap.get(p.id)));
+  const products = rows.map((p) => mapDbProduct(p, catMap.get(p.id)));
 
   // Deduplicate by id
   const seen = new Set<string>();

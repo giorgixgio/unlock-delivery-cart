@@ -76,17 +76,31 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
           className="flex h-full w-full transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${idx * 100}%)` }}
         >
-          {images.map((src, i) => (
-            <img
-              key={i}
-              src={shopifyThumb(src, 400)}
-              alt={`${product.title} ${i + 1}`}
-              loading={i === 0 ? "lazy" : "lazy"}
-              decoding="async"
-              className="w-full h-full object-cover flex-shrink-0"
-              style={{ minWidth: "100%" }}
-            />
-          ))}
+          {images.map((src, i) => {
+            // Only the current slide and its immediate neighbours download —
+            // the rest stay as empty, correctly-sized placeholders.
+            const near = Math.abs(i - idx) <= 1;
+            return near ? (
+              <img
+                key={i}
+                src={shopifyThumb(src, 400)}
+                alt={`${product.title} ${i + 1}`}
+                loading="lazy"
+                decoding="async"
+                width={400}
+                height={400}
+                className="w-full h-full object-cover flex-shrink-0 bg-[#f7f7fb]"
+                style={{ minWidth: "100%" }}
+              />
+            ) : (
+              <div
+                key={i}
+                aria-hidden
+                className="w-full h-full flex-shrink-0 bg-[#f7f7fb]"
+                style={{ minWidth: "100%" }}
+              />
+            );
+          })}
         </div>
 
         {images.length > 1 && (

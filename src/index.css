@@ -613,6 +613,12 @@
   border-radius:16px;
   box-shadow: 0 4px 18px rgba(11,11,18,.06);
 }
+/* Lightweight virtualization: the browser skips layout/paint for grid cards
+   outside the viewport, while the reserved size prevents any layout shift. */
+.bnd-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px 320px;
+}
 .bnd-card-selected {
   border-color: rgba(0,161,90,.55);
   box-shadow: 0 8px 26px rgba(0,161,90,.20);
