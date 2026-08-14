@@ -288,13 +288,35 @@ const BundleLanding = () => {
             <span className="bnd-kicker-dot" />
             BIGMART · მხოლოდ დღეს
           </span>
-          <h1 className="bnd-display mt-4 text-[clamp(30px,8vw,42px)] leading-[1.05]">
-            <span className="block text-[#0b0b12]">აირჩიე ნებისმიერი 5 ნივთი</span>
-            <span className="block bnd-accent-text">სულ&nbsp;39₾-ად</span>
+          <h1 className="bnd-display mt-4 leading-[1.05]">
+            <span className="block text-[13px] font-extrabold uppercase tracking-[2px] text-[#6f6f85] not-italic">
+              აირჩიე ნებისმიერი
+            </span>
+            <span className="mt-2 flex items-center justify-center gap-3">
+              <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-4 py-2.5 text-white bg-[linear-gradient(135deg,#0b0b12,#2a2a3d)] shadow-[0_10px_26px_rgba(11,11,18,.25)]">
+                <span className="text-[38px] font-black">5</span>
+                <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
+                  ნივთი
+                </span>
+              </span>
+              <span className="text-[30px] font-black text-[#6f6f85]">=</span>
+              <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-4 py-2.5 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_10px_26px_rgba(255,107,0,.35)]">
+                <span className="text-[38px] font-black">{BUNDLE_PRICE}₾</span>
+                <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
+                  სულ
+                </span>
+              </span>
+            </span>
           </h1>
-          <p className="text-[15px] text-[#6f6f85] mt-3 font-medium">
-            ცალკე გაცილებით ძვირია. დღეს — მხოლოდ <strong className="text-[#0b0b12]">39₾</strong> · მიტანა ყველა სოფელში და ქალაქში.
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,161,90,.1)] border border-[rgba(0,161,90,.3)] px-3 py-1.5 text-[13px] font-extrabold text-[#007a45]">
+            <Truck className="w-4 h-4" strokeWidth={3} />
+            უფასო მიტანა
           </p>
+          <p className="text-[15px] text-[#6f6f85] mt-2 font-medium">
+            ცალკე გაცილებით ძვირია. დღეს ნებისმიერი 5 ნივთი ერთად — მხოლოდ{" "}
+            <strong className="text-[#0b0b12]">{BUNDLE_PRICE}₾</strong>.
+          </p>
+
         </div>
 
         {/* Trust strip */}
