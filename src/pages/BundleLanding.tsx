@@ -452,14 +452,18 @@ const BundleLanding = () => {
                   {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
                 </span>
               </div>
-              <div
-                key={`bump-${n}`}
-                className="bnd-progress-track bnd-progress-bump h-2 rounded-full bg-[#ececef] overflow-hidden"
-              >
+              <div className="bnd-progress-track relative h-2 rounded-full bg-[#ececef] overflow-hidden">
                 <div
                   className="bnd-progress-fill h-full rounded-full"
                   style={{ width: `${(n / BUNDLE_SIZE) * 100}%` }}
                 />
+                {n > 0 && (
+                  <span
+                    key={`burst-${n}`}
+                    className="bnd-progress-burst"
+                    style={{ left: `${(n / BUNDLE_SIZE) * 100}%` }}
+                  />
+                )}
               </div>
             </div>
           </div>
