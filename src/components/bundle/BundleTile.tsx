@@ -1,5 +1,6 @@
 import { Check, HandCoins, Plus, Search, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
+import { getUrgencySignal } from "@/lib/bundleUrgency";
 
 interface BundleTileProps {
   product: Product;
@@ -12,6 +13,8 @@ interface BundleTileProps {
 
 /** Hybrid tile: card body opens quick view, the big button adds/removes instantly. */
 const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: BundleTileProps) => {
+  const urgency = getUrgencySignal(product.id);
+
   return (
     <div
       role="button"
@@ -91,6 +94,13 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
             </>
           )}
         </button>
+        <p
+          className={`text-[11px] font-extrabold text-center ${
+            urgency.kind === "stock" ? "text-[#c2410c]" : "text-[#d92d20]"
+          }`}
+        >
+          {urgency.text}
+        </p>
       </div>
     </div>
   );
