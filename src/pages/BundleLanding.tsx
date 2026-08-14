@@ -4,6 +4,7 @@ import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
+import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 import BundleSwapModal from "@/components/bundle/BundleSwapModal";
 
@@ -16,7 +17,7 @@ import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 
 const BUNDLE_SIZE = 5;
-const BUNDLE_PRICE = 49;
+const BUNDLE_PRICE = 39;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
@@ -168,7 +169,7 @@ const BundleLanding = () => {
     [selectedIds, eligible],
   );
 
-  const anchorSum = selected.reduce((s, p) => s + p.price, 0);
+  const anchorSum = selected.reduce((s, p) => s + getBundleDisplayPrice(p.id), 0);
   const savings = Math.max(0, Math.round(anchorSum - BUNDLE_PRICE));
   const n = selected.length;
   const complete = n === BUNDLE_SIZE;
