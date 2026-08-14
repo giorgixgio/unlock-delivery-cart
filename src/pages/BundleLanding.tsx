@@ -205,12 +205,30 @@ const BundleLanding = () => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= BUNDLE_SIZE) {
-        // Smoothest: swap out the oldest selection.
-        setHintId(Date.now());
-        return [...prev.slice(1), id];
+        // Bundle is full — open the swap modal so the user explicitly
+        // chooses which item to replace, instead of silently dropping one.
+        const incoming = eligible.find((p) => p.id === id);
+        if (incoming) {
+          setSwapIncoming(incoming);
+          setSwapOpen(true);
+        }
+        return prev;
       }
       return [...prev, id];
     });
+  };
+
+  const performSwap = (outgoingId: string) => {
+    if (!swapIncoming) return;
+    const incomingId = swapIncoming.id;
+    setSelectedIds((prev) => {
+      const withoutOut = prev.filter((x) => x !== outgoingId);
+      if (withoutOut.includes(incomingId)) return withoutOut;
+      return [...withoutOut, incomingId];
+    });
+    setHintId(Date.now());
+    setSwapOpen(false);
+    setSwapIncoming(null);
   };
 
   const handleCta = () => {
