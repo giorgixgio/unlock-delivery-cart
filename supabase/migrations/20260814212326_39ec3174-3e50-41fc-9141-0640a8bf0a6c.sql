@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_priority_impulse boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_products_priority_impulse ON public.products (is_priority_impulse) WHERE is_priority_impulse;

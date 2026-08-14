@@ -1709,6 +1709,7 @@ export type Database = {
           id: string
           image: string
           images: Json
+          is_priority_impulse: boolean
           is_verified: boolean
           previous_sku: string | null
           price: number
@@ -1734,6 +1735,7 @@ export type Database = {
           id: string
           image?: string
           images?: Json
+          is_priority_impulse?: boolean
           is_verified?: boolean
           previous_sku?: string | null
           price?: number
@@ -1759,6 +1761,7 @@ export type Database = {
           id?: string
           image?: string
           images?: Json
+          is_priority_impulse?: boolean
           is_verified?: boolean
           previous_sku?: string | null
           price?: number
