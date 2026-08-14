@@ -466,12 +466,6 @@ const BundleLanding = () => {
               დაამატე კიდევ 1 და გადაიხდი მხოლოდ {BUNDLE_PRICE}₾!
             </p>
           )}
-          {n > 0 && (
-            <p className="text-[11px] text-[#6f6f85] text-center font-medium">
-              ცალკე <span className="line-through">{Math.round(anchorSum)}₾</span> → {BUNDLE_PRICE}₾
-              {savings > 0 && ` · ზოგავ ${savings}₾`}
-            </p>
-          )}
 
           {repeatOrder ? (
             <RepeatOrderBlock
@@ -490,9 +484,7 @@ const BundleLanding = () => {
               >
                 {ctaLabel}
               </button>
-              <p className="text-[12px] font-extrabold text-center text-[#d92d20]">
-                {ctaUrgency}
-              </p>
+
               <p className="text-[11px] text-[#6f6f85] text-center font-medium">
                 გადაიხდი კურიერთან. თანხა წინასწარ არ იხდი.
               </p>
