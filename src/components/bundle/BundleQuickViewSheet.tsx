@@ -3,6 +3,7 @@ import { X, Check, Plus, Truck } from "lucide-react";
 import { Product } from "@/lib/constants";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
+import { trackViewContent } from "@/lib/metaPixel";
 
 interface BundleQuickViewSheetProps {
   product: Product | null;
@@ -59,6 +60,13 @@ const BundleQuickViewSheet = ({
 
   useEffect(() => {
     if (open) setDragY(0);
+  }, [open, product?.id]);
+
+  // Fire Meta Pixel ViewContent when the quick-view sheet opens for a product.
+  useEffect(() => {
+    if (open && product) {
+      trackViewContent(product);
+    }
   }, [open, product?.id]);
 
   // Keep mounted through the 300ms exit transition, then fully unmount.
