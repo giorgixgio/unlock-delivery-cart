@@ -12,9 +12,10 @@ import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
 import { readLastOrder, saveLastOrder, markIntentionalRepeat } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
+import { getUrgencySignal } from "@/lib/bundleUrgency";
 
 const BUNDLE_SIZE = 5;
-const BUNDLE_PRICE = 39;
+const BUNDLE_PRICE = 49;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
@@ -233,10 +234,16 @@ const BundleLanding = () => {
     setAddressOpen(true);
   };
 
+  // Urgency line under the main CTA — follows the currently selected product
+  const ctaUrgency = useMemo(() => {
+    if (selected.length > 0) return getUrgencySignal(selected[selected.length - 1].id).text;
+    return getUrgencySignal(LANDING_SLUG).text;
+  }, [selected]);
+
   const ctaLabel = n === 0
     ? `აირჩიე ${BUNDLE_SIZE} პროდუქტი — ${BUNDLE_PRICE}₾`
     : complete
-      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · მიტანა ყველგან`
+      ? `შეუკვეთე ახლა — ${BUNDLE_PRICE}₾ · უფასო მიტანა`
       : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
 
   return (
@@ -254,8 +261,8 @@ const BundleLanding = () => {
             {[0, 1].map((k) => (
               <div key={k} className="flex">
                 {[
-                  "ნებისმიერი 5 ნივთი — 39₾",
-                  "მიტანა ყველა სოფელში და ქალაქში",
+                  `ნებისმიერი 5 ნივთი — ${BUNDLE_PRICE}₾`,
+                  "უფასო მიტანა ყველა სოფელში და ქალაქში",
                   "გადაიხდი კურიერთან",
                   "7 დღის გარანტია",
                 ].map((t) => (
@@ -322,7 +329,7 @@ const BundleLanding = () => {
         {/* Trust strip */}
         <div className="flex flex-wrap justify-center gap-2 mt-5 bnd-slide-up">
           {[
-            { icon: Truck, label: "მიტანა ყველგან", green: true },
+            { icon: Truck, label: "უფასო მიტანა", green: true },
             { icon: HandCoins, label: "გადაიხდი მიღებისას", green: true },
             { icon: ShieldCheck, label: "7 დღის გარანტია", green: false },
           ].map(({ icon: Icon, label, green }) => (
@@ -345,7 +352,7 @@ const BundleLanding = () => {
                 <span className="line-through text-[#6f6f85] not-italic font-bold text-[18px]">
                   {Math.round(anchorSum)}₾
                 </span>{" "}
-                <span className="text-[#00a15a]">39₾</span>
+                <span className="text-[#00a15a]">{BUNDLE_PRICE}₾</span>
               </p>
               {savings > 0 && (
                 <p className="mt-1 text-[12px] font-extrabold text-[#c2410c]">
@@ -461,7 +468,7 @@ const BundleLanding = () => {
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
                 <span className="text-[12px] font-extrabold text-[#0b0b12]">
-                  39₾ · <span className="text-[#00a15a]">მიტანა ყველგან</span>
+                  {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
                 </span>
               </div>
               <div className="h-2 rounded-full bg-[#ececef] overflow-hidden">
@@ -475,12 +482,12 @@ const BundleLanding = () => {
 
           {n === BUNDLE_SIZE - 1 && (
             <p className="text-[12px] font-extrabold text-[#c2410c] text-center">
-              დაამატე კიდევ 1 და გადაიხდი მხოლოდ 39₾!
+              დაამატე კიდევ 1 და გადაიხდი მხოლოდ {BUNDLE_PRICE}₾!
             </p>
           )}
           {n > 0 && (
             <p className="text-[11px] text-[#6f6f85] text-center font-medium">
-              ცალკე <span className="line-through">{Math.round(anchorSum)}₾</span> → 39₾
+              ცალკე <span className="line-through">{Math.round(anchorSum)}₾</span> → {BUNDLE_PRICE}₾
               {savings > 0 && ` · ზოგავ ${savings}₾`}
             </p>
           )}
@@ -502,6 +509,9 @@ const BundleLanding = () => {
               >
                 {ctaLabel}
               </button>
+              <p className="text-[12px] font-extrabold text-center text-[#d92d20]">
+                {ctaUrgency}
+              </p>
               <p className="text-[11px] text-[#6f6f85] text-center font-medium">
                 გადაიხდი კურიერთან. თანხა წინასწარ არ იხდი.
               </p>
