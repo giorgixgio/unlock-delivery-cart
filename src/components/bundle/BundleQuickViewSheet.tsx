@@ -3,6 +3,7 @@ import { X, Check, Plus, Truck } from "lucide-react";
 import { Product } from "@/lib/constants";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
+import { trackViewContent } from "@/lib/metaPixel";
 
 interface BundleQuickViewSheetProps {
   product: Product | null;
