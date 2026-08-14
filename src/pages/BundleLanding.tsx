@@ -484,9 +484,7 @@ const BundleLanding = () => {
               >
                 {ctaLabel}
               </button>
-              <p className="text-[12px] font-extrabold text-center text-[#d92d20]">
-                {ctaUrgency}
-              </p>
+
               <p className="text-[11px] text-[#6f6f85] text-center font-medium">
                 გადაიხდი კურიერთან. თანხა წინასწარ არ იხდი.
               </p>
