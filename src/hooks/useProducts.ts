@@ -4,7 +4,7 @@ import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
-const CACHE_KEY = "bigmart-products-v6";
+const CACHE_KEY = "bigmart-products-v7";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping
@@ -81,6 +81,7 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
     sku: p.sku || "",
     available: p.available ?? true,
     isVerified: (p as any).is_verified ?? true,
+    isPriorityImpulse: (p as any).is_priority_impulse ?? false,
     description: p.description || "",
     vendor: p.vendor || "",
     handle: p.handle || "",
