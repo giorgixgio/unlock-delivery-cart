@@ -88,8 +88,35 @@ const BundleLanding = () => {
   const [searchParams] = useSearchParams();
   const featuredParam = (searchParams.get("featured") || "").trim();
 
-  const pool = useMemo(() => {
-    const all = (products || []).filter((p) => p.available && p.price > 0);
+  const [activeCat, setActiveCat] = useState<string>("all");
+
+  // Full eligible catalog (used for category counts + category-filtered views)
+  const eligible = useMemo(
+    () => (products || []).filter((p) => p.available && p.price > 0),
+    [products],
+  );
+
+  // Top categories by product count, labelled from the shared catalog constants
+  const catChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of eligible) {
+      for (const c of p.categories?.length ? p.categories : [p.category]) {
+        if (!c || c === "uncategorized") continue;
+        counts.set(c, (counts.get(c) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .filter(([, n]) => n >= 10)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([id]) => ({
+        id,
+        label: CATEGORIES.find((c) => c.id === id)?.label || id,
+      }));
+  }, [eligible]);
+
+  const basePool = useMemo(() => {
+    const all = eligible;
     if (!featuredParam) return all.slice(0, 60);
     // Search the whole eligible catalog, not just the first 60, so a featured
     // SKU deep in the list still gets promoted to position 1.
@@ -103,7 +130,18 @@ const BundleLanding = () => {
     const copy = [...all];
     const [hit] = copy.splice(idx, 1);
     return [hit, ...copy].slice(0, 60);
-  }, [products, featuredParam]);
+  }, [eligible, featuredParam]);
+
+  const pool = basePool;
+
+  // Purely visual filtering — never touches selectedIds
+  const visible = useMemo(() => {
+    if (activeCat === "all") return basePool;
+    return eligible
+      .filter((p) => (p.categories?.length ? p.categories : [p.category]).includes(activeCat))
+      .slice(0, 60);
+  }, [activeCat, basePool, eligible]);
+
 
 
   const featuredId = useMemo(() => {
