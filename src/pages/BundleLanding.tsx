@@ -89,6 +89,7 @@ const BundleLanding = () => {
   const [orderId, setOrderId] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [repeatOrder, setRepeatOrder] = useState<{ orderNumber: string } | null>(null);
+  const [intentionalReorder, setIntentionalReorder] = useState(false);
 
   const [searchParams] = useSearchParams();
   const featuredParam = (searchParams.get("featured") || "").trim();
@@ -172,6 +173,10 @@ const BundleLanding = () => {
 
   // Client-side duplicate guard (Fix #11) keyed on the primary sku of the bundle.
   useEffect(() => {
+    // Once the customer explicitly chooses to order again, keep the warning
+    // dismissed while they build the replacement bundle. Changing the first
+    // selected product must not re-trigger the local duplicate guard.
+    if (intentionalReorder) { setRepeatOrder(null); return; }
     if (!dupSku) { setRepeatOrder(null); return; }
     const last = readLastOrder(dupSku);
     if (last) {
@@ -180,7 +185,7 @@ const BundleLanding = () => {
     } else {
       setRepeatOrder(null);
     }
-  }, [dupSku]);
+  }, [dupSku, intentionalReorder]);
 
   useEffect(() => {
     if (complete) {
@@ -237,6 +242,9 @@ const BundleLanding = () => {
       setHintId(Date.now());
       return;
     }
+    // The new bundle may start with a different product, so transfer the
+    // customer's explicit reorder choice to the SKU used by server dedupe.
+    if (intentionalReorder && dupSku) markIntentionalRepeat(dupSku);
     setPhoneOpen(true);
   };
 
@@ -486,6 +494,7 @@ const BundleLanding = () => {
               orderNumber={repeatOrder.orderNumber}
               onReorder={() => {
                 if (dupSku) markIntentionalRepeat(dupSku);
+                setIntentionalReorder(true);
                 setRepeatOrder(null);
                 // Fresh start: clear the previous bundle selection so the user
                 // builds a new set instead of deselecting the old one.
