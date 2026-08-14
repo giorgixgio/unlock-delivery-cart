@@ -166,3 +166,62 @@ export function insertCategoryStrips({
 
   return { items, strips, suggestionIds };
 }
+
+export interface RerankInput {
+  /** The order currently on screen (NOT the pristine base order). */
+  current: Product[];
+  /** Id of the card the user just selected. */
+  anchorId: string;
+  selectedIds: string[];
+  seed: number;
+  /** Index below which nothing may ever move again (monotonic freeze). */
+  freezeFrom?: number;
+}
+
+export interface RerankResult {
+  items: Product[];
+  /** New monotonic freeze index to carry into the next selection. */
+  freezeFrom: number;
+}
+
+/**
+ * Incremental, append-only re-rank.
+ *
+ * Re-ranking always starts from the order that is CURRENTLY on screen and never
+ * touches anything above `freezeFrom` (which only ever grows). That means cards
+ * the user has already seen — including the tapped card and the buffer right
+ * after it — keep their exact index and column, so selecting a product can
+ * never shuffle the grid upwards or flip a card to the other column.
+ */
+export function rerankFeed({
+  current,
+  anchorId,
+  selectedIds,
+  seed,
+  freezeFrom = 0,
+}: RerankInput): RerankResult {
+  const anchorIdx = current.findIndex((p) => p.id === anchorId);
+  if (anchorIdx < 0) return { items: current, freezeFrom };
+
+  const anchor = current[anchorIdx];
+  const cut = Math.min(current.length, Math.max(freezeFrom, anchorIdx + 1 + BUFFER_SIZE));
+  const prefix = current.slice(0, cut);
+  const remainder = current.slice(cut);
+  if (remainder.length === 0) return { items: current, freezeFrom: cut };
+
+  const selected = new Set(selectedIds);
+  const categories = new Set(catsOf(anchor));
+
+  const similar = remainder
+    .filter((p) => !selected.has(p.id) && catsOf(p).some((c) => categories.has(c)))
+    .slice(0, STRIP_SIZE);
+  const similarIds = new Set(similar.map((p) => p.id));
+  const priority = seededShuffle(
+    remainder.filter((p) => !selected.has(p.id) && !similarIds.has(p.id) && p.isPriorityImpulse),
+    seed + anchorIdx,
+  );
+  const promoted = new Set([...similarIds, ...priority.map((p) => p.id)]);
+  const mixed = remainder.filter((p) => !promoted.has(p.id));
+
+  return { items: [...prefix, ...similar, ...priority, ...mixed], freezeFrom: cut };
+}
