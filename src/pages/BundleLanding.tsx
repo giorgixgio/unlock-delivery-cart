@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Truck, HandCoins, ShieldCheck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
-import { Product } from "@/lib/constants";
+import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 
@@ -88,8 +88,35 @@ const BundleLanding = () => {
   const [searchParams] = useSearchParams();
   const featuredParam = (searchParams.get("featured") || "").trim();
 
-  const pool = useMemo(() => {
-    const all = (products || []).filter((p) => p.available && p.price > 0);
+  const [activeCat, setActiveCat] = useState<string>("all");
+
+  // Full eligible catalog (used for category counts + category-filtered views)
+  const eligible = useMemo(
+    () => (products || []).filter((p) => p.available && p.price > 0),
+    [products],
+  );
+
+  // Top categories by product count, labelled from the shared catalog constants
+  const catChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of eligible) {
+      for (const c of p.categories?.length ? p.categories : [p.category]) {
+        if (!c || c === "uncategorized") continue;
+        counts.set(c, (counts.get(c) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .filter(([, n]) => n >= 10)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([id]) => ({
+        id,
+        label: CATEGORIES.find((c) => c.id === id)?.label || id,
+      }));
+  }, [eligible]);
+
+  const basePool = useMemo(() => {
+    const all = eligible;
     if (!featuredParam) return all.slice(0, 60);
     // Search the whole eligible catalog, not just the first 60, so a featured
     // SKU deep in the list still gets promoted to position 1.
@@ -103,7 +130,18 @@ const BundleLanding = () => {
     const copy = [...all];
     const [hit] = copy.splice(idx, 1);
     return [hit, ...copy].slice(0, 60);
-  }, [products, featuredParam]);
+  }, [eligible, featuredParam]);
+
+  const pool = basePool;
+
+  // Purely visual filtering — never touches selectedIds
+  const visible = useMemo(() => {
+    if (activeCat === "all") return basePool;
+    return eligible
+      .filter((p) => (p.categories?.length ? p.categories : [p.category]).includes(activeCat))
+      .slice(0, 60);
+  }, [activeCat, basePool, eligible]);
+
 
 
   const featuredId = useMemo(() => {
@@ -117,8 +155,8 @@ const BundleLanding = () => {
   }, [pool, featuredParam]);
 
   const selected: Product[] = useMemo(
-    () => selectedIds.map((id) => pool.find((p) => p.id === id)).filter(Boolean) as Product[],
-    [selectedIds, pool],
+    () => selectedIds.map((id) => eligible.find((p) => p.id === id)).filter(Boolean) as Product[],
+    [selectedIds, eligible],
   );
 
   const anchorSum = selected.reduce((s, p) => s + p.price, 0);
@@ -310,13 +348,48 @@ const BundleLanding = () => {
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
           </div>
 
+          {/* Sticky category filter — visual only, never affects selection */}
+          {catChips.length > 0 && (
+            <div
+              className="sticky z-40 -mx-4 px-4 py-2 bg-white/92 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
+              style={{
+                top: topCollapsed
+                  ? "env(safe-area-inset-top)"
+                  : "calc(36px + 28px + env(safe-area-inset-top))",
+                transition: "top .28s cubic-bezier(.4,0,.2,1)",
+              }}
+            >
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[{ id: "all", label: "ყველა" }, ...catChips].map((c) => {
+                  const active = activeCat === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setActiveCat(c.id)}
+                      className={`bnd-pill whitespace-nowrap shrink-0 text-[12px] px-3.5 py-2 transition-colors ${
+                        active
+                          ? "bg-[#0b0b12] text-white border-[#0b0b12]"
+                          : "text-[#6f6f85]"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+
+
           {isLoading ? (
             <div className="py-16 flex justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
             </div>
           ) : (
             <div key={hintId} className="grid grid-cols-2 gap-3 animate-fade-in">
-              {pool.map((p) => (
+              {visible.map((p) => (
                 <BundleTile
                   key={p.id}
                   product={p}
@@ -404,7 +477,7 @@ const BundleLanding = () => {
 
       {/* Quick view bottom sheet — selection only, never touches the COD flow */}
       <BundleQuickViewSheet
-        product={pool.find((p) => p.id === quickViewId) || null}
+        product={eligible.find((p) => p.id === quickViewId) || null}
         open={quickViewOpen}
         onClose={() => setQuickViewOpen(false)}
         selected={quickViewId ? selectedIds.includes(quickViewId) : false}
