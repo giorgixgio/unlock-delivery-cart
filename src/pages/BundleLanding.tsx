@@ -4,7 +4,7 @@ import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
-import { buildBaseOrder, insertCategoryStrips } from "@/lib/bundleGridEngine";
+import { buildBaseOrder, rerankFeed } from "@/lib/bundleGridEngine";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 import BundleSwapModal from "@/components/bundle/BundleSwapModal";
@@ -145,19 +145,40 @@ const BundleLanding = () => {
     [eligible, featuredId],
   );
 
-  // Same-category suggestions spliced in right after each selected card.
-  const grid = useMemo(
-    () =>
-      insertCategoryStrips({
-        base: baseOrder,
+  // Incremental feed: starts as the base order and is only ever re-ranked
+  // BELOW a monotonic freeze point, so already-seen cards never move.
+  const [feed, setFeed] = useState<Product[]>(baseOrder);
+  const freezeRef = useRef(0);
+  const lastAnchorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setFeed(baseOrder);
+    freezeRef.current = 0;
+    lastAnchorRef.current = null;
+  }, [baseOrder]);
+
+  useEffect(() => {
+    if (activeCat !== "all") return;
+    const anchorId = selectedIds[selectedIds.length - 1] || null;
+    if (!anchorId || anchorId === lastAnchorRef.current) {
+      lastAnchorRef.current = anchorId;
+      return;
+    }
+    lastAnchorRef.current = anchorId;
+    setFeed((current) => {
+      const res = rerankFeed({
+        current,
+        anchorId,
         selectedIds,
         seed: seedRef.current,
-        enabled: activeCat === "all",
-      }),
-    [baseOrder, selectedIds, activeCat],
-  );
+        freezeFrom: freezeRef.current,
+      });
+      freezeRef.current = res.freezeFrom;
+      return res.items;
+    });
+  }, [selectedIds, activeCat]);
 
-  const ordered = grid.items;
+  const ordered = feed;
   const pool = ordered;
 
   // Purely visual category filtering — never touches selectedIds
