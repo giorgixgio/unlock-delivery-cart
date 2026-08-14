@@ -1,25 +1,19 @@
-# Fix category browsing on the homepage
+# Fix bundle grid jumping and missing same-category suggestions
 
-## What's actually wrong
+## What's wrong now
 
-Verified against the live database and the code:
+Every time an item is selected, the whole grid is rebuilt: recommended items are prepended to the top of the list, so all cards shift positions under the user's finger. That causes the "jumps up or down" feeling. And because those same-category picks are inserted at the very top of the page — far above where the user is scrolled — they are never actually seen.
 
-- **Categories are fine in the database.** 588 assignments across 18 categories, every one matches a real product (kitchen 127, accessories 74, beauty 59, uncategorized 59, ... pets 3, smoking 2). So "empty" tabs are a frontend problem, not missing data.
-- **Only 20 products ever render per category.** The infinite-scroll hook resets its counter whenever the product array changes identity. The homepage rebuilds that array on every render, so the counter is pushed back to 20 continuously and scrolling never loads more. This is the "doesn't show all products" bug.
-- **Category chips are guessed twice.** Besides the real assignments, the app re-derives a category from product tags/title whenever the product row's own category is `uncategorized`. That guessed value is merged in, so products land in chips they were never assigned to, and small/new categories look inconsistent.
-- **Stale local cache.** Products are cached in the browser under one key; after the AI categorization runs, a visitor can keep seeing the old category data until the cache expires.
+## What it should do
 
-## What I'll change
-
-1. **Fix the pagination reset** so the counter only resets on an actual category change, not on every render — all products in a category load as you scroll.
-2. **Trust the database as the single source of category truth.** Use `product_categories` assignments; fall back to the product's own category only when it has no assignments at all. Drop the tag/title guessing from the storefront feed.
-3. **Show counts on the chips** (e.g. "სამზარეულო 127") so it's immediately visible which tabs are genuinely small vs. broken, and hide chips with zero products.
-4. **Uncategorized tab ("სხვა")** stays visible and lists every product with no real category, so you can see exactly which SKUs are unclassified and why (they'll show title + image + SKU, i.e. the inputs the classifier had).
-5. **Refresh the cache** (new cache version + fetch all rows without relying on a default row cap) so live visitors immediately get current categories.
+1. **The base order never moves.** Compute the catalog order once per session (impulse hooks first, then evenly mixed categories). Selecting, deselecting, or filtering never reshuffles it.
+2. **Same-category suggestions appear right where the user is looking.** When an item is tapped, insert up to 4 unselected products from that item's category directly *after* the tapped card, as an inline strip with a small Georgian label (e.g. "მსგავსი ნივთები"). Items already visible in that position stay put; only new cards are inserted below the tapped one.
+3. **No scroll jump.** Cards above the tapped item keep their index, so scroll position stays anchored. Deselecting removes the strip that belongs to that item.
+4. **Shallow categories** (fewer than 4 unselected items) show what exists plus impulse filler, keeping the existing divider label.
+5. **Category filter view** keeps working as pure visual filtering; suggestion strips are suppressed while a specific category filter is active (the whole grid is already that category).
 
 ## Technical notes
 
-- `src/hooks/useInfiniteScroll.ts`: reset on a stable key rather than array identity.
-- `src/pages/Index.tsx`: memoize the filtered list, compute per-category counts, render counts on chips, keep `uncategorized` chip.
-- `src/hooks/useProducts.ts`: category resolution from `product_categories` only (fallback to `products.category`), remove `categorizeByTags` from the merge path, bump cache key to v6, paginate the assignments fetch.
-- No database or admin changes; checkout, cart and landing funnels untouched.
+- `src/lib/bundleGridEngine.ts`: split into `buildBaseOrder({ pool, seed, featuredId })` (memoized on catalog + seed only) and `insertCategoryStrips({ base, selectedIds, selectedCategories })` which splices suggestions in place after the matching card and returns the ids marked as "suggestion" for styling. Drop the phase-based prepending.
+- `src/pages/BundleLanding.tsx`: use the two-step memo, keep `dividerAfterId` behavior for shallow categories, and keep the lazy `limit` window from resetting on selection (only reset on category-filter change) so the rendered window doesn't collapse when a strip is added.
+- No changes to selection state, pricing, checkout, or any other page.
