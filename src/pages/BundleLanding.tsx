@@ -348,6 +348,41 @@ const BundleLanding = () => {
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
           </div>
 
+          {/* Sticky category filter — visual only, never affects selection */}
+          {catChips.length > 0 && (
+            <div
+              className="sticky z-40 -mx-4 px-4 py-2 bg-white/92 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
+              style={{
+                top: topCollapsed
+                  ? "env(safe-area-inset-top)"
+                  : "calc(36px + 28px + env(safe-area-inset-top))",
+                transition: "top .28s cubic-bezier(.4,0,.2,1)",
+              }}
+            >
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {[{ id: "all", label: "ყველა" }, ...catChips].map((c) => {
+                  const active = activeCat === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setActiveCat(c.id)}
+                      className={`bnd-pill whitespace-nowrap shrink-0 text-[12px] px-3.5 py-2 transition-colors ${
+                        active
+                          ? "bg-[#0b0b12] text-white border-[#0b0b12]"
+                          : "text-[#6f6f85]"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+
+
           {isLoading ? (
             <div className="py-16 flex justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
