@@ -284,30 +284,6 @@ const BundleLanding = () => {
           </div>
         </div>
         <CountdownBar />
-
-        {/* Marquee ticker under the timer, straight from the reference skin */}
-        <div className="bnd-ticker">
-          <div className="bnd-ticker-track py-1.5">
-            {[0, 1].map((k) => (
-              <div key={k} className="flex">
-                {[
-                  `ნებისმიერი 5 ნივთი — ${BUNDLE_PRICE}₾`,
-                  "უფასო მიტანა ყველა სოფელში და ქალაქში",
-                  "გადაიხდი კურიერთან",
-                  "7 დღის გარანტია",
-                ].map((t) => (
-                  <span
-                    key={t + k}
-                    className="inline-flex items-center gap-2 px-5 text-[11px] font-extrabold uppercase tracking-[1px] text-white/95"
-                  >
-                    {t}
-                    <span className="w-1 h-1 rounded-full bg-white/50" />
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <main
@@ -315,7 +291,7 @@ const BundleLanding = () => {
           style={{
             paddingTop: topCollapsed
               ? "calc(16px + env(safe-area-inset-top))"
-              : "calc(32px + 36px + 28px + env(safe-area-inset-top) + 20px)",
+              : "calc(32px + 36px + env(safe-area-inset-top) + 20px)",
             paddingBottom: "calc(190px + env(safe-area-inset-bottom))",
             transition: "padding-top .28s cubic-bezier(.4,0,.2,1)",
           }}
@@ -395,7 +371,7 @@ const BundleLanding = () => {
               style={{
                 top: topCollapsed
                   ? "env(safe-area-inset-top)"
-                  : "calc(32px + 36px + 28px + env(safe-area-inset-top))",
+                  : "calc(32px + 36px + env(safe-area-inset-top))",
                 transition: "top .28s cubic-bezier(.4,0,.2,1)",
               }}
             >
