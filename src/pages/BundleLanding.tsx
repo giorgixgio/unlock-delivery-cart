@@ -240,7 +240,7 @@ const BundleLanding = () => {
       : `აირჩიე კიდევ ${BUNDLE_SIZE - n} — და გადაიხდი ${BUNDLE_PRICE}₾`;
 
   return (
-    <div className="bnd-root min-h-screen overflow-x-hidden">
+    <div className="bnd-root min-h-screen overflow-x-clip">
       {/* Top announcement bars — collapse on scroll to free up product space */}
       <div
         className={`fixed left-0 right-0 z-50 bnd-top-bar ${topCollapsed ? "bnd-top-bar--collapsed" : ""}`}
@@ -351,7 +351,7 @@ const BundleLanding = () => {
           {/* Sticky category filter — visual only, never affects selection */}
           {catChips.length > 0 && (
             <div
-              className="sticky z-40 -mx-4 px-4 py-2 bg-white/92 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
+              className="sticky z-40 -mx-4 px-4 py-2.5 bg-white/95 backdrop-blur border-y border-[rgba(11,11,18,.07)]"
               style={{
                 top: topCollapsed
                   ? "env(safe-area-inset-top)"
@@ -367,7 +367,7 @@ const BundleLanding = () => {
                       key={c.id}
                       type="button"
                       onClick={() => setActiveCat(c.id)}
-                      className={`bnd-pill whitespace-nowrap shrink-0 text-[12px] px-3.5 py-2 transition-colors ${
+                      className={`bnd-pill whitespace-nowrap shrink-0 text-[14px] font-extrabold px-4 py-2.5 transition-colors ${
                         active
                           ? "bg-[#0b0b12] text-white border-[#0b0b12]"
                           : "text-[#6f6f85]"
@@ -384,11 +384,25 @@ const BundleLanding = () => {
 
 
           {isLoading ? (
-            <div className="py-16 flex justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-[#6f6f85]" />
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-[rgba(11,11,18,.08)] overflow-hidden bg-white"
+                >
+                  <div className="aspect-square bg-[rgba(11,11,18,.06)] animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 rounded bg-[rgba(11,11,18,.08)] animate-pulse" />
+                    <div className="h-3 w-2/3 rounded bg-[rgba(11,11,18,.08)] animate-pulse" />
+                    <div className="h-9 rounded-xl bg-[rgba(11,11,18,.06)] animate-pulse" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div key={hintId} className="grid grid-cols-2 gap-3 animate-fade-in">
+
+            <div key={`${hintId}-${activeCat}`} className="grid grid-cols-2 gap-3 bnd-cat-swap">
+
               {visible.map((p) => (
                 <BundleTile
                   key={p.id}
