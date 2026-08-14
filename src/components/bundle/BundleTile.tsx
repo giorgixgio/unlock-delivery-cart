@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Plus, Star } from "lucide-react";
+import { Check, Plus, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
