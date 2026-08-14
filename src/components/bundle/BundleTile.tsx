@@ -57,11 +57,8 @@ const BundleTile = ({ product, selected, onToggle, onQuickView, featured }: Bund
         </p>
 
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[13px] text-[#9a9aad] line-through font-semibold">
+          <span className="text-[15px] font-extrabold text-[#c2410c] line-through decoration-[#c2410c] decoration-2">
             {Math.round(product.price)}₾
-          </span>
-          <span className="text-[11px] font-semibold text-[#6f6f85]">
-            შედის 5-ის ნაკრებში
           </span>
         </div>
 
