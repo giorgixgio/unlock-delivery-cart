@@ -654,10 +654,42 @@
 }
 .bnd-ticker { overflow:hidden; background: var(--bnd-grad); }
 .bnd-ticker-track { display:flex; white-space:nowrap; animation: bndMarquee 22s linear infinite; }
+.bnd-progress-track { position: relative; overflow: hidden; }
+.bnd-progress-track::after {
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+  transform: translateX(-100%);
+  animation: bndTrackSweep 2.4s ease-in-out infinite;
+}
 .bnd-progress-fill {
-  background: linear-gradient(90deg,#00b862,#00a15a);
-  box-shadow: 0 0 12px rgba(0,161,90,.45);
-  transition: width .5s cubic-bezier(.34,1.4,.64,1);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg,#00b862,#00d977,#00a15a);
+  background-size: 200% 100%;
+  box-shadow: 0 0 12px rgba(0,161,90,.55);
+  transition: width .55s cubic-bezier(.34,1.6,.5,1);
+  animation: bndFillFlow 2.6s linear infinite, bndFillBreathe 2.2s ease-in-out infinite;
+}
+.bnd-progress-fill::after {
+  content:""; position:absolute; top:0; bottom:0; width:45%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
+  animation: bndShimmer 1.6s ease-in-out infinite;
+}
+.bnd-progress-bump { animation: bndProgressBump .5s cubic-bezier(.34,1.7,.5,1); }
+.bnd-cta-pulse { animation: bndCtaPulse 1.5s ease-in-out infinite; }
+@keyframes bndTrackSweep { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(100%)} }
+@keyframes bndFillFlow { 0%{background-position:0% 0} 100%{background-position:200% 0} }
+@keyframes bndFillBreathe {
+  0%,100% { box-shadow: 0 0 10px rgba(0,161,90,.45); filter: brightness(1); }
+  50% { box-shadow: 0 0 20px rgba(0,214,119,.75); filter: brightness(1.12); }
+}
+@keyframes bndProgressBump { 0%{transform:scaleY(1)} 40%{transform:scaleY(1.7)} 100%{transform:scaleY(1)} }
+@keyframes bndCtaPulse {
+  0%,100% { transform: scale(1); box-shadow: 0 8px 24px rgba(0,161,90,.35); }
+  50% { transform: scale(1.025); box-shadow: 0 12px 34px rgba(0,214,119,.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bnd-progress-fill, .bnd-progress-fill::after, .bnd-progress-track::after, .bnd-cta-pulse { animation: none; }
 }
 .bnd-pop { animation: bndPopIn .45s cubic-bezier(.34,1.56,.64,1) both; }
 .bnd-slide-up { animation: bndSlideUp .5s ease both; }
