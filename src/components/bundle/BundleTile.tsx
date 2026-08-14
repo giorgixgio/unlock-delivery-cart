@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Check, Plus, Star } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
