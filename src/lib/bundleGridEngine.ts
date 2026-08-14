@@ -8,10 +8,9 @@
  *      other category). It only depends on the catalog + seed, so selecting or
  *      deselecting products never reshuffles it.
  *
- *   2. `insertCategoryStrips` — splices a short strip of same-category
- *      suggestions *directly after* each selected card, pulling only items that
- *      already sat below that card. Everything above the tapped card keeps its
- *      exact index, so the scroll position stays anchored.
+ *   2. `insertCategoryStrips` — keeps everything through the most recently
+ *      selected card in place, then silently ranks the remaining feed in phases:
+ *      four similar products, priority products, then the existing mixed order.
  */
 
 import { Product } from "@/lib/constants";
@@ -54,7 +53,8 @@ function evenlyMixed(items: Product[], seed: number): Product[] {
   while (added) {
     added = false;
     for (const k of keys) {
-      const list = buckets.get(k)!;
+      const list = buckets.get(k);
+      if (!list) continue;
       if (i < list.length) {
         out.push(list[i]);
         added = true;
@@ -102,7 +102,7 @@ export interface CategoryStripInput {
 
 export interface BundleGridResult {
   items: Product[];
-  /** anchor product id -> ids of the suggestion cards that follow it. */
+  /** Active anchor id -> same-category recommendations that follow it. */
   strips: Map<string, string[]>;
   /** Ids rendered as part of a suggestion strip (for subtle styling). */
   suggestionIds: Set<string>;
@@ -112,9 +112,9 @@ export interface BundleGridResult {
 const STRIP_SIZE = 4;
 
 /**
- * Splices same-category suggestions in place after each selected product.
- * Only items that already sat *below* the anchor get moved, so nothing above
- * the tapped card ever shifts.
+ * Re-ranks only the feed after the latest selection. This deliberately avoids
+ * dividers and nested grid rows: cards always occupy the normal two-column flow,
+ * so choosing a left-hand card can never leave the right-hand column empty.
  */
 export function insertCategoryStrips({
   base,
@@ -130,70 +130,32 @@ export function insertCategoryStrips({
   }
 
   const selected = new Set(selectedIds);
-  const indexOf = new Map(base.map((p, i) => [p.id, i] as const));
-  const moved = new Set<string>();
+  const anchorId = [...selectedIds].reverse().find((id) => base.some((p) => p.id === id));
+  if (!anchorId) return { items: base, strips, suggestionIds };
 
-  // Anchors in grid order so earlier strips don't steal from later ones oddly.
-  const anchors = selectedIds
-    .filter((id) => indexOf.has(id))
-    .sort((a, b) => indexOf.get(a)! - indexOf.get(b)!);
+  const anchorIdx = base.findIndex((p) => p.id === anchorId);
+  const anchor = base[anchorIdx];
+  const categories = new Set(catsOf(anchor));
+  const prefix = base.slice(0, anchorIdx + 1);
+  const remainder = base.slice(anchorIdx + 1);
 
-  for (const anchorId of anchors) {
-    const anchorIdx = indexOf.get(anchorId)!;
-    const anchor = base[anchorIdx];
-    const cats = new Set(catsOf(anchor));
+  const similar = remainder
+    .filter((p) => !selected.has(p.id) && catsOf(p).some((category) => categories.has(category)))
+    .slice(0, STRIP_SIZE);
+  const similarIds = new Set(similar.map((p) => p.id));
+  const priority = seededShuffle(
+    remainder.filter(
+      (p) => !selected.has(p.id) && !similarIds.has(p.id) && p.isPriorityImpulse,
+    ),
+    seed + anchorIdx,
+  );
+  const promotedIds = new Set([...similarIds, ...priority.map((p) => p.id)]);
+  const mixed = remainder.filter((p) => !promotedIds.has(p.id));
 
-    const below = base.slice(anchorIdx + 1);
+  similar.forEach((p) => suggestionIds.add(p.id));
+  strips.set(anchorId, similar.map((p) => p.id));
 
-    const sameCat = below.filter(
-      (p) =>
-        !selected.has(p.id) &&
-        !moved.has(p.id) &&
-        catsOf(p).some((c) => cats.has(c)),
-    );
-
-    let picks = sameCat.slice(0, STRIP_SIZE);
-
-    if (picks.length < STRIP_SIZE) {
-      // Shallow category — top up with impulse hooks so it never dead-ends.
-      const pickIds = new Set(picks.map((p) => p.id));
-      const filler = seededShuffle(
-        below.filter(
-          (p) =>
-            p.isPriorityImpulse &&
-            !selected.has(p.id) &&
-            !moved.has(p.id) &&
-            !pickIds.has(p.id),
-        ),
-        seed + anchorIdx,
-      ).slice(0, STRIP_SIZE - picks.length);
-      picks = [...picks, ...filler];
-    }
-
-    if (picks.length === 0) continue;
-
-    for (const p of picks) {
-      moved.add(p.id);
-      suggestionIds.add(p.id);
-    }
-    strips.set(anchorId, picks.map((p) => p.id));
-  }
-
-  if (moved.size === 0) return { items: base, strips, suggestionIds };
-
-  const byId = new Map(base.map((p) => [p.id, p] as const));
-  const items: Product[] = [];
-  for (const p of base) {
-    if (moved.has(p.id) && !strips.has(p.id)) continue;
-    items.push(p);
-    const strip = strips.get(p.id);
-    if (strip) {
-      for (const id of strip) {
-        const hit = byId.get(id);
-        if (hit) items.push(hit);
-      }
-    }
-  }
+  const items = [...prefix, ...similar, ...priority, ...mixed];
 
   return { items, strips, suggestionIds };
 }

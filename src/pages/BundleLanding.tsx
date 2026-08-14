@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
@@ -158,15 +158,6 @@ const BundleLanding = () => {
   );
 
   const ordered = grid.items;
-  /** first suggestion id of each strip → renders the small label above it. */
-  const stripHeadIds = useMemo(() => {
-    const s = new Set<string>();
-    grid.strips.forEach((ids) => {
-      if (ids[0]) s.add(ids[0]);
-    });
-    return s;
-  }, [grid]);
-
   const pool = ordered;
 
   // Purely visual category filtering — never touches selectedIds
@@ -470,21 +461,10 @@ const BundleLanding = () => {
             </div>
           ) : (
 
-            <div key={`${hintId}-${activeCat}`} className="grid grid-cols-2 gap-3 bnd-cat-swap">
+            <div key={activeCat} className="grid grid-cols-2 gap-3 bnd-cat-swap">
 
               {visible.map((p) => (
-                <Fragment key={p.id}>
-                  {stripHeadIds.has(p.id) && (
-                    /* Same-category suggestions right where the user tapped */
-                    <div className="col-span-2 flex items-center gap-2.5 py-1.5">
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                      <span className="shrink-0 rounded-full bg-[rgba(194,65,12,.08)] border border-[rgba(194,65,12,.16)] px-3 py-1.5 text-[12px] font-extrabold text-[#c2410c] whitespace-nowrap">
-                        🔥 მსგავსი ნივთები
-                      </span>
-                      <span className="flex-1 h-px bg-[rgba(11,11,18,.10)]" />
-                    </div>
-                  )}
-                  <div className="bnd-cv h-full">
+                <div key={p.id} className="bnd-cv h-full">
                   <BundleTile
                     product={p}
                     featured={p.id === featuredId}
@@ -495,8 +475,7 @@ const BundleLanding = () => {
                       setQuickViewOpen(true);
                     }}
                   />
-                  </div>
-                </Fragment>
+                </div>
               ))}
             </div>
           )}
