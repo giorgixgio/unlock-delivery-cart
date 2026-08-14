@@ -18,7 +18,7 @@ import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 
 const BUNDLE_SIZE = 5;
-const BUNDLE_PRICE = 39;
+const BUNDLE_PRICE = 49;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
