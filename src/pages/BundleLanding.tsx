@@ -175,11 +175,11 @@ const BundleLanding = () => {
   }, [activeCat, ordered]);
 
   // Lazy rendering: grow the rendered window as the sentinel scrolls into view.
-  const [limit, setLimit] = useState(24);
+  const [limit, setLimit] = useState(48);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setLimit(24);
+    setLimit(48);
   }, [activeCat]);
 
   useEffect(() => {
@@ -188,7 +188,7 @@ const BundleLanding = () => {
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setLimit((l) => (l >= filteredPool.length ? l : l + 24));
+          setLimit((l) => (l >= filteredPool.length ? l : l + 48));
         }
       },
       { rootMargin: "600px 0px" },
@@ -471,7 +471,7 @@ const BundleLanding = () => {
 
               {visible.map((p) => (
                 <Fragment key={p.id}>
-                  <div className="bnd-cv">
+                  <div className="bnd-cv h-full">
                   <BundleTile
                     product={p}
                     featured={p.id === featuredId}
