@@ -76,6 +76,9 @@ const BundleLanding = () => {
   const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
+  const [swapIncoming, setSwapIncoming] = useState<Product | null>(null);
+  const [swapOpen, setSwapOpen] = useState(false);
+
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [topCollapsed, setTopCollapsed] = useState(false);
