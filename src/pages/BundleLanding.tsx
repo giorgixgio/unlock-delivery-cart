@@ -5,6 +5,7 @@ import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
+import BundleSwapModal from "@/components/bundle/BundleSwapModal";
 
 import BundlePhoneSheet from "@/components/bundle/BundlePhoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
