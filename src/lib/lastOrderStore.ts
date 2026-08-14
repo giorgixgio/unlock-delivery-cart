@@ -35,6 +35,29 @@ export function readLastOrder(sku: string): LastOrderRecord | null {
   }
 }
 
+/** Returns the newest locally-saved bundle order, regardless of which product
+ * was the bundle's primary SKU. This lets bundle pages warn before selection. */
+export function readLastBundleOrder(): LastOrderRecord | null {
+  try {
+    let newest: LastOrderRecord | null = null;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const storageKey = localStorage.key(i);
+      if (!storageKey?.startsWith("lastOrder:")) continue;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as LastOrderRecord;
+      const isCurrent = parsed?.createdAt && Date.now() - parsed.createdAt <= TTL_MS;
+      const isBundle = parsed?.productName?.startsWith("ნაკრები 5 =");
+      if (isCurrent && isBundle && (!newest || parsed.createdAt > newest.createdAt)) {
+        newest = parsed;
+      }
+    }
+    return newest;
+  } catch {
+    return null;
+  }
+}
+
 export function clearLastOrder(sku: string) {
   try { localStorage.removeItem(key(sku)); } catch {}
 }

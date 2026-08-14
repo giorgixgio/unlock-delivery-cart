@@ -11,7 +11,7 @@ import BundlePhoneSheet from "@/components/bundle/BundlePhoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
-import { readLastOrder, saveLastOrder, markIntentionalRepeat } from "@/lib/lastOrderStore";
+import { readLastBundleOrder, readLastOrder, saveLastOrder, markIntentionalRepeat } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 
@@ -88,7 +88,10 @@ const BundleLanding = () => {
   const [doneOpen, setDoneOpen] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
-  const [repeatOrder, setRepeatOrder] = useState<{ orderNumber: string } | null>(null);
+  const [repeatOrder, setRepeatOrder] = useState<{ orderNumber: string; sku: string } | null>(() => {
+    const last = readLastBundleOrder();
+    return last ? { orderNumber: last.orderNumber, sku: last.sku } : null;
+  });
   const [intentionalReorder, setIntentionalReorder] = useState(false);
 
   const [searchParams] = useSearchParams();
@@ -177,10 +180,12 @@ const BundleLanding = () => {
     // dismissed while they build the replacement bundle. Changing the first
     // selected product must not re-trigger the local duplicate guard.
     if (intentionalReorder) { setRepeatOrder(null); return; }
-    if (!dupSku) { setRepeatOrder(null); return; }
+    // The newest saved bundle is loaded before any product is selected, so the
+    // customer can confirm a repeat order without losing their first choice.
+    if (!dupSku) return;
     const last = readLastOrder(dupSku);
     if (last) {
-      setRepeatOrder({ orderNumber: last.orderNumber });
+      setRepeatOrder({ orderNumber: last.orderNumber, sku: last.sku });
       trackEvent("duplicate_block_shown", { sku: dupSku, orderNumber: last.orderNumber, source: "client" });
     } else {
       setRepeatOrder(null);
@@ -493,7 +498,7 @@ const BundleLanding = () => {
             <RepeatOrderBlock
               orderNumber={repeatOrder.orderNumber}
               onReorder={() => {
-                if (dupSku) markIntentionalRepeat(dupSku);
+                markIntentionalRepeat(repeatOrder.sku || dupSku);
                 setIntentionalReorder(true);
                 setRepeatOrder(null);
                 // Fresh start: clear the previous bundle selection so the user
@@ -560,7 +565,7 @@ const BundleLanding = () => {
         flatTotal={BUNDLE_PRICE}
         landingSlug={LANDING_SLUG}
         onOrderCreated={handleOrderCreated}
-        onDuplicateBlocked={(num) => setRepeatOrder({ orderNumber: num })}
+        onDuplicateBlocked={(num) => setRepeatOrder({ orderNumber: num, sku: dupSku })}
       />
 
       {orderId && (
