@@ -4,6 +4,7 @@ import { Truck, Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
+import { buildBundleGrid } from "@/lib/bundleGridEngine";
 import { getBundleDisplayPrice } from "@/lib/bundleDisplayPrice";
 import BundleQuickViewSheet from "@/components/bundle/BundleQuickViewSheet";
 import BundleSwapModal from "@/components/bundle/BundleSwapModal";
@@ -125,44 +126,76 @@ const BundleLanding = () => {
       }));
   }, [eligible]);
 
-  const basePool = useMemo(() => {
-    const all = eligible;
-    if (!featuredParam) return all.slice(0, 60);
-    // Search the whole eligible catalog, not just the first 60, so a featured
-    // SKU deep in the list still gets promoted to position 1.
-    const idx = all.findIndex(
+  // Stable per-session seed → deterministic shuffles, zero jitter on re-render.
+  const seedRef = useRef(Math.floor(Math.random() * 1e9));
+
+  const featuredId = useMemo(() => {
+    if (!featuredParam) return null;
+    const hit = eligible.find(
       (p) =>
         String(p.sku || "").toLowerCase() === featuredParam.toLowerCase() ||
         String(p.id) === featuredParam,
     );
-    // No match → grid renders normally, no error surfaced.
-    if (idx < 0) return all.slice(0, 60);
-    const copy = [...all];
-    const [hit] = copy.splice(idx, 1);
-    return [hit, ...copy].slice(0, 60);
+    return hit ? hit.id : null;
   }, [eligible, featuredParam]);
 
-  const pool = basePool;
+  // Category of the most recent pick — drives the "rabbit hole" phase.
+  const lastCategory = useMemo(() => {
+    const lastId = selectedIds[selectedIds.length - 1];
+    if (!lastId) return null;
+    const p = eligible.find((x) => x.id === lastId);
+    if (!p) return null;
+    return (p.categories?.length ? p.categories : [p.category])[0] || null;
+  }, [selectedIds, eligible]);
 
-  // Purely visual filtering — never touches selectedIds
-  const visible = useMemo(() => {
-    if (activeCat === "all") return basePool;
-    return eligible
-      .filter((p) => (p.categories?.length ? p.categories : [p.category]).includes(activeCat))
-      .slice(0, 60);
-  }, [activeCat, basePool, eligible]);
+  // Full state-driven ordering (whole catalog, lazily rendered below).
+  const ordered = useMemo(
+    () =>
+      buildBundleGrid({
+        pool: eligible,
+        selectedIds,
+        lastCategory,
+        seed: seedRef.current,
+        featuredId,
+      }),
+    [eligible, selectedIds, lastCategory, featuredId],
+  );
 
+  const pool = ordered;
 
+  // Purely visual category filtering — never touches selectedIds
+  const filteredPool = useMemo(() => {
+    if (activeCat === "all") return ordered;
+    return ordered.filter((p) =>
+      (p.categories?.length ? p.categories : [p.category]).includes(activeCat),
+    );
+  }, [activeCat, ordered]);
 
-  const featuredId = useMemo(() => {
-    if (!featuredParam) return null;
-    const hit = pool[0];
-    if (!hit) return null;
-    const matches =
-      String(hit.sku || "").toLowerCase() === featuredParam.toLowerCase() ||
-      String(hit.id) === featuredParam;
-    return matches ? hit.id : null;
-  }, [pool, featuredParam]);
+  // Lazy rendering: grow the rendered window as the sentinel scrolls into view.
+  const [limit, setLimit] = useState(24);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLimit(24);
+  }, [activeCat]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setLimit((l) => (l >= filteredPool.length ? l : l + 24));
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [filteredPool.length]);
+
+  const visible = useMemo(() => filteredPool.slice(0, limit), [filteredPool, limit]);
+
 
   const selected: Product[] = useMemo(
     () => selectedIds.map((id) => eligible.find((p) => p.id === id)).filter(Boolean) as Product[],
