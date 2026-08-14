@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ArrowLeftRight, Check, Plus } from "lucide-react";
+import { X, ArrowLeftRight, Plus } from "lucide-react";
 import { Product } from "@/lib/constants";
 
 interface BundleSwapModalProps {
