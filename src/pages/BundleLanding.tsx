@@ -480,6 +480,11 @@ const BundleLanding = () => {
               onReorder={() => {
                 if (dupSku) markIntentionalRepeat(dupSku);
                 setRepeatOrder(null);
+                // Fresh start: clear the previous bundle selection so the user
+                // builds a new set instead of deselecting the old one.
+                setSelectedIds([]);
+                setActiveCat("all");
+                gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               compact
             />
