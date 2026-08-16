@@ -18,6 +18,8 @@ import { tbilisiStartOfDay, tbilisiEndOfDay } from "@/lib/tbilisiTime";
 import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
 
 const DELIVERY_FEE = 6.5;
+/** What WE pay the courier per shipped order, regardless of what the customer paid. */
+const COURIER_COST_PER_ORDER = 7;
 
 
 type DateMode = "today" | "yesterday" | "custom" | "range" | "all";
@@ -26,6 +28,9 @@ interface Stats {
   totalRevenue: number;
   deliveryRevenue: number;
   productRevenue: number;
+  shippingCost: number;
+  netDelivery: number;
+  netRevenue: number;
   aov: number;
   confirmedCount: number;
   totalOrders: number;
@@ -143,6 +148,10 @@ const AdminDashboard = () => {
       const totalRevenue = revenueOrders.reduce((s, o) => s + Number(o.total || 0), 0);
       const deliveryRevenue = revenueOrders.reduce((s, o) => s + Number(o.shipping_fee || 0), 0);
       const productRevenue = totalRevenue - deliveryRevenue;
+      // We pay the courier for every active order, even when the customer got free shipping.
+      const shippingCost = revenueOrders.length * COURIER_COST_PER_ORDER;
+      const netDelivery = deliveryRevenue - shippingCost;
+      const netRevenue = totalRevenue - shippingCost;
       const aov = revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
       // End-of-day unresolved: still in operator workflow (not confirmed/canceled/fulfilled/merged),
@@ -171,6 +180,9 @@ const AdminDashboard = () => {
         totalRevenue,
         deliveryRevenue,
         productRevenue,
+        shippingCost,
+        netDelivery,
+        netRevenue,
         aov,
         confirmedCount: revenueOrders.length,
         totalOrders: all.length,
@@ -370,6 +382,9 @@ const AdminDashboard = () => {
           <MetricCard icon={ShoppingCart} label="AOV" numeric={applyToCount(stats.activeOrders) > 0 ? applyToRevenue(stats.totalRevenue) / applyToCount(stats.activeOrders) : 0} format={gel} size="lg" hero />
           <MetricCard icon={Banknote} label="Product Revenue" numeric={applyToRevenue(stats.productRevenue)} format={gel} accent="text-emerald-400" />
           <MetricCard icon={TruckIcon} label="Delivery Revenue" numeric={applyToRevenue(stats.deliveryRevenue)} format={gel} accent="text-sky-400" />
+          <MetricCard icon={TruckIcon} label={`Shipping Cost (${COURIER_COST_PER_ORDER}₾/order)`} numeric={-applyToRevenue(stats.shippingCost)} format={gel} accent="text-rose-400" />
+          <MetricCard icon={Banknote} label="Net Delivery" numeric={applyToRevenue(stats.netDelivery)} format={gel} accent={stats.netDelivery >= 0 ? "text-emerald-400" : "text-rose-400"} />
+          <MetricCard icon={DollarSign} label="Revenue After Shipping" numeric={applyToRevenue(stats.netRevenue)} format={gel} accent="text-amber-400" />
         </div>
       </section>
 
