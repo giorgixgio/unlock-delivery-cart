@@ -116,7 +116,9 @@ export default function AdminCourierLabels() {
     }
   };
 
-  // Build print groups: Singles + Round 1, then one group per extra round.
+  // Build print groups from actual order_items SKU counts:
+  //  - 1 distinct SKU  => "Singles" (one group, sorted by SKU ascending)
+  //  - >1 distinct SKU => multi, chunked into rounds of 10 in load order.
   const buildGroups = async (list: Row[]) => {
     if (list.length === 0) {
       setGroups([]);
@@ -124,64 +126,55 @@ export default function AdminCourierLabels() {
     }
     const ids = list.map((r) => r.id);
     const CHUNK = 200;
-    const classification = new Map<string, string>();
-    const slotRunId = new Map<string, string>();
-    const runNumber = new Map<string, number>();
+    const skuSet = new Map<string, Set<string>>();
     try {
       for (let i = 0; i < ids.length; i += CHUNK) {
-        const slice = ids.slice(i, i + CHUNK);
-        const [{ data: pwo }, { data: slots }] = await Promise.all([
-          (supabase.from("packing_wave_orders") as any)
-            .select("order_id, classification")
-            .in("order_id", slice),
-          (supabase.from("packing_run_slots") as any).select("order_id, run_id").in("order_id", slice),
-        ]);
-        ((pwo as any[]) || []).forEach((r) => classification.set(r.order_id, r.classification));
-        ((slots as any[]) || []).forEach((r) => slotRunId.set(r.order_id, r.run_id));
-      }
-      const runIds = Array.from(new Set(Array.from(slotRunId.values())));
-      for (let i = 0; i < runIds.length; i += CHUNK) {
-        const { data: runs } = await (supabase.from("packing_runs") as any)
-          .select("id, run_number")
-          .in("id", runIds.slice(i, i + CHUNK));
-        ((runs as any[]) || []).forEach((r) => runNumber.set(r.id, r.run_number));
+        const { data, error } = await (supabase.from("order_items") as any)
+          .select("order_id, sku")
+          .in("order_id", ids.slice(i, i + CHUNK));
+        if (error) throw error;
+        ((data as any[]) || []).forEach((r) => {
+          let s = skuSet.get(r.order_id);
+          if (!s) {
+            s = new Set<string>();
+            skuSet.set(r.order_id, s);
+          }
+          s.add(r.sku);
+        });
       }
     } catch (e: any) {
       toast({ title: "Failed to group orders", description: e.message, variant: "destructive" });
     }
 
-    const first: Row[] = [];
-    const byRound = new Map<number, Row[]>();
-    const fallback: Row[] = [];
+    // Representative SKU for singles sorting (alphabetically smallest SKU).
+    const repSku = (id: string) => {
+      const s = skuSet.get(id);
+      if (!s || s.size === 0) return "";
+      return Array.from(s).sort()[0];
+    };
+
+    const singles: Row[] = [];
+    const multi: Row[] = [];
     for (const r of list) {
-      const cls = classification.get(r.id);
-      if (cls === undefined) {
-        // No packing_wave_orders association — size-based batch fallback.
-        fallback.push(r);
-        continue;
-      }
-      const isMulti = cls === "multi_sku";
-      const rn = isMulti ? runNumber.get(slotRunId.get(r.id) || "") : undefined;
-      if (!isMulti || !rn || rn <= 1) {
-        first.push(r);
-      } else {
-        if (!byRound.has(rn)) byRound.set(rn, []);
-        byRound.get(rn)!.push(r);
-      }
+      const cnt = skuSet.get(r.id)?.size || 0;
+      if (cnt <= 1) singles.push(r);
+      else multi.push(r);
     }
-    const next: LabelGroup[] = [{ key: "singles-r1", title: "Singles + Round 1", rows: first }];
-    Array.from(byRound.keys())
-      .sort((a, b) => a - b)
-      .forEach((rn) => next.push({ key: `round-${rn}`, title: `Round ${rn}`, rows: byRound.get(rn)! }));
-    // Orders with no wave/run association: chunk into fixed-size batches of 50
-    // in their current sort order, labeled "Batch 1," "Batch 2," etc.
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < fallback.length; i += BATCH_SIZE) {
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+
+    // Singles: one group, sorted by SKU ascending so same-SKU orders stack together.
+    singles.sort((a, b) => repSku(a.id).localeCompare(repSku(b.id)));
+
+    const next: LabelGroup[] = [];
+    if (singles.length > 0) next.push({ key: "singles", title: "Singles", rows: singles });
+
+    // Multi-SKU: chunk sequentially into rounds of 10 in current load order.
+    const ROUND_SIZE = 10;
+    for (let i = 0; i < multi.length; i += ROUND_SIZE) {
+      const roundNum = Math.floor(i / ROUND_SIZE) + 1;
       next.push({
-        key: `batch-${batchNum}`,
-        title: `Batch ${batchNum}`,
-        rows: fallback.slice(i, i + BATCH_SIZE),
+        key: `round-${roundNum}`,
+        title: `Round ${roundNum}`,
+        rows: multi.slice(i, i + ROUND_SIZE),
       });
     }
     setGroups(next.filter((g) => g.rows.length > 0));
