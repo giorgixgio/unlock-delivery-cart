@@ -569,6 +569,47 @@ export default function AdminCourierLabels() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <Clock className="h-4 w-4" /> სამუშაო ჟურნალი (დრო მოქმედებებს შორის)
+            </h2>
+            {log.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={clearLog}>
+                <RotateCcw className="mr-2 h-4 w-4" /> გასუფთავება
+              </Button>
+            )}
+          </div>
+          {log.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              ჯერ არაფერია დაბეჭდილი — დაწყებისას აქ გამოჩნდება დრო თითოეულ მოქმედებას შორის.
+            </p>
+          ) : (
+            <>
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                ბოლო მოქმედებიდან გავიდა:{" "}
+                <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+              </div>
+              <ol className="divide-y text-sm">
+                {log.slice(0, 25).map((e) => (
+                  <li key={`${e.key}-${e.kind}-${e.at}`} className="flex items-center justify-between gap-3 py-2">
+                    <span className="truncate">
+                      <span className="font-medium">{e.title}</span> ·{" "}
+                      {e.kind === "pdf" ? "PDF" : "SKU tags"}
+                    </span>
+                    <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                      {new Date(e.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      {e.gapMs > 0 && <> · +{fmtDuration(e.gapMs)}</>}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
           <h2 className="text-sm font-semibold">Manual selection (reprint)</h2>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
