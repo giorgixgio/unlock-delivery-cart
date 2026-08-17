@@ -289,12 +289,59 @@ export default function AdminCourierLabels() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
+          <h2 className="text-sm font-semibold">Print by group</h2>
+          {loading ? (
+            <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : groups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tracked orders to print.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {groups.map((g) => (
+                <div key={g.key} className="rounded-lg border p-3 space-y-2">
+                  <div>
+                    <p className="font-medium">{g.title}</p>
+                    <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={groupBusy !== null}
+                    onClick={() => downloadGroup(g)}
+                  >
+                    {groupBusy === g.key ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Printer className="mr-2 h-4 w-4" />
+                    )}
+                    {groupBusy === g.key ? "Generating…" : "Download PDF"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <h2 className="text-sm font-semibold">Manual selection (reprint)</h2>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
                 {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
+              <Button size="sm" onClick={handleDownload} disabled={generating || selectedRows.length === 0}>
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="mr-2 h-4 w-4" />
+                )}
+                {generating ? "Generating…" : `Download PDF${selectedRows.length ? ` (${selectedRows.length})` : ""}`}
+              </Button>
             </div>
+
             <div className="flex items-center gap-2">
               <input
                 value={search}
