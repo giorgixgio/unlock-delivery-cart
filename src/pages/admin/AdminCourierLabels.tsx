@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, Tags } from "lucide-react";
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
+import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 
 /**
  * Print courier shipping labels for orders that already have a tracking
