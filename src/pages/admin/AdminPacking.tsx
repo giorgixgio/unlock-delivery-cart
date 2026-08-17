@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Package, Scissors, Download, Loader2, CheckSquare, Square,
-  MapPin, PlusCircle, RefreshCw, CheckCircle2,
+  MapPin, PlusCircle, RefreshCw, CheckCircle2, Tag,
 } from "lucide-react";
+import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 
 /**
  * Packing — the single fulfilment tab.
@@ -192,6 +193,25 @@ export default function AdminPacking() {
 
   const runPacked = (run: Run) => run.status === "completed" || slots.filter((s) => s.run_id === run.id).every((s) => s.packing_status === "packed");
 
+  const printItemTags = (run: Run) => {
+    const runSlots = slots.filter((s) => s.run_id === run.id);
+    const units: RoundUnit[] = [];
+    for (const s of runSlots) {
+      const o = ordersById[s.order_id];
+      if (!o) continue;
+      for (const it of o.order_items || []) {
+        units.push({
+          binLocation: binBySku[String(it.sku)] || "",
+          slotNumber: s.slot_number,
+          quantity: Number(it.quantity || 1),
+          orderNumber: o.public_order_number,
+        });
+      }
+    }
+    const tags = buildTagsForRounds([{ runNumber: run.run_number, units }]);
+    downloadItemTagsPdf(tags, `item-tags-R${String(run.run_number).padStart(2, "0")}.pdf`);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-24 text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>;
   }
@@ -308,9 +328,14 @@ export default function AdminPacking() {
                 </div>
               </div>
             ))}
-            <Button className="w-full mt-3" onClick={() => markRoundPacked(runTrip.run)} disabled={runPacked(runTrip.run)}>
-              {runPacked(runTrip.run) ? <><CheckSquare className="w-4 h-4 mr-2" /> Round packed</> : <><Square className="w-4 h-4 mr-2" /> Mark round packed</>}
-            </Button>
+            <div className="flex gap-2 mt-3">
+              <Button className="flex-1" onClick={() => markRoundPacked(runTrip.run)} disabled={runPacked(runTrip.run)}>
+                {runPacked(runTrip.run) ? <><CheckSquare className="w-4 h-4 mr-2" /> Round packed</> : <><Square className="w-4 h-4 mr-2" /> Mark round packed</>}
+              </Button>
+              <Button variant="outline" onClick={() => printItemTags(runTrip.run)} title="Print one tag per unit, bin-sorted">
+                <Tag className="w-4 h-4 mr-2" /> Print item tags
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
