@@ -89,6 +89,50 @@ export default function AdminCourierLabels() {
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
 
+  // --- Warehouse progress tracking (per group: which actions were done) ---
+  const [log, setLog] = useState<ActionEntry[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LOG_KEY) || "[]") as ActionEntry[];
+    } catch {
+      return [];
+    }
+  });
+  const [now, setNow] = useState(Date.now());
+  const logRef = useRef(log);
+  logRef.current = log;
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const persist = (next: ActionEntry[]) => {
+    setLog(next);
+    try {
+      localStorage.setItem(LOG_KEY, JSON.stringify(next.slice(0, 200)));
+    } catch {
+      /* storage full — logging is best-effort */
+    }
+  };
+
+  const logAction = (key: string, title: string, kind: ActionKind) => {
+    const prev = logRef.current[0];
+    const at = Date.now();
+    const entry: ActionEntry = { key, title, kind, at, gapMs: prev ? at - prev.at : 0 };
+    persist([entry, ...logRef.current].slice(0, 200));
+  };
+
+  const doneKinds = (key: string) =>
+    new Set(log.filter((e) => e.key === key).map((e) => e.kind));
+
+  const isGroupFinished = (g: LabelGroup) => {
+    const d = doneKinds(g.key);
+    return roundNumberOf(g) > 0 ? d.has("pdf") && d.has("tags") : d.has("pdf");
+  };
+
+  const clearLog = () => persist([]);
+
+
 
   const loadBatches = async () => {
     // Tracking imports are written by MassFulfillModal into import_batches
