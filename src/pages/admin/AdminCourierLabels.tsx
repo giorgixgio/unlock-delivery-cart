@@ -290,6 +290,7 @@ export default function AdminCourierLabels() {
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
+      logAction(g.key, g.title, "pdf");
     } catch (e: any) {
       toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
     } finally {
