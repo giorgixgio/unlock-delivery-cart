@@ -381,27 +381,48 @@ export default function AdminCourierLabels() {
             <p className="text-sm text-muted-foreground">No tracked orders to print.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((g) => (
+              {groups.map((g) => {
+                const runNum = roundNumberOf(g);
+                return (
                 <div key={g.key} className="rounded-lg border p-3 space-y-2">
                   <div>
                     <p className="font-medium">{g.title}</p>
                     <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
                   </div>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    disabled={groupBusy !== null}
-                    onClick={() => downloadGroup(g)}
-                  >
-                    {groupBusy === g.key ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Printer className="mr-2 h-4 w-4" />
+                  <div className={runNum > 0 ? "grid grid-cols-2 gap-2" : ""}>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={groupBusy !== null}
+                      onClick={() => downloadGroup(g)}
+                    >
+                      {groupBusy === g.key ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="mr-2 h-4 w-4" />
+                      )}
+                      {groupBusy === g.key ? "Generating…" : "Download PDF"}
+                    </Button>
+                    {runNum > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        disabled={groupBusy !== null}
+                        onClick={() => downloadSkuTags(g)}
+                      >
+                        {groupBusy === `${g.key}-tags` ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Tags className="mr-2 h-4 w-4" />
+                        )}
+                        {groupBusy === `${g.key}-tags` ? "Generating…" : "SKU tags"}
+                      </Button>
                     )}
-                    {groupBusy === g.key ? "Generating…" : "Download PDF"}
-                  </Button>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
