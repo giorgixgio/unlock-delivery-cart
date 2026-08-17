@@ -150,6 +150,15 @@ export default function AdminCourierLabels() {
 
   const clearLog = () => persist([]);
 
+  /** Average time between consecutive round completions. */
+  const avgRoundGapMs = (() => {
+    const finishes = log.filter((e) => e.kind === "finish"); // newest first
+    if (finishes.length < 2) return 0;
+    const total = finishes[0].at - finishes[finishes.length - 1].at;
+    return Math.round(total / (finishes.length - 1));
+  })();
+
+
 
 
 
