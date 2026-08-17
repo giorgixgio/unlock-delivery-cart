@@ -1,21 +1,61 @@
 import { useState } from "react";
 import QRCode from "qrcode";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 /**
  * Courier shipping label — reproduces the OnWay thermal sticker layout,
- * output as a real PDF (one page per label, exactly 76mm x 92mm) so the
- * thermal printer never has to guess page size from browser print CSS.
+ * output as a real PDF (one page per label, exactly 76mm x 92mm).
  *
- * Approach: render each label as HTML off-screen (so Georgian text uses
- * the browser's own font rendering, which PDF core fonts don't support),
- * rasterize with html2canvas, then drop that image onto an exact-size
- * jsPDF page. Visually identical to what's shown on screen.
+ * Drawn as native vector PDF text with an embedded Georgian font, so
+ * generation stays fast for large batches (no html2canvas rasterisation,
+ * no giant base64 image strings).
  */
 
 const LABEL_WIDTH_MM = 76;
 const LABEL_HEIGHT_MM = 92;
+
+const FONT_REGULAR_URL =
+  "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansGeorgian/NotoSansGeorgian-Regular.ttf";
+const FONT_BOLD_URL =
+  "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansGeorgian/NotoSansGeorgian-Bold.ttf";
+
+let fontCache: { regular: string; bold: string } | null = null;
+
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+async function fetchFont(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Font fetch failed: ${res.status} ${url}`);
+  return toBase64(await res.arrayBuffer());
+}
+
+/** Fetches + caches the Georgian font once per session. */
+export async function loadGeorgianFont() {
+  if (!fontCache) {
+    const [regular, bold] = await Promise.all([
+      fetchFont(FONT_REGULAR_URL),
+      fetchFont(FONT_BOLD_URL),
+    ]);
+    fontCache = { regular, bold };
+  }
+  return fontCache;
+}
+
+function registerFont(pdf: jsPDF, font: { regular: string; bold: string }) {
+  pdf.addFileToVFS("NotoSansGeorgian-Regular.ttf", font.regular);
+  pdf.addFont("NotoSansGeorgian-Regular.ttf", "NotoGeo", "normal");
+  pdf.addFileToVFS("NotoSansGeorgian-Bold.ttf", font.bold);
+  pdf.addFont("NotoSansGeorgian-Bold.ttf", "NotoGeo", "bold");
+}
+
 
 export interface CourierLabelOrder {
   id: string;
