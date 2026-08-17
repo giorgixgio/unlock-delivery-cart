@@ -29,8 +29,9 @@ interface Row {
 interface UploadBatch {
   id: string;
   file_name: string | null;
-  uploaded_at: string | null;
-  order_count: number | null;
+  created_at: string | null;
+  applied_at: string | null;
+  matched: number | null;
 }
 
 export default function AdminCourierLabels() {
@@ -43,9 +44,11 @@ export default function AdminCourierLabels() {
   const [search, setSearch] = useState("");
 
   const loadBatches = async () => {
-    const { data, error } = await (supabase.from("courier_import_batches") as any)
-      .select("id, file_name, uploaded_at, order_count")
-      .order("uploaded_at", { ascending: false })
+    // Tracking imports are written by MassFulfillModal into import_batches
+    // (+ import_staging_rows), not by the import-courier edge function.
+    const { data, error } = await (supabase.from("import_batches") as any)
+      .select("id, file_name, created_at, applied_at, matched")
+      .order("created_at", { ascending: false })
       .limit(30);
     if (error) {
       toast({ title: "Failed to load uploads", description: error.message, variant: "destructive" });
@@ -54,22 +57,56 @@ export default function AdminCourierLabels() {
     }
   };
 
+  const ORDER_COLS =
+    "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city";
+
   const load = async (batchId: string | null) => {
     setLoading(true);
-    let q = (supabase.from("orders") as any)
-      .select(
-        "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city"
-      )
-      .not("tracking_number", "is", null);
-    if (batchId) q = q.eq("courier_import_batch_id", batchId);
-    const { data, error } = await q.order("created_at", { ascending: false }).limit(500);
-    if (error) {
-      toast({ title: "Failed to load", description: error.message, variant: "destructive" });
-    } else {
-      setRows((data as Row[]) || []);
+    try {
+      if (batchId) {
+        // Orders touched by this upload = staging rows that matched an order.
+        const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
+          .select("matched_order_id")
+          .eq("batch_id", batchId)
+          .not("matched_order_id", "is", null)
+          .limit(2000);
+        if (sErr) throw sErr;
+        const ids = Array.from(
+          new Set(((staged as { matched_order_id: string }[]) || []).map((s) => s.matched_order_id))
+        );
+        if (ids.length === 0) {
+          setRows([]);
+          return;
+        }
+        const collected: Row[] = [];
+        const CHUNK = 200;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const { data, error } = await (supabase.from("orders") as any)
+            .select(ORDER_COLS)
+            .in("id", ids.slice(i, i + CHUNK));
+          if (error) throw error;
+          collected.push(...((data as Row[]) || []));
+        }
+        collected.sort((a, b) =>
+          (b.public_order_number || "").localeCompare(a.public_order_number || "")
+        );
+        setRows(collected);
+      } else {
+        const { data, error } = await (supabase.from("orders") as any)
+          .select(ORDER_COLS)
+          .not("tracking_number", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        setRows((data as Row[]) || []);
+      }
+    } catch (e: any) {
+      toast({ title: "Failed to load", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
 
   useEffect(() => {
     loadBatches();
