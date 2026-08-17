@@ -204,9 +204,13 @@ export default function AdminCourierLabels() {
                   className="flex-col items-start h-auto py-1.5"
                 >
                   <span className="text-xs">
-                    {b.uploaded_at ? new Date(b.uploaded_at).toLocaleString() : "—"}
+                    {(() => {
+                      const ts = b.applied_at || b.created_at;
+                      return ts ? new Date(ts).toLocaleString() : "—";
+                    })()}
                   </span>
-                  <span className="text-[11px] opacity-70">{b.order_count ?? 0} orders</span>
+                  <span className="text-[11px] opacity-70">{b.matched ?? 0} orders</span>
+
                 </Button>
               ))}
             </div>
