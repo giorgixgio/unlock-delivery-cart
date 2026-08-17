@@ -228,9 +228,8 @@ export default function AdminCourierLabels() {
   };
 
   // Build one peel-and-stick item tag per physical unit for a multi-SKU round.
-  // Slot = order's position within the round (1..N), matching the R0N-0X code
-  // stamped onto that order's courier slip footer by downloadGroup above, so
-  // the sorted tag stack and the sorted slip stack line up for table-sorting.
+  // Round + slot come from the [R##-##] code parsed off the slip itself, so
+  // tags and slips can never disagree.
   const downloadSkuTags = async (g: LabelGroup) => {
     const runNum = roundNumberOf(g);
     if (runNum <= 0) return;
