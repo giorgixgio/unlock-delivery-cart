@@ -103,6 +103,10 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(400%)" },
         },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--success) / 0.55)", transform: "scale(1)" },
+          "50%": { boxShadow: "0 0 0 8px hsl(var(--success) / 0)", transform: "scale(1.02)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,7 +114,9 @@ export default {
         "checkout-bounce": "checkout-bounce 0.5s ease-out",
         "bounce-slow": "bounce-slow 1.5s ease-in-out infinite",
         shine: "shine 1.8s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 1.8s ease-in-out infinite",
       },
+
 
     },
   },

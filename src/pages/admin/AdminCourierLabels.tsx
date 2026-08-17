@@ -50,7 +50,7 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
-type ActionKind = "pdf" | "tags";
+type ActionKind = "pdf" | "tags" | "finish";
 
 interface ActionEntry {
   /** group key */
@@ -125,12 +125,40 @@ export default function AdminCourierLabels() {
   const doneKinds = (key: string) =>
     new Set(log.filter((e) => e.key === key).map((e) => e.kind));
 
-  const isGroupFinished = (g: LabelGroup) => {
+  /** Both print actions done → the round can be marked finished by the packer. */
+  const isReadyToFinish = (g: LabelGroup) => {
     const d = doneKinds(g.key);
     return roundNumberOf(g) > 0 ? d.has("pdf") && d.has("tags") : d.has("pdf");
   };
 
+  const isGroupFinished = (g: LabelGroup) => doneKinds(g.key).has("finish");
+
+  const finishEntry = (key: string) => log.find((e) => e.key === key && e.kind === "finish");
+
+  /** Time between this round's finish and the previous round's finish. */
+  const roundGapMs = (key: string) => {
+    const finishes = log.filter((e) => e.kind === "finish"); // newest first
+    const i = finishes.findIndex((e) => e.key === key);
+    if (i === -1 || i + 1 >= finishes.length) return 0;
+    return finishes[i].at - finishes[i + 1].at;
+  };
+
+  const finishGroup = (g: LabelGroup) => {
+    if (isGroupFinished(g)) return;
+    logAction(g.key, g.title, "finish");
+  };
+
   const clearLog = () => persist([]);
+
+  /** Average time between consecutive round completions. */
+  const avgRoundGapMs = (() => {
+    const finishes = log.filter((e) => e.kind === "finish"); // newest first
+    if (finishes.length < 2) return 0;
+    const total = finishes[0].at - finishes[finishes.length - 1].at;
+    return Math.round(total / (finishes.length - 1));
+  })();
+
+
 
 
 
@@ -479,6 +507,9 @@ export default function AdminCourierLabels() {
                 const runNum = roundNumberOf(g);
                 const done = doneKinds(g.key);
                 const finished = isGroupFinished(g);
+                const readyToFinish = !finished && isReadyToFinish(g);
+                const fin = finishEntry(g.key);
+                const gap = fin ? roundGapMs(g.key) : 0;
                 const last = log.find((e) => e.key === g.key);
                 return (
                 <div
@@ -553,15 +584,37 @@ export default function AdminCourierLabels() {
                       </Button>
                     )}
                   </div>
-                  {last && (
-                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                  {readyToFinish && (
+                    <Button
+                      size="sm"
+                      onClick={() => finishGroup(g)}
+                      className="w-full animate-glow-pulse bg-success text-success-foreground hover:bg-success/90 font-semibold"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      რაუნდის დასრულება
+                    </Button>
+                  )}
+                  {finished && fin ? (
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        დასრულდა{" "}
+                        {new Date(fin.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {gap > 0 && <span>· წინა რაუნდიდან {fmtDuration(gap)}</span>}
                     </p>
+                  ) : (
+                    last && (
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                      </p>
+                    )
                   )}
                 </div>
                 );
               })}
+
             </div>
           )}
         </CardContent>
@@ -585,26 +638,43 @@ export default function AdminCourierLabels() {
             </p>
           ) : (
             <>
-              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-                ბოლო მოქმედებიდან გავიდა:{" "}
-                <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                  ბოლო მოქმედებიდან გავიდა:{" "}
+                  <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+                </div>
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                  დასრულებული რაუნდები:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {log.filter((e) => e.kind === "finish").length}
+                  </span>
+                  {avgRoundGapMs > 0 && (
+                    <> · საშ. ტემპი <span className="font-semibold tabular-nums">{fmtDuration(avgRoundGapMs)}</span></>
+                  )}
+                </div>
               </div>
               <ol className="divide-y text-sm">
                 {log.slice(0, 25).map((e) => (
                   <li key={`${e.key}-${e.kind}-${e.at}`} className="flex items-center justify-between gap-3 py-2">
                     <span className="truncate">
                       <span className="font-medium">{e.title}</span> ·{" "}
-                      {e.kind === "pdf" ? "PDF" : "SKU tags"}
+                      {e.kind === "pdf" ? "PDF" : e.kind === "tags" ? "SKU tags" : (
+                        <span className="font-semibold text-emerald-600">დასრულდა</span>
+                      )}
                     </span>
                     <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                       {new Date(e.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                       {e.gapMs > 0 && <> · +{fmtDuration(e.gapMs)}</>}
+                      {e.kind === "finish" && roundGapMs(e.key) > 0 && (
+                        <> · რაუნდებს შორის {fmtDuration(roundGapMs(e.key))}</>
+                      )}
                     </span>
                   </li>
                 ))}
               </ol>
             </>
           )}
+
         </CardContent>
       </Card>
 
