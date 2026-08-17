@@ -118,50 +118,115 @@ function LabelMarkup({ order, qrDataUrl }: { order: CourierLabelOrder; qrDataUrl
   );
 }
 
+/** Draws one label onto the current page of `pdf`. */
+export function drawLabel(pdf: jsPDF, order: CourierLabelOrder, qrDataUrl: string) {
+  const M = 3; // padding, mm
+  const W = LABEL_WIDTH_MM;
+  const right = W - M;
+  let y = M + 4;
+
+  const rule = () => {
+    pdf.setLineDashPattern([0.8, 0.8], 0);
+    pdf.setLineWidth(0.2);
+    pdf.line(M, y, right, y);
+    pdf.setLineDashPattern([], 0);
+    y += 3.5;
+  };
+
+  pdf.setFont("NotoGeo", "bold");
+  pdf.setFontSize(11);
+  pdf.text(`${order.courier_zone_id ?? "?"} - ${formatDate(order.courier_label_date)}`, M, y);
+  pdf.text("ONWAY", right, y, { align: "right" });
+  y += 2.5;
+  rule();
+
+  pdf.setFontSize(9);
+  pdf.text("გამგზავნი:", M, y);
+  const senderW = pdf.getTextWidth("გამგზავნი: ");
+  pdf.setFont("NotoGeo", "normal");
+  pdf.text("ბიგმართი", M + senderW, y);
+  y += 2.5;
+  rule();
+
+  pdf.setFont("NotoGeo", "bold");
+  pdf.text("მიმღები:", M, y);
+  const recW = pdf.getTextWidth("მიმღები: ");
+  pdf.setFont("NotoGeo", "normal");
+  const recipient = [order.customer_phone, order.address, order.city, order.customer_phone]
+    .filter(Boolean)
+    .join(", ");
+  const firstLine = pdf.splitTextToSize(recipient, right - M - recW)[0] ?? "";
+  pdf.text(firstLine, M + recW, y);
+  const rest = recipient.slice(firstLine.length).trim();
+  if (rest) {
+    const lines = pdf.splitTextToSize(rest, right - M);
+    for (const line of lines) {
+      y += 4;
+      pdf.text(line, M, y);
+    }
+  }
+  y += 2.5;
+  rule();
+
+  // QR + meta
+  const qrSize = 25;
+  const qrTop = y;
+  pdf.addImage(qrDataUrl, "PNG", M, qrTop, qrSize, qrSize);
+
+  const metaX = M + qrSize + 3;
+  let my = qrTop + 4;
+  pdf.setFontSize(9.5);
+  pdf.text("რაოდ.: 1", metaX, my);
+  my += 2;
+  pdf.setLineDashPattern([0.8, 0.8], 0);
+  pdf.line(metaX, my, right, my);
+  pdf.setLineDashPattern([], 0);
+  my += 4;
+  pdf.text("წონა: 1.0", metaX, my);
+  my += 2;
+  pdf.setLineDashPattern([0.8, 0.8], 0);
+  pdf.line(metaX, my, right, my);
+  pdf.setLineDashPattern([], 0);
+  my += 4;
+  const trackingLines = pdf.splitTextToSize(`# ${order.tracking_number || "—"}`, right - metaX);
+  for (const line of trackingLines) {
+    pdf.text(line, metaX, my);
+    my += 4;
+  }
+
+  y = Math.max(qrTop + qrSize, my) + 2;
+  rule();
+
+  pdf.setFont("NotoGeo", "bold");
+  pdf.setFontSize(10.5);
+  const footer = pdf.splitTextToSize(order.courier_label_text || "", right - M);
+  for (const line of footer) {
+    pdf.text(line, M, y);
+    y += 4.5;
+  }
+}
+
 /**
- * Generates the PDF and triggers a download. Renders each label off-screen
- * one at a time (avoids one giant hidden DOM tree for large batches),
- * captures it, adds it as an exact-size page, then cleans up.
+ * Generates the PDF and triggers a download. Draws native vector text with an
+ * embedded Georgian font — no DOM rendering or rasterisation, so a 500-label
+ * batch stays fast and small.
  */
 export async function downloadCourierLabelsPdf(orders: CourierLabelOrder[], filename = "courier-labels.pdf") {
   if (orders.length === 0) return;
 
-  const qrDataUrls = await Promise.all(
-    orders.map((o) => QRCode.toDataURL(o.tracking_number || "", { margin: 0, width: 300 }))
-  );
+  const font = await loadGeorgianFont();
 
-  const pdf = new jsPDF({ unit: "mm", format: [LABEL_WIDTH_MM, LABEL_HEIGHT_MM] });
+  const pdf = new jsPDF({ unit: "mm", format: [LABEL_WIDTH_MM, LABEL_HEIGHT_MM], compress: true });
+  registerFont(pdf, font);
 
-  const host = document.createElement("div");
-  host.style.position = "fixed";
-  host.style.left = "-10000px";
-  host.style.top = "0";
-  document.body.appendChild(host);
-
-  const { createRoot } = await import("react-dom/client");
-  const root = createRoot(host);
-
-  try {
-    for (let i = 0; i < orders.length; i++) {
-      await new Promise<void>((resolve) => {
-        root.render(<LabelMarkup order={orders[i]} qrDataUrl={qrDataUrls[i]} />);
-        // wait two frames so the DOM/image has actually painted before capture
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-
-      const node = host.firstElementChild as HTMLElement;
-      const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff" });
-      const imgData = canvas.toDataURL("image/png");
-
-      if (i > 0) pdf.addPage([LABEL_WIDTH_MM, LABEL_HEIGHT_MM], "portrait");
-      pdf.addImage(imgData, "PNG", 0, 0, LABEL_WIDTH_MM, LABEL_HEIGHT_MM);
-    }
-
-    pdf.save(filename);
-  } finally {
-    root.unmount();
-    document.body.removeChild(host);
+  for (let i = 0; i < orders.length; i++) {
+    const o = orders[i];
+    const qr = await QRCode.toDataURL(o.tracking_number || "", { margin: 0, width: 240 });
+    if (i > 0) pdf.addPage([LABEL_WIDTH_MM, LABEL_HEIGHT_MM], "portrait");
+    drawLabel(pdf, o, qr);
   }
+
+  pdf.save(filename);
 }
 
 /** Small on-screen preview of one label (not used for the PDF itself). */
