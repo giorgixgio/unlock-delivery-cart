@@ -384,6 +384,17 @@ export default function AdminCourierLabels() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <h2 className="text-sm font-semibold">Print by group</h2>
+          {unmatched.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+              <p className="font-medium text-destructive">
+                {unmatched.length} multi-SKU order(s) have no [R##-##] code on the slip — printed
+                with Singles, check them:
+              </p>
+              <p className="mt-1 text-muted-foreground break-words">
+                {unmatched.map((r) => r.public_order_number || r.id).join(", ")}
+              </p>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
