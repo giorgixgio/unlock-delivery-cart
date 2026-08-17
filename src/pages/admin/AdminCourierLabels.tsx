@@ -39,7 +39,17 @@ interface LabelGroup {
   key: string;
   title: string;
   rows: Row[];
+  /** parsed slot number per order id — only for round groups */
+  slotByOrder?: Map<string, number>;
 }
+
+/** Parses the "[R##-##] ..." prefix stamped on the physical slip. */
+function parseRoundSlot(text: string | null | undefined): { round: number; slot: number } | null {
+  const m = /^\s*\[R(\d+)-(\d+)\]/.exec(text || "");
+  if (!m) return null;
+  return { round: Number(m[1]), slot: Number(m[2]) };
+}
+
 
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
