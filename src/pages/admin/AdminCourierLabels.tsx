@@ -60,6 +60,7 @@ export default function AdminCourierLabels() {
   const [generating, setGenerating] = useState(false);
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
   const [groups, setGroups] = useState<LabelGroup[]>([]);
+  const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
 
 
