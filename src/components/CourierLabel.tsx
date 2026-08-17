@@ -15,9 +15,9 @@ const LABEL_WIDTH_MM = 76;
 const LABEL_HEIGHT_MM = 92;
 
 const FONT_REGULAR_URL =
-  "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansGeorgian/NotoSansGeorgian-Regular.ttf";
+  "https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-georgian/NotoSansGeorgian_400Regular.ttf";
 const FONT_BOLD_URL =
-  "https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansGeorgian/NotoSansGeorgian-Bold.ttf";
+  "https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-georgian/NotoSansGeorgian_700Bold.ttf";
 
 let fontCache: { regular: string; bold: string } | null = null;
 
