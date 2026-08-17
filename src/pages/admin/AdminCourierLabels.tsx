@@ -127,12 +127,14 @@ export default function AdminCourierLabels() {
     }
   };
 
-  // Build print groups from actual order_items SKU counts:
-  //  - 1 distinct SKU  => "Singles" (one group, sorted by SKU ascending)
-  //  - >1 distinct SKU => multi, chunked into rounds of 10 in load order.
+  // Build print groups from the round/slot code already printed on the slip:
+  //  - courier_label_text starting with "[R##-##]" => that round, that slot
+  //  - everything else => "Singles" (sorted by SKU ascending)
+  // Multi-SKU orders without a parsable code are flagged as unmatched.
   const buildGroups = async (list: Row[]) => {
     if (list.length === 0) {
       setGroups([]);
+      setUnmatched([]);
       return;
     }
     const ids = list.map((r) => r.id);
@@ -165,12 +167,20 @@ export default function AdminCourierLabels() {
     };
 
     const singles: Row[] = [];
-    const multi: Row[] = [];
+    const byRound = new Map<number, { row: Row; slot: number }[]>();
+    const bad: Row[] = [];
     for (const r of list) {
-      const cnt = skuSet.get(r.id)?.size || 0;
-      if (cnt <= 1) singles.push(r);
-      else multi.push(r);
+      const parsed = parseRoundSlot(r.courier_label_text);
+      if (parsed) {
+        const arr = byRound.get(parsed.round) || [];
+        arr.push({ row: r, slot: parsed.slot });
+        byRound.set(parsed.round, arr);
+        continue;
+      }
+      singles.push(r);
+      if ((skuSet.get(r.id)?.size || 0) > 1) bad.push(r);
     }
+    setUnmatched(bad);
 
     // Singles: one group, sorted by SKU ascending so same-SKU orders stack together.
     singles.sort((a, b) => repSku(a.id).localeCompare(repSku(b.id)));
@@ -178,18 +188,21 @@ export default function AdminCourierLabels() {
     const next: LabelGroup[] = [];
     if (singles.length > 0) next.push({ key: "singles", title: "Singles", rows: singles });
 
-    // Multi-SKU: chunk sequentially into rounds of 10 in current load order.
-    const ROUND_SIZE = 10;
-    for (let i = 0; i < multi.length; i += ROUND_SIZE) {
-      const roundNum = Math.floor(i / ROUND_SIZE) + 1;
-      next.push({
-        key: `round-${roundNum}`,
-        title: `Round ${roundNum}`,
-        rows: multi.slice(i, i + ROUND_SIZE),
+    Array.from(byRound.keys())
+      .sort((a, b) => a - b)
+      .forEach((roundNum) => {
+        const entries = (byRound.get(roundNum) || []).sort((a, b) => a.slot - b.slot);
+        next.push({
+          key: `round-${roundNum}`,
+          title: `Round ${roundNum}`,
+          rows: entries.map((e) => e.row),
+          slotByOrder: new Map(entries.map((e) => [e.row.id, e.slot])),
+        });
       });
-    }
+
     setGroups(next.filter((g) => g.rows.length > 0));
   };
+
 
   const roundNumberOf = (g: LabelGroup) => {
     const m = /^round-(\d+)$/.exec(g.key);
