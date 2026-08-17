@@ -152,8 +152,15 @@ export default function AdminCourierLabels() {
 
     const first: Row[] = [];
     const byRound = new Map<number, Row[]>();
+    const fallback: Row[] = [];
     for (const r of list) {
-      const isMulti = classification.get(r.id) === "multi_sku";
+      const cls = classification.get(r.id);
+      if (cls === undefined) {
+        // No packing_wave_orders association — size-based batch fallback.
+        fallback.push(r);
+        continue;
+      }
+      const isMulti = cls === "multi_sku";
       const rn = isMulti ? runNumber.get(slotRunId.get(r.id) || "") : undefined;
       if (!isMulti || !rn || rn <= 1) {
         first.push(r);
@@ -166,6 +173,17 @@ export default function AdminCourierLabels() {
     Array.from(byRound.keys())
       .sort((a, b) => a - b)
       .forEach((rn) => next.push({ key: `round-${rn}`, title: `Round ${rn}`, rows: byRound.get(rn)! }));
+    // Orders with no wave/run association: chunk into fixed-size batches of 50
+    // in their current sort order, labeled "Batch 1," "Batch 2," etc.
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < fallback.length; i += BATCH_SIZE) {
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      next.push({
+        key: `batch-${batchNum}`,
+        title: `Batch ${batchNum}`,
+        rows: fallback.slice(i, i + BATCH_SIZE),
+      });
+    }
     setGroups(next.filter((g) => g.rows.length > 0));
   };
 
