@@ -39,7 +39,17 @@ interface LabelGroup {
   key: string;
   title: string;
   rows: Row[];
+  /** parsed slot number per order id — only for round groups */
+  slotByOrder?: Map<string, number>;
 }
+
+/** Parses the "[R##-##] ..." prefix stamped on the physical slip. */
+function parseRoundSlot(text: string | null | undefined): { round: number; slot: number } | null {
+  const m = /^\s*\[R(\d+)-(\d+)\]/.exec(text || "");
+  if (!m) return null;
+  return { round: Number(m[1]), slot: Number(m[2]) };
+}
+
 
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -50,6 +60,7 @@ export default function AdminCourierLabels() {
   const [generating, setGenerating] = useState(false);
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
   const [groups, setGroups] = useState<LabelGroup[]>([]);
+  const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
 
 
@@ -117,12 +128,14 @@ export default function AdminCourierLabels() {
     }
   };
 
-  // Build print groups from actual order_items SKU counts:
-  //  - 1 distinct SKU  => "Singles" (one group, sorted by SKU ascending)
-  //  - >1 distinct SKU => multi, chunked into rounds of 10 in load order.
+  // Build print groups from the round/slot code already printed on the slip:
+  //  - courier_label_text starting with "[R##-##]" => that round, that slot
+  //  - everything else => "Singles" (sorted by SKU ascending)
+  // Multi-SKU orders without a parsable code are flagged as unmatched.
   const buildGroups = async (list: Row[]) => {
     if (list.length === 0) {
       setGroups([]);
+      setUnmatched([]);
       return;
     }
     const ids = list.map((r) => r.id);
@@ -155,12 +168,20 @@ export default function AdminCourierLabels() {
     };
 
     const singles: Row[] = [];
-    const multi: Row[] = [];
+    const byRound = new Map<number, { row: Row; slot: number }[]>();
+    const bad: Row[] = [];
     for (const r of list) {
-      const cnt = skuSet.get(r.id)?.size || 0;
-      if (cnt <= 1) singles.push(r);
-      else multi.push(r);
+      const parsed = parseRoundSlot(r.courier_label_text);
+      if (parsed) {
+        const arr = byRound.get(parsed.round) || [];
+        arr.push({ row: r, slot: parsed.slot });
+        byRound.set(parsed.round, arr);
+        continue;
+      }
+      singles.push(r);
+      if ((skuSet.get(r.id)?.size || 0) > 1) bad.push(r);
     }
+    setUnmatched(bad);
 
     // Singles: one group, sorted by SKU ascending so same-SKU orders stack together.
     singles.sort((a, b) => repSku(a.id).localeCompare(repSku(b.id)));
@@ -168,41 +189,33 @@ export default function AdminCourierLabels() {
     const next: LabelGroup[] = [];
     if (singles.length > 0) next.push({ key: "singles", title: "Singles", rows: singles });
 
-    // Multi-SKU: chunk sequentially into rounds of 10 in current load order.
-    const ROUND_SIZE = 10;
-    for (let i = 0; i < multi.length; i += ROUND_SIZE) {
-      const roundNum = Math.floor(i / ROUND_SIZE) + 1;
-      next.push({
-        key: `round-${roundNum}`,
-        title: `Round ${roundNum}`,
-        rows: multi.slice(i, i + ROUND_SIZE),
+    Array.from(byRound.keys())
+      .sort((a, b) => a - b)
+      .forEach((roundNum) => {
+        const entries = (byRound.get(roundNum) || []).sort((a, b) => a.slot - b.slot);
+        next.push({
+          key: `round-${roundNum}`,
+          title: `Round ${roundNum}`,
+          rows: entries.map((e) => e.row),
+          slotByOrder: new Map(entries.map((e) => [e.row.id, e.slot])),
+        });
       });
-    }
+
     setGroups(next.filter((g) => g.rows.length > 0));
   };
+
 
   const roundNumberOf = (g: LabelGroup) => {
     const m = /^round-(\d+)$/.exec(g.key);
     return m ? Number(m[1]) : 0;
   };
 
-  const slotCode = (runNum: number, slot: number) =>
-    `R${String(runNum).padStart(2, "0")}-${String(slot).padStart(2, "0")}`;
-
   const downloadGroup = async (g: LabelGroup) => {
     setGroupBusy(g.key);
     try {
-      const runNum = roundNumberOf(g);
-      const labels = g.rows.map((r, idx) => {
-        const lo = toLabelOrder(r);
-        // For multi-SKU rounds, stamp the position-based R0N-0X code onto the
-        // slip footer so it matches the SKU tags printed for the same round.
-        if (runNum > 0) {
-          const code = slotCode(runNum, idx + 1);
-          lo.courier_label_text = `${lo.courier_label_text || ""} ${code}`.trim();
-        }
-        return lo;
-      });
+      // The [R##-##] code already lives at the start of courier_label_text —
+      // never re-stamp or recompute it here.
+      const labels = g.rows.map(toLabelOrder);
       await downloadCourierLabelsPdf(
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
@@ -215,9 +228,8 @@ export default function AdminCourierLabels() {
   };
 
   // Build one peel-and-stick item tag per physical unit for a multi-SKU round.
-  // Slot = order's position within the round (1..N), matching the R0N-0X code
-  // stamped onto that order's courier slip footer by downloadGroup above, so
-  // the sorted tag stack and the sorted slip stack line up for table-sorting.
+  // Round + slot come from the [R##-##] code parsed off the slip itself, so
+  // tags and slips can never disagree.
   const downloadSkuTags = async (g: LabelGroup) => {
     const runNum = roundNumberOf(g);
     if (runNum <= 0) return;
@@ -242,12 +254,11 @@ export default function AdminCourierLabels() {
         if (error) throw error;
         ((data as any[]) || []).forEach((p) => binBySku.set(p.sku, p.bin_location || ""));
       }
-      const slotByOrder = new Map<string, number>();
+      // Slots parsed from the slip's [R##-##] code — same source the round
+      // grouping and the printed slip use.
+      const slotByOrder = g.slotByOrder ?? new Map<string, number>();
       const numByOrder = new Map<string, string | null>();
-      g.rows.forEach((r, idx) => {
-        slotByOrder.set(r.id, idx + 1);
-        numByOrder.set(r.id, r.public_order_number);
-      });
+      g.rows.forEach((r) => numByOrder.set(r.id, r.public_order_number));
       const units: RoundUnit[] = items.map((it) => ({
         binLocation: binBySku.get(it.sku) || "",
         slotNumber: slotByOrder.get(it.order_id) || 1,
@@ -373,6 +384,17 @@ export default function AdminCourierLabels() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <h2 className="text-sm font-semibold">Print by group</h2>
+          {unmatched.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+              <p className="font-medium text-destructive">
+                {unmatched.length} multi-SKU order(s) have no [R##-##] code on the slip — printed
+                with Singles, check them:
+              </p>
+              <p className="mt-1 text-muted-foreground break-words">
+                {unmatched.map((r) => r.public_order_number || r.id).join(", ")}
+              </p>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
