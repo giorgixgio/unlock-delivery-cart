@@ -341,6 +341,7 @@ export default function AdminCourierLabels() {
         tags,
         `sku-tags-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
+      logAction(g.key, g.title, "tags");
     } catch (e: any) {
       toast({ title: "Tag generation failed", description: e.message, variant: "destructive" });
     } finally {
