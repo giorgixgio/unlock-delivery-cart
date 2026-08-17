@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, Tags } from "lucide-react";
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
+import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 
 /**
  * Print courier shipping labels for orders that already have a tracking
@@ -180,15 +181,86 @@ export default function AdminCourierLabels() {
     setGroups(next.filter((g) => g.rows.length > 0));
   };
 
+  const roundNumberOf = (g: LabelGroup) => {
+    const m = /^round-(\d+)$/.exec(g.key);
+    return m ? Number(m[1]) : 0;
+  };
+
+  const slotCode = (runNum: number, slot: number) =>
+    `R${String(runNum).padStart(2, "0")}-${String(slot).padStart(2, "0")}`;
+
   const downloadGroup = async (g: LabelGroup) => {
     setGroupBusy(g.key);
     try {
+      const runNum = roundNumberOf(g);
+      const labels = g.rows.map((r, idx) => {
+        const lo = toLabelOrder(r);
+        // For multi-SKU rounds, stamp the position-based R0N-0X code onto the
+        // slip footer so it matches the SKU tags printed for the same round.
+        if (runNum > 0) {
+          const code = slotCode(runNum, idx + 1);
+          lo.courier_label_text = `${lo.courier_label_text || ""} ${code}`.trim();
+        }
+        return lo;
+      });
       await downloadCourierLabelsPdf(
-        g.rows.map(toLabelOrder),
+        labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
     } catch (e: any) {
       toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
+    } finally {
+      setGroupBusy(null);
+    }
+  };
+
+  // Build one peel-and-stick item tag per physical unit for a multi-SKU round.
+  // Slot = order's position within the round (1..N), matching the R0N-0X code
+  // stamped onto that order's courier slip footer by downloadGroup above, so
+  // the sorted tag stack and the sorted slip stack line up for table-sorting.
+  const downloadSkuTags = async (g: LabelGroup) => {
+    const runNum = roundNumberOf(g);
+    if (runNum <= 0) return;
+    setGroupBusy(`${g.key}-tags`);
+    try {
+      const orderIds = g.rows.map((r) => r.id);
+      const CHUNK = 200;
+      const items: { order_id: string; sku: string; quantity: number }[] = [];
+      for (let i = 0; i < orderIds.length; i += CHUNK) {
+        const { data, error } = await (supabase.from("order_items") as any)
+          .select("order_id, sku, quantity")
+          .in("order_id", orderIds.slice(i, i + CHUNK));
+        if (error) throw error;
+        items.push(...((data as any[]) || []));
+      }
+      const skus = Array.from(new Set(items.map((it) => it.sku)));
+      const binBySku = new Map<string, string>();
+      for (let i = 0; i < skus.length; i += CHUNK) {
+        const { data, error } = await (supabase.from("products") as any)
+          .select("sku, bin_location")
+          .in("sku", skus.slice(i, i + CHUNK));
+        if (error) throw error;
+        ((data as any[]) || []).forEach((p) => binBySku.set(p.sku, p.bin_location || ""));
+      }
+      const slotByOrder = new Map<string, number>();
+      const numByOrder = new Map<string, string | null>();
+      g.rows.forEach((r, idx) => {
+        slotByOrder.set(r.id, idx + 1);
+        numByOrder.set(r.id, r.public_order_number);
+      });
+      const units: RoundUnit[] = items.map((it) => ({
+        binLocation: binBySku.get(it.sku) || "",
+        slotNumber: slotByOrder.get(it.order_id) || 1,
+        quantity: Number(it.quantity) || 1,
+        orderNumber: numByOrder.get(it.order_id) ?? null,
+      }));
+      const tags = buildTagsForRounds([{ runNumber: runNum, units }]);
+      await downloadItemTagsPdf(
+        tags,
+        `sku-tags-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+    } catch (e: any) {
+      toast({ title: "Tag generation failed", description: e.message, variant: "destructive" });
     } finally {
       setGroupBusy(null);
     }
@@ -309,27 +381,48 @@ export default function AdminCourierLabels() {
             <p className="text-sm text-muted-foreground">No tracked orders to print.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((g) => (
+              {groups.map((g) => {
+                const runNum = roundNumberOf(g);
+                return (
                 <div key={g.key} className="rounded-lg border p-3 space-y-2">
                   <div>
                     <p className="font-medium">{g.title}</p>
                     <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
                   </div>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    disabled={groupBusy !== null}
-                    onClick={() => downloadGroup(g)}
-                  >
-                    {groupBusy === g.key ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Printer className="mr-2 h-4 w-4" />
+                  <div className={runNum > 0 ? "grid grid-cols-2 gap-2" : ""}>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={groupBusy !== null}
+                      onClick={() => downloadGroup(g)}
+                    >
+                      {groupBusy === g.key ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Printer className="mr-2 h-4 w-4" />
+                      )}
+                      {groupBusy === g.key ? "Generating…" : "Download PDF"}
+                    </Button>
+                    {runNum > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        disabled={groupBusy !== null}
+                        onClick={() => downloadSkuTags(g)}
+                      >
+                        {groupBusy === `${g.key}-tags` ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Tags className="mr-2 h-4 w-4" />
+                        )}
+                        {groupBusy === `${g.key}-tags` ? "Generating…" : "SKU tags"}
+                      </Button>
                     )}
-                    {groupBusy === g.key ? "Generating…" : "Download PDF"}
-                  </Button>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
