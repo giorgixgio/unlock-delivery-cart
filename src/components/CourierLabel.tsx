@@ -110,7 +110,7 @@ export async function downloadCourierLabelsPdf(orders: CourierLabelOrder[], file
       });
 
       const node = host.firstElementChild as HTMLElement;
-      const canvas = await html2canvas(node, { scale: 3, backgroundColor: "#ffffff" });
+      const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff" });
       const imgData = canvas.toDataURL("image/png");
 
       if (i > 0) pdf.addPage([LABEL_WIDTH_MM, LABEL_HEIGHT_MM], "portrait");
