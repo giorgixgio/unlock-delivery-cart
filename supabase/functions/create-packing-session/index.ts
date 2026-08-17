@@ -113,6 +113,33 @@ Deno.serve(async (req) => {
     const singles = classified.filter((c) => !c.multi);
     const multis = classified.filter((c) => c.multi).sort((a, b) => new Date(a.order.created_at).getTime() - new Date(b.order.created_at).getTime());
 
+    // --- Resolve each multi-SKU order's distinct bin locations ---
+    // order_items.sku -> products.sku -> products.bin_location
+    const multiSkus = [
+      ...new Set(
+        multis.flatMap((c: any) => (c.order.order_items || []).map((i: any) => String(i.sku || ""))),
+      ),
+    ].filter(Boolean);
+    const skuToBin = new Map<string, string>();
+    for (let i = 0; i < multiSkus.length; i += 500) {
+      const { data: prods, error: prodErr } = await supabase
+        .from("products")
+        .select("sku, bin_location")
+        .in("sku", multiSkus.slice(i, i + 500));
+      if (prodErr) return json(500, { error: prodErr.message });
+      for (const p of (prods || []) as any[]) {
+        if (p.bin_location) skuToBin.set(String(p.sku), String(p.bin_location));
+      }
+    }
+    // Unknown/missing bins stay distinct per SKU so they aren't merged into one fake stop.
+    const binsOf = (c: any) =>
+      new Set<string>(
+        (c.order.order_items || []).map(
+          (i: any) => skuToBin.get(String(i.sku || "")) || `?sku:${i.sku}`,
+        ),
+      );
+
+
     const { data: wave, error: waveErr } = await supabase
       .from("packing_waves")
       .insert({ created_by: actor, status: "active" })
