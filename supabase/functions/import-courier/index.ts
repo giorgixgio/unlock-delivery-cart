@@ -424,12 +424,18 @@ Deno.serve(async (req) => {
           if (!want || o.tracking_number === want) continue;
           const { error: uErr } = await admin
             .from("orders")
-            .update({ tracking_number: want })
+            .update({ tracking_number: want, courier_import_batch_id: batch.id })
             .eq("id", o.id);
           if (!uErr) ordersTrackingUpdated++;
         }
         ordersTrackingUnmatched += nchunk.filter((n) => !found.has(n)).length;
       }
+      // Stamp how many orders this run actually touched, so the labels page
+      // can list uploads with their order counts.
+      await admin
+        .from("courier_import_batches")
+        .update({ order_count: ordersTrackingUpdated })
+        .eq("id", batch.id);
     } catch (e: any) {
       console.error("write_order_tracking failed", e?.message || e);
       debug.order_tracking_error = e?.message || String(e);

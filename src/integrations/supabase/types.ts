@@ -276,6 +276,7 @@ export type Database = {
           id: string
           new_history_rows: number
           new_shipments: number
+          order_count: number
           possible_returns: number
           skipped_rows: number
           status: string
@@ -296,6 +297,7 @@ export type Database = {
           id?: string
           new_history_rows?: number
           new_shipments?: number
+          order_count?: number
           possible_returns?: number
           skipped_rows?: number
           status?: string
@@ -316,6 +318,7 @@ export type Database = {
           id?: string
           new_history_rows?: number
           new_shipments?: number
+          order_count?: number
           possible_returns?: number
           skipped_rows?: number
           status?: string
@@ -978,6 +981,7 @@ export type Database = {
           channel: string
           city: string
           cookie_id_hash: string | null
+          courier_import_batch_id: string | null
           courier_label_date: string | null
           courier_label_text: string | null
           courier_name: string | null
@@ -1059,6 +1063,7 @@ export type Database = {
           channel?: string
           city?: string
           cookie_id_hash?: string | null
+          courier_import_batch_id?: string | null
           courier_label_date?: string | null
           courier_label_text?: string | null
           courier_name?: string | null
@@ -1140,6 +1145,7 @@ export type Database = {
           channel?: string
           city?: string
           cookie_id_hash?: string | null
+          courier_import_batch_id?: string | null
           courier_label_date?: string | null
           courier_label_text?: string | null
           courier_name?: string | null
@@ -1204,6 +1210,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_courier_import_batch_id_fkey"
+            columns: ["courier_import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "courier_import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_original_order_id_fkey"
             columns: ["original_order_id"]

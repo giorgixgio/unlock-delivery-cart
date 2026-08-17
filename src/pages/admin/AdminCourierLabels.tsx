@@ -26,22 +26,42 @@ interface Row {
   raw_city: string | null;
 }
 
+interface UploadBatch {
+  id: string;
+  file_name: string | null;
+  uploaded_at: string | null;
+  order_count: number | null;
+}
+
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [batches, setBatches] = useState<UploadBatch[]>([]);
+  const [activeBatch, setActiveBatch] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [onlyUnfulfilled, setOnlyUnfulfilled] = useState(false);
   const [search, setSearch] = useState("");
 
-  const load = async () => {
+  const loadBatches = async () => {
+    const { data, error } = await (supabase.from("courier_import_batches") as any)
+      .select("id, file_name, uploaded_at, order_count")
+      .order("uploaded_at", { ascending: false })
+      .limit(30);
+    if (error) {
+      toast({ title: "Failed to load uploads", description: error.message, variant: "destructive" });
+    } else {
+      setBatches((data as UploadBatch[]) || []);
+    }
+  };
+
+  const load = async (batchId: string | null) => {
     setLoading(true);
     let q = (supabase.from("orders") as any)
       .select(
         "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city"
       )
       .not("tracking_number", "is", null);
-    if (onlyUnfulfilled) q = q.eq("is_fulfilled", false);
+    if (batchId) q = q.eq("courier_import_batch_id", batchId);
     const { data, error } = await q.order("created_at", { ascending: false }).limit(500);
     if (error) {
       toast({ title: "Failed to load", description: error.message, variant: "destructive" });
@@ -52,9 +72,13 @@ export default function AdminCourierLabels() {
   };
 
   useEffect(() => {
-    load();
+    loadBatches();
+  }, []);
+
+  useEffect(() => {
+    load(activeBatch);
     setSelected(new Set());
-  }, [onlyUnfulfilled]);
+  }, [activeBatch]);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -121,21 +145,45 @@ export default function AdminCourierLabels() {
       </div>
 
       <Card>
+        <CardContent className="p-4 space-y-2">
+          <h2 className="text-sm font-semibold">Recent uploads</h2>
+          {batches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No courier uploads yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={activeBatch === null ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveBatch(null)}
+              >
+                All tracked orders
+              </Button>
+              {batches.map((b) => (
+                <Button
+                  key={b.id}
+                  variant={activeBatch === b.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveBatch(b.id)}
+                  className="flex-col items-start h-auto py-1.5"
+                >
+                  <span className="text-xs">
+                    {b.uploaded_at ? new Date(b.uploaded_at).toLocaleString() : "—"}
+                  </span>
+                  <span className="text-[11px] opacity-70">{b.order_count ?? 0} orders</span>
+                </Button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
                 {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={onlyUnfulfilled}
-                  onChange={(e) => setOnlyUnfulfilled(e.target.checked)}
-                />
-                Only unfulfilled
-              </label>
             </div>
             <div className="flex items-center gap-2">
               <input
