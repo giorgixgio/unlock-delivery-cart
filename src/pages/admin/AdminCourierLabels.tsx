@@ -116,6 +116,72 @@ export default function AdminCourierLabels() {
     }
   };
 
+  // Build print groups: Singles + Round 1, then one group per extra round.
+  const buildGroups = async (list: Row[]) => {
+    if (list.length === 0) {
+      setGroups([]);
+      return;
+    }
+    const ids = list.map((r) => r.id);
+    const CHUNK = 200;
+    const classification = new Map<string, string>();
+    const slotRunId = new Map<string, string>();
+    const runNumber = new Map<string, number>();
+    try {
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const [{ data: pwo }, { data: slots }] = await Promise.all([
+          (supabase.from("packing_wave_orders") as any)
+            .select("order_id, classification")
+            .in("order_id", slice),
+          (supabase.from("packing_run_slots") as any).select("order_id, run_id").in("order_id", slice),
+        ]);
+        ((pwo as any[]) || []).forEach((r) => classification.set(r.order_id, r.classification));
+        ((slots as any[]) || []).forEach((r) => slotRunId.set(r.order_id, r.run_id));
+      }
+      const runIds = Array.from(new Set(Array.from(slotRunId.values())));
+      for (let i = 0; i < runIds.length; i += CHUNK) {
+        const { data: runs } = await (supabase.from("packing_runs") as any)
+          .select("id, run_number")
+          .in("id", runIds.slice(i, i + CHUNK));
+        ((runs as any[]) || []).forEach((r) => runNumber.set(r.id, r.run_number));
+      }
+    } catch (e: any) {
+      toast({ title: "Failed to group orders", description: e.message, variant: "destructive" });
+    }
+
+    const first: Row[] = [];
+    const byRound = new Map<number, Row[]>();
+    for (const r of list) {
+      const isMulti = classification.get(r.id) === "multi_sku";
+      const rn = isMulti ? runNumber.get(slotRunId.get(r.id) || "") : undefined;
+      if (!isMulti || !rn || rn <= 1) {
+        first.push(r);
+      } else {
+        if (!byRound.has(rn)) byRound.set(rn, []);
+        byRound.get(rn)!.push(r);
+      }
+    }
+    const next: LabelGroup[] = [{ key: "singles-r1", title: "Singles + Round 1", rows: first }];
+    Array.from(byRound.keys())
+      .sort((a, b) => a - b)
+      .forEach((rn) => next.push({ key: `round-${rn}`, title: `Round ${rn}`, rows: byRound.get(rn)! }));
+    setGroups(next.filter((g) => g.rows.length > 0));
+  };
+
+  const downloadGroup = async (g: LabelGroup) => {
+    setGroupBusy(g.key);
+    try {
+      await downloadCourierLabelsPdf(
+        g.rows.map(toLabelOrder),
+        `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
+      );
+    } catch (e: any) {
+      toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
+    } finally {
+      setGroupBusy(null);
+    }
+  };
 
   useEffect(() => {
     loadBatches();
@@ -125,6 +191,11 @@ export default function AdminCourierLabels() {
     load(activeBatch);
     setSelected(new Set());
   }, [activeBatch]);
+
+  useEffect(() => {
+    buildGroups(rows);
+  }, [rows]);
+
 
   const toggle = (id: string) => {
     setSelected((prev) => {
