@@ -203,6 +203,11 @@ Deno.serve(async (req) => {
       multi_count: multis.length,
       round_size: roundSize,
       round_count: roundCount,
+      round_stops: roundStops,
+      avg_stops: roundStops.length
+        ? Math.round((roundStops.reduce((s, r) => s + r.stops, 0) / roundStops.length) * 10) / 10
+        : 0,
+      max_stops: roundStops.reduce((m, r) => Math.max(m, r.stops), 0),
     });
   } catch (e) {
     console.error("create-packing-session error:", e);
