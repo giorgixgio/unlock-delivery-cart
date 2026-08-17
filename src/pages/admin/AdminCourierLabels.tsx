@@ -50,6 +50,32 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
+type ActionKind = "pdf" | "tags";
+
+interface ActionEntry {
+  /** group key */
+  key: string;
+  title: string;
+  kind: ActionKind;
+  /** epoch ms */
+  at: number;
+  /** ms since the previous logged action */
+  gapMs: number;
+}
+
+const LOG_KEY = "courier_label_action_log_v1";
+
+function fmtDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}სთ ${m % 60}წთ`;
+  if (m > 0) return `${m}წთ ${s % 60}წმ`;
+  return `${s}წმ`;
+}
+
+
 
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
