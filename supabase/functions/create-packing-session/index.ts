@@ -12,6 +12,49 @@ function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+/**
+ * Greedy route clustering: seed a round with the earliest unassigned order,
+ * then repeatedly append the unassigned order whose bin set adds the fewest
+ * NEW distinct bins to the round, until the round is full. Repeat with a
+ * fresh seed until every order is assigned.
+ */
+function buildOptimizedRounds<T>(
+  items: T[],
+  roundSize: number,
+  binsOf: (item: T) => Set<string>,
+): T[][] {
+  const remaining = items.map((item, idx) => ({ item, idx, bins: binsOf(item) }));
+  const rounds: T[][] = [];
+
+  while (remaining.length > 0) {
+    const seed = remaining.shift()!;
+    const round = [seed];
+    const combined = new Set(seed.bins);
+
+    while (round.length < roundSize && remaining.length > 0) {
+      let bestPos = 0;
+      let bestNew = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        let added = 0;
+        for (const b of remaining[i].bins) if (!combined.has(b)) added++;
+        // tie-break on original (created_at) order — remaining stays sorted
+        if (added < bestNew) {
+          bestNew = added;
+          bestPos = i;
+          if (added === 0) break;
+        }
+      }
+      const [picked] = remaining.splice(bestPos, 1);
+      for (const b of picked.bins) combined.add(b);
+      round.push(picked);
+    }
+
+    rounds.push(round.map((r) => r.item));
+  }
+
+  return rounds;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -70,6 +113,33 @@ Deno.serve(async (req) => {
     const singles = classified.filter((c) => !c.multi);
     const multis = classified.filter((c) => c.multi).sort((a, b) => new Date(a.order.created_at).getTime() - new Date(b.order.created_at).getTime());
 
+    // --- Resolve each multi-SKU order's distinct bin locations ---
+    // order_items.sku -> products.sku -> products.bin_location
+    const multiSkus = [
+      ...new Set(
+        multis.flatMap((c: any) => (c.order.order_items || []).map((i: any) => String(i.sku || ""))),
+      ),
+    ].filter(Boolean);
+    const skuToBin = new Map<string, string>();
+    for (let i = 0; i < multiSkus.length; i += 500) {
+      const { data: prods, error: prodErr } = await supabase
+        .from("products")
+        .select("sku, bin_location")
+        .in("sku", multiSkus.slice(i, i + 500));
+      if (prodErr) return json(500, { error: prodErr.message });
+      for (const p of (prods || []) as any[]) {
+        if (p.bin_location) skuToBin.set(String(p.sku), String(p.bin_location));
+      }
+    }
+    // Unknown/missing bins stay distinct per SKU so they aren't merged into one fake stop.
+    const binsOf = (c: any) =>
+      new Set<string>(
+        (c.order.order_items || []).map(
+          (i: any) => skuToBin.get(String(i.sku || "")) || `?sku:${i.sku}`,
+        ),
+      );
+
+
     const { data: wave, error: waveErr } = await supabase
       .from("packing_waves")
       .insert({ created_by: actor, status: "active" })
@@ -92,9 +162,15 @@ Deno.serve(async (req) => {
     });
     await supabase.from("packing_wave_orders").insert(waveOrderRows);
 
-    const roundCount = Math.ceil(multis.length / roundSize);
+    // Route-optimized grouping replaces sequential created_at chunking.
+    const rounds = buildOptimizedRounds(multis, roundSize, binsOf);
+    const roundCount = rounds.length;
+    const roundStops: { run_number: number; orders: number; stops: number }[] = [];
     for (let r = 0; r < roundCount; r++) {
-      const chunk = multis.slice(r * roundSize, r * roundSize + roundSize);
+      const chunk = rounds[r];
+      const combinedBins = new Set<string>();
+      for (const c of chunk) for (const b of binsOf(c)) combinedBins.add(b);
+      roundStops.push({ run_number: r + 1, orders: chunk.length, stops: combinedBins.size });
       const { data: run, error: runErr } = await supabase
         .from("packing_runs")
         .insert({ wave_id: waveId, run_number: r + 1, slot_count: chunk.length, created_by: actor, status: "pending" })
@@ -127,6 +203,11 @@ Deno.serve(async (req) => {
       multi_count: multis.length,
       round_size: roundSize,
       round_count: roundCount,
+      round_stops: roundStops,
+      avg_stops: roundStops.length
+        ? Math.round((roundStops.reduce((s, r) => s + r.stops, 0) / roundStops.length) * 10) / 10
+        : 0,
+      max_stops: roundStops.reduce((m, r) => Math.max(m, r.stops), 0),
     });
   } catch (e) {
     console.error("create-packing-session error:", e);
