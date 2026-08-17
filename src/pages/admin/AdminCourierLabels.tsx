@@ -629,26 +629,43 @@ export default function AdminCourierLabels() {
             </p>
           ) : (
             <>
-              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-                ბოლო მოქმედებიდან გავიდა:{" "}
-                <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                  ბოლო მოქმედებიდან გავიდა:{" "}
+                  <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+                </div>
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                  დასრულებული რაუნდები:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {log.filter((e) => e.kind === "finish").length}
+                  </span>
+                  {avgRoundGapMs > 0 && (
+                    <> · საშ. ტემპი <span className="font-semibold tabular-nums">{fmtDuration(avgRoundGapMs)}</span></>
+                  )}
+                </div>
               </div>
               <ol className="divide-y text-sm">
                 {log.slice(0, 25).map((e) => (
                   <li key={`${e.key}-${e.kind}-${e.at}`} className="flex items-center justify-between gap-3 py-2">
                     <span className="truncate">
                       <span className="font-medium">{e.title}</span> ·{" "}
-                      {e.kind === "pdf" ? "PDF" : "SKU tags"}
+                      {e.kind === "pdf" ? "PDF" : e.kind === "tags" ? "SKU tags" : (
+                        <span className="font-semibold text-emerald-600">დასრულდა</span>
+                      )}
                     </span>
                     <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                       {new Date(e.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                       {e.gapMs > 0 && <> · +{fmtDuration(e.gapMs)}</>}
+                      {e.kind === "finish" && roundGapMs(e.key) > 0 && (
+                        <> · რაუნდებს შორის {fmtDuration(roundGapMs(e.key))}</>
+                      )}
                     </span>
                   </li>
                 ))}
               </ol>
             </>
           )}
+
         </CardContent>
       </Card>
 
