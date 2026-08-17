@@ -34,6 +34,12 @@ interface UploadBatch {
   matched: number | null;
 }
 
+interface LabelGroup {
+  key: string;
+  title: string;
+  rows: Row[];
+}
+
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
   const [batches, setBatches] = useState<UploadBatch[]>([]);
@@ -41,7 +47,10 @@ export default function AdminCourierLabels() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  const [groups, setGroups] = useState<LabelGroup[]>([]);
   const [search, setSearch] = useState("");
+
 
   const loadBatches = async () => {
     // Tracking imports are written by MassFulfillModal into import_batches
