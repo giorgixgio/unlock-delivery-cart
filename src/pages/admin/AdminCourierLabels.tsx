@@ -50,7 +50,7 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
-type ActionKind = "pdf" | "tags";
+type ActionKind = "pdf" | "tags" | "finish";
 
 interface ActionEntry {
   /** group key */
