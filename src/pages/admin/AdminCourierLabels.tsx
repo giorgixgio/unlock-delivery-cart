@@ -254,12 +254,11 @@ export default function AdminCourierLabels() {
         if (error) throw error;
         ((data as any[]) || []).forEach((p) => binBySku.set(p.sku, p.bin_location || ""));
       }
-      const slotByOrder = new Map<string, number>();
+      // Slots parsed from the slip's [R##-##] code — same source the round
+      // grouping and the printed slip use.
+      const slotByOrder = g.slotByOrder ?? new Map<string, number>();
       const numByOrder = new Map<string, string | null>();
-      g.rows.forEach((r, idx) => {
-        slotByOrder.set(r.id, idx + 1);
-        numByOrder.set(r.id, r.public_order_number);
-      });
+      g.rows.forEach((r) => numByOrder.set(r.id, r.public_order_number));
       const units: RoundUnit[] = items.map((it) => ({
         binLocation: binBySku.get(it.sku) || "",
         slotNumber: slotByOrder.get(it.order_id) || 1,
