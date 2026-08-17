@@ -498,6 +498,9 @@ export default function AdminCourierLabels() {
                 const runNum = roundNumberOf(g);
                 const done = doneKinds(g.key);
                 const finished = isGroupFinished(g);
+                const readyToFinish = !finished && isReadyToFinish(g);
+                const fin = finishEntry(g.key);
+                const gap = fin ? roundGapMs(g.key) : 0;
                 const last = log.find((e) => e.key === g.key);
                 return (
                 <div
@@ -572,15 +575,37 @@ export default function AdminCourierLabels() {
                       </Button>
                     )}
                   </div>
-                  {last && (
-                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                  {readyToFinish && (
+                    <Button
+                      size="sm"
+                      onClick={() => finishGroup(g)}
+                      className="w-full animate-glow-pulse bg-success text-success-foreground hover:bg-success/90 font-semibold"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      რაუნდის დასრულება
+                    </Button>
+                  )}
+                  {finished && fin ? (
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        დასრულდა{" "}
+                        {new Date(fin.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {gap > 0 && <span>· წინა რაუნდიდან {fmtDuration(gap)}</span>}
                     </p>
+                  ) : (
+                    last && (
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                      </p>
+                    )
                   )}
                 </div>
                 );
               })}
+
             </div>
           )}
         </CardContent>
