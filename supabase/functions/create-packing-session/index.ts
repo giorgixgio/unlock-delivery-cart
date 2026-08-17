@@ -162,9 +162,15 @@ Deno.serve(async (req) => {
     });
     await supabase.from("packing_wave_orders").insert(waveOrderRows);
 
-    const roundCount = Math.ceil(multis.length / roundSize);
+    // Route-optimized grouping replaces sequential created_at chunking.
+    const rounds = buildOptimizedRounds(multis, roundSize, binsOf);
+    const roundCount = rounds.length;
+    const roundStops: { run_number: number; orders: number; stops: number }[] = [];
     for (let r = 0; r < roundCount; r++) {
-      const chunk = multis.slice(r * roundSize, r * roundSize + roundSize);
+      const chunk = rounds[r];
+      const combinedBins = new Set<string>();
+      for (const c of chunk) for (const b of binsOf(c)) combinedBins.add(b);
+      roundStops.push({ run_number: r + 1, orders: chunk.length, stops: combinedBins.size });
       const { data: run, error: runErr } = await supabase
         .from("packing_runs")
         .insert({ wave_id: waveId, run_number: r + 1, slot_count: chunk.length, created_by: actor, status: "pending" })
