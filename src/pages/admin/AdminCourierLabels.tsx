@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Loader2, Tags } from "lucide-react";
+import { Printer, Loader2, Tags, CheckCircle2, Clock, RotateCcw } from "lucide-react";
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 
@@ -50,6 +50,32 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
+type ActionKind = "pdf" | "tags";
+
+interface ActionEntry {
+  /** group key */
+  key: string;
+  title: string;
+  kind: ActionKind;
+  /** epoch ms */
+  at: number;
+  /** ms since the previous logged action */
+  gapMs: number;
+}
+
+const LOG_KEY = "courier_label_action_log_v1";
+
+function fmtDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}სთ ${m % 60}წთ`;
+  if (m > 0) return `${m}წთ ${s % 60}წმ`;
+  return `${s}წმ`;
+}
+
+
 
 export default function AdminCourierLabels() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -62,6 +88,50 @@ export default function AdminCourierLabels() {
   const [groups, setGroups] = useState<LabelGroup[]>([]);
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
+
+  // --- Warehouse progress tracking (per group: which actions were done) ---
+  const [log, setLog] = useState<ActionEntry[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LOG_KEY) || "[]") as ActionEntry[];
+    } catch {
+      return [];
+    }
+  });
+  const [now, setNow] = useState(Date.now());
+  const logRef = useRef(log);
+  logRef.current = log;
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const persist = (next: ActionEntry[]) => {
+    setLog(next);
+    try {
+      localStorage.setItem(LOG_KEY, JSON.stringify(next.slice(0, 200)));
+    } catch {
+      /* storage full — logging is best-effort */
+    }
+  };
+
+  const logAction = (key: string, title: string, kind: ActionKind) => {
+    const prev = logRef.current[0];
+    const at = Date.now();
+    const entry: ActionEntry = { key, title, kind, at, gapMs: prev ? at - prev.at : 0 };
+    persist([entry, ...logRef.current].slice(0, 200));
+  };
+
+  const doneKinds = (key: string) =>
+    new Set(log.filter((e) => e.key === key).map((e) => e.kind));
+
+  const isGroupFinished = (g: LabelGroup) => {
+    const d = doneKinds(g.key);
+    return roundNumberOf(g) > 0 ? d.has("pdf") && d.has("tags") : d.has("pdf");
+  };
+
+  const clearLog = () => persist([]);
+
 
 
   const loadBatches = async () => {
@@ -220,6 +290,7 @@ export default function AdminCourierLabels() {
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
+      logAction(g.key, g.title, "pdf");
     } catch (e: any) {
       toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
     } finally {
@@ -270,6 +341,7 @@ export default function AdminCourierLabels() {
         tags,
         `sku-tags-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
+      logAction(g.key, g.title, "tags");
     } catch (e: any) {
       toast({ title: "Tag generation failed", description: e.message, variant: "destructive" });
     } finally {
@@ -405,47 +477,133 @@ export default function AdminCourierLabels() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((g) => {
                 const runNum = roundNumberOf(g);
+                const done = doneKinds(g.key);
+                const finished = isGroupFinished(g);
+                const last = log.find((e) => e.key === g.key);
                 return (
-                <div key={g.key} className="rounded-lg border p-3 space-y-2">
-                  <div>
-                    <p className="font-medium">{g.title}</p>
-                    <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
+                <div
+                  key={g.key}
+                  className={`rounded-lg border p-3 space-y-2 transition-colors ${
+                    finished
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : done.size > 0
+                        ? "border-primary/50 bg-primary/5"
+                        : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium flex items-center gap-1.5">
+                        {g.title}
+                        {finished && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
+                    </div>
+                    {finished ? (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                        დასრულებული
+                      </span>
+                    ) : done.size > 0 ? (
+                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                        მიმდინარე
+                      </span>
+                    ) : null}
                   </div>
                   <div className={runNum > 0 ? "grid grid-cols-2 gap-2" : ""}>
                     <Button
                       size="sm"
                       className="w-full"
+                      variant={done.has("pdf") ? "secondary" : "default"}
                       disabled={groupBusy !== null}
                       onClick={() => downloadGroup(g)}
                     >
                       {groupBusy === g.key ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : done.has("pdf") ? (
+                        <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />
                       ) : (
                         <Printer className="mr-2 h-4 w-4" />
                       )}
-                      {groupBusy === g.key ? "Generating…" : "Download PDF"}
+                      {groupBusy === g.key
+                        ? "Generating…"
+                        : done.has("pdf")
+                          ? "PDF ✓"
+                          : "Download PDF"}
                     </Button>
                     {runNum > 0 && (
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={done.has("tags") ? "secondary" : "outline"}
                         className="w-full"
                         disabled={groupBusy !== null}
                         onClick={() => downloadSkuTags(g)}
                       >
                         {groupBusy === `${g.key}-tags` ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : done.has("tags") ? (
+                          <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />
                         ) : (
                           <Tags className="mr-2 h-4 w-4" />
                         )}
-                        {groupBusy === `${g.key}-tags` ? "Generating…" : "SKU tags"}
+                        {groupBusy === `${g.key}-tags`
+                          ? "Generating…"
+                          : done.has("tags")
+                            ? "Tags ✓"
+                            : "SKU tags"}
                       </Button>
                     )}
                   </div>
+                  {last && (
+                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                    </p>
+                  )}
                 </div>
                 );
               })}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <Clock className="h-4 w-4" /> სამუშაო ჟურნალი (დრო მოქმედებებს შორის)
+            </h2>
+            {log.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={clearLog}>
+                <RotateCcw className="mr-2 h-4 w-4" /> გასუფთავება
+              </Button>
+            )}
+          </div>
+          {log.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              ჯერ არაფერია დაბეჭდილი — დაწყებისას აქ გამოჩნდება დრო თითოეულ მოქმედებას შორის.
+            </p>
+          ) : (
+            <>
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+                ბოლო მოქმედებიდან გავიდა:{" "}
+                <span className="font-semibold tabular-nums">{fmtDuration(now - log[0].at)}</span>
+              </div>
+              <ol className="divide-y text-sm">
+                {log.slice(0, 25).map((e) => (
+                  <li key={`${e.key}-${e.kind}-${e.at}`} className="flex items-center justify-between gap-3 py-2">
+                    <span className="truncate">
+                      <span className="font-medium">{e.title}</span> ·{" "}
+                      {e.kind === "pdf" ? "PDF" : "SKU tags"}
+                    </span>
+                    <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                      {new Date(e.at).toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      {e.gapMs > 0 && <> · +{fmtDuration(e.gapMs)}</>}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </>
           )}
         </CardContent>
       </Card>
