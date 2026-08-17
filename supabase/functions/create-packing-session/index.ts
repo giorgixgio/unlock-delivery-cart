@@ -12,6 +12,49 @@ function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+/**
+ * Greedy route clustering: seed a round with the earliest unassigned order,
+ * then repeatedly append the unassigned order whose bin set adds the fewest
+ * NEW distinct bins to the round, until the round is full. Repeat with a
+ * fresh seed until every order is assigned.
+ */
+function buildOptimizedRounds<T>(
+  items: T[],
+  roundSize: number,
+  binsOf: (item: T) => Set<string>,
+): T[][] {
+  const remaining = items.map((item, idx) => ({ item, idx, bins: binsOf(item) }));
+  const rounds: T[][] = [];
+
+  while (remaining.length > 0) {
+    const seed = remaining.shift()!;
+    const round = [seed];
+    const combined = new Set(seed.bins);
+
+    while (round.length < roundSize && remaining.length > 0) {
+      let bestPos = 0;
+      let bestNew = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        let added = 0;
+        for (const b of remaining[i].bins) if (!combined.has(b)) added++;
+        // tie-break on original (created_at) order — remaining stays sorted
+        if (added < bestNew) {
+          bestNew = added;
+          bestPos = i;
+          if (added === 0) break;
+        }
+      }
+      const [picked] = remaining.splice(bestPos, 1);
+      for (const b of picked.bins) combined.add(b);
+      round.push(picked);
+    }
+
+    rounds.push(round.map((r) => r.item));
+  }
+
+  return rounds;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
