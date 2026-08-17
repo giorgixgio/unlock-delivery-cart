@@ -247,19 +247,8 @@ export default function AdminCourierLabels() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Courier labels</h1>
-        <Button onClick={handleDownload} disabled={generating || selectedRows.length === 0}>
-          {generating ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Printer className="mr-2 h-4 w-4" />
-          )}
-          {generating
-            ? "Generating…"
-            : `Download PDF ${selectedRows.length > 0 ? `(${selectedRows.length})` : ""}`}
-        </Button>
-      </div>
+      <h1 className="text-2xl font-semibold">Courier labels</h1>
+
 
       <Card>
         <CardContent className="p-4 space-y-2">
