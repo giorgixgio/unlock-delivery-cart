@@ -125,12 +125,31 @@ export default function AdminCourierLabels() {
   const doneKinds = (key: string) =>
     new Set(log.filter((e) => e.key === key).map((e) => e.kind));
 
-  const isGroupFinished = (g: LabelGroup) => {
+  /** Both print actions done → the round can be marked finished by the packer. */
+  const isReadyToFinish = (g: LabelGroup) => {
     const d = doneKinds(g.key);
     return roundNumberOf(g) > 0 ? d.has("pdf") && d.has("tags") : d.has("pdf");
   };
 
+  const isGroupFinished = (g: LabelGroup) => doneKinds(g.key).has("finish");
+
+  const finishEntry = (key: string) => log.find((e) => e.key === key && e.kind === "finish");
+
+  /** Time between this round's finish and the previous round's finish. */
+  const roundGapMs = (key: string) => {
+    const finishes = log.filter((e) => e.kind === "finish"); // newest first
+    const i = finishes.findIndex((e) => e.key === key);
+    if (i === -1 || i + 1 >= finishes.length) return 0;
+    return finishes[i].at - finishes[i + 1].at;
+  };
+
+  const finishGroup = (g: LabelGroup) => {
+    if (isGroupFinished(g)) return;
+    logAction(g.key, g.title, "finish");
+  };
+
   const clearLog = () => persist([]);
+
 
 
 
