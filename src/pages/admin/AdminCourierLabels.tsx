@@ -477,43 +477,88 @@ export default function AdminCourierLabels() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((g) => {
                 const runNum = roundNumberOf(g);
+                const done = doneKinds(g.key);
+                const finished = isGroupFinished(g);
+                const last = log.find((e) => e.key === g.key);
                 return (
-                <div key={g.key} className="rounded-lg border p-3 space-y-2">
-                  <div>
-                    <p className="font-medium">{g.title}</p>
-                    <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
+                <div
+                  key={g.key}
+                  className={`rounded-lg border p-3 space-y-2 transition-colors ${
+                    finished
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : done.size > 0
+                        ? "border-primary/50 bg-primary/5"
+                        : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium flex items-center gap-1.5">
+                        {g.title}
+                        {finished && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{g.rows.length} orders</p>
+                    </div>
+                    {finished ? (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                        დასრულებული
+                      </span>
+                    ) : done.size > 0 ? (
+                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                        მიმდინარე
+                      </span>
+                    ) : null}
                   </div>
                   <div className={runNum > 0 ? "grid grid-cols-2 gap-2" : ""}>
                     <Button
                       size="sm"
                       className="w-full"
+                      variant={done.has("pdf") ? "secondary" : "default"}
                       disabled={groupBusy !== null}
                       onClick={() => downloadGroup(g)}
                     >
                       {groupBusy === g.key ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : done.has("pdf") ? (
+                        <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />
                       ) : (
                         <Printer className="mr-2 h-4 w-4" />
                       )}
-                      {groupBusy === g.key ? "Generating…" : "Download PDF"}
+                      {groupBusy === g.key
+                        ? "Generating…"
+                        : done.has("pdf")
+                          ? "PDF ✓"
+                          : "Download PDF"}
                     </Button>
                     {runNum > 0 && (
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={done.has("tags") ? "secondary" : "outline"}
                         className="w-full"
                         disabled={groupBusy !== null}
                         onClick={() => downloadSkuTags(g)}
                       >
                         {groupBusy === `${g.key}-tags` ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : done.has("tags") ? (
+                          <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" />
                         ) : (
                           <Tags className="mr-2 h-4 w-4" />
                         )}
-                        {groupBusy === `${g.key}-tags` ? "Generating…" : "SKU tags"}
+                        {groupBusy === `${g.key}-tags`
+                          ? "Generating…"
+                          : done.has("tags")
+                            ? "Tags ✓"
+                            : "SKU tags"}
                       </Button>
                     )}
                   </div>
+                  {last && (
+                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      ბოლო მოქმედება {fmtDuration(now - last.at)} წინ
+                    </p>
+                  )}
                 </div>
                 );
               })}
