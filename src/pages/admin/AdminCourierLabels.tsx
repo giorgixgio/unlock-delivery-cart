@@ -210,23 +210,12 @@ export default function AdminCourierLabels() {
     return m ? Number(m[1]) : 0;
   };
 
-  const slotCode = (runNum: number, slot: number) =>
-    `R${String(runNum).padStart(2, "0")}-${String(slot).padStart(2, "0")}`;
-
   const downloadGroup = async (g: LabelGroup) => {
     setGroupBusy(g.key);
     try {
-      const runNum = roundNumberOf(g);
-      const labels = g.rows.map((r, idx) => {
-        const lo = toLabelOrder(r);
-        // For multi-SKU rounds, stamp the position-based R0N-0X code onto the
-        // slip footer so it matches the SKU tags printed for the same round.
-        if (runNum > 0) {
-          const code = slotCode(runNum, idx + 1);
-          lo.courier_label_text = `${lo.courier_label_text || ""} ${code}`.trim();
-        }
-        return lo;
-      });
+      // The [R##-##] code already lives at the start of courier_label_text —
+      // never re-stamp or recompute it here.
+      const labels = g.rows.map(toLabelOrder);
       await downloadCourierLabelsPdf(
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
