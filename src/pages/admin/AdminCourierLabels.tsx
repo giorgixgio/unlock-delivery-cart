@@ -145,21 +145,45 @@ export default function AdminCourierLabels() {
       </div>
 
       <Card>
+        <CardContent className="p-4 space-y-2">
+          <h2 className="text-sm font-semibold">Recent uploads</h2>
+          {batches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No courier uploads yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={activeBatch === null ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveBatch(null)}
+              >
+                All tracked orders
+              </Button>
+              {batches.map((b) => (
+                <Button
+                  key={b.id}
+                  variant={activeBatch === b.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveBatch(b.id)}
+                  className="flex-col items-start h-auto py-1.5"
+                >
+                  <span className="text-xs">
+                    {b.uploaded_at ? new Date(b.uploaded_at).toLocaleString() : "—"}
+                  </span>
+                  <span className="text-[11px] opacity-70">{b.order_count ?? 0} orders</span>
+                </Button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
                 {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={onlyUnfulfilled}
-                  onChange={(e) => setOnlyUnfulfilled(e.target.checked)}
-                />
-                Only unfulfilled
-              </label>
             </div>
             <div className="flex items-center gap-2">
               <input
