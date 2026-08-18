@@ -42,7 +42,14 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [presentationMultiplier, setPresentationMultiplierState] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const resolveAdminState = async (nextSession: Session | null) => {
+  /**
+   * Resolves staff state for a session.
+   * Returns true (staff), false (definitely NOT staff) or null (check failed —
+   * network / auth-lock error). A failed check must never sign the user out.
+   */
+  const resolveAdminState = async (
+    nextSession: Session | null,
+  ): Promise<boolean | null> => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
 
@@ -59,69 +66,79 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false;
     }
 
-    try {
-      const [{ data, error }, { data: staffData }] = await Promise.all([
-        supabase.rpc("is_active_admin", { user_id: nextSession.user.id }),
-        supabase.rpc("is_active_staff", { user_id: nextSession.user.id }),
-      ]);
-
-      if (error) throw error;
-
-      const adminActive = data === true;
-      const staffActive = staffData === true || adminActive;
-      setIsAdmin(adminActive);
-      setIsStaff(staffActive);
-
-      const email = nextSession.user.email?.toLowerCase() ?? null;
-
-      // Demo flag + role (legacy — leaves real data intact, just labels the UI)
-      let demoActive = false;
-      let userRole: string | null = null;
-      if (staffActive && email) {
-        const { data: row } = await supabase
-          .from("admin_users")
-          .select("is_demo, role")
-          .eq("email", email)
-          .maybeSingle();
-        demoActive = (row as any)?.is_demo === true;
-        userRole = ((row as any)?.role as string) ?? null;
-      }
-      setIsDemo(demoActive);
-      setRole(userRole);
-      setDemoMode(demoActive);
-
-      // Presentation mode — load this user's row (RLS allows own-row read)
-      let pres = false;
-      let mult = 1;
-      if (adminActive && email) {
-        const { data: pRow } = await supabase
-          .from("presentation_settings")
-          .select("is_active, revenue_multiplier")
-          .eq("target_email", email)
-          .maybeSingle();
-        if ((pRow as any)?.is_active === true) {
-          pres = true;
-          mult = Number((pRow as any).revenue_multiplier) || 0;
+    // The staff check can transiently fail (offline, token refresh in another
+    // tab holding the auth lock, cold start). Retry a couple of times before
+    // treating it as an error — and never as "not staff".
+    const checkStaff = async (): Promise<boolean | null> => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const [{ data: adminData, error: adminErr }, { data: staffData, error: staffErr }] =
+            await Promise.all([
+              supabase.rpc("is_active_admin", { user_id: nextSession.user.id }),
+              supabase.rpc("is_active_staff", { user_id: nextSession.user.id }),
+            ]);
+          if (!staffErr && !adminErr) {
+            return staffData === true || adminData === true
+              ? (setIsAdmin(adminData === true), true)
+              : (setIsAdmin(false), false);
+          }
+          console.warn("[auth] staff check error", staffErr ?? adminErr);
+        } catch (e) {
+          console.warn("[auth] staff check threw", e);
         }
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
       }
-      setIsPresentation(pres);
-      setPresentationMultiplierState(mult);
-      setPresentationMode(pres && email ? { email, multiplier: mult } : null);
+      return null;
+    };
 
+    const staffActive = await checkStaff();
+
+    if (staffActive === null) {
+      // Unknown — keep whatever access state we already had, stay signed in.
       setLoading(false);
-      return staffActive;
-    } catch {
-      setIsAdmin(false);
-      setIsStaff(false);
-      setIsDemo(false);
-      setRole(null);
-      setDemoMode(false);
-      setIsPresentation(false);
-      setPresentationMultiplierState(1);
-      setPresentationMode(null);
-      setLoading(false);
-      return false;
+      return null;
     }
+
+    setIsStaff(staffActive);
+
+    const email = nextSession.user.email?.toLowerCase() ?? null;
+
+    // Demo flag + role (legacy — leaves real data intact, just labels the UI)
+    let demoActive = false;
+    let userRole: string | null = null;
+    if (staffActive && email) {
+      const { data: row } = await supabase
+        .from("admin_users")
+        .select("is_demo, role")
+        .eq("email", email)
+        .maybeSingle();
+      demoActive = (row as any)?.is_demo === true;
+      userRole = ((row as any)?.role as string) ?? null;
+    }
+    setIsDemo(demoActive);
+    setRole(userRole);
+    setDemoMode(demoActive);
+
+    // Presentation mode — load this user's row (RLS allows own-row read)
+    let pres = false;
+    let mult = 1;
+    if (staffActive && email) {
+      const { data: pRow } = await supabase
+        .from("presentation_settings")
+        .select("is_active, revenue_multiplier")
+        .eq("target_email", email)
+        .maybeSingle();
+      if ((pRow as any)?.is_active === true) {
+        pres = true;
+        mult = Number((pRow as any).revenue_multiplier) || 0;
+      }
+    }
+    setIsPresentation(pres);
+    setPresentationMultiplierState(mult);
+    setPresentationMode(pres && email ? { email, multiplier: mult } : null);
+
+    setLoading(false);
+    return staffActive;
   };
 
   useEffect(() => {
@@ -141,7 +158,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setLoading(true);
       }
       hasInitialSession = true;
-      void resolveAdminState(newSession);
+      // Never call other supabase methods synchronously inside this callback —
+      // it runs while the auth lock is held and can deadlock/fail the queries.
+      setTimeout(() => void resolveAdminState(newSession), 0);
     });
 
     void (async () => {
@@ -167,6 +186,15 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     const staffActive = await resolveAdminState(data.session);
+
+    if (staffActive === null) {
+      setLoading(false);
+      return {
+        error:
+          "Signed in, but we couldn't verify your access right now. Check your connection and try again.",
+      };
+    }
+
     if (!staffActive) {
       await supabase.auth.signOut();
       return { error: "This account does not have admin access." };
@@ -174,6 +202,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     return { error: null };
   };
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
