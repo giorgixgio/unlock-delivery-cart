@@ -63,7 +63,6 @@ interface ActionEntry {
   gapMs: number;
 }
 
-const LOG_KEY = "courier_label_action_log_v1";
 
 function fmtDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";
