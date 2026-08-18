@@ -63,7 +63,6 @@ interface ActionEntry {
   gapMs: number;
 }
 
-const LOG_KEY = "courier_label_action_log_v1";
 
 function fmtDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "—";
@@ -89,14 +88,8 @@ export default function AdminCourierLabels() {
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
 
-  // --- Warehouse progress tracking (per group: which actions were done) ---
-  const [log, setLog] = useState<ActionEntry[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(LOG_KEY) || "[]") as ActionEntry[];
-    } catch {
-      return [];
-    }
-  });
+  // --- Warehouse progress tracking (shared across devices via the database) ---
+  const [log, setLog] = useState<ActionEntry[]>([]);
   const [now, setNow] = useState(Date.now());
   const logRef = useRef(log);
   logRef.current = log;
@@ -106,20 +99,59 @@ export default function AdminCourierLabels() {
     return () => clearInterval(t);
   }, []);
 
-  const persist = (next: ActionEntry[]) => {
-    setLog(next);
-    try {
-      localStorage.setItem(LOG_KEY, JSON.stringify(next.slice(0, 200)));
-    } catch {
-      /* storage full — logging is best-effort */
-    }
+  /** Newest-first rows → entries with the gap since the previous action. */
+  const mapRows = (
+    data: { group_key: string; title: string; kind: string; created_at: string }[]
+  ): ActionEntry[] =>
+    data.map((r, i) => {
+      const at = new Date(r.created_at).getTime();
+      const prev = data[i + 1];
+      return {
+        key: r.group_key,
+        title: r.title,
+        kind: r.kind as ActionKind,
+        at,
+        gapMs: prev ? at - new Date(prev.created_at).getTime() : 0,
+      };
+    });
+
+  const loadLog = async () => {
+    const { data, error } = await supabase
+      .from("courier_label_actions")
+      .select("group_key,title,kind,created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!error && data) setLog(mapRows(data));
   };
 
-  const logAction = (key: string, title: string, kind: ActionKind) => {
+  useEffect(() => {
+    loadLog();
+    const channel = supabase
+      .channel("courier_label_actions_live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "courier_label_actions" },
+        () => loadLog()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const logAction = async (key: string, title: string, kind: ActionKind) => {
+    // optimistic — realtime/refetch will reconcile
     const prev = logRef.current[0];
     const at = Date.now();
-    const entry: ActionEntry = { key, title, kind, at, gapMs: prev ? at - prev.at : 0 };
-    persist([entry, ...logRef.current].slice(0, 200));
+    setLog([{ key, title, kind, at, gapMs: prev ? at - prev.at : 0 }, ...logRef.current].slice(0, 200));
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("courier_label_actions")
+      .insert({ group_key: key, title, kind, actor: auth?.user?.email ?? null });
+    if (error) {
+      toast({ title: "ჟურნალი ვერ შეინახა", description: error.message, variant: "destructive" });
+    }
+    loadLog();
   };
 
   const doneKinds = (key: string) =>
@@ -148,7 +180,16 @@ export default function AdminCourierLabels() {
     logAction(g.key, g.title, "finish");
   };
 
-  const clearLog = () => persist([]);
+  const clearLog = async () => {
+    setLog([]);
+    const { error } = await supabase
+      .from("courier_label_actions")
+      .delete()
+      .not("id", "is", null);
+    if (error) toast({ title: "ვერ გასუფთავდა", description: error.message, variant: "destructive" });
+    loadLog();
+  };
+
 
   /** Average time between consecutive round completions. */
   const avgRoundGapMs = (() => {

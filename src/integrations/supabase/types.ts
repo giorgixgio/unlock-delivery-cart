@@ -367,6 +367,33 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_label_actions: {
+        Row: {
+          actor: string | null
+          created_at: string
+          group_key: string
+          id: string
+          kind: string
+          title: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          group_key: string
+          id?: string
+          kind: string
+          title: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          group_key?: string
+          id?: string
+          kind?: string
+          title?: string
+        }
+        Relationships: []
+      }
       courier_shipments: {
         Row: {
           address: string | null
