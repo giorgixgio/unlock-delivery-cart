@@ -124,8 +124,48 @@ export default function AdminCourierLabels() {
     if (!error && data) setLog(mapRows(data));
   };
 
+  /** One-time import of this browser's old local-only log into the shared table. */
+  const migrateLocalLog = async () => {
+    let local: ActionEntry[] = [];
+    try {
+      local = JSON.parse(localStorage.getItem("courier_label_action_log_v1") || "[]");
+    } catch {
+      return;
+    }
+    if (!Array.isArray(local) || local.length === 0) return;
+
+    const { data: existing } = await supabase
+      .from("courier_label_actions")
+      .select("group_key,kind");
+    const seen = new Set((existing || []).map((r) => `${r.group_key}|${r.kind}`));
+
+    const toInsert = local
+      .filter((e) => e && e.key && e.kind && e.at && !seen.has(`${e.key}|${e.kind}`))
+      .map((e) => ({
+        group_key: e.key,
+        title: e.title,
+        kind: e.kind,
+        actor: "imported",
+        created_at: new Date(e.at).toISOString(),
+      }));
+
+    if (toInsert.length) {
+      const { error } = await supabase.from("courier_label_actions").insert(toInsert);
+      if (error) return;
+      toast({ title: `აღდგენილია ${toInsert.length} ჩანაწერი` });
+    }
+    try {
+      localStorage.removeItem("courier_label_action_log_v1");
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
-    loadLog();
+    (async () => {
+      await migrateLocalLog();
+      await loadLog();
+    })();
     const channel = supabase
       .channel("courier_label_actions_live")
       .on(
@@ -138,6 +178,7 @@ export default function AdminCourierLabels() {
       supabase.removeChannel(channel);
     };
   }, []);
+
 
   const logAction = async (key: string, title: string, kind: ActionKind) => {
     // optimistic — realtime/refetch will reconcile
