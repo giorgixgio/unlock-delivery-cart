@@ -810,7 +810,14 @@ export default function AdminCourierLabels() {
                   {readyToFinish && (
                     <Button
                       size="sm"
-                      onClick={() => finishGroup(g)}
+                      onClick={() =>
+                        ask(
+                          `${g.title} — რაუნდის დასრულება?`,
+                          "რაუნდი მონიშნული იქნება როგორც დასრულებული ყველა მოწყობილობაზე.",
+                          "დიახ, დასრულდა",
+                          () => finishGroup(g)
+                        )
+                      }
                       className="w-full animate-glow-pulse bg-success text-success-foreground hover:bg-success/90 font-semibold"
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
