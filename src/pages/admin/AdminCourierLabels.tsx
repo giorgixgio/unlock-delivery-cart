@@ -947,7 +947,18 @@ export default function AdminCourierLabels() {
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
                 {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
-              <Button size="sm" onClick={handleDownload} disabled={generating || selectedRows.length === 0}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  ask(
+                    "ეტიკეტების ჩამოტვირთვა?",
+                    `მონიშნულია ${selectedRows.length} შეკვეთა.`,
+                    "დიახ, ჩამოტვირთე",
+                    () => handleDownload()
+                  )
+                }
+                disabled={generating || selectedRows.length === 0}
+              >
                 {generating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
