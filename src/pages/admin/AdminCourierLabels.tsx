@@ -201,10 +201,11 @@ export default function AdminCourierLabels() {
 
   const clearLog = async () => {
     setLog([]);
+    // Only clears the progress of the currently selected upload / day.
     const { error } = await supabase
       .from("courier_label_actions")
       .delete()
-      .not("id", "is", null);
+      .like("group_key", `${scopeId}::%`);
     if (error) toast({ title: "ვერ გასუფთავდა", description: error.message, variant: "destructive" });
     loadLog();
   };
