@@ -783,7 +783,14 @@ export default function AdminCourierLabels() {
                         variant={done.has("tags") ? "secondary" : "outline"}
                         className="w-full"
                         disabled={groupBusy !== null}
-                        onClick={() => downloadSkuTags(g)}
+                        onClick={() =>
+                          ask(
+                            `${g.title} — SKU სტიკერები?`,
+                            "დაიბეჭდება ამ რაუნდის ნივთების სტიკერები და მოქმედება ჩაიწერება ჟურნალში.",
+                            "დიახ, ჩამოტვირთე",
+                            () => downloadSkuTags(g)
+                          )
+                        }
                       >
                         {groupBusy === `${g.key}-tags` ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
