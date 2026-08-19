@@ -61,7 +61,10 @@ interface ActionEntry {
   at: number;
   /** ms since the previous logged action */
   gapMs: number;
+  /** who did it (account email) */
+  actor?: string | null;
 }
+
 
 
 function fmtDuration(ms: number): string {
@@ -101,7 +104,7 @@ export default function AdminCourierLabels() {
 
   /** Newest-first rows → entries with the gap since the previous action. */
   const mapRows = (
-    data: { group_key: string; title: string; kind: string; created_at: string }[]
+    data: { group_key: string; title: string; kind: string; created_at: string; actor?: string | null }[]
   ): ActionEntry[] =>
     data.map((r, i) => {
       const at = new Date(r.created_at).getTime();
@@ -112,13 +115,14 @@ export default function AdminCourierLabels() {
         kind: r.kind as ActionKind,
         at,
         gapMs: prev ? at - new Date(prev.created_at).getTime() : 0,
+        actor: r.actor ?? null,
       };
     });
 
   const loadLog = async () => {
     const { data, error } = await supabase
       .from("courier_label_actions")
-      .select("group_key,title,kind,created_at")
+      .select("group_key,title,kind,actor,created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data) setLog(mapRows(data));
@@ -239,6 +243,28 @@ export default function AdminCourierLabels() {
     const total = finishes[0].at - finishes[finishes.length - 1].at;
     return Math.round(total / (finishes.length - 1));
   })();
+
+  /** Live snapshot of what the packers are doing right now (shared log). */
+  const liveStatus = (() => {
+    const finishedKeys = new Set(log.filter((e) => e.kind === "finish").map((e) => e.key));
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const finishedToday = log.filter((e) => e.kind === "finish" && e.at >= startOfDay.getTime());
+    const active = log.find((e) => e.kind !== "finish" && !finishedKeys.has(e.key));
+    const activeDone = active
+      ? new Set(log.filter((e) => e.key === active.key).map((e) => e.kind))
+      : new Set<ActionKind>();
+    return {
+      last: log[0] || null,
+      active,
+      activeDone,
+      finishedToday: finishedToday.length,
+      finishedTotal: finishedKeys.size,
+      lastFinish: log.find((e) => e.kind === "finish") || null,
+    };
+  })();
+
+
 
 
 
@@ -524,6 +550,89 @@ export default function AdminCourierLabels() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Courier labels</h1>
+
+      {/* ── Live packer status (shared across all devices, realtime) ── */}
+      <Card className="border-primary/40">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+            </span>
+            <h2 className="text-sm font-semibold">ცოცხალი სტატუსი — სად არიან ახლა</h2>
+          </div>
+
+          {liveStatus.active ? (
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">მიმდინარე რაუნდი</p>
+              <p className="text-lg font-bold">{liveStatus.active.title}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    liveStatus.activeDone.has("pdf")
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {liveStatus.activeDone.has("pdf") ? "✓" : "○"} ეტიკეტები
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    liveStatus.activeDone.has("tags")
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {liveStatus.activeDone.has("tags") ? "✓" : "○"} SKU თეგები
+                </span>
+                <span className="text-muted-foreground">
+                  ბოლო მოქმედებიდან: {fmtDuration(now - liveStatus.active.at)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              აქტიური რაუნდი არ არის — ყველა დაწყებული რაუნდი დასრულებულია.
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-center">
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">დღეს დასრულებული</p>
+              <p className="text-base font-bold">{liveStatus.finishedToday}</p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">სულ დასრულებული</p>
+              <p className="text-base font-bold">{liveStatus.finishedTotal}</p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">ბოლო დასრულება</p>
+              <p className="text-base font-bold">
+                {liveStatus.lastFinish ? fmtDuration(now - liveStatus.lastFinish.at) + " წინ" : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">საშ. ტემპი</p>
+              <p className="text-base font-bold">
+                {avgRoundGapMs ? fmtDuration(avgRoundGapMs) : "—"}
+              </p>
+            </div>
+          </div>
+
+          {liveStatus.last && (
+            <p className="text-xs text-muted-foreground">
+              ბოლო მოქმედება: <span className="font-medium text-foreground">{liveStatus.last.title}</span>{" "}
+              ({liveStatus.last.kind === "finish"
+                ? "რაუნდი დასრულდა"
+                : liveStatus.last.kind === "tags"
+                ? "SKU თეგები"
+                : "ეტიკეტები"}
+              ) · {new Date(liveStatus.last.at).toLocaleTimeString()}
+              {liveStatus.last.actor ? ` · ${liveStatus.last.actor}` : ""}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
 
       <Card>
