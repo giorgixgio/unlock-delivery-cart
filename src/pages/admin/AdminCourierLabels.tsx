@@ -61,7 +61,10 @@ interface ActionEntry {
   at: number;
   /** ms since the previous logged action */
   gapMs: number;
+  /** who did it (account email) */
+  actor?: string | null;
 }
+
 
 
 function fmtDuration(ms: number): string {
