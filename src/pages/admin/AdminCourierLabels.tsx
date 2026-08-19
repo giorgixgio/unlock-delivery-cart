@@ -876,7 +876,19 @@ export default function AdminCourierLabels() {
               <Clock className="h-4 w-4" /> სამუშაო ჟურნალი (დრო მოქმედებებს შორის)
             </h2>
             {log.length > 0 && (
-              <Button size="sm" variant="ghost" onClick={clearLog}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  ask(
+                    "ჟურნალის გასუფთავება?",
+                    "ამ ატვირთვის მთელი პროგრესი წაიშლება ყველა მოწყობილობაზე.",
+                    "დიახ, გაასუფთავე",
+                    () => clearLog(),
+                    true
+                  )
+                }
+              >
                 <RotateCcw className="mr-2 h-4 w-4" /> გასუფთავება
               </Button>
             )}
