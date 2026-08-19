@@ -104,7 +104,7 @@ export default function AdminCourierLabels() {
 
   /** Newest-first rows → entries with the gap since the previous action. */
   const mapRows = (
-    data: { group_key: string; title: string; kind: string; created_at: string }[]
+    data: { group_key: string; title: string; kind: string; created_at: string; actor?: string | null }[]
   ): ActionEntry[] =>
     data.map((r, i) => {
       const at = new Date(r.created_at).getTime();
@@ -115,13 +115,14 @@ export default function AdminCourierLabels() {
         kind: r.kind as ActionKind,
         at,
         gapMs: prev ? at - new Date(prev.created_at).getTime() : 0,
+        actor: r.actor ?? null,
       };
     });
 
   const loadLog = async () => {
     const { data, error } = await supabase
       .from("courier_label_actions")
-      .select("group_key,title,kind,created_at")
+      .select("group_key,title,kind,actor,created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data) setLog(mapRows(data));
