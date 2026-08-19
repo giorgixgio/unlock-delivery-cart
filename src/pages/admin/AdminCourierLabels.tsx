@@ -101,6 +101,23 @@ export default function AdminCourierLabels() {
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
 
+  /** Every destructive / logged action goes through a confirmation popup. */
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    run: () => void | Promise<void>;
+  } | null>(null);
+
+  const ask = (
+    title: string,
+    description: string,
+    confirmLabel: string,
+    run: () => void | Promise<void>,
+    destructive = false
+  ) => setConfirmState({ title, description, confirmLabel, run, destructive });
+
   // --- Warehouse progress tracking (shared across devices via the database) ---
   const [log, setLog] = useState<ActionEntry[]>([]);
   const [now, setNow] = useState(Date.now());
