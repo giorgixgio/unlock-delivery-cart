@@ -755,7 +755,14 @@ export default function AdminCourierLabels() {
                       className="w-full"
                       variant={done.has("pdf") ? "secondary" : "default"}
                       disabled={groupBusy !== null}
-                      onClick={() => downloadGroup(g)}
+                      onClick={() =>
+                        ask(
+                          `${g.title} — ეტიკეტების PDF?`,
+                          `დაიბეჭდება ${g.rows.length} ეტიკეტი და მოქმედება ჩაიწერება ჟურნალში.`,
+                          "დიახ, ჩამოტვირთე",
+                          () => downloadGroup(g)
+                        )
+                      }
                     >
                       {groupBusy === g.key ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
