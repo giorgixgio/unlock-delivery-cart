@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -302,9 +302,21 @@ const AdminOrders = () => {
     );
   }, []);
 
-  const toggleSelect = (id: string) => {
+  const lastSelectedIndexRef = useRef<number | null>(null);
+
+  const toggleSelect = (id: string, index: number, shiftKey = false) => {
+    if (shiftKey && lastSelectedIndexRef.current !== null) {
+      const start = Math.min(lastSelectedIndexRef.current, index);
+      const end = Math.max(lastSelectedIndexRef.current, index);
+      const rangeIds = orders.slice(start, end + 1).map(o => o.id);
+      setSelectedIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+      lastSelectedIndexRef.current = index;
+      return;
+    }
+    lastSelectedIndexRef.current = index;
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
 
   const toggleSelectAll = () => {
     if (selectedIds.length === orders.length) {
@@ -526,7 +538,7 @@ const AdminOrders = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => {
+              {orders.map((order, rowIndex) => {
                 const isUnviewed = isReviewTab && !order.operator_viewed_at;
                 return (
                 <tr
@@ -540,7 +552,8 @@ const AdminOrders = () => {
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(order.id)}
-                      onChange={() => toggleSelect(order.id)}
+                      onChange={() => {}}
+                      onClick={(e) => toggleSelect(order.id, rowIndex, e.shiftKey)}
                       className="accent-primary"
                     />
                   </td>
