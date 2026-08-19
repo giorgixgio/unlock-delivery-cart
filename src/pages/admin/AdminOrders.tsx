@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -538,7 +538,7 @@ const AdminOrders = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => {
+              {orders.map((order, rowIndex) => {
                 const isUnviewed = isReviewTab && !order.operator_viewed_at;
                 return (
                 <tr
@@ -552,7 +552,8 @@ const AdminOrders = () => {
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(order.id)}
-                      onChange={() => toggleSelect(order.id)}
+                      onChange={() => {}}
+                      onClick={(e) => toggleSelect(order.id, rowIndex, e.shiftKey)}
                       className="accent-primary"
                     />
                   </td>
