@@ -302,9 +302,21 @@ const AdminOrders = () => {
     );
   }, []);
 
-  const toggleSelect = (id: string) => {
+  const lastSelectedIndexRef = useRef<number | null>(null);
+
+  const toggleSelect = (id: string, index: number, shiftKey = false) => {
+    if (shiftKey && lastSelectedIndexRef.current !== null) {
+      const start = Math.min(lastSelectedIndexRef.current, index);
+      const end = Math.max(lastSelectedIndexRef.current, index);
+      const rangeIds = orders.slice(start, end + 1).map(o => o.id);
+      setSelectedIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+      lastSelectedIndexRef.current = index;
+      return;
+    }
+    lastSelectedIndexRef.current = index;
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
 
   const toggleSelectAll = () => {
     if (selectedIds.length === orders.length) {
