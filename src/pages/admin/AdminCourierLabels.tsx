@@ -551,6 +551,89 @@ export default function AdminCourierLabels() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Courier labels</h1>
 
+      {/* ── Live packer status (shared across all devices, realtime) ── */}
+      <Card className="border-primary/40">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+            </span>
+            <h2 className="text-sm font-semibold">ცოცხალი სტატუსი — სად არიან ახლა</h2>
+          </div>
+
+          {liveStatus.active ? (
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">მიმდინარე რაუნდი</p>
+              <p className="text-lg font-bold">{liveStatus.active.title}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    liveStatus.activeDone.has("pdf")
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {liveStatus.activeDone.has("pdf") ? "✓" : "○"} ეტიკეტები
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    liveStatus.activeDone.has("tags")
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {liveStatus.activeDone.has("tags") ? "✓" : "○"} SKU თეგები
+                </span>
+                <span className="text-muted-foreground">
+                  ბოლო მოქმედებიდან: {fmtDuration(now - liveStatus.active.at)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              აქტიური რაუნდი არ არის — ყველა დაწყებული რაუნდი დასრულებულია.
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-center">
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">დღეს დასრულებული</p>
+              <p className="text-base font-bold">{liveStatus.finishedToday}</p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">სულ დასრულებული</p>
+              <p className="text-base font-bold">{liveStatus.finishedTotal}</p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">ბოლო დასრულება</p>
+              <p className="text-base font-bold">
+                {liveStatus.lastFinish ? fmtDuration(now - liveStatus.lastFinish.at) + " წინ" : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border p-2">
+              <p className="text-[11px] text-muted-foreground">საშ. ტემპი</p>
+              <p className="text-base font-bold">
+                {avgRoundGapMs ? fmtDuration(avgRoundGapMs) : "—"}
+              </p>
+            </div>
+          </div>
+
+          {liveStatus.last && (
+            <p className="text-xs text-muted-foreground">
+              ბოლო მოქმედება: <span className="font-medium text-foreground">{liveStatus.last.title}</span>{" "}
+              ({liveStatus.last.kind === "finish"
+                ? "რაუნდი დასრულდა"
+                : liveStatus.last.kind === "tags"
+                ? "SKU თეგები"
+                : "ეტიკეტები"}
+              ) · {new Date(liveStatus.last.at).toLocaleTimeString()}
+              {liveStatus.last.actor ? ` · ${liveStatus.last.actor}` : ""}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardContent className="p-4 space-y-2">
