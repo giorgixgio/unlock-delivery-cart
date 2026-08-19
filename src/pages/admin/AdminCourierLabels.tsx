@@ -3,7 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Loader2, Tags, CheckCircle2, Clock, RotateCcw } from "lucide-react";
+import { Printer, Loader2, Tags, CheckCircle2, Clock, RotateCcw, Undo2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 
@@ -90,6 +100,23 @@ export default function AdminCourierLabels() {
   const [groups, setGroups] = useState<LabelGroup[]>([]);
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
+
+  /** Every destructive / logged action goes through a confirmation popup. */
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    run: () => void | Promise<void>;
+  } | null>(null);
+
+  const ask = (
+    title: string,
+    description: string,
+    confirmLabel: string,
+    run: () => void | Promise<void>,
+    destructive = false
+  ) => setConfirmState({ title, description, confirmLabel, run, destructive });
 
   // --- Warehouse progress tracking (shared across devices via the database) ---
   const [log, setLog] = useState<ActionEntry[]>([]);
@@ -198,6 +225,22 @@ export default function AdminCourierLabels() {
     if (isGroupFinished(g)) return;
     logAction(g.key, g.title, "finish");
   };
+
+  /** Undo everything logged for one round of the current upload. */
+  const revertGroup = async (g: LabelGroup) => {
+    setLog((prev) => prev.filter((e) => e.key !== g.key));
+    const { error } = await supabase
+      .from("courier_label_actions")
+      .delete()
+      .eq("group_key", scopedKey(g.key));
+    if (error) {
+      toast({ title: "ვერ დაბრუნდა", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${g.title} — პროგრესი გაუქმდა` });
+    }
+    loadLog();
+  };
+
 
   const clearLog = async () => {
     setLog([]);
@@ -712,7 +755,14 @@ export default function AdminCourierLabels() {
                       className="w-full"
                       variant={done.has("pdf") ? "secondary" : "default"}
                       disabled={groupBusy !== null}
-                      onClick={() => downloadGroup(g)}
+                      onClick={() =>
+                        ask(
+                          `${g.title} — ეტიკეტების PDF?`,
+                          `დაიბეჭდება ${g.rows.length} ეტიკეტი და მოქმედება ჩაიწერება ჟურნალში.`,
+                          "დიახ, ჩამოტვირთე",
+                          () => downloadGroup(g)
+                        )
+                      }
                     >
                       {groupBusy === g.key ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -733,7 +783,14 @@ export default function AdminCourierLabels() {
                         variant={done.has("tags") ? "secondary" : "outline"}
                         className="w-full"
                         disabled={groupBusy !== null}
-                        onClick={() => downloadSkuTags(g)}
+                        onClick={() =>
+                          ask(
+                            `${g.title} — SKU სტიკერები?`,
+                            "დაიბეჭდება ამ რაუნდის ნივთების სტიკერები და მოქმედება ჩაიწერება ჟურნალში.",
+                            "დიახ, ჩამოტვირთე",
+                            () => downloadSkuTags(g)
+                          )
+                        }
                       >
                         {groupBusy === `${g.key}-tags` ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -753,11 +810,37 @@ export default function AdminCourierLabels() {
                   {readyToFinish && (
                     <Button
                       size="sm"
-                      onClick={() => finishGroup(g)}
+                      onClick={() =>
+                        ask(
+                          `${g.title} — რაუნდის დასრულება?`,
+                          "რაუნდი მონიშნული იქნება როგორც დასრულებული ყველა მოწყობილობაზე.",
+                          "დიახ, დასრულდა",
+                          () => finishGroup(g)
+                        )
+                      }
                       className="w-full animate-glow-pulse bg-success text-success-foreground hover:bg-success/90 font-semibold"
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
                       რაუნდის დასრულება
+                    </Button>
+                  )}
+                  {done.size > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        ask(
+                          `${g.title} — პროგრესის გაუქმება?`,
+                          "ამ რაუნდის ყველა ჩანაწერი (PDF / სტიკერები / დასრულება) წაიშლება და რაუნდი დაბრუნდება საწყის მდგომარეობაში.",
+                          "დიახ, გააუქმე",
+                          () => revertGroup(g),
+                          true
+                        )
+                      }
+                    >
+                      <Undo2 className="mr-2 h-4 w-4" />
+                      პროგრესის გაუქმება
                     </Button>
                   )}
                   {finished && fin ? (
@@ -793,7 +876,19 @@ export default function AdminCourierLabels() {
               <Clock className="h-4 w-4" /> სამუშაო ჟურნალი (დრო მოქმედებებს შორის)
             </h2>
             {log.length > 0 && (
-              <Button size="sm" variant="ghost" onClick={clearLog}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  ask(
+                    "ჟურნალის გასუფთავება?",
+                    "ამ ატვირთვის მთელი პროგრესი წაიშლება ყველა მოწყობილობაზე.",
+                    "დიახ, გაასუფთავე",
+                    () => clearLog(),
+                    true
+                  )
+                }
+              >
                 <RotateCcw className="mr-2 h-4 w-4" /> გასუფთავება
               </Button>
             )}
@@ -852,7 +947,18 @@ export default function AdminCourierLabels() {
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
                 {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
-              <Button size="sm" onClick={handleDownload} disabled={generating || selectedRows.length === 0}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  ask(
+                    "ეტიკეტების ჩამოტვირთვა?",
+                    `მონიშნულია ${selectedRows.length} შეკვეთა.`,
+                    "დიახ, ჩამოტვირთე",
+                    () => handleDownload()
+                  )
+                }
+                disabled={generating || selectedRows.length === 0}
+              >
                 {generating ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -908,6 +1014,32 @@ export default function AdminCourierLabels() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!confirmState} onOpenChange={(o) => !o && setConfirmState(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmState?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmState?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>გაუქმება</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmState?.destructive
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              onClick={() => {
+                const run = confirmState?.run;
+                setConfirmState(null);
+                void run?.();
+              }}
+            >
+              {confirmState?.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
