@@ -102,6 +102,16 @@ export default function AdminCourierLabels() {
     return () => clearInterval(t);
   }, []);
 
+  /**
+   * Progress is scoped to the selected upload (or to the current day when
+   * browsing all orders). Round numbers repeat on every upload, so an
+   * unscoped "round-4" would inherit yesterday's FINISHED state.
+   */
+  const scopeId = activeBatch ?? `day-${new Date().toLocaleDateString("en-CA")}`;
+  const scopeRef = useRef(scopeId);
+  scopeRef.current = scopeId;
+  const scopedKey = (key: string) => `${scopeId}::${key}`;
+
   /** Newest-first rows → entries with the gap since the previous action. */
   const mapRows = (
     data: { group_key: string; title: string; kind: string; created_at: string; actor?: string | null }[]
@@ -110,7 +120,7 @@ export default function AdminCourierLabels() {
       const at = new Date(r.created_at).getTime();
       const prev = data[i + 1];
       return {
-        key: r.group_key,
+        key: r.group_key.includes("::") ? r.group_key.split("::").slice(1).join("::") : r.group_key,
         title: r.title,
         kind: r.kind as ActionKind,
         at,
@@ -119,57 +129,20 @@ export default function AdminCourierLabels() {
       };
     });
 
-  const loadLog = async () => {
+  const loadLog = async (scope?: string) => {
+    const s = scope ?? scopeRef.current;
     const { data, error } = await supabase
       .from("courier_label_actions")
       .select("group_key,title,kind,actor,created_at")
+      .like("group_key", `${s}::%`)
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data) setLog(mapRows(data));
   };
 
-  /** One-time import of this browser's old local-only log into the shared table. */
-  const migrateLocalLog = async () => {
-    let local: ActionEntry[] = [];
-    try {
-      local = JSON.parse(localStorage.getItem("courier_label_action_log_v1") || "[]");
-    } catch {
-      return;
-    }
-    if (!Array.isArray(local) || local.length === 0) return;
-
-    const { data: existing } = await supabase
-      .from("courier_label_actions")
-      .select("group_key,kind");
-    const seen = new Set((existing || []).map((r) => `${r.group_key}|${r.kind}`));
-
-    const toInsert = local
-      .filter((e) => e && e.key && e.kind && e.at && !seen.has(`${e.key}|${e.kind}`))
-      .map((e) => ({
-        group_key: e.key,
-        title: e.title,
-        kind: e.kind,
-        actor: "imported",
-        created_at: new Date(e.at).toISOString(),
-      }));
-
-    if (toInsert.length) {
-      const { error } = await supabase.from("courier_label_actions").insert(toInsert);
-      if (error) return;
-      toast({ title: `აღდგენილია ${toInsert.length} ჩანაწერი` });
-    }
-    try {
-      localStorage.removeItem("courier_label_action_log_v1");
-    } catch {
-      /* ignore */
-    }
-  };
-
   useEffect(() => {
-    (async () => {
-      await migrateLocalLog();
-      await loadLog();
-    })();
+    setLog([]);
+    loadLog(scopeId);
     const channel = supabase
       .channel("courier_label_actions_live")
       .on(
@@ -181,7 +154,8 @@ export default function AdminCourierLabels() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeId]);
 
 
   const logAction = async (key: string, title: string, kind: ActionKind) => {
@@ -192,7 +166,7 @@ export default function AdminCourierLabels() {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("courier_label_actions")
-      .insert({ group_key: key, title, kind, actor: auth?.user?.email ?? null });
+      .insert({ group_key: scopedKey(key), title, kind, actor: auth?.user?.email ?? null });
     if (error) {
       toast({ title: "ჟურნალი ვერ შეინახა", description: error.message, variant: "destructive" });
     }
@@ -227,10 +201,11 @@ export default function AdminCourierLabels() {
 
   const clearLog = async () => {
     setLog([]);
+    // Only clears the progress of the currently selected upload / day.
     const { error } = await supabase
       .from("courier_label_actions")
       .delete()
-      .not("id", "is", null);
+      .like("group_key", `${scopeId}::%`);
     if (error) toast({ title: "ვერ გასუფთავდა", description: error.message, variant: "destructive" });
     loadLog();
   };
