@@ -244,6 +244,28 @@ export default function AdminCourierLabels() {
     return Math.round(total / (finishes.length - 1));
   })();
 
+  /** Live snapshot of what the packers are doing right now (shared log). */
+  const liveStatus = (() => {
+    const finishedKeys = new Set(log.filter((e) => e.kind === "finish").map((e) => e.key));
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const finishedToday = log.filter((e) => e.kind === "finish" && e.at >= startOfDay.getTime());
+    const active = log.find((e) => e.kind !== "finish" && !finishedKeys.has(e.key));
+    const activeDone = active
+      ? new Set(log.filter((e) => e.key === active.key).map((e) => e.kind))
+      : new Set<ActionKind>();
+    return {
+      last: log[0] || null,
+      active,
+      activeDone,
+      finishedToday: finishedToday.length,
+      finishedTotal: finishedKeys.size,
+      lastFinish: log.find((e) => e.kind === "finish") || null,
+    };
+  })();
+
+
+
 
 
 
