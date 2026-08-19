@@ -226,6 +226,22 @@ export default function AdminCourierLabels() {
     logAction(g.key, g.title, "finish");
   };
 
+  /** Undo everything logged for one round of the current upload. */
+  const revertGroup = async (g: LabelGroup) => {
+    setLog((prev) => prev.filter((e) => e.key !== g.key));
+    const { error } = await supabase
+      .from("courier_label_actions")
+      .delete()
+      .eq("group_key", scopedKey(g.key));
+    if (error) {
+      toast({ title: "ვერ დაბრუნდა", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${g.title} — პროგრესი გაუქმდა` });
+    }
+    loadLog();
+  };
+
+
   const clearLog = async () => {
     setLog([]);
     // Only clears the progress of the currently selected upload / day.
