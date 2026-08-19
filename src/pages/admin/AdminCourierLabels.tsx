@@ -824,6 +824,25 @@ export default function AdminCourierLabels() {
                       რაუნდის დასრულება
                     </Button>
                   )}
+                  {done.size > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        ask(
+                          `${g.title} — პროგრესის გაუქმება?`,
+                          "ამ რაუნდის ყველა ჩანაწერი (PDF / სტიკერები / დასრულება) წაიშლება და რაუნდი დაბრუნდება საწყის მდგომარეობაში.",
+                          "დიახ, გააუქმე",
+                          () => revertGroup(g),
+                          true
+                        )
+                      }
+                    >
+                      <Undo2 className="mr-2 h-4 w-4" />
+                      პროგრესის გაუქმება
+                    </Button>
+                  )}
                   {finished && fin ? (
                     <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400">
                       <span className="flex items-center gap-1">
