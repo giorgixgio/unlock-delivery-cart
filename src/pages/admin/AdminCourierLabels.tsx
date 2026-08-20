@@ -402,6 +402,8 @@ export default function AdminCourierLabels() {
         byRound.set(parsed.round, arr);
         continue;
       }
+      // Skip 0.00 GEL orders in the singles lane — nothing to collect on delivery.
+      if (Number((r as any).total ?? 0) <= 0) continue;
       singles.push(r);
       if ((skuSet.get(r.id)?.size || 0) > 1) bad.push(r);
     }
