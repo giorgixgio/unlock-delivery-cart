@@ -35,6 +35,7 @@ interface Row {
   raw_address: string | null;
   normalized_city: string | null;
   raw_city: string | null;
+  total?: number | null;
 }
 
 interface UploadBatch {
