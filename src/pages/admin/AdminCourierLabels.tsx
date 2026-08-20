@@ -35,6 +35,7 @@ interface Row {
   raw_address: string | null;
   normalized_city: string | null;
   raw_city: string | null;
+  total?: number | null;
 }
 
 interface UploadBatch {
@@ -303,7 +304,7 @@ export default function AdminCourierLabels() {
   };
 
   const ORDER_COLS =
-    "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city";
+    "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city, total";
 
   const load = async (batchId: string | null) => {
     setLoading(true);
@@ -402,6 +403,8 @@ export default function AdminCourierLabels() {
         byRound.set(parsed.round, arr);
         continue;
       }
+      // Skip 0.00 GEL orders in the singles lane — nothing to collect on delivery.
+      if (Number((r as any).total ?? 0) <= 0) continue;
       singles.push(r);
       if ((skuSet.get(r.id)?.size || 0) > 1) bad.push(r);
     }
