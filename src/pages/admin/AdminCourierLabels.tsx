@@ -303,7 +303,7 @@ export default function AdminCourierLabels() {
   };
 
   const ORDER_COLS =
-    "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city";
+    "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city, total";
 
   const load = async (batchId: string | null) => {
     setLoading(true);
