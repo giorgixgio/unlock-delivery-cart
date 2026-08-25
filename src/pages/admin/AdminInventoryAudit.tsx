@@ -130,7 +130,11 @@ export default function AdminInventoryAudit() {
       })),
     ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
-    setEntries(merged);
+    // Stored photo links are expired signed URLs — refresh them before rendering.
+    const signed = await resignScanUrls(merged.map((e) => e.photo_url));
+    setEntries(
+      merged.map((e) => (e.photo_url && signed[e.photo_url] ? { ...e, photo_url: signed[e.photo_url] } : e)),
+    );
   }, [from, to]);
 
   useEffect(() => {
