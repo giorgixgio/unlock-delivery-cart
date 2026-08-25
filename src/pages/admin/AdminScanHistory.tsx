@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { resignScanUrls } from "@/lib/scanPhotoUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,8 +66,11 @@ export default function AdminScanHistory() {
         toast({ title: "Load failed", description: error.message, variant: "destructive" });
         return;
       }
-      const batch = (data || []) as Row[];
+      let batch = (data || []) as Row[];
       setDone(batch.length < PAGE_SIZE);
+      // Saved photo links are expired signed URLs — refresh before rendering.
+      const signed = await resignScanUrls(batch.map((r) => r.photo_url));
+      batch = batch.map((r) => (signed[r.photo_url] ? { ...r, photo_url: signed[r.photo_url] } : r));
       setRows((prev) => (replace ? batch : [...prev, ...batch]));
     },
     [status, debounced],
