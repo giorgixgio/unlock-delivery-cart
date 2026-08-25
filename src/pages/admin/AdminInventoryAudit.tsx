@@ -278,7 +278,20 @@ export default function AdminInventoryAudit() {
                   onClick={() => setZoomImg(e.photo_url)}
                   className="relative h-20 w-20 shrink-0 overflow-hidden rounded border"
                 >
-                  <img src={e.photo_url} alt={e.typed_sku ?? "scan"} className="h-full w-full object-cover" loading="lazy" />
+                  <img
+                    src={e.photo_url}
+                    alt={e.typed_sku ?? "scan"}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={async (ev) => {
+                      const img = ev.currentTarget;
+                      if (img.dataset.retried) return;
+                      img.dataset.retried = "1";
+                      const fresh = await resignScanUrls([e.photo_url]);
+                      const next = e.photo_url ? fresh[e.photo_url] : undefined;
+                      if (next) img.src = next;
+                    }}
+                  />
                   <ZoomIn className="absolute bottom-1 right-1 h-4 w-4 rounded bg-background/80 p-0.5" />
                 </button>
               ) : (
