@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { resignScanUrls } from "@/lib/scanPhotoUrl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,7 +49,9 @@ export default function AdminPhotoReview() {
       toast({ title: "Load failed", description: error.message, variant: "destructive" });
       return;
     }
-    setRows((data || []) as Row[]);
+    const list = (data || []) as Row[];
+    const signed = await resignScanUrls(list.map((r) => r.photo_url));
+    setRows(list.map((r) => (signed[r.photo_url] ? { ...r, photo_url: signed[r.photo_url] } : r)));
     setSelected({});
   }, []);
 

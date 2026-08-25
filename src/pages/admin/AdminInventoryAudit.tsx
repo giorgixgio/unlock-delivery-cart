@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { resignScanUrls } from "@/lib/scanPhotoUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -130,7 +131,11 @@ export default function AdminInventoryAudit() {
       })),
     ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
-    setEntries(merged);
+    // Stored photo links are expired signed URLs — refresh them before rendering.
+    const signed = await resignScanUrls(merged.map((e) => e.photo_url));
+    setEntries(
+      merged.map((e) => (e.photo_url && signed[e.photo_url] ? { ...e, photo_url: signed[e.photo_url] } : e)),
+    );
   }, [from, to]);
 
   useEffect(() => {
