@@ -60,7 +60,7 @@ function csvCell(v: unknown) {
 }
 
 export default function AdminInventoryAudit() {
-  const [from, setFrom] = useState(todayStr());
+  const [from, setFrom] = useState(daysAgoStr(30));
   const [to, setTo] = useState(todayStr());
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
