@@ -48,13 +48,19 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function daysAgoStr(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function csvCell(v: unknown) {
   const s = v == null ? "" : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export default function AdminInventoryAudit() {
-  const [from, setFrom] = useState(todayStr());
+  const [from, setFrom] = useState(daysAgoStr(30));
   const [to, setTo] = useState(todayStr());
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -272,7 +278,20 @@ export default function AdminInventoryAudit() {
                   onClick={() => setZoomImg(e.photo_url)}
                   className="relative h-20 w-20 shrink-0 overflow-hidden rounded border"
                 >
-                  <img src={e.photo_url} alt={e.typed_sku ?? "scan"} className="h-full w-full object-cover" loading="lazy" />
+                  <img
+                    src={e.photo_url}
+                    alt={e.typed_sku ?? "scan"}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={async (ev) => {
+                      const img = ev.currentTarget;
+                      if (img.dataset.retried) return;
+                      img.dataset.retried = "1";
+                      const fresh = await resignScanUrls([e.photo_url]);
+                      const next = e.photo_url ? fresh[e.photo_url] : undefined;
+                      if (next) img.src = next;
+                    }}
+                  />
                   <ZoomIn className="absolute bottom-1 right-1 h-4 w-4 rounded bg-background/80 p-0.5" />
                 </button>
               ) : (
