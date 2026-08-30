@@ -252,6 +252,22 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
             <div><Label className="text-xs">City</Label><Input value={city} onChange={e => setCity(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Raw City</Label><Input value={rawCity} onChange={e => setRawCity(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Normalized City</Label><Input value={normalizedCity} onChange={e => setNormalizedCity(e.target.value)} className="h-8" /></div>
+            {isTbilisiCity(city) && (
+              <div>
+                <Label className="text-xs">District (რაიონი) <span className="text-destructive">*</span></Label>
+                <Input
+                  value={district}
+                  onChange={e => setDistrict(e.target.value)}
+                  list="tbilisi-districts-detail"
+                  placeholder="ვაკე / საბურთალო"
+                  className={`h-8 ${!district.trim() ? "border-destructive" : ""}`}
+                />
+                <datalist id="tbilisi-districts-detail">
+                  {TBILISI_DISTRICTS.map(d => <option key={d} value={d} />)}
+                </datalist>
+                <p className="text-[10px] text-muted-foreground mt-1">Saved as: {composeAddress(district || "…", addressLine1)}</p>
+              </div>
+            )}
             <div><Label className="text-xs">Address Line 1</Label><Input value={addressLine1} onChange={e => setAddressLine1(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Raw Address</Label><Input value={rawAddress} onChange={e => setRawAddress(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Normalized Address</Label><Input value={normalizedAddress} onChange={e => setNormalizedAddress(e.target.value)} className="h-8" /></div>
