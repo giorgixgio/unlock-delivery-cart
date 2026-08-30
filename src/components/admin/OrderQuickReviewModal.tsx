@@ -189,6 +189,7 @@ export default function OrderQuickReviewModal({
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [district, setDistrict] = useState("");
+  const districtRef = useRef<HTMLInputElement | null>(null);
   const [courierNote, setCourierNote] = useState("");
   const [operatorNote, setOperatorNote] = useState("");
 
