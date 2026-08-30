@@ -65,7 +65,8 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
     setNormalizedCity(order.normalized_city || "");
     setRawAddress(order.raw_address || "");
     setNormalizedAddress(order.normalized_address || "");
-    setAddressLine1(order.address_line1);
+    setDistrict(splitDistrict(order.address_line1).district);
+    setAddressLine1(splitDistrict(order.address_line1).rest);
     setAddressLine2(order.address_line2 || "");
     setEditingAddress(false);
   };
