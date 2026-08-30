@@ -410,7 +410,10 @@ export default function OrderQuickReviewModal({
     if (!order) return {};
     const updates: Record<string, unknown> = {};
     const trimmedCity = city.trim();
-    const trimmedAddr = address.trim();
+    // District (Tbilisi only) is written as a prefix into the same address field.
+    const trimmedAddr = isTbilisiCity(city)
+      ? composeAddress(district, address)
+      : address.trim();
 
     if (trimmedCity !== (order.city || "")) {
       updates.city = trimmedCity;
