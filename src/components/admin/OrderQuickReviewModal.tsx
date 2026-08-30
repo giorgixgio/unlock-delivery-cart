@@ -486,6 +486,18 @@ export default function OrderQuickReviewModal({
   const handleOutcome = async (outcome: Outcome) => {
     if (!order) return;
 
+    // Tbilisi orders must carry a district before they can be confirmed.
+    if (outcome === "confirmed" && isTbilisiCity(city) && !district.trim()) {
+      toast({
+        title: "მიუთითეთ რაიონი",
+        description: "თბილისის შეკვეთისთვის რაიონის მითითება სავალდებულოა (მაგ: ვაკე).",
+        variant: "destructive",
+      });
+      districtRef.current?.focus();
+      return;
+    }
+
+
     // No-Answer = retry counter, not a final status.
     if (outcome === "no_answer") {
       setSaving(true);
