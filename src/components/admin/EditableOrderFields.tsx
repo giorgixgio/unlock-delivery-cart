@@ -127,7 +127,7 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
       { key: "normalized_city", cur: normalizedCity, orig: order.normalized_city || "" },
       { key: "raw_address", cur: rawAddress, orig: order.raw_address || "" },
       { key: "normalized_address", cur: normalizedAddress, orig: order.normalized_address || "" },
-      { key: "address_line1", cur: addressLine1, orig: order.address_line1 },
+      { key: "address_line1", cur: effectiveAddress1, orig: order.address_line1 },
       { key: "address_line2", cur: addressLine2, orig: order.address_line2 || "" },
     ];
 
