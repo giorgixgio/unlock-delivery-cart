@@ -27,6 +27,7 @@ import {
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
 import { triggerFulfillmentSms } from "@/lib/smsService";
+import { isTbilisiCity, hasDistrict } from "@/lib/tbilisiDistricts";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
