@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Save, X, RotateCcw, Loader2 } from "lucide-react";
+import { TBILISI_DISTRICTS, isTbilisiCity, splitDistrict, composeAddress } from "@/lib/tbilisiDistricts";
 
 interface EditableOrderFieldsProps {
   orderId: string;
