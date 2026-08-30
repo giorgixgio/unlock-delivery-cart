@@ -47,7 +47,8 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
   const [normalizedCity, setNormalizedCity] = useState(order.normalized_city || "");
   const [rawAddress, setRawAddress] = useState(order.raw_address || "");
   const [normalizedAddress, setNormalizedAddress] = useState(order.normalized_address || "");
-  const [addressLine1, setAddressLine1] = useState(order.address_line1);
+  const [district, setDistrict] = useState(splitDistrict(order.address_line1).district);
+  const [addressLine1, setAddressLine1] = useState(splitDistrict(order.address_line1).rest);
   const [addressLine2, setAddressLine2] = useState(order.address_line2 || "");
 
   const resetCustomer = () => {
