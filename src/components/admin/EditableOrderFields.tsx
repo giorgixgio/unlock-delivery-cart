@@ -109,9 +109,17 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
   };
 
   const saveAddress = async () => {
+    // District is mandatory for Tbilisi — it is stored as a prefix of address line 1.
+    if (isTbilisiCity(city) && !district.trim()) {
+      toast({ title: "მიუთითეთ რაიონი", description: "თბილისის მისამართს რაიონი სჭირდება (მაგ: ვაკე).", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const changedFields: Record<string, { old: string; new: string }> = {};
     const updates: Record<string, unknown> = {};
+    const effectiveAddress1 = isTbilisiCity(city)
+      ? composeAddress(district, addressLine1)
+      : addressLine1.trim();
 
     const fields = [
       { key: "city", cur: city, orig: order.city },
