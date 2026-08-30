@@ -996,6 +996,41 @@ export default function OrderQuickReviewModal({
                   <Label className="text-xs">ქალაქი / რეგიონი</Label>
                   <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="მაგ: თბილისი / ქუთაისი" className="h-11 text-base" />
                 </div>
+                {isTbilisiCity(city) && (
+                  <div>
+                    <Label className="text-xs">
+                      რაიონი <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      ref={districtRef}
+                      value={district}
+                      onChange={(e) => setDistrict(e.target.value)}
+                      list="tbilisi-districts"
+                      placeholder="მაგ: ვაკე / საბურთალო"
+                      className={`h-11 text-base ${!district.trim() ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                    <datalist id="tbilisi-districts">
+                      {TBILISI_DISTRICTS.map((d) => <option key={d} value={d} />)}
+                    </datalist>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {TBILISI_DISTRICTS.slice(0, 8).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDistrict(d)}
+                          className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${
+                            district === d ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      რაიონი შეინახება მისამართის დასაწყისში: <span className="font-medium">{composeAddress(district || "…", address) || "…"}</span>
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">მისამართი</Label>
                   <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ქუჩა, კორპუსი, ბინა ან სოფელი" className="h-11 text-base" />
