@@ -438,7 +438,7 @@ export default function OrderQuickReviewModal({
       if (advNormAddr !== (order.normalized_address || "")) updates.normalized_address = advNormAddr || null;
     }
     return updates;
-  }, [order, city, address, courierNote, operatorNote, advancedOpen, advRawCity, advNormCity, advRawAddr, advNormAddr]);
+  }, [order, city, address, district, courierNote, operatorNote, advancedOpen, advRawCity, advNormCity, advRawAddr, advNormAddr]);
 
   const persistUpdates = useCallback(async (updates: Record<string, unknown>): Promise<boolean> => {
     if (!order || Object.keys(updates).length === 0) return true;
