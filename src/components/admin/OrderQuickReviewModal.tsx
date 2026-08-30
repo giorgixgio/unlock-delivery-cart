@@ -255,7 +255,11 @@ export default function OrderQuickReviewModal({
       setOrder(o);
       if (o) {
         setCity(o.city || "");
-        setAddress(o.address_line1 || "");
+        {
+          const parts = splitDistrict(o.address_line1 || "");
+          setDistrict(parts.district);
+          setAddress(parts.rest);
+        }
         setCourierNote(o.address_line2 || "");
         setOperatorNote(o.internal_note || "");
         setAdvRawCity(o.raw_city || "");
