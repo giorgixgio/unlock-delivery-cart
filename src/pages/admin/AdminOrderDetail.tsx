@@ -231,6 +231,15 @@ const AdminOrderDetail = () => {
   // === DECISION ACTIONS (with audit logging) ===
   const handleConfirmOrder = async () => {
     if (!order || !id) return;
+    // Tbilisi orders need a district written at the start of the address.
+    if (isTbilisiCity(order.city) && !hasDistrict(order.address_line1)) {
+      toast({
+        title: "მიუთითეთ რაიონი",
+        description: "თბილისის შეკვეთა უნდა შეიცავდეს რაიონს მისამართის დასაწყისში (Address → Edit).",
+        variant: "destructive",
+      });
+      return;
+    }
     const idemKey = crypto.randomUUID();
     setSaving(true);
     try {
