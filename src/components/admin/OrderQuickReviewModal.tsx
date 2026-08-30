@@ -188,6 +188,7 @@ export default function OrderQuickReviewModal({
   // Simple operator fields
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
+  const [district, setDistrict] = useState("");
   const [courierNote, setCourierNote] = useState("");
   const [operatorNote, setOperatorNote] = useState("");
 
