@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Save, X, RotateCcw, Loader2 } from "lucide-react";
+import { TBILISI_DISTRICTS, isTbilisiCity, splitDistrict, composeAddress } from "@/lib/tbilisiDistricts";
 
 interface EditableOrderFieldsProps {
   orderId: string;
@@ -46,7 +47,8 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
   const [normalizedCity, setNormalizedCity] = useState(order.normalized_city || "");
   const [rawAddress, setRawAddress] = useState(order.raw_address || "");
   const [normalizedAddress, setNormalizedAddress] = useState(order.normalized_address || "");
-  const [addressLine1, setAddressLine1] = useState(order.address_line1);
+  const [district, setDistrict] = useState(splitDistrict(order.address_line1).district);
+  const [addressLine1, setAddressLine1] = useState(splitDistrict(order.address_line1).rest);
   const [addressLine2, setAddressLine2] = useState(order.address_line2 || "");
 
   const resetCustomer = () => {
@@ -63,7 +65,8 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
     setNormalizedCity(order.normalized_city || "");
     setRawAddress(order.raw_address || "");
     setNormalizedAddress(order.normalized_address || "");
-    setAddressLine1(order.address_line1);
+    setDistrict(splitDistrict(order.address_line1).district);
+    setAddressLine1(splitDistrict(order.address_line1).rest);
     setAddressLine2(order.address_line2 || "");
     setEditingAddress(false);
   };
@@ -106,9 +109,17 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
   };
 
   const saveAddress = async () => {
+    // District is mandatory for Tbilisi — it is stored as a prefix of address line 1.
+    if (isTbilisiCity(city) && !district.trim()) {
+      toast({ title: "მიუთითეთ რაიონი", description: "თბილისის მისამართს რაიონი სჭირდება (მაგ: ვაკე).", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const changedFields: Record<string, { old: string; new: string }> = {};
     const updates: Record<string, unknown> = {};
+    const effectiveAddress1 = isTbilisiCity(city)
+      ? composeAddress(district, addressLine1)
+      : addressLine1.trim();
 
     const fields = [
       { key: "city", cur: city, orig: order.city },
@@ -116,7 +127,7 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
       { key: "normalized_city", cur: normalizedCity, orig: order.normalized_city || "" },
       { key: "raw_address", cur: rawAddress, orig: order.raw_address || "" },
       { key: "normalized_address", cur: normalizedAddress, orig: order.normalized_address || "" },
-      { key: "address_line1", cur: addressLine1, orig: order.address_line1 },
+      { key: "address_line1", cur: effectiveAddress1, orig: order.address_line1 },
       { key: "address_line2", cur: addressLine2, orig: order.address_line2 || "" },
     ];
 
@@ -241,6 +252,22 @@ const EditableOrderFields = ({ orderId, order, actor, onSaved }: EditableOrderFi
             <div><Label className="text-xs">City</Label><Input value={city} onChange={e => setCity(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Raw City</Label><Input value={rawCity} onChange={e => setRawCity(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Normalized City</Label><Input value={normalizedCity} onChange={e => setNormalizedCity(e.target.value)} className="h-8" /></div>
+            {isTbilisiCity(city) && (
+              <div>
+                <Label className="text-xs">District (რაიონი) <span className="text-destructive">*</span></Label>
+                <Input
+                  value={district}
+                  onChange={e => setDistrict(e.target.value)}
+                  list="tbilisi-districts-detail"
+                  placeholder="ვაკე / საბურთალო"
+                  className={`h-8 ${!district.trim() ? "border-destructive" : ""}`}
+                />
+                <datalist id="tbilisi-districts-detail">
+                  {TBILISI_DISTRICTS.map(d => <option key={d} value={d} />)}
+                </datalist>
+                <p className="text-[10px] text-muted-foreground mt-1">Saved as: {composeAddress(district || "…", addressLine1)}</p>
+              </div>
+            )}
             <div><Label className="text-xs">Address Line 1</Label><Input value={addressLine1} onChange={e => setAddressLine1(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Raw Address</Label><Input value={rawAddress} onChange={e => setRawAddress(e.target.value)} className="h-8" /></div>
             <div><Label className="text-xs">Normalized Address</Label><Input value={normalizedAddress} onChange={e => setNormalizedAddress(e.target.value)} className="h-8" /></div>
