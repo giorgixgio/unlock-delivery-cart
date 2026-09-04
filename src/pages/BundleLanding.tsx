@@ -26,6 +26,52 @@ const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
 const SCROLL_COLLAPSE_PX = 80; // hide top bars once user scrolls past hero
 
+/**
+ * Slot-machine number: on mount it rapidly cycles through digits, then
+ * decelerates and lands on the target value — a small dopamine hit.
+ */
+const SlotNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
+  const [display, setDisplay] = useState(0);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) { setDisplay(value); setDone(true); return; }
+    const max = Math.max(value, 9);
+    let tick = 0;
+    const totalTicks = 22;
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = now - last;
+      // accelerating interval: fast at first, slow at the end
+      const progress = tick / totalTicks;
+      const interval = 40 + progress * progress * 160;
+      if (dt >= interval) {
+        tick++;
+        if (tick >= totalTicks) {
+          setDisplay(value);
+          setDone(true);
+          return;
+        }
+        // weighted random digit, biased toward the target as we near the end
+        const bias = progress;
+        const r = Math.random();
+        const cand = r < bias * 0.5 ? value : Math.floor(Math.random() * (max + 1));
+        setDisplay(cand);
+        last = now;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return (
+    <span className={`bnd-slot-num ${done ? "bnd-slot-num--done" : ""}`}>
+      {display}{suffix}
+    </span>
+  );
+};
+
 /** Slim sticky countdown bar. */
 const CountdownBar = () => {
   const [secondsLeft, setSecondsLeft] = useState(() => {
