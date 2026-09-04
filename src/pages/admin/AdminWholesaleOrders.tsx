@@ -677,13 +677,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                <td colSpan={16} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                <td colSpan={16} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
