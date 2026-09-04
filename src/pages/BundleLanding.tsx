@@ -314,7 +314,7 @@ const BundleLanding = () => {
       saveLastOrder({
         orderNumber: num,
         sku: dupSku,
-        productName: `ნაკრები 5 = ${BUNDLE_PRICE}₾`,
+        productName: `ნაკრები ${BUNDLE_SIZE} = ${BUNDLE_PRICE}₾`,
         phone: "",
         createdAt: Date.now(),
       });
@@ -630,7 +630,7 @@ const BundleLanding = () => {
           orderId={orderId}
           orderNumber={orderNumber}
           orderTotal={BUNDLE_PRICE}
-          deliveryFee={0}
+          deliveryFee={BUNDLE_DELIVERY_FEE}
           productId={selected[0]?.id || ""}
           quantity={BUNDLE_SIZE}
           unitPrice={BUNDLE_PRICE / BUNDLE_SIZE}
@@ -648,8 +648,8 @@ const BundleLanding = () => {
           onClose={() => setDoneOpen(false)}
           orderId={orderId}
           orderNumber={orderNumber}
-          deliveryFee={0}
-          total={BUNDLE_PRICE}
+          deliveryFee={BUNDLE_DELIVERY_FEE}
+          total={BUNDLE_PRICE + BUNDLE_DELIVERY_FEE}
         />
       )}
     </div>

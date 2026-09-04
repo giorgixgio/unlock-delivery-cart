@@ -164,7 +164,6 @@ const BundlePhoneSheet = ({
                 </p>
                 <p className="text-lg font-extrabold text-primary">{flatTotal}₾</p>
               </div>
-              <p className="text-[11px] font-semibold text-success mt-1">უფასო მიტანა</p>
             </div>
 
             <div className="mb-4">
@@ -212,7 +211,7 @@ const BundlePhoneSheet = ({
               {submitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                `შეუკვეთე — ${flatTotal}₾ · უფასო მიტანა`
+                `შეუკვეთე — ${flatTotal}₾`
               )}
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
