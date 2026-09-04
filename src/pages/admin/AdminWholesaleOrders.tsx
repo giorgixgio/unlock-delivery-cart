@@ -646,7 +646,7 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1200px] text-sm">
+        <table className="w-full min-w-[1400px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="w-10 p-3">
