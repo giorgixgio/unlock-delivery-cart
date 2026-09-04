@@ -384,9 +384,16 @@ const BundleLanding = () => {
               </span>
             </span>
           </h1>
-          <p className="mt-4 text-[12px] font-semibold text-[#6f6f85]">
-            გადაიხდი მიღებისას · 7 დღის გარანტია
-          </p>
+          <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+            <span className="bnd-cod-badge">
+              <span className="bnd-cod-badge__shine" />
+              <span className="bnd-cod-badge__coin">₾</span>
+              გადახდა მიღებისას
+            </span>
+            <span className="text-[12px] font-semibold text-[#6f6f85]">
+              · 7 დღის გარანტია
+            </span>
+          </div>
         </div>
 
 
