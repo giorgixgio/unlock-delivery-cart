@@ -429,7 +429,7 @@ const BundleLanding = () => {
           <div className="flex items-center gap-2 mb-3">
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
             <span className="text-[11px] font-extrabold uppercase tracking-[2px] text-[#c2410c]">
-              აირჩიე შენი 5
+              აირჩიე შენი {BUNDLE_SIZE}
             </span>
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
           </div>
