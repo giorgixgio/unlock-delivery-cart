@@ -416,14 +416,14 @@ const BundleLanding = () => {
           <h1 className="bnd-display mt-3 leading-[1.05]">
             <span className="flex items-center justify-center gap-3">
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#0b0b12,#2a2a3d)] shadow-[0_10px_26px_rgba(11,11,18,.25)]">
-                <span className="text-[42px] font-black">{BUNDLE_SIZE}</span>
+                <span className="text-[42px] font-black"><SlotNumber value={BUNDLE_SIZE} /></span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   ნივთი
                 </span>
               </span>
               <span className="text-[30px] font-black text-[#6f6f85]">=</span>
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_10px_26px_rgba(255,107,0,.35)]">
-                <span className="text-[42px] font-black">{BUNDLE_PRICE}₾</span>
+                <span className="text-[42px] font-black"><SlotNumber value={BUNDLE_PRICE} suffix="₾" /></span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   სულ
                 </span>
