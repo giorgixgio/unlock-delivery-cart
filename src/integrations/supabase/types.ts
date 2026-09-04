@@ -1762,6 +1762,7 @@ export type Database = {
           title: string
           vendor: string
           visual_fingerprint: string | null
+          warehouse: string | null
         }
         Insert: {
           available?: boolean
@@ -1788,6 +1789,7 @@ export type Database = {
           title?: string
           vendor?: string
           visual_fingerprint?: string | null
+          warehouse?: string | null
         }
         Update: {
           available?: boolean
@@ -1814,6 +1816,7 @@ export type Database = {
           title?: string
           vendor?: string
           visual_fingerprint?: string | null
+          warehouse?: string | null
         }
         Relationships: []
       }
@@ -2186,6 +2189,7 @@ export type Database = {
           listing_status: string
           logistics_stage: string
           notes: string | null
+          selling_price: number | null
           sku: string
           storefront_product_id: string | null
           title: string | null
@@ -2203,6 +2207,7 @@ export type Database = {
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          selling_price?: number | null
           sku: string
           storefront_product_id?: string | null
           title?: string | null
@@ -2220,6 +2225,7 @@ export type Database = {
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          selling_price?: number | null
           sku?: string
           storefront_product_id?: string | null
           title?: string | null
@@ -2286,6 +2292,7 @@ export type Database = {
           listing_status: string
           logistics_stage: string
           notes: string | null
+          selling_price: number | null
           sku: string
           storefront_product_id: string | null
           title: string | null
