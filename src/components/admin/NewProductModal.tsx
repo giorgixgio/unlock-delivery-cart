@@ -39,6 +39,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const [primary, setPrimary] = useState<string>("");
   const [binLocation, setBinLocation] = useState("");
   const [isVerified, setIsVerified] = useState(true);
+  const [warehouse, setWarehouse] = useState<"" | "A" | "B">("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -46,7 +47,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
-    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true);
+    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse("");
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
@@ -90,6 +91,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
     if (!t) return toast({ title: "Title required", variant: "destructive" });
     if (!s) return toast({ title: "SKU required", variant: "destructive" });
     if (isNaN(p) || p < 0) return toast({ title: "Valid price required", variant: "destructive" });
+    if (warehouse !== "A" && warehouse !== "B") return toast({ title: "Warehouse required", description: "Choose Warehouse A or B", variant: "destructive" });
 
     setSaving(true);
     try {
@@ -111,7 +113,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
         id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
         image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
         description: description.trim(), tags: [], available: true,
-        is_verified: isVerified,
+        is_verified: isVerified, warehouse,
       };
       if (binLocation.trim()) payload.bin_location = binLocation.trim();
 
@@ -166,6 +168,18 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
               {CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <Label className="text-xs font-bold">Warehouse *</Label>
+            <select
+              value={warehouse}
+              onChange={(e) => setWarehouse(e.target.value as "" | "A" | "B")}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Select warehouse…</option>
+              <option value="A">Warehouse A</option>
+              <option value="B">Warehouse B</option>
             </select>
           </div>
           <div>
