@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload } from "lucide-react";
 
 type Warehouse = "A" | "B";
 
@@ -40,6 +40,7 @@ type Item = {
   image_url: string | null;
   alibaba_link: string | null;
   unit_price: number | null;
+  selling_price: number | null;
   weight_kg: number | null;
   notes: string | null;
   logistics_stage: string;
@@ -174,6 +175,32 @@ function EditableCell({
   );
 }
 
+const slugify = (v: string) =>
+  v
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\u10a0-\u10ff]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "item";
+
+/**
+ * Copies a private wholesale image into the public product-images bucket so the
+ * storefront can render it. Returns a public URL, or null when there is no image.
+ */
+async function copyImageToProductBucket(path: string | null, sku: string): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from("wholesale-images").download(path);
+  if (error || !data) throw new Error(error?.message || "Could not read wholesale image");
+  const ext = path.split(".").pop() || "jpg";
+  const target = `wholesale/${sku}-${Date.now()}.${ext}`;
+  const up = await supabase.storage.from("product-images").upload(target, data, {
+    upsert: true,
+    contentType: data.type || `image/${ext}`,
+  });
+  if (up.error) throw new Error(up.error.message);
+  return supabase.storage.from("product-images").getPublicUrl(target).data.publicUrl;
+}
+
 const AdminWholesaleOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const warehouseParam = (searchParams.get("warehouse") ?? "ALL").toUpperCase();
@@ -197,6 +224,8 @@ const AdminWholesaleOrders = () => {
   const [addBatchId, setAddBatchId] = useState<string>("");
   const [addingRow, setAddingRow] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [bulkPublishing, setBulkPublishing] = useState(false);
 
   const setWarehouse = (w: Warehouse | "ALL") => {
     const next = new URLSearchParams(searchParams);
@@ -337,6 +366,86 @@ const AdminWholesaleOrders = () => {
     setUploadingId(null);
     if (error) return toast.error(error.message);
     await patchItem(item.id, { image_url: path });
+  };
+
+  /** Idempotent upsert of one wholesale item into the storefront products table. */
+  const publishItem = async (item: Item): Promise<string> => {
+    const price = Number(item.selling_price);
+    if (!item.title?.trim()) throw new Error(`${item.sku}: title is required`);
+    if (!item.selling_price || Number.isNaN(price) || price <= 0)
+      throw new Error(`${item.sku}: selling price is required`);
+
+    const imageUrl = await copyImageToProductBucket(item.image_url, item.sku);
+    const productId = item.storefront_product_id || `wholesale-${item.id}`;
+
+    const payload: Record<string, unknown> = {
+      id: productId,
+      title: item.title.trim(),
+      handle: `${slugify(item.title)}-${item.sku.toLowerCase()}`,
+      sku: item.sku,
+      price,
+      warehouse: item.warehouse,
+      // draft by default: hidden from the live storefront until reviewed
+      available: false,
+      is_verified: false,
+      synced_at: new Date().toISOString(),
+    };
+    if (imageUrl) {
+      payload.image = imageUrl;
+      payload.images = [imageUrl];
+    }
+
+    const { error } = await supabase.from("products").upsert(payload, { onConflict: "id" });
+    if (error) throw new Error(error.message);
+
+    const link = await supabase
+      .from("wholesale_items")
+      .update({ storefront_product_id: productId, listing_status: "published" })
+      .eq("id", item.id);
+    if (link.error) throw new Error(link.error.message);
+
+    return productId;
+  };
+
+  const handlePublish = async (item: Item) => {
+    setPublishingId(item.id);
+    try {
+      const productId = await publishItem(item);
+      setItems((rows) =>
+        rows.map((r) =>
+          r.id === item.id ? { ...r, storefront_product_id: productId, listing_status: "published" } : r,
+        ),
+      );
+      toast.success(`${item.sku} published as draft product`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    const rows = visibleItems.filter((i) => selected.has(i.id));
+    if (rows.length === 0) return;
+    setBulkPublishing(true);
+    let ok = 0;
+    const failures: string[] = [];
+    for (const row of rows) {
+      try {
+        const productId = await publishItem(row);
+        ok += 1;
+        setItems((prev) =>
+          prev.map((r) =>
+            r.id === row.id ? { ...r, storefront_product_id: productId, listing_status: "published" } : r,
+          ),
+        );
+      } catch (e) {
+        failures.push(e instanceof Error ? e.message : `${row.sku}: failed`);
+      }
+    }
+    setBulkPublishing(false);
+    if (ok > 0) toast.success(`${ok} item(s) published as drafts`);
+    if (failures.length > 0) toast.error(`${failures.length} failed`, { description: failures.slice(0, 3).join(" · ") });
   };
 
   const applyBulkStage = async () => {
@@ -485,6 +594,14 @@ const AdminWholesaleOrders = () => {
             <Button size="sm" onClick={applyBulkStage} disabled={!bulkStage}>
               Apply
             </Button>
+            <Button size="sm" variant="secondary" onClick={handleBulkPublish} disabled={bulkPublishing}>
+              {bulkPublishing ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-1" />
+              )}
+              Publish
+            </Button>
           </div>
         )}
       </div>
@@ -509,21 +626,24 @@ const AdminWholesaleOrders = () => {
               <th className="p-3 text-left min-w-[200px]">Title</th>
               <th className="p-3 text-left min-w-[180px]">Alibaba link</th>
               <th className="p-3 text-left w-28">Unit price</th>
+              <th className="p-3 text-left w-28">Selling price</th>
               <th className="p-3 text-left w-24">Weight kg</th>
               <th className="p-3 text-left w-44">Stage</th>
               <th className="p-3 text-left min-w-[180px]">Notes</th>
+              <th className="p-3 text-left w-32">Listing</th>
+              <th className="p-3 text-left w-32">Storefront</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                <td colSpan={14} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                <td colSpan={14} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
@@ -607,6 +727,14 @@ const AdminWholesaleOrders = () => {
                   <td className="p-3">
                     <EditableCell
                       type="number"
+                      value={it.selling_price}
+                      placeholder="0.00"
+                      onSave={(v) => patchItem(it.id, { selling_price: v === "" ? null : Number(v) })}
+                    />
+                  </td>
+                  <td className="p-3">
+                    <EditableCell
+                      type="number"
                       value={it.weight_kg}
                       placeholder="0.0"
                       onSave={(v) => patchItem(it.id, { weight_kg: v === "" ? null : Number(v) })}
@@ -639,6 +767,33 @@ const AdminWholesaleOrders = () => {
                       placeholder="Notes"
                       onSave={(v) => patchItem(it.id, { notes: v || null })}
                     />
+                  </td>
+                  <td className="p-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        it.listing_status === "published"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : "bg-muted text-muted-foreground"
+                      }
+                    >
+                      {it.listing_status === "published" ? "Published" : "Not Listed"}
+                    </Badge>
+                  </td>
+                  <td className="p-3">
+                    <Button
+                      size="sm"
+                      variant={it.storefront_product_id ? "outline" : "secondary"}
+                      onClick={() => handlePublish(it)}
+                      disabled={publishingId === it.id}
+                    >
+                      {publishingId === it.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-1" />
+                      )}
+                      {it.storefront_product_id ? "Update" : "Publish"}
+                    </Button>
                   </td>
                 </tr>
               ))
