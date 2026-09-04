@@ -190,6 +190,7 @@ const App = () => (
                       <Route path="inventory-audit" element={<AdminInventoryAudit />} />
                       <Route path="sku-health" element={<AdminSkuHealth />} />
                       <Route path="wholesale/orders" element={<AdminWholesaleOrders />} />
+                      <Route path="wholesale/customs" element={<AdminWholesaleCustoms />} />
 
 
 
