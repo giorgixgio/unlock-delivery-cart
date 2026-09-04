@@ -47,7 +47,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
-    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true);
+    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse("");
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
