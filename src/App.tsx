@@ -54,6 +54,7 @@ import AdminUnidentifiedItems from "./pages/admin/AdminUnidentifiedItems";
 import AdminInventoryAudit from "./pages/admin/AdminInventoryAudit";
 import AdminSkuHealth from "./pages/admin/AdminSkuHealth";
 import AdminWholesaleOrders from "./pages/admin/AdminWholesaleOrders";
+import AdminWholesaleCustoms from "./pages/admin/AdminWholesaleCustoms";
 import AdminFastInventoryCheck from "./pages/admin/AdminFastInventoryCheck";
 
 /** Landing page wrapper — provides LandingPageContext */
