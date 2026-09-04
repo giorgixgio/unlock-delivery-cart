@@ -2220,6 +2220,7 @@ export type Database = {
       wholesale_items: {
         Row: {
           alibaba_link: string | null
+          alibaba_title: string | null
           batch_id: string | null
           carton_count: number | null
           created_at: string
@@ -2232,6 +2233,7 @@ export type Database = {
           selling_price: number | null
           sku: string
           storefront_product_id: string | null
+          supplier_group_id: string | null
           title: string | null
           unit_price: number | null
           updated_at: string
@@ -2240,6 +2242,7 @@ export type Database = {
         }
         Insert: {
           alibaba_link?: string | null
+          alibaba_title?: string | null
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
@@ -2252,6 +2255,7 @@ export type Database = {
           selling_price?: number | null
           sku: string
           storefront_product_id?: string | null
+          supplier_group_id?: string | null
           title?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -2260,6 +2264,7 @@ export type Database = {
         }
         Update: {
           alibaba_link?: string | null
+          alibaba_title?: string | null
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
@@ -2272,6 +2277,7 @@ export type Database = {
           selling_price?: number | null
           sku?: string
           storefront_product_id?: string | null
+          supplier_group_id?: string | null
           title?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -2329,6 +2335,7 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: {
           alibaba_link: string | null
+          alibaba_title: string | null
           batch_id: string | null
           carton_count: number | null
           created_at: string
@@ -2341,6 +2348,7 @@ export type Database = {
           selling_price: number | null
           sku: string
           storefront_product_id: string | null
+          supplier_group_id: string | null
           title: string | null
           unit_price: number | null
           updated_at: string
