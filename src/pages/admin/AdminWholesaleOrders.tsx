@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check } from "lucide-react";
 
 type Warehouse = "A" | "B";
 
@@ -42,6 +42,8 @@ type Item = {
   unit_price: number | null;
   selling_price: number | null;
   weight_kg: number | null;
+  quantity: number | null;
+  carton_count: number | null;
   notes: string | null;
   logistics_stage: string;
   listing_status: string;
@@ -49,6 +51,40 @@ type Item = {
   created_at: string;
   updated_at: string;
 };
+
+/** Build the freight-forwarder shipping-mark message for a given SKU. */
+const buildShippingMarkText = (sku: string) =>
+  `Please make draft order for me, I am collecting orders and I will pay as soon as I finish collecting , PLEASE! Use this shipping mark on EVERY carton: G888-T1482-${sku}. Please include an approximate delivery date in the payment order.`;
+
+/** SKU cell with click-to-copy shipping-mark text. */
+function SkuCell({ sku }: { sku: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildShippingMarkText(sku));
+      setCopied(true);
+      toast.success("Copied shipping mark text");
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Click to copy shipping mark message"
+      className="group inline-flex items-center gap-1 font-mono text-xs font-semibold hover:text-primary transition-colors"
+    >
+      {sku}
+      {copied ? (
+        <Check className="h-3 w-3 text-emerald-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+    </button>
+  );
+}
 
 const STAGES = [
   { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
@@ -610,7 +646,7 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1200px] text-sm">
+        <table className="w-full min-w-[1400px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="w-10 p-3">
@@ -630,6 +666,8 @@ const AdminWholesaleOrders = () => {
               <th className="p-3 text-left w-28">Unit price</th>
               <th className="p-3 text-left w-28">Selling price</th>
               <th className="p-3 text-left w-24">Weight kg</th>
+              <th className="p-3 text-left w-24">Quantity</th>
+              <th className="p-3 text-left w-24">Cartons</th>
               <th className="p-3 text-left w-44">Stage</th>
               <th className="p-3 text-left min-w-[180px]">Notes</th>
               <th className="p-3 text-left w-32">Listing</th>
@@ -639,13 +677,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                <td colSpan={16} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={14} className="p-8 text-center text-muted-foreground">
+                <td colSpan={16} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
@@ -672,7 +710,7 @@ const AdminWholesaleOrders = () => {
                       onUpload={(f) => uploadImage(it, f)}
                     />
                   </td>
-                  <td className="p-3 font-mono text-xs font-semibold">{it.sku}</td>
+                  <td className="p-3"><SkuCell sku={it.sku} /></td>
                   <td className="p-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
@@ -740,6 +778,22 @@ const AdminWholesaleOrders = () => {
                       value={it.weight_kg}
                       placeholder="0.0"
                       onSave={(v) => patchItem(it.id, { weight_kg: v === "" ? null : Number(v) })}
+                    />
+                  </td>
+                  <td className="p-3">
+                    <EditableCell
+                      type="number"
+                      value={it.quantity}
+                      placeholder="1"
+                      onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
+                    />
+                  </td>
+                  <td className="p-3">
+                    <EditableCell
+                      type="number"
+                      value={it.carton_count}
+                      placeholder="1"
+                      onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
                     />
                   </td>
                   <td className="p-3">
