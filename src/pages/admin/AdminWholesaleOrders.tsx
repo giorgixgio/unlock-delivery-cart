@@ -710,7 +710,7 @@ const AdminWholesaleOrders = () => {
                       onUpload={(f) => uploadImage(it, f)}
                     />
                   </td>
-                  <td className="p-3 font-mono text-xs font-semibold">{it.sku}</td>
+                  <td className="p-3"><SkuCell sku={it.sku} /></td>
                   <td className="p-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
