@@ -56,6 +56,7 @@ const navGroups = [
     label: "Wholesale",
     items: [
       { to: "/admin/wholesale/orders", label: "Wholesale CRM", icon: Boxes },
+      { to: "/admin/wholesale/customs", label: "Customs & Docs", icon: FileText },
     ],
   },
   {
