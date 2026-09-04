@@ -42,6 +42,8 @@ type Item = {
   unit_price: number | null;
   selling_price: number | null;
   weight_kg: number | null;
+  quantity: number | null;
+  carton_count: number | null;
   notes: string | null;
   logistics_stage: string;
   listing_status: string;
@@ -49,6 +51,40 @@ type Item = {
   created_at: string;
   updated_at: string;
 };
+
+/** Build the freight-forwarder shipping-mark message for a given SKU. */
+const buildShippingMarkText = (sku: string) =>
+  `Please make draft order for me, I am collecting orders and I will pay as soon as I finish collecting , PLEASE! Use this shipping mark on EVERY carton: G888-T1482-${sku}. Please include an approximate delivery date in the payment order.`;
+
+/** SKU cell with click-to-copy shipping-mark text. */
+function SkuCell({ sku }: { sku: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildShippingMarkText(sku));
+      setCopied(true);
+      toast.success("Copied shipping mark text");
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Click to copy shipping mark message"
+      className="group inline-flex items-center gap-1 font-mono text-xs font-semibold hover:text-primary transition-colors"
+    >
+      {sku}
+      {copied ? (
+        <Check className="h-3 w-3 text-emerald-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+    </button>
+  );
+}
 
 const STAGES = [
   { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
