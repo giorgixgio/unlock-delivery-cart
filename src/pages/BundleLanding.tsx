@@ -26,6 +26,52 @@ const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
 const SCROLL_COLLAPSE_PX = 80; // hide top bars once user scrolls past hero
 
+/**
+ * Slot-machine number: on mount it rapidly cycles through digits, then
+ * decelerates and lands on the target value — a small dopamine hit.
+ */
+const SlotNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
+  const [display, setDisplay] = useState(0);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) { setDisplay(value); setDone(true); return; }
+    const max = Math.max(value, 9);
+    let tick = 0;
+    const totalTicks = 22;
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = now - last;
+      // accelerating interval: fast at first, slow at the end
+      const progress = tick / totalTicks;
+      const interval = 40 + progress * progress * 160;
+      if (dt >= interval) {
+        tick++;
+        if (tick >= totalTicks) {
+          setDisplay(value);
+          setDone(true);
+          return;
+        }
+        // weighted random digit, biased toward the target as we near the end
+        const bias = progress;
+        const r = Math.random();
+        const cand = r < bias * 0.5 ? value : Math.floor(Math.random() * (max + 1));
+        setDisplay(cand);
+        last = now;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return (
+    <span className={`bnd-slot-num ${done ? "bnd-slot-num--done" : ""}`}>
+      {display}{suffix}
+    </span>
+  );
+};
+
 /** Slim sticky countdown bar. */
 const CountdownBar = () => {
   const [secondsLeft, setSecondsLeft] = useState(() => {
@@ -370,14 +416,14 @@ const BundleLanding = () => {
           <h1 className="bnd-display mt-3 leading-[1.05]">
             <span className="flex items-center justify-center gap-3">
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#0b0b12,#2a2a3d)] shadow-[0_10px_26px_rgba(11,11,18,.25)]">
-                <span className="text-[42px] font-black">{BUNDLE_SIZE}</span>
+                <span className="text-[42px] font-black"><SlotNumber value={BUNDLE_SIZE} /></span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   ნივთი
                 </span>
               </span>
               <span className="text-[30px] font-black text-[#6f6f85]">=</span>
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#ff3b3b,#ff6b00)] shadow-[0_10px_26px_rgba(255,107,0,.35)]">
-                <span className="text-[42px] font-black">{BUNDLE_PRICE}₾</span>
+                <span className="text-[42px] font-black"><SlotNumber value={BUNDLE_PRICE} suffix="₾" /></span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   სულ
                 </span>
@@ -391,7 +437,7 @@ const BundleLanding = () => {
               გადახდა მიღებისას
             </span>
             <span className="text-[12px] font-semibold text-[#6f6f85]">
-              · 7 დღის გარანტია
+              · ხარისხის გარანტია
             </span>
           </div>
         </div>
@@ -429,7 +475,7 @@ const BundleLanding = () => {
           <div className="flex items-center gap-2 mb-3">
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
             <span className="text-[11px] font-extrabold uppercase tracking-[2px] text-[#c2410c]">
-              აირჩიე შენი 5
+              აირჩიე შენი {BUNDLE_SIZE}
             </span>
             <span className="flex-1 h-px bg-[rgba(11,11,18,.1)]" />
           </div>

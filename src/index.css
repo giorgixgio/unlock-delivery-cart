@@ -705,6 +705,21 @@
   .bnd-progress-fill, .bnd-progress-fill::after, .bnd-progress-track::after, .bnd-cta-pulse { animation: none; }
 }
 .bnd-pop { animation: bndPopIn .45s cubic-bezier(.34,1.56,.64,1) both; }
+/* Slot-machine hero numbers */
+.bnd-slot-num {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.2em;
+  text-align: center;
+}
+.bnd-slot-num--done {
+  animation: bndSlotLand .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes bndSlotLand {
+  0% { transform: translateY(-6px) scale(1.18); filter: brightness(1.35); }
+  60% { transform: translateY(2px) scale(0.96); }
+  100% { transform: translateY(0) scale(1); filter: brightness(1); }
+}
 /* Eye-catching Cash-on-Delivery trust badge in the bundle hero */
 .bnd-cod-badge {
   position: relative;
