@@ -391,7 +391,7 @@ const BundleLanding = () => {
               გადახდა მიღებისას
             </span>
             <span className="text-[12px] font-semibold text-[#6f6f85]">
-              · 7 დღის გარანტია
+              · ხარისხის გარანტია
             </span>
           </div>
         </div>
