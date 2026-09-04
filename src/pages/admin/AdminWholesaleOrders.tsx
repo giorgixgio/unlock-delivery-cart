@@ -395,7 +395,9 @@ const AdminWholesaleOrders = () => {
       payload.images = [imageUrl];
     }
 
-    const { error } = await supabase.from("products").upsert(payload, { onConflict: "id" });
+    const { error } = await supabase
+      .from("products")
+      .upsert([payload] as never, { onConflict: "id" });
     if (error) throw new Error(error.message);
 
     const link = await supabase
