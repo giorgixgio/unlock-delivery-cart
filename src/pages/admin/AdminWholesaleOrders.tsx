@@ -39,6 +39,8 @@ type Item = {
   title: string | null;
   image_url: string | null;
   alibaba_link: string | null;
+  alibaba_title: string | null;
+  supplier_group_id: string | null;
   unit_price: number | null;
   selling_price: number | null;
   weight_kg: number | null;
@@ -52,37 +54,91 @@ type Item = {
   updated_at: string;
 };
 
-/** Build the freight-forwarder shipping-mark message for a given SKU. */
-const buildShippingMarkText = (sku: string) =>
-  `Please make draft order for me, I am collecting orders and I will pay as soon as I finish collecting , PLEASE! Use this shipping mark on EVERY carton: G888-T1482-${sku}. Please include an approximate delivery date in the payment order.`;
+const MARK_PREFIX = "G888-T1482";
+const INTRO = "Please prepare a draft order. I'll pay once I finish collecting all items. Please include an estimated delivery date.";
 
-/** SKU cell with click-to-copy shipping-mark text. */
-function SkuCell({ sku }: { sku: string }) {
+const productLabel = (it: Pick<Item, "title" | "alibaba_title" | "sku">) => {
+  const base = it.title || it.sku;
+  return it.alibaba_title ? `${base} (your listing: ${it.alibaba_title})` : base;
+};
+
+/** Build the supplier message for a standalone item or a whole supplier group. */
+const buildShippingMarkText = (item: Item, groupItems: Item[]) => {
+  if (item.supplier_group_id && groupItems.length > 1) {
+    const lines = groupItems
+      .map((g, i) => `${i + 1}. ${productLabel(g)} → ${MARK_PREFIX}-${g.sku}`)
+      .join("\n");
+    return `${INTRO}\n\nCarton shipping marks (one per product):\n${lines}`;
+  }
+  return `${INTRO}\n\nCarton shipping mark: ${MARK_PREFIX}-${item.sku}\nProduct: ${productLabel(item)}`;
+};
+
+const GROUP_COLORS = [
+  "bg-rose-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-sky-500",
+  "bg-violet-500",
+  "bg-fuchsia-500",
+  "bg-lime-500",
+  "bg-orange-500",
+];
+const groupColor = (id: string) => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return GROUP_COLORS[h % GROUP_COLORS.length];
+};
+
+/** SKU cell with click-to-copy supplier message + group indicator. */
+function SkuCell({
+  item,
+  groupItems,
+  onUngroup,
+}: {
+  item: Item;
+  groupItems: Item[];
+  onUngroup: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(buildShippingMarkText(sku));
+      await navigator.clipboard.writeText(buildShippingMarkText(item, groupItems));
       setCopied(true);
-      toast.success("Copied shipping mark text");
+      toast.success("Copied");
       setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error("Could not copy to clipboard");
     }
   };
   return (
-    <button
-      type="button"
-      onClick={copy}
-      title="Click to copy shipping mark message"
-      className="group inline-flex items-center gap-1 font-mono text-xs font-semibold hover:text-primary transition-colors"
-    >
-      {sku}
-      {copied ? (
-        <Check className="h-3 w-3 text-emerald-500" />
-      ) : (
-        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div className="flex items-center gap-1.5">
+      {item.supplier_group_id && (
+        <button
+          type="button"
+          onClick={onUngroup}
+          title={`Same-supplier group (${groupItems.length} items) — click to remove this row from the group`}
+          className="group/dot relative inline-flex h-4 w-4 items-center justify-center"
+        >
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${groupColor(item.supplier_group_id)} group-hover/dot:opacity-0 transition-opacity`}
+          />
+          <X className="absolute h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover/dot:opacity-100 transition-opacity" />
+        </button>
       )}
-    </button>
+      <button
+        type="button"
+        onClick={copy}
+        title="Click to copy supplier message"
+        className="group inline-flex items-center gap-1 font-mono text-xs font-semibold hover:text-primary transition-colors"
+      >
+        {item.sku}
+        {copied ? (
+          <Check className="h-3 w-3 text-emerald-500" />
+        ) : (
+          <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -504,6 +560,24 @@ const AdminWholesaleOrders = () => {
     setBulkStage("");
   };
 
+  const markSameSupplier = async () => {
+    if (selected.size < 2) return;
+    const ids = [...selected];
+    const groupId = crypto.randomUUID();
+    const prev = items;
+    setItems((rows) => rows.map((r) => (selected.has(r.id) ? { ...r, supplier_group_id: groupId } : r)));
+    const { error } = await supabase
+      .from("wholesale_items")
+      .update({ supplier_group_id: groupId })
+      .in("id", ids);
+    if (error) {
+      setItems(prev);
+      return toast.error(error.message);
+    }
+    toast.success(`${ids.length} item(s) grouped as same supplier`);
+    setSelected(new Set());
+  };
+
   const allChecked = visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
 
   return (
@@ -632,6 +706,10 @@ const AdminWholesaleOrders = () => {
             <Button size="sm" onClick={applyBulkStage} disabled={!bulkStage}>
               Apply
             </Button>
+            <Button size="sm" variant="outline" onClick={markSameSupplier} disabled={selected.size < 2}>
+              <Link2 className="h-4 w-4 mr-1" />
+              Mark as Same Supplier
+            </Button>
             <Button size="sm" variant="secondary" onClick={handleBulkPublish} disabled={bulkPublishing}>
               {bulkPublishing ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -663,6 +741,7 @@ const AdminWholesaleOrders = () => {
               <th className="p-3 text-left w-40">Batch</th>
               <th className="p-3 text-left min-w-[200px]">Title</th>
               <th className="p-3 text-left min-w-[180px]">Alibaba link</th>
+              <th className="p-3 text-left min-w-[180px]">Alibaba title</th>
               <th className="p-3 text-left w-28">Unit price</th>
               <th className="p-3 text-left w-28">Selling price</th>
               <th className="p-3 text-left w-24">Weight kg</th>
@@ -677,13 +756,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={16} className="p-8 text-center text-muted-foreground">
+                <td colSpan={17} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={16} className="p-8 text-center text-muted-foreground">
+                <td colSpan={17} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
@@ -710,7 +789,17 @@ const AdminWholesaleOrders = () => {
                       onUpload={(f) => uploadImage(it, f)}
                     />
                   </td>
-                  <td className="p-3"><SkuCell sku={it.sku} /></td>
+                  <td className="p-3">
+                    <SkuCell
+                      item={it}
+                      groupItems={
+                        it.supplier_group_id
+                          ? items.filter((x) => x.supplier_group_id === it.supplier_group_id)
+                          : [it]
+                      }
+                      onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
+                    />
+                  </td>
                   <td className="p-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
@@ -755,6 +844,13 @@ const AdminWholesaleOrders = () => {
                         </a>
                       )}
                     </div>
+                  </td>
+                  <td className="p-3">
+                    <EditableCell
+                      value={it.alibaba_title}
+                      placeholder="Seller's listing title"
+                      onSave={(v) => patchItem(it.id, { alibaba_title: v || null })}
+                    />
                   </td>
                   <td className="p-3">
                     <EditableCell
