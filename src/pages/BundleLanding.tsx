@@ -17,7 +17,10 @@ import { readLastBundleOrder, readLastOrder, saveLastOrder, markIntentionalRepea
 import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 
-const BUNDLE_SIZE = 5;
+const BUNDLE_SIZE = 3;
+const BUNDLE_PRICE = 29;
+/** Regular courier fee charged on bundle orders (recorded in the order, not advertised on the landing). */
+const BUNDLE_DELIVERY_FEE = 5;
 const BUNDLE_PRICE = 49;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
