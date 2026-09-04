@@ -666,6 +666,8 @@ const AdminWholesaleOrders = () => {
               <th className="p-3 text-left w-28">Unit price</th>
               <th className="p-3 text-left w-28">Selling price</th>
               <th className="p-3 text-left w-24">Weight kg</th>
+              <th className="p-3 text-left w-24">Quantity</th>
+              <th className="p-3 text-left w-24">Cartons</th>
               <th className="p-3 text-left w-44">Stage</th>
               <th className="p-3 text-left min-w-[180px]">Notes</th>
               <th className="p-3 text-left w-32">Listing</th>
