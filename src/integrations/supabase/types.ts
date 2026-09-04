@@ -2155,6 +2155,89 @@ export type Database = {
           },
         ]
       }
+      wholesale_batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          id: string
+          warehouse: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          id?: string
+          warehouse: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          id?: string
+          warehouse?: string
+        }
+        Relationships: []
+      }
+      wholesale_items: {
+        Row: {
+          alibaba_link: string | null
+          batch_id: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          listing_status: string
+          logistics_stage: string
+          notes: string | null
+          sku: string
+          storefront_product_id: string | null
+          title: string | null
+          unit_price: number | null
+          updated_at: string
+          warehouse: string
+          weight_kg: number | null
+        }
+        Insert: {
+          alibaba_link?: string | null
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          listing_status?: string
+          logistics_stage?: string
+          notes?: string | null
+          sku: string
+          storefront_product_id?: string | null
+          title?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          warehouse: string
+          weight_kg?: number | null
+        }
+        Update: {
+          alibaba_link?: string | null
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          listing_status?: string
+          logistics_stage?: string
+          notes?: string | null
+          sku?: string
+          storefront_product_id?: string | null
+          title?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          warehouse?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wholesale_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "wholesale_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2191,6 +2274,32 @@ export type Database = {
           wave_id: string
           wave_number: number
         }[]
+      }
+      create_wholesale_item: {
+        Args: { p_batch_id: string }
+        Returns: {
+          alibaba_link: string | null
+          batch_id: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          listing_status: string
+          logistics_stage: string
+          notes: string | null
+          sku: string
+          storefront_product_id: string | null
+          title: string | null
+          unit_price: number | null
+          updated_at: string
+          warehouse: string
+          weight_kg: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wholesale_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
