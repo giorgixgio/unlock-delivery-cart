@@ -705,6 +705,60 @@
   .bnd-progress-fill, .bnd-progress-fill::after, .bnd-progress-track::after, .bnd-cta-pulse { animation: none; }
 }
 .bnd-pop { animation: bndPopIn .45s cubic-bezier(.34,1.56,.64,1) both; }
+/* Eye-catching Cash-on-Delivery trust badge in the bundle hero */
+.bnd-cod-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px 7px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  color: #fff;
+  background: linear-gradient(135deg, #00b862, #009150);
+  box-shadow:
+    0 6px 20px rgba(0, 161, 90, 0.40),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  animation: bndCodBreathe 2.2s ease-in-out infinite;
+}
+.bnd-cod-badge__coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+  color: #009150;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+  animation: bndCodCoinSpin 3.4s ease-in-out infinite;
+}
+.bnd-cod-badge__shine {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: bndCodShine 3s ease-in-out infinite;
+}
+@keyframes bndCodBreathe {
+  0%, 100% { box-shadow: 0 6px 20px rgba(0, 161, 90, 0.40), inset 0 0 0 1px rgba(255, 255, 255, 0.22); transform: scale(1); }
+  50% { box-shadow: 0 10px 30px rgba(0, 214, 119, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.30); transform: scale(1.03); }
+}
+@keyframes bndCodCoinSpin {
+  0%, 100% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+}
+@keyframes bndCodShine {
+  0% { left: -60%; }
+  60%, 100% { left: 150%; }
+}
 .bnd-slide-up { animation: bndSlideUp .5s ease both; }
 .bnd-float { animation: bndFloat 3.2s ease-in-out infinite; }
 
