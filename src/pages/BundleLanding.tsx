@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Truck, Clock, Loader2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { Product, CATEGORIES } from "@/lib/constants";
 import BundleTile from "@/components/bundle/BundleTile";
@@ -17,8 +17,10 @@ import { readLastBundleOrder, readLastOrder, saveLastOrder, markIntentionalRepea
 import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
 
-const BUNDLE_SIZE = 5;
-const BUNDLE_PRICE = 49;
+const BUNDLE_SIZE = 3;
+const BUNDLE_PRICE = 29;
+/** Regular courier fee charged on bundle orders (recorded in the order, not advertised on the landing). */
+const BUNDLE_DELIVERY_FEE = 5;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";
@@ -312,7 +314,7 @@ const BundleLanding = () => {
       saveLastOrder({
         orderNumber: num,
         sku: dupSku,
-        productName: `ნაკრები 5 = ${BUNDLE_PRICE}₾`,
+        productName: `ნაკრები ${BUNDLE_SIZE} = ${BUNDLE_PRICE}₾`,
         phone: "",
         createdAt: Date.now(),
       });
@@ -368,7 +370,7 @@ const BundleLanding = () => {
           <h1 className="bnd-display mt-3 leading-[1.05]">
             <span className="flex items-center justify-center gap-3">
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#0b0b12,#2a2a3d)] shadow-[0_10px_26px_rgba(11,11,18,.25)]">
-                <span className="text-[42px] font-black">5</span>
+                <span className="text-[42px] font-black">{BUNDLE_SIZE}</span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   ნივთი
                 </span>
@@ -382,11 +384,7 @@ const BundleLanding = () => {
               </span>
             </span>
           </h1>
-          <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,161,90,.1)] border border-[rgba(0,161,90,.3)] px-3.5 py-1.5 text-[13px] font-extrabold text-[#007a45]">
-            <Truck className="w-4 h-4" strokeWidth={3} />
-            უფასო მიტანა
-          </p>
-          <p className="mt-2.5 text-[12px] font-semibold text-[#6f6f85]">
+          <p className="mt-4 text-[12px] font-semibold text-[#6f6f85]">
             გადაიხდი მიღებისას · 7 დღის გარანტია
           </p>
         </div>
@@ -414,7 +412,7 @@ const BundleLanding = () => {
             </>
           ) : (
             <p className="text-[13px] font-bold text-[#6f6f85]">
-              აირჩიე 5 პროდუქტი და ნახე რამდენს ზოგავ
+              აირჩიე {BUNDLE_SIZE} პროდუქტი და ნახე რამდენს ზოგავ
             </p>
           )}
         </div>
@@ -525,7 +523,7 @@ const BundleLanding = () => {
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
                 <span className="text-[12px] font-extrabold text-[#0b0b12] flex items-center gap-1.5">
-                  {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
+                  {BUNDLE_PRICE}₾
                   <span className="text-[10px] font-extrabold text-[#6f6f85] bg-[#f2f2f7] rounded-full px-2 py-0.5">💵 კურიერთან</span>
                 </span>
               </div>
@@ -632,7 +630,7 @@ const BundleLanding = () => {
           orderId={orderId}
           orderNumber={orderNumber}
           orderTotal={BUNDLE_PRICE}
-          deliveryFee={0}
+          deliveryFee={BUNDLE_DELIVERY_FEE}
           productId={selected[0]?.id || ""}
           quantity={BUNDLE_SIZE}
           unitPrice={BUNDLE_PRICE / BUNDLE_SIZE}
@@ -650,8 +648,8 @@ const BundleLanding = () => {
           onClose={() => setDoneOpen(false)}
           orderId={orderId}
           orderNumber={orderNumber}
-          deliveryFee={0}
-          total={BUNDLE_PRICE}
+          deliveryFee={BUNDLE_DELIVERY_FEE}
+          total={BUNDLE_PRICE + BUNDLE_DELIVERY_FEE}
         />
       )}
     </div>

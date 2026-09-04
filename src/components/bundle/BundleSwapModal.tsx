@@ -88,7 +88,7 @@ const BundleSwapModal = ({
             <ArrowLeftRight className="w-6 h-6 text-[#ff3b3b]" strokeWidth={2.5} />
           </div>
           <h2 className="bnd-display text-[22px] text-[#0b0b12] leading-tight">
-            მაქსიმუმ 5 ნივთი შეგიძლია აირჩიო
+            მაქსიმუმ 3 ნივთი შეგიძლია აირჩიო
           </h2>
           <p className="mt-1.5 text-[13px] font-semibold text-[#6f6f85] leading-relaxed">
             ახალი პროდუქტის დასამატებლად, გთხოვ, ამოშალე ან შეცვალე ქვემოდან ერთ-ერთი:
