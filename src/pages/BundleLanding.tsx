@@ -384,11 +384,7 @@ const BundleLanding = () => {
               </span>
             </span>
           </h1>
-          <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,161,90,.1)] border border-[rgba(0,161,90,.3)] px-3.5 py-1.5 text-[13px] font-extrabold text-[#007a45]">
-            <Truck className="w-4 h-4" strokeWidth={3} />
-            უფასო მიტანა
-          </p>
-          <p className="mt-2.5 text-[12px] font-semibold text-[#6f6f85]">
+          <p className="mt-4 text-[12px] font-semibold text-[#6f6f85]">
             გადაიხდი მიღებისას · 7 დღის გარანტია
           </p>
         </div>
