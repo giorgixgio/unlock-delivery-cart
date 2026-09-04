@@ -781,6 +781,22 @@ const AdminWholesaleOrders = () => {
                     />
                   </td>
                   <td className="p-3">
+                    <EditableCell
+                      type="number"
+                      value={it.quantity}
+                      placeholder="1"
+                      onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
+                    />
+                  </td>
+                  <td className="p-3">
+                    <EditableCell
+                      type="number"
+                      value={it.carton_count}
+                      placeholder="1"
+                      onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
+                    />
+                  </td>
+                  <td className="p-3">
                     <Select
                       value={it.logistics_stage}
                       onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
