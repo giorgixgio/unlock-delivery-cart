@@ -370,7 +370,7 @@ const BundleLanding = () => {
           <h1 className="bnd-display mt-3 leading-[1.05]">
             <span className="flex items-center justify-center gap-3">
               <span className="inline-flex flex-col items-center justify-center leading-none rounded-2xl px-5 py-3 text-white bg-[linear-gradient(135deg,#0b0b12,#2a2a3d)] shadow-[0_10px_26px_rgba(11,11,18,.25)]">
-                <span className="text-[42px] font-black">5</span>
+                <span className="text-[42px] font-black">{BUNDLE_SIZE}</span>
                 <span className="text-[11px] font-extrabold uppercase tracking-[1.5px] not-italic">
                   ნივთი
                 </span>
@@ -416,7 +416,7 @@ const BundleLanding = () => {
             </>
           ) : (
             <p className="text-[13px] font-bold text-[#6f6f85]">
-              აირჩიე 5 პროდუქტი და ნახე რამდენს ზოგავ
+              აირჩიე {BUNDLE_SIZE} პროდუქტი და ნახე რამდენს ზოგავ
             </p>
           )}
         </div>
@@ -527,7 +527,7 @@ const BundleLanding = () => {
                   არჩეული: {n}/{BUNDLE_SIZE} {complete && "🎉"}
                 </span>
                 <span className="text-[12px] font-extrabold text-[#0b0b12] flex items-center gap-1.5">
-                  {BUNDLE_PRICE}₾ · <span className="text-[#00a15a]">უფასო მიტანა</span>
+                  {BUNDLE_PRICE}₾
                   <span className="text-[10px] font-extrabold text-[#6f6f85] bg-[#f2f2f7] rounded-full px-2 py-0.5">💵 კურიერთან</span>
                 </span>
               </div>
