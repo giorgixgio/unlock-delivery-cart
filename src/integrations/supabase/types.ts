@@ -2179,16 +2179,56 @@ export type Database = {
         }
         Relationships: []
       }
+      wholesale_documents: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          doc_type: string
+          file_name: string | null
+          file_url: string | null
+          id: string
+          warehouse: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          doc_type?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          warehouse: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          doc_type?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          warehouse?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wholesale_documents_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "wholesale_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wholesale_items: {
         Row: {
           alibaba_link: string | null
           batch_id: string | null
+          carton_count: number | null
           created_at: string
           id: string
           image_url: string | null
           listing_status: string
           logistics_stage: string
           notes: string | null
+          quantity: number | null
           selling_price: number | null
           sku: string
           storefront_product_id: string | null
@@ -2201,12 +2241,14 @@ export type Database = {
         Insert: {
           alibaba_link?: string | null
           batch_id?: string | null
+          carton_count?: number | null
           created_at?: string
           id?: string
           image_url?: string | null
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          quantity?: number | null
           selling_price?: number | null
           sku: string
           storefront_product_id?: string | null
@@ -2219,12 +2261,14 @@ export type Database = {
         Update: {
           alibaba_link?: string | null
           batch_id?: string | null
+          carton_count?: number | null
           created_at?: string
           id?: string
           image_url?: string | null
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          quantity?: number | null
           selling_price?: number | null
           sku?: string
           storefront_product_id?: string | null
@@ -2286,12 +2330,14 @@ export type Database = {
         Returns: {
           alibaba_link: string | null
           batch_id: string | null
+          carton_count: number | null
           created_at: string
           id: string
           image_url: string | null
           listing_status: string
           logistics_stage: string
           notes: string | null
+          quantity: number | null
           selling_price: number | null
           sku: string
           storefront_product_id: string | null
