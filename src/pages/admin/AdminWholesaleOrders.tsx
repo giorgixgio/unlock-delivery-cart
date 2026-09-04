@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check } from "lucide-react";
 
 type Warehouse = "A" | "B";
 
