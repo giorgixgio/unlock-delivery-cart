@@ -1213,6 +1213,8 @@ export default function OrderQuickReviewModal({
         submitting={saving}
         onCancel={() => { setCancelOpen(false); setCancelPreselect(null); }}
         onConfirm={handleCancelConfirm}
+        restoreStock={restoreStock}
+        onRestoreStockChange={setRestoreStock}
       />
       <CallbackPickerModal
         open={callbackOpen}
