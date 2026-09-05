@@ -52,6 +52,7 @@ interface UploadBatch {
   created_at: string | null;
   applied_at: string | null;
   matched: number | null;
+  store: string | null;
 }
 
 interface LabelGroup {
@@ -311,7 +312,7 @@ export default function AdminCourierLabels() {
     // Tracking imports are written by MassFulfillModal into import_batches
     // (+ import_staging_rows), not by the import-courier edge function.
     const { data, error } = await (supabase.from("import_batches") as any)
-      .select("id, file_name, created_at, applied_at, matched")
+      .select("id, file_name, created_at, applied_at, matched, store")
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) {
@@ -567,7 +568,16 @@ export default function AdminCourierLabels() {
 
   useEffect(() => {
     loadBatches();
-  }, []);
+  }, [labelStore]);
+
+  // Uploads tagged with another store are hidden; untagged legacy uploads
+  // (made before the multi-store split) stay visible, clearly marked.
+  const visibleBatches = batches.filter((b) => !labelStore || !b.store || b.store === labelStore);
+
+  // If the currently opened upload belongs to another store, fall back to all.
+  useEffect(() => {
+    if (activeBatch && !visibleBatches.some((b) => b.id === activeBatch)) setActiveBatch(null);
+  }, [labelStore, batches]);
 
   useEffect(() => {
     load(activeBatch);
@@ -766,7 +776,7 @@ export default function AdminCourierLabels() {
       <Card>
         <CardContent className="p-4 space-y-2">
           <h2 className="text-sm font-semibold">Recent uploads</h2>
-          {batches.length === 0 ? (
+          {visibleBatches.length === 0 ? (
             <p className="text-sm text-muted-foreground">No courier uploads yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -777,7 +787,7 @@ export default function AdminCourierLabels() {
               >
                 All tracked orders
               </Button>
-              {batches.map((b) => (
+              {visibleBatches.map((b) => (
                 <Button
                   key={b.id}
                   variant={activeBatch === b.id ? "default" : "outline"}
@@ -791,7 +801,10 @@ export default function AdminCourierLabels() {
                       return ts ? new Date(ts).toLocaleString() : "—";
                     })()}
                   </span>
-                  <span className="text-[11px] opacity-70">{b.matched ?? 0} orders</span>
+                  <span className="text-[11px] opacity-70">
+                    {b.matched ?? 0} orders
+                    {b.store ? "" : " · legacy"}
+                  </span>
 
                 </Button>
               ))}
