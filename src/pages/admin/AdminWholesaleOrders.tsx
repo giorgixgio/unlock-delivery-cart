@@ -160,6 +160,29 @@ const warehouseClass = (w: Warehouse) =>
 const gel = (n: number) =>
   `₾${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
+/** Manual FX rate — update this value if the USD→GEL rate changes. */
+const USD_TO_GEL = 2.65;
+
+const usd = (n: number) =>
+  `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const gelFromUsd = (n: number) =>
+  `₾${(n * USD_TO_GEL).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** USD hero amount with the converted GEL value underneath. */
+function DualPrice({ amountUsd, size = "sm" }: { amountUsd: number; size?: "sm" | "lg" }) {
+  return (
+    <div className="leading-tight">
+      <div className={size === "lg" ? "text-lg font-bold" : "text-sm font-bold text-foreground"}>
+        {usd(amountUsd)}
+      </div>
+      <div className={`${size === "lg" ? "text-sm" : "text-xs"} text-muted-foreground`}>
+        {gelFromUsd(amountUsd)}
+      </div>
+    </div>
+  );
+}
+
 /** Signed-URL cache for the private wholesale-images bucket. */
 const signedCache = new Map<string, string>();
 
