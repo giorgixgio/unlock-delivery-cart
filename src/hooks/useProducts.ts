@@ -198,14 +198,19 @@ export function useProducts() {
 }
 
 /**
- * Storefront-facing product list: only products verified by the warehouse.
+ * Storefront-facing product list: only verified products belonging to the
+ * warehouse of the visiting domain (trendmart.ge -> B, bigmart.ge -> A).
  * Admin surfaces keep using useProducts() to see everything.
  */
 export function useStorefrontProducts() {
   const { data, isLoading, error } = useProducts();
+  const warehouse = getSiteWarehouse();
   const filtered = useMemo(
-    () => (data ? data.filter(p => p.isVerified) : undefined),
-    [data]
+    () =>
+      data
+        ? data.filter(p => p.isVerified && (p.warehouse || "B") === warehouse)
+        : undefined,
+    [data, warehouse]
   );
   return { data: filtered, isLoading, error };
 }
