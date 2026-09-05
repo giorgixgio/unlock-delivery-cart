@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import PresentationSettingsPanel from "@/components/admin/PresentationSettingsPanel";
 import StaffPasswordPanel from "@/components/admin/StaffPasswordPanel";
+import SiteBrandingPanel from "@/components/admin/SiteBrandingPanel";
 
 interface AdminUser {
   id: string;
