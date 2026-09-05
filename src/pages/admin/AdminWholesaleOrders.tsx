@@ -865,6 +865,7 @@ const AdminWholesaleOrders = () => {
                     <EditableCell
                       value={it.title}
                       placeholder="Product title"
+                      className="min-w-[180px]"
                       onSave={(v) => patchItem(it.id, { title: v || null })}
                     />
                   </td>
@@ -873,6 +874,7 @@ const AdminWholesaleOrders = () => {
                       <EditableCell
                         value={it.alibaba_link}
                         placeholder="https://…"
+                        className="min-w-[160px]"
                         onSave={(v) => patchItem(it.id, { alibaba_link: v || null })}
                       />
                       {it.alibaba_link && (
@@ -886,6 +888,7 @@ const AdminWholesaleOrders = () => {
                     <EditableCell
                       value={it.alibaba_title}
                       placeholder="Seller's listing title"
+                      className="min-w-[160px]"
                       onSave={(v) => patchItem(it.id, { alibaba_title: v || null })}
                     />
                   </td>
@@ -894,14 +897,19 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.unit_price}
                       placeholder="0.00"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { unit_price: v === "" ? null : Number(v) })}
                     />
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {gelFromUsd(Number(it.unit_price) || 0)}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.selling_price}
                       placeholder="0.00"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { selling_price: v === "" ? null : Number(v) })}
                     />
                   </td>
@@ -910,6 +918,7 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.weight_kg}
                       placeholder="0.0"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { weight_kg: v === "" ? null : Number(v) })}
                     />
                   </td>
@@ -918,7 +927,7 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.quantity}
                       placeholder="1"
-                      className="min-w-[80px]"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
                     />
                   </td>
@@ -927,9 +936,12 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.carton_count}
                       placeholder="1"
-                      className="min-w-[80px]"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
                     />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DualPrice amountUsd={lineValueUsd(it)} />
                   </td>
                   <td className="px-4 py-3">
                     <Select
