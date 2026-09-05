@@ -226,6 +226,29 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
           </div>
 
           <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Store</label>
+            <div className="grid grid-cols-2 gap-2">
+              {STORE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setExportStore(opt.value)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    exportStore === opt.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Store className={`w-4 h-4 ${exportStore === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-bold text-sm">{opt.label}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Courier Service</label>
             <div className="grid grid-cols-2 gap-2">
               {COURIER_OPTIONS.map((opt) => (
@@ -248,7 +271,11 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
             </div>
           </div>
 
-          {loading ? (
+          {!exportStore ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Choose a store above to see its orders. Mixed-store exports aren't allowed.
+            </p>
+          ) : loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
