@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { applyOrderConfirmStock, applyOrderCancelStock } from "@/lib/stockService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,7 @@ export default function OrderQuickReviewModal({
   const [searching, setSearching] = useState(false);
 
   // Cancel + callback modals
+  const [restoreStock, setRestoreStock] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
   const [callbackOpen, setCallbackOpen] = useState(false);
@@ -560,6 +562,8 @@ export default function OrderQuickReviewModal({
     const ok = await persistUpdates(updates);
     if (!ok) { setSaving(false); return; }
 
+    if (def.isConfirmed === true) await applyOrderConfirmStock(order.id);
+
     markAction("outcome");
     await logSystemEvent({
       entityType: "order", entityId: order.id,
@@ -585,6 +589,7 @@ export default function OrderQuickReviewModal({
     );
     setSaving(false);
     if (!ok) { toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" }); return; }
+    await applyOrderCancelStock(order.id, restoreStock);
     markAction("cancel");
     setCancelOpen(false);
     setCancelPreselect(null);
