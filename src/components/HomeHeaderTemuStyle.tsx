@@ -161,6 +161,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
   const { openCart } = useCartOverlay();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const [internalVisible, setInternalVisible] = useState(true);
