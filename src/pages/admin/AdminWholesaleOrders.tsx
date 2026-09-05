@@ -760,7 +760,7 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1400px] text-sm">
+        <table className="w-full min-w-[1750px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3">
@@ -778,11 +778,12 @@ const AdminWholesaleOrders = () => {
               <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Alibaba link</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Alibaba title</th>
-              <th className="px-4 py-3 text-left w-28">Unit price</th>
-              <th className="px-4 py-3 text-left w-28">Selling price</th>
-              <th className="px-4 py-3 text-left w-24">Weight kg</th>
-              <th className="px-4 py-3 text-left w-24">Quantity</th>
-              <th className="px-4 py-3 text-left w-24">Cartons</th>
+              <th className="px-4 py-3 text-left min-w-[130px]">Unit Price (USD)</th>
+              <th className="px-4 py-3 text-left min-w-[120px]">Selling price</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Weight kg</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Quantity</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Cartons</th>
+              <th className="px-4 py-3 text-left min-w-[120px]">Line Total</th>
               <th className="px-4 py-3 text-left w-44">Stage</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
               <th className="px-4 py-3 text-left w-32">Listing</th>
