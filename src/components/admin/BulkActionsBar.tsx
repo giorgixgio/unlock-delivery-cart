@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { applyOrderConfirmStock, applyOrderCancelStock } from "@/lib/stockService";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Trash2, GitMerge, Loader2 } from "lucide-react";
@@ -23,6 +24,7 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"confirm" | "cancel" | "delete" | null>(null);
+  const [restoreStock, setRestoreStock] = useState(true);
 
   const selected = orders.filter(o => selectedIds.includes(o.id));
 
@@ -42,6 +44,7 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
           event_type: "bulk_confirm",
           payload: { previous_status: order.status } as any,
         });
+        await applyOrderConfirmStock(order.id);
         success++;
       } catch { /* skip conflicts */ }
     }
@@ -67,6 +70,7 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
           event_type: "bulk_cancel",
           payload: { previous_status: order.status } as any,
         });
+        await applyOrderCancelStock(order.id, restoreStock);
         success++;
       } catch { /* skip */ }
     }
@@ -146,6 +150,17 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
             <AlertDialogTitle>{confirmAction && actionLabels[confirmAction].title}</AlertDialogTitle>
             <AlertDialogDescription>{confirmAction && actionLabels[confirmAction].desc}</AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction === "cancel" && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={restoreStock}
+                onChange={(e) => setRestoreStock(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              Restore stock for cancelled items
+            </label>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={runAction} disabled={loading}>
