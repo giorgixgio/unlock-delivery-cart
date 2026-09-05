@@ -69,15 +69,27 @@ interface OrdersExportModalProps {
 }
 
 const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
+  const { activeStore } = useStore();
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [courier, setCourier] = useState<CourierService>("onway");
   const [typoRows, setTypoRows] = useState<TypoRow[]>([]);
   const [typoModalOpen, setTypoModalOpen] = useState(false);
+  // Per-export store choice. Inherits the global toggle when it's a specific
+  // store; "All Stores" means the operator must pick one before exporting.
+  const [exportStore, setExportStore] = useState<ExportStore | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (open) setExportStore(activeStore === "A" || activeStore === "B" ? activeStore : null);
+  }, [open, activeStore]);
+
+  useEffect(() => {
+    if (!open || !exportStore) {
+      setPreview(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     (async () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -85,7 +97,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       const { data: s } = await supabase.auth.getSession();
       const token = s?.session?.access_token || anon;
       try {
-        const r = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview`, {
+        const r = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview&store=${exportStore}`, {
           headers: { apikey: anon, Authorization: `Bearer ${token}` },
         });
         const data = await r.json();
@@ -94,7 +106,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
         setLoading(false);
       }
     })();
-  }, [open]);
+  }, [open, exportStore]);
 
   const performDownload = async () => {
     setDownloading(true);
