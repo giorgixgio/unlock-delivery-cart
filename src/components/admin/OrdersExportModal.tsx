@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, X, Truck } from "lucide-react";
+import { Loader2, Download, X, Truck, Store } from "lucide-react";
 import * as XLSX from "xlsx";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { suggestCity } from "@/lib/georgianCities";
 import CityTypoCorrectionModal, { TypoRow } from "@/components/admin/CityTypoCorrectionModal";
+import { useStore } from "@/contexts/StoreContext";
+
+type ExportStore = "A" | "B";
+
+const STORE_OPTIONS: { value: ExportStore; label: string; description: string }[] = [
+  { value: "B", label: "TrendMart", description: "Warehouse B orders only" },
+  { value: "A", label: "BigMart", description: "Warehouse A orders only" },
+];
 
 const ONWAY_COLUMN_HEADERS: Record<string, string> = {
   A: "Shipping First Name",
@@ -61,15 +69,27 @@ interface OrdersExportModalProps {
 }
 
 const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
+  const { activeStore } = useStore();
   const [preview, setPreview] = useState<ExportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [courier, setCourier] = useState<CourierService>("onway");
   const [typoRows, setTypoRows] = useState<TypoRow[]>([]);
   const [typoModalOpen, setTypoModalOpen] = useState(false);
+  // Per-export store choice. Inherits the global toggle when it's a specific
+  // store; "All Stores" means the operator must pick one before exporting.
+  const [exportStore, setExportStore] = useState<ExportStore | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (open) setExportStore(activeStore === "A" || activeStore === "B" ? activeStore : null);
+  }, [open, activeStore]);
+
+  useEffect(() => {
+    if (!open || !exportStore) {
+      setPreview(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     (async () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -77,7 +97,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       const { data: s } = await supabase.auth.getSession();
       const token = s?.session?.access_token || anon;
       try {
-        const r = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview`, {
+        const r = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=preview&store=${exportStore}`, {
           headers: { apikey: anon, Authorization: `Bearer ${token}` },
         });
         const data = await r.json();
@@ -86,9 +106,10 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
         setLoading(false);
       }
     })();
-  }, [open]);
+  }, [open, exportStore]);
 
   const performDownload = async () => {
+    if (!exportStore) return;
     setDownloading(true);
     const batchId = crypto.randomUUID();
     const fileName = `${courier}_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -97,7 +118,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const { data: s } = await supabase.auth.getSession();
       const token = s?.session?.access_token || anon;
-      const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download&courier=${courier}`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download&courier=${courier}&store=${exportStore}`, {
         headers: { apikey: anon, Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -205,6 +226,29 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
           </div>
 
           <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Store</label>
+            <div className="grid grid-cols-2 gap-2">
+              {STORE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setExportStore(opt.value)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    exportStore === opt.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Store className={`w-4 h-4 ${exportStore === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-bold text-sm">{opt.label}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Courier Service</label>
             <div className="grid grid-cols-2 gap-2">
               {COURIER_OPTIONS.map((opt) => (
@@ -227,7 +271,11 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
             </div>
           </div>
 
-          {loading ? (
+          {!exportStore ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Choose a store above to see its orders. Mixed-store exports aren't allowed.
+            </p>
+          ) : loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
