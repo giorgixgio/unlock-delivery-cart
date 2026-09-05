@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Star, Loader2, ImageIcon } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
+import { clearProductsCache } from "@/hooks/useProducts";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  defaultWarehouse?: "" | "A" | "B";
 }
 
 const BUCKET = "product-images";
@@ -26,7 +28,7 @@ function slugify(input: string): string {
     .slice(0, 80) || `product-${Date.now()}`;
 }
 
-const NewProductModal = ({ open, onClose, onCreated }: Props) => {
+const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Props) => {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [sku, setSku] = useState("");
@@ -39,15 +41,19 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
   const [primary, setPrimary] = useState<string>("");
   const [binLocation, setBinLocation] = useState("");
   const [isVerified, setIsVerified] = useState(true);
-  const [warehouse, setWarehouse] = useState<"" | "A" | "B">("");
+  const [warehouse, setWarehouse] = useState<"" | "A" | "B">(defaultWarehouse);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  useEffect(() => {
+    if (open) setWarehouse(defaultWarehouse);
+  }, [open, defaultWarehouse]);
+
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
-    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse("");
+    setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse(defaultWarehouse);
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
@@ -121,7 +127,7 @@ const NewProductModal = ({ open, onClose, onCreated }: Props) => {
       if (error) throw error;
 
       toast({ title: "Product created" });
-      localStorage.removeItem("bigmart-products-v6");
+      clearProductsCache();
       onCreated();
       reset();
       onClose();
