@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_preferences: {
+        Row: {
+          default_store: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          default_store?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          default_store?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_users: {
         Row: {
           created_at: string
