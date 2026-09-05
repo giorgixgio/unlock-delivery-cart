@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 import { openStickerPrintWindow, type StickerOrder } from "./StickerPrintView";
 import { openPackingListWindow } from "./PackingListView";
 import { createBatchFromOrderIds } from "@/lib/batchService";
+import { useStore } from "@/contexts/StoreContext";
 import { triggerFulfillmentSms, fetchSmsBalance, countEligibleFulfillmentTargets, type FulfillmentSmsTarget } from "@/lib/smsService";
 
 interface MassFulfillModalProps {
@@ -48,6 +49,9 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  // Tag each upload with the store it was made for; "All Stores" stays null
+  // so it is never wrongly attributed to one warehouse.
+  const { activeStore } = useStore();
   const [step, setStep] = useState<"upload" | "preview" | "applying" | "done">("upload");
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -285,6 +289,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       unmatched: summary?.unmatched || 0,
       errors: 0,
       status: "applying",
+      store: activeStore === "A" || activeStore === "B" ? activeStore : null,
     });
 
     // Stage all rows
