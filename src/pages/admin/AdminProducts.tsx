@@ -1409,6 +1409,18 @@ const AdminProducts = () => {
           onSaved={refreshProducts}
         />
       )}
+
+      {stockTarget && (
+        <StockAdjustModal
+          open={!!stockTarget}
+          onClose={() => setStockTarget(null)}
+          productId={stockTarget.id}
+          productTitle={stockTarget.title}
+          currentStock={stockMap[stockTarget.id] ?? 0}
+          reserved={reservedMap[stockTarget.id] ?? 0}
+          onUpdated={(newStock) => setStockMap((prev) => ({ ...prev, [stockTarget.id]: newStock }))}
+        />
+      )}
     </div>
   );
 };
