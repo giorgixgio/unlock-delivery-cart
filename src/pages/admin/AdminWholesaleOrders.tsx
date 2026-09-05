@@ -157,8 +157,28 @@ const warehouseClass = (w: Warehouse) =>
     ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
     : "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30";
 
-const gel = (n: number) =>
-  `₾${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+/** Manual FX rate — update this value if the USD→GEL rate changes. */
+const USD_TO_GEL = 2.65;
+
+const usd = (n: number) =>
+  `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const gelFromUsd = (n: number) =>
+  `₾${(n * USD_TO_GEL).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** USD hero amount with the converted GEL value underneath. */
+function DualPrice({ amountUsd, size = "sm" }: { amountUsd: number; size?: "sm" | "lg" }) {
+  return (
+    <div className="leading-tight">
+      <div className={size === "lg" ? "text-lg font-bold" : "text-sm font-bold text-foreground"}>
+        {usd(amountUsd)}
+      </div>
+      <div className={`${size === "lg" ? "text-sm" : "text-xs"} text-muted-foreground`}>
+        {gelFromUsd(amountUsd)}
+      </div>
+    </div>
+  );
+}
 
 /** Signed-URL cache for the private wholesale-images bucket. */
 const signedCache = new Map<string, string>();
@@ -378,16 +398,29 @@ const AdminWholesaleOrders = () => {
     return sorted;
   }, [items, warehouse, batchFilter, stageFilter, sortBy]);
 
+  const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
+
   const summary = useMemo(() => {
     const calc = (w: Warehouse) => {
       const rows = items.filter((i) => i.warehouse === w);
       return {
         count: rows.length,
-        value: rows.reduce((sum, r) => sum + (Number(r.unit_price) || 0), 0),
+        value: rows.reduce((sum, r) => sum + lineValueUsd(r), 0),
       };
     };
     return { A: calc("A"), B: calc("B") };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
+
+  /** Grand total across currently visible (filtered) rows. */
+  const filteredTotal = useMemo(
+    () => ({
+      count: visibleItems.length,
+      value: visibleItems.reduce((sum, r) => sum + lineValueUsd(r), 0),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleItems],
+  );
 
   const batchNumber = (id: string | null) =>
     batches.find((b) => b.id === id)?.batch_number ?? "—";
@@ -603,21 +636,21 @@ const AdminWholesaleOrders = () => {
         </div>
       </div>
 
-      {/* Summary strip */}
+      {/* Summary strip — values are USD (hero) with GEL conversion beneath. */}
       <div className="grid gap-3 sm:grid-cols-3">
         {(["A", "B"] as const).map((w) => (
           <div key={w} className={`rounded-xl border p-4 ${warehouseClass(w)}`}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Warehouse {w}</div>
-            <div className="mt-1 text-lg font-bold text-foreground">
-              {summary[w].count} items · {gel(summary[w].value)}
-            </div>
+            <div className="mt-1 text-sm text-foreground/80">{summary[w].count} items</div>
+            <DualPrice amountUsd={summary[w].value} size="lg" />
           </div>
         ))}
         <div className="rounded-xl border border-border p-4 bg-muted/30">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</div>
-          <div className="mt-1 text-lg font-bold">
-            {summary.A.count + summary.B.count} items · {gel(summary.A.value + summary.B.value)}
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Total (filtered)
           </div>
+          <div className="mt-1 text-sm text-muted-foreground">{filteredTotal.count} items</div>
+          <DualPrice amountUsd={filteredTotal.value} size="lg" />
         </div>
       </div>
 
@@ -724,10 +757,10 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1400px] text-sm">
+        <table className="w-full min-w-[1750px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="w-10 p-3">
+              <th className="w-10 px-4 py-3">
                 <Checkbox
                   checked={allChecked}
                   onCheckedChange={(c) =>
@@ -735,41 +768,42 @@ const AdminWholesaleOrders = () => {
                   }
                 />
               </th>
-              <th className="p-3 text-left w-20">Image</th>
-              <th className="p-3 text-left w-36">SKU</th>
-              <th className="p-3 text-left w-20">WH</th>
-              <th className="p-3 text-left w-40">Batch</th>
-              <th className="p-3 text-left min-w-[200px]">Title</th>
-              <th className="p-3 text-left min-w-[180px]">Alibaba link</th>
-              <th className="p-3 text-left min-w-[180px]">Alibaba title</th>
-              <th className="p-3 text-left w-28">Unit price</th>
-              <th className="p-3 text-left w-28">Selling price</th>
-              <th className="p-3 text-left w-24">Weight kg</th>
-              <th className="p-3 text-left w-24">Quantity</th>
-              <th className="p-3 text-left w-24">Cartons</th>
-              <th className="p-3 text-left w-44">Stage</th>
-              <th className="p-3 text-left min-w-[180px]">Notes</th>
-              <th className="p-3 text-left w-32">Listing</th>
-              <th className="p-3 text-left w-32">Storefront</th>
+              <th className="px-4 py-3 text-left w-20">Image</th>
+              <th className="px-4 py-3 text-left w-36">SKU</th>
+              <th className="px-4 py-3 text-left w-20">WH</th>
+              <th className="px-4 py-3 text-left w-40">Batch</th>
+              <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Alibaba link</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Alibaba title</th>
+              <th className="px-4 py-3 text-left min-w-[130px]">Unit Price (USD)</th>
+              <th className="px-4 py-3 text-left min-w-[120px]">Selling price</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Weight kg</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Quantity</th>
+              <th className="px-4 py-3 text-left min-w-[110px]">Cartons</th>
+              <th className="px-4 py-3 text-left min-w-[120px]">Line Total</th>
+              <th className="px-4 py-3 text-left w-44">Stage</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
+              <th className="px-4 py-3 text-left w-32">Listing</th>
+              <th className="px-4 py-3 text-left w-32">Storefront</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={17} className="p-8 text-center text-muted-foreground">
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={17} className="p-8 text-center text-muted-foreground">
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
             ) : (
               visibleItems.map((it) => (
                 <tr key={it.id} className="border-t border-border align-middle">
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Checkbox
                       checked={selected.has(it.id)}
                       onCheckedChange={(c) =>
@@ -782,14 +816,14 @@ const AdminWholesaleOrders = () => {
                       }
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <ItemImage
                       path={it.image_url}
                       uploading={uploadingId === it.id}
                       onUpload={(f) => uploadImage(it, f)}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <SkuCell
                       item={it}
                       groupItems={
@@ -800,12 +834,12 @@ const AdminWholesaleOrders = () => {
                       onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
                     </Badge>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Select
                       value={it.batch_id ?? ""}
                       onValueChange={(v) => patchItem(it.id, { batch_id: v })}
@@ -824,18 +858,20 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.title}
                       placeholder="Product title"
+                      className="min-w-[180px]"
                       onSave={(v) => patchItem(it.id, { title: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <EditableCell
                         value={it.alibaba_link}
                         placeholder="https://…"
+                        className="min-w-[160px]"
                         onSave={(v) => patchItem(it.id, { alibaba_link: v || null })}
                       />
                       {it.alibaba_link && (
@@ -845,56 +881,66 @@ const AdminWholesaleOrders = () => {
                       )}
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.alibaba_title}
                       placeholder="Seller's listing title"
+                      className="min-w-[160px]"
                       onSave={(v) => patchItem(it.id, { alibaba_title: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.unit_price}
                       placeholder="0.00"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { unit_price: v === "" ? null : Number(v) })}
                     />
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {gelFromUsd(Number(it.unit_price) || 0)}
+                    </div>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.selling_price}
                       placeholder="0.00"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { selling_price: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.weight_kg}
                       placeholder="0.0"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { weight_kg: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.quantity}
                       placeholder="1"
-                      className="min-w-[80px]"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.carton_count}
                       placeholder="1"
-                      className="min-w-[80px]"
+                      className="min-w-[90px]"
                       onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
+                    <DualPrice amountUsd={lineValueUsd(it)} />
+                  </td>
+                  <td className="px-4 py-3">
                     <Select
                       value={it.logistics_stage}
                       onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
@@ -915,14 +961,14 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.notes}
                       placeholder="Notes"
                       onSave={(v) => patchItem(it.id, { notes: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Badge
                       variant="outline"
                       className={
@@ -934,7 +980,7 @@ const AdminWholesaleOrders = () => {
                       {it.listing_status === "published" ? "Published" : "Not Listed"}
                     </Badge>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Button
                       size="sm"
                       variant={it.storefront_product_id ? "outline" : "secondary"}
