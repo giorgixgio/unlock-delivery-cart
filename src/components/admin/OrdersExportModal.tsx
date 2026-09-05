@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, X, Truck } from "lucide-react";
+import { Loader2, Download, X, Truck, Store } from "lucide-react";
 import * as XLSX from "xlsx";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { suggestCity } from "@/lib/georgianCities";
 import CityTypoCorrectionModal, { TypoRow } from "@/components/admin/CityTypoCorrectionModal";
+import { useStore } from "@/contexts/StoreContext";
+
+type ExportStore = "A" | "B";
+
+const STORE_OPTIONS: { value: ExportStore; label: string; description: string }[] = [
+  { value: "B", label: "TrendMart", description: "Warehouse B orders only" },
+  { value: "A", label: "BigMart", description: "Warehouse A orders only" },
+];
 
 const ONWAY_COLUMN_HEADERS: Record<string, string> = {
   A: "Shipping First Name",
