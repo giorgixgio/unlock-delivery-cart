@@ -750,7 +750,7 @@ const AdminWholesaleOrders = () => {
         <table className="w-full min-w-[1400px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="w-10 p-3">
+              <th className="w-10 px-4 py-3">
                 <Checkbox
                   checked={allChecked}
                   onCheckedChange={(c) =>
@@ -758,22 +758,22 @@ const AdminWholesaleOrders = () => {
                   }
                 />
               </th>
-              <th className="p-3 text-left w-20">Image</th>
-              <th className="p-3 text-left w-36">SKU</th>
-              <th className="p-3 text-left w-20">WH</th>
-              <th className="p-3 text-left w-40">Batch</th>
-              <th className="p-3 text-left min-w-[200px]">Title</th>
-              <th className="p-3 text-left min-w-[180px]">Alibaba link</th>
-              <th className="p-3 text-left min-w-[180px]">Alibaba title</th>
-              <th className="p-3 text-left w-28">Unit price</th>
-              <th className="p-3 text-left w-28">Selling price</th>
-              <th className="p-3 text-left w-24">Weight kg</th>
-              <th className="p-3 text-left w-24">Quantity</th>
-              <th className="p-3 text-left w-24">Cartons</th>
-              <th className="p-3 text-left w-44">Stage</th>
-              <th className="p-3 text-left min-w-[180px]">Notes</th>
-              <th className="p-3 text-left w-32">Listing</th>
-              <th className="p-3 text-left w-32">Storefront</th>
+              <th className="px-4 py-3 text-left w-20">Image</th>
+              <th className="px-4 py-3 text-left w-36">SKU</th>
+              <th className="px-4 py-3 text-left w-20">WH</th>
+              <th className="px-4 py-3 text-left w-40">Batch</th>
+              <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Alibaba link</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Alibaba title</th>
+              <th className="px-4 py-3 text-left w-28">Unit price</th>
+              <th className="px-4 py-3 text-left w-28">Selling price</th>
+              <th className="px-4 py-3 text-left w-24">Weight kg</th>
+              <th className="px-4 py-3 text-left w-24">Quantity</th>
+              <th className="px-4 py-3 text-left w-24">Cartons</th>
+              <th className="px-4 py-3 text-left w-44">Stage</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
+              <th className="px-4 py-3 text-left w-32">Listing</th>
+              <th className="px-4 py-3 text-left w-32">Storefront</th>
             </tr>
           </thead>
           <tbody>
@@ -792,7 +792,7 @@ const AdminWholesaleOrders = () => {
             ) : (
               visibleItems.map((it) => (
                 <tr key={it.id} className="border-t border-border align-middle">
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Checkbox
                       checked={selected.has(it.id)}
                       onCheckedChange={(c) =>
@@ -805,14 +805,14 @@ const AdminWholesaleOrders = () => {
                       }
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <ItemImage
                       path={it.image_url}
                       uploading={uploadingId === it.id}
                       onUpload={(f) => uploadImage(it, f)}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <SkuCell
                       item={it}
                       groupItems={
@@ -823,12 +823,12 @@ const AdminWholesaleOrders = () => {
                       onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
                     </Badge>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Select
                       value={it.batch_id ?? ""}
                       onValueChange={(v) => patchItem(it.id, { batch_id: v })}
@@ -847,14 +847,14 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.title}
                       placeholder="Product title"
                       onSave={(v) => patchItem(it.id, { title: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <EditableCell
                         value={it.alibaba_link}
@@ -868,14 +868,14 @@ const AdminWholesaleOrders = () => {
                       )}
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.alibaba_title}
                       placeholder="Seller's listing title"
                       onSave={(v) => patchItem(it.id, { alibaba_title: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.unit_price}
@@ -883,7 +883,7 @@ const AdminWholesaleOrders = () => {
                       onSave={(v) => patchItem(it.id, { unit_price: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.selling_price}
@@ -891,7 +891,7 @@ const AdminWholesaleOrders = () => {
                       onSave={(v) => patchItem(it.id, { selling_price: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.weight_kg}
@@ -899,7 +899,7 @@ const AdminWholesaleOrders = () => {
                       onSave={(v) => patchItem(it.id, { weight_kg: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.quantity}
@@ -908,7 +908,7 @@ const AdminWholesaleOrders = () => {
                       onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       type="number"
                       value={it.carton_count}
@@ -917,7 +917,7 @@ const AdminWholesaleOrders = () => {
                       onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Select
                       value={it.logistics_stage}
                       onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
@@ -938,14 +938,14 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <EditableCell
                       value={it.notes}
                       placeholder="Notes"
                       onSave={(v) => patchItem(it.id, { notes: v || null })}
                     />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Badge
                       variant="outline"
                       className={
@@ -957,7 +957,7 @@ const AdminWholesaleOrders = () => {
                       {it.listing_status === "published" ? "Published" : "Not Listed"}
                     </Badge>
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <Button
                       size="sm"
                       variant={it.storefront_product_id ? "outline" : "secondary"}
