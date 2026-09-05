@@ -125,8 +125,8 @@ function saveToLocalCache(products: Product[]) {
   }
 }
 
-async function fetchAllProducts(): Promise<Product[]> {
-  const cached = getFromLocalCache();
+async function fetchAllProducts(skipCache = false): Promise<Product[]> {
+  const cached = skipCache ? null : getFromLocalCache();
   if (cached) return cached;
 
 
@@ -182,11 +182,13 @@ async function fetchAllProducts(): Promise<Product[]> {
  * Returns products with stock overrides applied reactively.
  * When an admin toggles stock, ALL mounted components update instantly.
  */
-export function useProducts() {
+export function useProducts(options?: { fresh?: boolean }) {
+  const fresh = options?.fresh ?? false;
   const { data: rawProducts, isLoading, error } = useQuery({
     queryKey: ["bigmart-products"],
-    queryFn: fetchAllProducts,
-    staleTime: 10 * 60 * 1000,
+    queryFn: () => fetchAllProducts(fresh),
+    staleTime: fresh ? 0 : 10 * 60 * 1000,
+    refetchOnMount: fresh ? "always" : undefined,
     gcTime: 30 * 60 * 1000,
     // Paint the last known catalog immediately, refresh it in the background
     placeholderData: () => readCache()?.data,
