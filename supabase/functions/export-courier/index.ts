@@ -118,24 +118,40 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: ordersErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Load bin locations for single-SKU pick-path sorting.
-    //    Degrades gracefully if the bin_location column isn't there yet.
+    // ── Load bin locations (+ warehouse when a store filter is active) for
+    //    single-SKU pick-path sorting. Degrades gracefully if columns are missing.
     const allSkus = [...new Set((ordersRaw || []).flatMap((o: any) => (o.order_items || []).map((i: any) => String(i.sku || "")).filter(Boolean)))];
     const binBySku: Record<string, string> = {};
+    const whBySku: Record<string, "A" | "B"> = {};
     if (allSkus.length) {
       let prods: any = null;
-      const first = await supabase.from("products").select("sku, bin_location").in("sku", allSkus);
+      const first = await supabase.from("products").select("sku, bin_location, warehouse").in("sku", allSkus);
       if (first.error) {
         const fallback = await supabase.from("products").select("sku").in("sku", allSkus);
         prods = fallback.data;
       } else {
         prods = first.data;
       }
-      for (const p of prods || []) binBySku[String(p.sku)] = String((p as any).bin_location ?? "");
+      for (const p of prods || []) {
+        binBySku[String(p.sku)] = String((p as any).bin_location ?? "");
+        const wh = String((p as any).warehouse ?? "").toUpperCase();
+        whBySku[String(p.sku)] = wh === "A" ? "A" : "B";
+      }
     }
 
+    // ── Store filter: keep only orders containing an item from the chosen
+    //    warehouse. Unmatched/legacy SKUs default to Warehouse B — matching
+    //    the admin store-filter convention. Orders with no items count as B.
+    const ordersForStore = store
+      ? (ordersRaw || []).filter((o: any) => {
+          const items = o.order_items || [];
+          if (!items.length) return store === "B";
+          return items.some((i: any) => (whBySku[String(i.sku || "")] ?? "B") === store);
+        })
+      : (ordersRaw || []);
+
     // ── Classify + compute primary SKU + bin for each order.
-    const meta = (ordersRaw || []).map((o: any) => {
+    const meta = (ordersForStore || []).map((o: any) => {
       const items = o.order_items || [];
       const skus = new Set(items.map((i: any) => String(i.sku || "")));
       const primary = [...items]
