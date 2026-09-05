@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Loader2, Tags, CheckCircle2, Clock, RotateCcw, Undo2 } from "lucide-react";
+import { Printer, Loader2, Tags, CheckCircle2, Clock, RotateCcw, Undo2, Store } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
+import { useStore } from "@/contexts/StoreContext";
+
+type LabelStore = "A" | "B";
+
+const STORE_OPTIONS: { value: LabelStore; label: string; description: string }[] = [
+  { value: "B", label: "TrendMart", description: "Warehouse B orders only" },
+  { value: "A", label: "BigMart", description: "Warehouse A orders only" },
+];
 
 /**
  * Print courier shipping labels for orders that already have a tracking
@@ -101,6 +109,16 @@ export default function AdminCourierLabels() {
   const [groups, setGroups] = useState<LabelGroup[]>([]);
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
+
+  // Per-screen store choice. Inherits the global toggle when it points at a
+  // specific store; "All Stores" means the operator must pick one here first.
+  const { activeStore } = useStore();
+  const [labelStore, setLabelStore] = useState<LabelStore | null>(null);
+  useEffect(() => {
+    setLabelStore(activeStore === "A" || activeStore === "B" ? activeStore : null);
+  }, [activeStore]);
+  /** Rows kept after warehouse matching — drives every group/print action. */
+  const [storeRows, setStoreRows] = useState<Row[]>([]);
 
   /** Every destructive / logged action goes through a confirmation popup. */
   const [confirmState, setConfirmState] = useState<{
@@ -353,6 +371,47 @@ export default function AdminCourierLabels() {
     }
   };
 
+  // ── Store filter: keep only orders containing an item from the chosen
+  //    warehouse. Unmatched/legacy SKUs default to Warehouse B — matching the
+  //    admin store-filter / courier-export convention. Empty-item orders = B.
+  const filterByStore = async (list: Row[], store: LabelStore | null): Promise<Row[]> => {
+    if (!store || list.length === 0) return [];
+    const ids = list.map((r) => r.id);
+    const CHUNK = 200;
+    const skusByOrder = new Map<string, string[]>();
+    const allSkus = new Set<string>();
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const { data, error } = await (supabase.from("order_items") as any)
+        .select("order_id, sku")
+        .in("order_id", ids.slice(i, i + CHUNK));
+      if (error) throw error;
+      ((data as any[]) || []).forEach((it) => {
+        const sku = String(it.sku || "");
+        const arr = skusByOrder.get(it.order_id) || [];
+        arr.push(sku);
+        skusByOrder.set(it.order_id, arr);
+        if (sku) allSkus.add(sku);
+      });
+    }
+    const whBySku = new Map<string, "A" | "B">();
+    const skus = Array.from(allSkus);
+    for (let i = 0; i < skus.length; i += CHUNK) {
+      const { data, error } = await (supabase.from("products") as any)
+        .select("sku, warehouse")
+        .in("sku", skus.slice(i, i + CHUNK));
+      if (error) throw error;
+      ((data as any[]) || []).forEach((p) => {
+        const wh = String((p as any).warehouse ?? "").toUpperCase();
+        whBySku.set(String(p.sku), wh === "A" ? "A" : "B");
+      });
+    }
+    return list.filter((r) => {
+      const items = skusByOrder.get(r.id) || [];
+      if (!items.length) return store === "B";
+      return items.some((sku) => (whBySku.get(sku) ?? "B") === store);
+    });
+  };
+
   // Build print groups from the round/slot code already printed on the slip:
   //  - courier_label_text starting with "[R##-##]" => that round, that slot
   //  - everything else => "Singles" (sorted by SKU ascending)
@@ -515,9 +574,30 @@ export default function AdminCourierLabels() {
     setSelected(new Set());
   }, [activeBatch]);
 
+  // Re-apply the store filter whenever the loaded orders or the chosen store
+  // changes. Clears any selection so labels can't mix stores by accident.
   useEffect(() => {
-    buildGroups(rows);
-  }, [rows]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const filtered = await filterByStore(rows, labelStore);
+        if (cancelled) return;
+        setStoreRows(filtered);
+        setSelected(new Set());
+      } catch (e: any) {
+        if (!cancelled) {
+          toast({ title: "Store filter failed", description: e.message, variant: "destructive" });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rows, labelStore]);
+
+  useEffect(() => {
+    buildGroups(storeRows);
+  }, [storeRows]);
 
 
   const toggle = (id: string) => {
@@ -530,7 +610,9 @@ export default function AdminCourierLabels() {
   };
 
   const toggleAll = () => {
-    setSelected((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
+    setSelected((prev) =>
+      prev.size === storeRows.length ? new Set() : new Set(storeRows.map((r) => r.id))
+    );
   };
 
   const toLabelOrder = (r: Row): CourierLabelOrder => ({
@@ -546,13 +628,13 @@ export default function AdminCourierLabels() {
 
   const term = search.trim().toLowerCase();
   const visibleRows = term
-    ? rows.filter((r) =>
+    ? storeRows.filter((r) =>
         [r.public_order_number, r.customer_phone, r.tracking_number, r.normalized_city, r.raw_city]
           .some((v) => (v || "").toLowerCase().includes(term))
       )
-    : rows;
+    : storeRows;
 
-  const selectedRows = rows.filter((r) => selected.has(r.id));
+  const selectedRows = storeRows.filter((r) => selected.has(r.id));
 
   const handleDownload = async () => {
     setGenerating(true);
