@@ -17,6 +17,8 @@ import * as XLSX from "xlsx";
 import ProductImageManager from "@/components/admin/ProductImageManager";
 import NewProductModal from "@/components/admin/NewProductModal";
 import { clearProductsCache } from "@/hooks/useProducts";
+import StockAdjustModal from "@/components/admin/StockAdjustModal";
+import { fetchStockQuantities, fetchReservedQuantities } from "@/lib/stockService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
@@ -158,6 +160,20 @@ const ClassifyButton = () => {
 
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts({ fresh: true });
+  const [stockMap, setStockMap] = useState<Record<string, number>>({});
+  const [reservedMap, setReservedMap] = useState<Record<string, number>>({});
+  const [stockTarget, setStockTarget] = useState<{ id: string; title: string } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const [stock, reserved] = await Promise.all([fetchStockQuantities(), fetchReservedQuantities()]);
+      if (!alive) return;
+      setStockMap(stock);
+      setReservedMap(reserved);
+    })();
+    return () => { alive = false; };
+  }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { role } = useAdminAuth();
@@ -680,6 +696,7 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">SKU</th>
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
+            <th className="text-left px-3 py-3 font-bold">Stock</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
             <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
