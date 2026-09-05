@@ -570,9 +570,13 @@ export default function AdminCourierLabels() {
     loadBatches();
   }, [labelStore]);
 
-  // Uploads tagged with another store are hidden; untagged legacy uploads
-  // (made before the multi-store split) stay visible, clearly marked.
-  const visibleBatches = batches.filter((b) => !labelStore || !b.store || b.store === labelStore);
+  // Uploads tagged with another store are hidden. Untagged legacy uploads
+  // (made before the multi-store split) are treated as TrendMart (Warehouse B),
+  // matching how all other pre-split data defaults to Warehouse B.
+  const visibleBatches = batches.filter((b) => {
+    const effectiveStore = b.store ?? "B";
+    return !labelStore || effectiveStore === labelStore;
+  });
 
   // If the currently opened upload belongs to another store, fall back to all.
   useEffect(() => {
@@ -803,7 +807,6 @@ export default function AdminCourierLabels() {
                   </span>
                   <span className="text-[11px] opacity-70">
                     {b.matched ?? 0} orders
-                    {b.store ? "" : " · legacy"}
                   </span>
 
                 </Button>
