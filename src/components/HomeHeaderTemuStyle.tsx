@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import logoSrc from "@/assets/logo.png";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, User, ShoppingCart, Check, DollarSign, Shield, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -219,7 +220,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex-shrink-0"
             >
-              <img src={logoSrc} alt="TrendMart" className="h-10 md:h-12 w-auto" />
+              <img src={siteLogo || logoSrc} alt={siteName} className="h-10 md:h-12 w-auto" />
             </button>
 
             <button
