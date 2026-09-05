@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Trash2, Star, Loader2, ImageIcon } from "lucide-react";
+import { Upload, Trash2, Star, Loader2, ImageIcon, Link2, Sparkles, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { clearProductsCache } from "@/hooks/useProducts";
 
@@ -45,6 +45,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [sourceLink, setSourceLink] = useState("");
+  const [keyFeatures, setKeyFeatures] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (open) setWarehouse(defaultWarehouse);
@@ -54,6 +58,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
     setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse(defaultWarehouse);
+    setSourceLink(""); setKeyFeatures("");
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
@@ -88,6 +93,66 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     e.preventDefault(); setDragOver(false);
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
     if (files.length) uploadFiles(files);
+  };
+
+  const handleFetchInfo = async () => {
+    const url = sourceLink.trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      return toast({ title: "Paste a valid link first", variant: "destructive" });
+    }
+    setFetching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-product-info", { body: { url } });
+      if (error) throw error;
+      if (!data?.ok) {
+        toast({
+          title: "Couldn't auto-fetch details",
+          description: "You can still generate a description from the title and key features below.",
+        });
+        return;
+      }
+      let filled = 0;
+      if (data.title && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
+      if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
+      if (data.image && images.length === 0) {
+        setImages([String(data.image)]);
+        setPrimary(String(data.image));
+        filled++;
+      }
+      toast({
+        title: filled ? `Filled ${filled} empty field${filled > 1 ? "s" : ""}` : "Nothing new to fill",
+        description: filled ? undefined : "Your existing values were kept as-is.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Couldn't auto-fetch details",
+        description: "You can still generate a description from the title and key features below.",
+      });
+    } finally { setFetching(false); }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!title.trim() && !keyFeatures.trim() && !description.trim()) {
+      return toast({ title: "Add a title or key features first", variant: "destructive" });
+    }
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-description", {
+        body: {
+          title: title.trim(),
+          features: keyFeatures.trim(),
+          existing_description: description.trim(),
+          source_url: sourceLink.trim(),
+          price: price.trim() ? parseFloat(price) : null,
+        },
+      });
+      if (error) throw error;
+      if (data?.error || !data?.description) throw new Error(data?.error || "No description returned");
+      setDescription(String(data.description));
+      toast({ title: "Description generated" });
+    } catch (err: any) {
+      toast({ title: "Generation failed", description: err?.message || "Try again", variant: "destructive" });
+    } finally { setGenerating(false); }
   };
 
   const handleSave = async () => {
@@ -193,8 +258,51 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
             <Input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="Brand" />
           </div>
           <div className="md:col-span-2">
-            <Label className="text-xs font-bold">Description</Label>
-            <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Label className="text-xs font-bold">Source link</Label>
+            <div className="flex gap-2">
+              <Input
+                value={sourceLink}
+                onChange={(e) => setSourceLink(e.target.value)}
+                placeholder="https://... (Temu, AliExpress, etc.) — optional"
+              />
+              <Button type="button" variant="outline" onClick={handleFetchInfo} disabled={fetching}>
+                {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                <span className="ml-2 hidden sm:inline">Fetch info</span>
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Only fills fields that are still empty — nothing you typed gets overwritten.
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs font-bold">Key features</Label>
+            <Textarea
+              rows={2}
+              value={keyFeatures}
+              onChange={(e) => setKeyFeatures(e.target.value)}
+              placeholder="wireless, waterproof, USB-C charging — optional, helps the AI"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <Label className="text-xs font-bold">Description</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant={description.trim() ? "outline" : "default"}
+                onClick={handleGenerateDescription}
+                disabled={generating}
+              >
+                {generating ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating…</>
+                ) : description.trim() ? (
+                  <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>
+                ) : (
+                  <><Sparkles className="w-4 h-4 mr-2" /> Generate description</>
+                )}
+              </Button>
+            </div>
+            <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div className="md:col-span-2">
             <label className="flex items-center gap-2 cursor-pointer select-none">
