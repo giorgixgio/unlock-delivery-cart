@@ -54,7 +54,10 @@ export function useSiteBranding(): SiteConfig {
     const root = document.documentElement;
     if (base.primaryColor) root.style.setProperty("--brand-primary", base.primaryColor);
     if (base.accentColor) root.style.setProperty("--brand-accent", base.accentColor);
-    document.title = base.siteName;
+    // Only rebrand the tab title for the BigMart domain; TrendMart keeps today's titles.
+    if (base.warehouse === "A") {
+      document.title = document.title.replace(/TrendMart/gi, base.siteName) || base.siteName;
+    }
   }, [base.primaryColor, base.accentColor, base.siteName]);
 
   return { ...base, logoUrl };
