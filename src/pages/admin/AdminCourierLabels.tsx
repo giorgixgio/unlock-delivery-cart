@@ -652,7 +652,32 @@ export default function AdminCourierLabels() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Courier labels</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Courier labels</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Store</span>
+          {STORE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              variant={labelStore === opt.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLabelStore(opt.value)}
+              title={opt.description}
+            >
+              <Store className="mr-1.5 h-3.5 w-3.5" />
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {!labelStore && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="p-3 text-sm">
+            Choose a store (TrendMart or BigMart) to see and print its labels. Mixed-store label
+            batches aren't allowed.
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Live packer status (shared across all devices, realtime) ── */}
       <Card className="border-primary/40">
