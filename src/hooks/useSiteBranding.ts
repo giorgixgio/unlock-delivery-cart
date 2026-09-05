@@ -54,7 +54,7 @@ export function useSiteBranding(): SiteConfig {
     const root = document.documentElement;
     if (base.primaryColor) root.style.setProperty("--brand-primary", base.primaryColor);
     if (base.accentColor) root.style.setProperty("--brand-accent", base.accentColor);
-    document.title = `${base.siteName} — ${document.title.split("—").slice(1).join("—").trim() || base.siteName}`;
+    }, [base.primaryColor, base.accentColor]);
   }, [base.primaryColor, base.accentColor, base.siteName]);
 
   return { ...base, logoUrl };
