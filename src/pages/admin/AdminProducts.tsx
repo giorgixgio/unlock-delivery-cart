@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/useProducts";
 import { setStockOverride, getStockOverrides } from "@/lib/stockOverrideStore";
@@ -17,6 +17,8 @@ import * as XLSX from "xlsx";
 import ProductImageManager from "@/components/admin/ProductImageManager";
 import NewProductModal from "@/components/admin/NewProductModal";
 import { clearProductsCache } from "@/hooks/useProducts";
+import StockAdjustModal from "@/components/admin/StockAdjustModal";
+import { fetchStockQuantities, fetchReservedQuantities } from "@/lib/stockService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
@@ -158,6 +160,20 @@ const ClassifyButton = () => {
 
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts({ fresh: true });
+  const [stockMap, setStockMap] = useState<Record<string, number>>({});
+  const [reservedMap, setReservedMap] = useState<Record<string, number>>({});
+  const [stockTarget, setStockTarget] = useState<{ id: string; title: string } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const [stock, reserved] = await Promise.all([fetchStockQuantities(), fetchReservedQuantities()]);
+      if (!alive) return;
+      setStockMap(stock);
+      setReservedMap(reserved);
+    })();
+    return () => { alive = false; };
+  }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { role } = useAdminAuth();
@@ -680,6 +696,7 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">SKU</th>
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
+            <th className="text-left px-3 py-3 font-bold">Stock</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
             <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
@@ -872,6 +889,21 @@ const AdminProducts = () => {
                       </button>
                     </div>
                   )}
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    className="text-left hover:underline"
+                    title="Adjust stock"
+                    onClick={() => setStockTarget({ id: row.productId, title: row.title })}
+                  >
+                    <span className="font-bold">{stockMap[row.productId] ?? 0}</span>
+                    <span className="text-muted-foreground"> in stock</span>
+                    {(reservedMap[row.productId] || 0) > 0 && (
+                      <span className="block text-[11px] text-muted-foreground">
+                        · {reservedMap[row.productId]} reserved (confirmed, not yet shipped)
+                      </span>
+                    )}
+                  </button>
                 </td>
                 <td className="px-3 py-2">
                   <button
@@ -1375,6 +1407,18 @@ const AdminProducts = () => {
           currentImage={imageManagerProduct.image}
           currentImages={(products || []).find((p) => p.id === imageManagerProduct.productId)?.images || []}
           onSaved={refreshProducts}
+        />
+      )}
+
+      {stockTarget && (
+        <StockAdjustModal
+          open={!!stockTarget}
+          onClose={() => setStockTarget(null)}
+          productId={stockTarget.id}
+          productTitle={stockTarget.title}
+          currentStock={stockMap[stockTarget.id] ?? 0}
+          reserved={reservedMap[stockTarget.id] ?? 0}
+          onUpdated={(newStock) => setStockMap((prev) => ({ ...prev, [stockTarget.id]: newStock }))}
         />
       )}
     </div>

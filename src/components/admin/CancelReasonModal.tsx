@@ -13,11 +13,14 @@ interface Props {
   submitting?: boolean;
   onCancel: () => void;
   onConfirm: (reason: CancelReason, note: string | null) => void;
+  /** Optional stock restore choice (shown only when provided) */
+  restoreStock?: boolean;
+  onRestoreStockChange?: (value: boolean) => void;
 }
 
 export default function CancelReasonModal({
   open, orderNumber, callAttemptCount, maxAttempts = DEFAULT_MAX_CALL_ATTEMPTS,
-  preselect, submitting, onCancel, onConfirm,
+  preselect, submitting, onCancel, onConfirm, restoreStock, onRestoreStockChange,
 }: Props) {
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [note, setNote] = useState("");
@@ -112,6 +115,17 @@ export default function CancelReasonModal({
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[70px]"
               />
             </div>
+          )}
+          {onRestoreStockChange && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none pt-2">
+              <input
+                type="checkbox"
+                checked={restoreStock ?? true}
+                onChange={(e) => onRestoreStockChange(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              მარაგის დაბრუნება გაუქმებულ ნივთებზე
+            </label>
           )}
         </div>
 

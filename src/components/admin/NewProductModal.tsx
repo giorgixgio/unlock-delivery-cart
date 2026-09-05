@@ -40,6 +40,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
   const [images, setImages] = useState<string[]>([]);
   const [primary, setPrimary] = useState<string>("");
   const [binLocation, setBinLocation] = useState("");
+  const [stockQuantity, setStockQuantity] = useState("0");
   const [isVerified, setIsVerified] = useState(true);
   const [warehouse, setWarehouse] = useState<"" | "A" | "B">(defaultWarehouse);
   const [uploading, setUploading] = useState(false);
@@ -58,7 +59,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
     setCategory("uncategorized"); setVendor(""); setDescription("");
     setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse(defaultWarehouse);
-    setSourceLink(""); setKeyFeatures("");
+    setSourceLink(""); setKeyFeatures(""); setStockQuantity("0");
   };
 
   const handleClose = () => { if (!saving && !uploading) { reset(); onClose(); } };
@@ -184,6 +185,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
         id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
         image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
         description: description.trim(), tags: [], available: true,
+        stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
         is_verified: isVerified, warehouse,
       };
       if (binLocation.trim()) payload.bin_location = binLocation.trim();
@@ -216,6 +218,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
           <div>
             <Label className="text-xs font-bold">SKU *</Label>
             <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="ABC-123" className="font-mono" />
+          </div>
+          <div>
+            <Label className="text-xs font-bold">Stock quantity</Label>
+            <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} />
           </div>
           <div>
             <Label className="text-xs font-bold">Bin location</Label>

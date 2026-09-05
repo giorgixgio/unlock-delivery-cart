@@ -1775,6 +1775,7 @@ export type Database = {
           sku_locked: boolean
           sku_reassigned: boolean
           sku_reassigned_at: string | null
+          stock_quantity: number
           synced_at: string
           tags: string[]
           title: string
@@ -1802,6 +1803,7 @@ export type Database = {
           sku_locked?: boolean
           sku_reassigned?: boolean
           sku_reassigned_at?: string | null
+          stock_quantity?: number
           synced_at?: string
           tags?: string[]
           title?: string
@@ -1829,6 +1831,7 @@ export type Database = {
           sku_locked?: boolean
           sku_reassigned?: boolean
           sku_reassigned_at?: string | null
+          stock_quantity?: number
           synced_at?: string
           tags?: string[]
           title?: string
@@ -1969,6 +1972,56 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      stock_activity_log: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          changed_by_email: string | null
+          comment: string | null
+          created_at: string
+          delta: number
+          id: string
+          new_value: number | null
+          order_id: string | null
+          previous_value: number | null
+          product_id: string | null
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          comment?: string | null
+          created_at?: string
+          delta?: number
+          id?: string
+          new_value?: number | null
+          order_id?: string | null
+          previous_value?: number | null
+          product_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          comment?: string | null
+          created_at?: string
+          delta?: number
+          id?: string
+          new_value?: number | null
+          order_id?: string | null
+          previous_value?: number | null
+          product_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_activity_log_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stockout_attempts: {
         Row: {
@@ -2317,6 +2370,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_product_stock: {
+        Args: {
+          p_comment?: string
+          p_mode: string
+          p_product_id: string
+          p_value: number
+        }
+        Returns: {
+          new_value: number
+          previous_value: number
+        }[]
+      }
+      apply_order_cancel_stock: {
+        Args: { p_order_id: string; p_restore?: boolean }
+        Returns: number
+      }
+      apply_order_confirm_stock: {
+        Args: { p_order_id: string }
+        Returns: number
+      }
       assign_packing_run_slots: {
         Args: { actor: string; p_slot_count: number; p_wave_id: string }
         Returns: {
