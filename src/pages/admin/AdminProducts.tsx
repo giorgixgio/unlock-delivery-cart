@@ -157,7 +157,7 @@ const ClassifyButton = () => {
 };
 
 const AdminProducts = () => {
-  const { data: products, isLoading } = useProducts();
+  const { data: products, isLoading } = useProducts({ fresh: true });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { role } = useAdminAuth();
