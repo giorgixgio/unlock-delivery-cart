@@ -37,7 +37,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
       if (cancelled) return;
       const saved = data?.default_store as AdminStore | null | undefined;
-      if (!error && (saved === "A" || saved === "B" || saved === "ALL")) {
+      if (error) {
+        console.error("Unable to load the admin store preference", error);
+        setPickerOpen(false);
+      } else if (saved === "A" || saved === "B" || saved === "ALL") {
         setDefaultStore(saved);
         setActiveStore(saved);
         setPickerOpen(false);

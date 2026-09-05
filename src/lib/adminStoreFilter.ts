@@ -3,11 +3,16 @@ import type { AdminStore } from "@/contexts/StoreContext";
 
 const CHUNK_SIZE = 400;
 let productWarehousePromise: Promise<Map<string, "A" | "B">> | null = null;
+let productWarehouseLoadedAt = 0;
+const PRODUCT_WAREHOUSE_CACHE_MS = 60_000;
 
 const chunks = <T,>(rows: T[], size = CHUNK_SIZE) =>
   Array.from({ length: Math.ceil(rows.length / size) }, (_, i) => rows.slice(i * size, (i + 1) * size));
 
 async function getProductWarehouseMap() {
+  if (Date.now() - productWarehouseLoadedAt > PRODUCT_WAREHOUSE_CACHE_MS) {
+    productWarehousePromise = null;
+  }
   if (!productWarehousePromise) {
     productWarehousePromise = (async () => {
       const map = new Map<string, "A" | "B">();
@@ -25,6 +30,7 @@ async function getProductWarehouseMap() {
         if (!data || data.length < 1000) break;
         from += 1000;
       }
+      productWarehouseLoadedAt = Date.now();
       return map;
     })().catch((error) => {
       productWarehousePromise = null;
@@ -36,6 +42,7 @@ async function getProductWarehouseMap() {
 
 export function invalidateAdminStoreProductMap() {
   productWarehousePromise = null;
+  productWarehouseLoadedAt = 0;
 }
 
 export async function getOrderIdsForStore(orderIds: string[], store: AdminStore): Promise<Set<string>> {
