@@ -1030,7 +1030,7 @@ export default function AdminCourierLabels() {
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={toggleAll} disabled={visibleRows.length === 0}>
-                {selected.size === rows.length && rows.length > 0 ? "Deselect all" : "Select all"}
+                {selected.size === storeRows.length && storeRows.length > 0 ? "Deselect all" : "Select all"}
               </Button>
               <Button
                 size="sm"
@@ -1070,8 +1070,10 @@ export default function AdminCourierLabels() {
             </div>
           ) : visibleRows.length === 0 ? (
             <div className="py-8 text-sm text-muted-foreground">
-              {rows.length === 0
-                ? "No orders with a tracking number yet — import the courier's tracking file first."
+              {storeRows.length === 0
+                ? labelStore
+                  ? "No orders with a tracking number for this store yet — import the courier's tracking file first."
+                  : "Choose a store above to see its orders. Mixed-store label batches aren't allowed."
                 : "No orders match your search."}
             </div>
           ) : (
