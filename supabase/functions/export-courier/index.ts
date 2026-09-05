@@ -95,6 +95,9 @@ Deno.serve(async (req) => {
     const courier = String(body.courier ?? url.searchParams.get("courier") ?? "onway");
     const waveId = body.wave_id ?? url.searchParams.get("wave_id") ?? null;
     const roundSize = Math.max(1, parseInt(String(body.round_size ?? url.searchParams.get("round_size") ?? "10"), 10) || 10);
+    // Store filter: "A" (BigMart) or "B" (TrendMart). Anything else = no filter.
+    const storeParam = String(body.store ?? url.searchParams.get("store") ?? "").toUpperCase();
+    const store = storeParam === "A" || storeParam === "B" ? storeParam : null;
 
     let query = supabase
       .from("orders")
