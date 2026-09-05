@@ -892,6 +892,21 @@ const AdminProducts = () => {
                 </td>
                 <td className="px-3 py-2">
                   <button
+                    className="text-left hover:underline"
+                    title="Adjust stock"
+                    onClick={() => setStockTarget({ id: row.productId, title: row.title })}
+                  >
+                    <span className="font-bold">{stockMap[row.productId] ?? 0}</span>
+                    <span className="text-muted-foreground"> in stock</span>
+                    {(reservedMap[row.productId] || 0) > 0 && (
+                      <span className="block text-[11px] text-muted-foreground">
+                        · {reservedMap[row.productId]} reserved (confirmed, not yet shipped)
+                      </span>
+                    )}
+                  </button>
+                </td>
+                <td className="px-3 py-2">
+                  <button
                     onClick={(e) => { e.stopPropagation(); handleToggleStock(row.productId, row.available); }}
                     className={`px-2 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors hover:opacity-80 ${row.available ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"}`}
                     title={row.available ? "Click to mark Out of Stock" : "Click to mark In Stock"}
