@@ -26,6 +26,7 @@ function readLogoCache(): Record<string, string> {
     return JSON.parse(localStorage.getItem(LOGO_CACHE_KEY) || "{}");
   } catch {
     return {};
+  }
 }
 
 /** #RRGGBB -> Tailwind-token friendly "H S% L%" triplet */
