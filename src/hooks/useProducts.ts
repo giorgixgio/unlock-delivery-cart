@@ -107,6 +107,16 @@ function getFromLocalCache(): Product[] | null {
   return c && c.fresh ? c.data : null;
 }
 
+export function clearProductsCache() {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("bigmart-products-v")) localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function saveToLocalCache(products: Product[]) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ data: products, timestamp: Date.now() }));
