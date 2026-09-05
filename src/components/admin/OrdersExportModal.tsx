@@ -109,6 +109,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
   }, [open, exportStore]);
 
   const performDownload = async () => {
+    if (!exportStore) return;
     setDownloading(true);
     const batchId = crypto.randomUUID();
     const fileName = `${courier}_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -117,7 +118,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const { data: s } = await supabase.auth.getSession();
       const token = s?.session?.access_token || anon;
-      const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download&courier=${courier}`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/export-courier?action=download&courier=${courier}&store=${exportStore}`, {
         headers: { apikey: anon, Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
