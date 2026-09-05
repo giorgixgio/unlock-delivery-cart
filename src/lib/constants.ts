@@ -43,6 +43,7 @@ export interface Product {
   description: string;
   vendor: string;
   handle: string;
+  warehouse: string;
 }
 
 export interface CartItem {

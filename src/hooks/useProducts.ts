@@ -3,8 +3,9 @@ import { useSyncExternalStore, useMemo } from "react";
 import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
+import { getSiteWarehouse } from "@/config/siteConfig";
 
-const CACHE_KEY = "bigmart-products-v7";
+const CACHE_KEY = "bigmart-products-v8";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Priority-ordered tag-to-category mapping
@@ -85,6 +86,7 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
     description: p.description || "",
     vendor: p.vendor || "",
     handle: p.handle || "",
+    warehouse: ((p as any).warehouse as string) || "B",
   };
 }
 
@@ -197,14 +199,19 @@ export function useProducts() {
 }
 
 /**
- * Storefront-facing product list: only products verified by the warehouse.
+ * Storefront-facing product list: only verified products belonging to the
+ * warehouse of the visiting domain (trendmart.ge -> B, bigmart.ge -> A).
  * Admin surfaces keep using useProducts() to see everything.
  */
 export function useStorefrontProducts() {
   const { data, isLoading, error } = useProducts();
+  const warehouse = getSiteWarehouse();
   const filtered = useMemo(
-    () => (data ? data.filter(p => p.isVerified) : undefined),
-    [data]
+    () =>
+      data
+        ? data.filter(p => p.isVerified && (p.warehouse || "B") === warehouse)
+        : undefined,
+    [data, warehouse]
   );
   return { data: filtered, isLoading, error };
 }
