@@ -771,6 +771,7 @@ export type Database = {
           id: string
           matched: number
           status: string
+          store: string | null
           total_rows: number
           unmatched: number
         }
@@ -783,6 +784,7 @@ export type Database = {
           id?: string
           matched?: number
           status?: string
+          store?: string | null
           total_rows?: number
           unmatched?: number
         }
@@ -795,6 +797,7 @@ export type Database = {
           id?: string
           matched?: number
           status?: string
+          store?: string | null
           total_rows?: number
           unmatched?: number
         }
