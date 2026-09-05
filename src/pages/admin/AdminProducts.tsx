@@ -17,6 +17,8 @@ import * as XLSX from "xlsx";
 import ProductImageManager from "@/components/admin/ProductImageManager";
 import NewProductModal from "@/components/admin/NewProductModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import ToggleStore from "@/components/admin/ToggleStore";
+import { useStore } from "@/contexts/StoreContext";
 
 interface VariantRow {
   productId: string;
@@ -32,6 +34,7 @@ interface VariantRow {
   tags: string[];
   image: string;
   handle: string;
+  warehouse: string;
   // Conflict flag from bulk update
   skuConflict?: { reason: string; oldSku: string; newSku: string; timestamp: string };
 }
@@ -51,6 +54,7 @@ function productsToVariantRows(products: Product[]): VariantRow[] {
     tags: p.tags,
     image: p.image,
     handle: p.handle,
+    warehouse: p.warehouse || "B",
   }));
 }
 
@@ -156,6 +160,7 @@ const AdminProducts = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { role } = useAdminAuth();
+  const { activeStore } = useStore();
   const isWarehouse = role === "warehouse";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -226,11 +231,11 @@ const AdminProducts = () => {
   const allRows = useMemo(() => {
     const rows = productsToVariantRows(products || []);
     // Attach conflict flags
-    return rows.map(r => ({
+    return rows.filter((r) => activeStore === "ALL" || r.warehouse === activeStore).map(r => ({
       ...r,
       skuConflict: skuConflicts[r.productId],
     }));
-  }, [products, skuConflicts]);
+  }, [products, skuConflicts, activeStore]);
 
   const oosRows = useMemo(() => allRows.filter(r => !r.available), [allRows]);
 

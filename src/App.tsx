@@ -9,6 +9,7 @@ import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
+import { StoreProvider } from "@/contexts/StoreContext";
 import { CheckoutGateProvider } from "@/contexts/CheckoutGateContext";
 import { CartOverlayProvider, useCartOverlay } from "@/contexts/CartOverlayContext";
 import { LandingPageProvider } from "@/contexts/LandingPageContext";
@@ -168,7 +169,9 @@ const App = () => (
                       path="/admin"
                       element={
                         <AdminGuard>
-                          <AdminLayout />
+                          <StoreProvider>
+                            <AdminLayout />
+                          </StoreProvider>
                         </AdminGuard>
                       }
                     >

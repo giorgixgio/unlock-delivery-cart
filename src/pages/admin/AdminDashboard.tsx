@@ -16,6 +16,9 @@ import StockoutAlertCard from "@/components/admin/StockoutAlertCard";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { tbilisiStartOfDay, tbilisiEndOfDay } from "@/lib/tbilisiTime";
 import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
+import ToggleStore from "@/components/admin/ToggleStore";
+import { useStore } from "@/contexts/StoreContext";
+import { filterOrdersForStore } from "@/lib/adminStoreFilter";
 
 const DELIVERY_FEE = 6.5;
 /** What WE pay the courier per shipped order, regardless of what the customer paid. */
@@ -66,6 +69,7 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [range, setRange] = useState<{ from?: Date; to?: Date }>({});
   const { applyToRevenue, applyToCount, hideBeforeDate, loaded: modifierLoaded } = useViewModifier();
+  const { activeStore } = useStore();
 
   const fetchStats = useCallback(async () => {
     setSpinning(true);
@@ -100,7 +104,7 @@ const AdminDashboard = () => {
 
       const { data: orders, error } = await query;
       if (error) throw error;
-      const all = orders || [];
+      const all = await filterOrdersForStore(orders || [], activeStore);
 
       // Mutually-exclusive main status buckets
       const canceled = all.filter((o) => o.status === "canceled" || o.status === "returned");
@@ -215,7 +219,7 @@ const AdminDashboard = () => {
       setLoading(false);
       setTimeout(() => setSpinning(false), 500);
     }
-  }, [dateMode, selectedDate, range.from, range.to, hideBeforeDate]);
+  }, [dateMode, selectedDate, range.from, range.to, hideBeforeDate, activeStore]);
 
   useEffect(() => {
     if (!modifierLoaded) return;
@@ -266,6 +270,7 @@ const AdminDashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <ToggleStore />
           {/* Date mode buttons */}
           <div className="flex dg-chip text-sm">
             <button

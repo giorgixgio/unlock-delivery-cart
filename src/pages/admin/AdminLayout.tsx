@@ -7,6 +7,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
 import { canAccessPath } from "@/lib/adminPermissions";
+import ToggleStore from "@/components/admin/ToggleStore";
+import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
 
 const navGroups = [
   {
@@ -101,6 +103,7 @@ const AdminLayout = () => {
           )}
         </h2>
         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+        <ToggleStore className="mt-3 w-full" compact />
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2">
         <Accordion type="multiple" defaultValue={activeGroup ? [activeGroup] : []} className="space-y-1">
@@ -145,6 +148,7 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <DefaultStorePicker />
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside className="w-56 bg-card border-r border-border flex flex-col flex-shrink-0 sticky top-0 h-screen">
