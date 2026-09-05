@@ -881,6 +881,7 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.quantity}
                       placeholder="1"
+                      className="min-w-[80px]"
                       onSave={(v) => patchItem(it.id, { quantity: v === "" ? null : Number(v) })}
                     />
                   </td>
@@ -889,6 +890,7 @@ const AdminWholesaleOrders = () => {
                       type="number"
                       value={it.carton_count}
                       placeholder="1"
+                      className="min-w-[80px]"
                       onSave={(v) => patchItem(it.id, { carton_count: v === "" ? null : Number(v) })}
                     />
                   </td>
