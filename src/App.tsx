@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { trackPageView } from "@/lib/metaPixel";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { CartProvider } from "@/contexts/CartContext";
 import { DeliveryProvider } from "@/contexts/DeliveryContext";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -111,6 +112,18 @@ const CartOverlayRenderer = () => {
   return <Cart isOpen={isCartOpen} />;
 };
 
+/** Applies per-domain storefront branding (never on /admin) */
+const StorefrontBranding = () => {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
+  return isAdmin ? null : <StorefrontBrandingApplier />;
+};
+
+const StorefrontBrandingApplier = () => {
+  useSiteBranding();
+  return null;
+};
+
 /** Fire Meta PageView on SPA route changes */
 const MetaPageViewTracker = () => {
   const location = useLocation();
@@ -132,6 +145,7 @@ const App = () => (
               <CartOverlayProvider>
               <CheckoutGateProvider>
                   <MetaPageViewTracker />
+                  <StorefrontBranding />
                   <Routes>
                     {/* Storefront */}
                     <Route path="/" element={<Index />} />
