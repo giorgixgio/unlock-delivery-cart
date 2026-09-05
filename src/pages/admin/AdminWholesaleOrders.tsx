@@ -158,8 +158,6 @@ const warehouseClass = (w: Warehouse) =>
     : "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30";
 
 /** Manual FX rate — update this value if the USD→GEL rate changes. */
-
-/** Manual FX rate — update this value if the USD→GEL rate changes. */
 const USD_TO_GEL = 2.65;
 
 const usd = (n: number) =>
