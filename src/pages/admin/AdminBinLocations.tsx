@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, Download, Upload, Loader2, MapPin, AlertTriangle } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
 
 /**
  * Bin Locations
@@ -34,6 +36,7 @@ interface ProductRow {
   sku: string;
   title: string;
   bin_location: string | null;
+  warehouse: string | null;
 }
 
 /** Natural/numeric-aware compare so "2" sorts before "10" and "A-2" before "A-10". */
@@ -47,6 +50,7 @@ function compareBin(a: string | null, b: string | null): number {
 }
 
 export default function AdminBinLocations() {
+  const { activeStore } = useStore();
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -58,7 +62,7 @@ export default function AdminBinLocations() {
     setLoading(true);
     // bin_location may not be in the generated Supabase types yet — cast to any.
     const { data, error } = await (supabase.from("products") as any)
-      .select("id, sku, title, bin_location")
+      .select("id, sku, title, bin_location, warehouse")
       .order("title");
     if (error) {
       console.error(error);
@@ -75,20 +79,21 @@ export default function AdminBinLocations() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const storeRows = rows.filter((r) => activeStore === "ALL" || (r.warehouse || "B") === activeStore);
     const list = q
-      ? rows.filter(
+      ? storeRows.filter(
           (r) =>
             r.sku?.toLowerCase().includes(q) ||
             r.title?.toLowerCase().includes(q) ||
             (r.bin_location ?? "").toLowerCase().includes(q)
         )
-      : rows;
+      : storeRows;
     return [...list].sort((a, b) => compareBin(a.bin_location, b.bin_location));
-  }, [rows, search]);
+  }, [rows, search, activeStore]);
 
   const unsetCount = useMemo(
-    () => rows.filter((r) => !r.bin_location || r.bin_location.trim() === "").length,
-    [rows]
+    () => filtered.filter((r) => !r.bin_location || r.bin_location.trim() === "").length,
+    [filtered]
   );
 
   const updateLocal = (id: string, value: string) => {
@@ -208,6 +213,7 @@ export default function AdminBinLocations() {
           <p className="text-sm text-muted-foreground">
             Physical shelf position per product. Independent of SKU. Used to sort pick paths.
           </p>
+          <ToggleStore className="mt-3" />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading}>

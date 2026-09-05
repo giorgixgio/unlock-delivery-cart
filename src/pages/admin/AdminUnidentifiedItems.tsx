@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HelpCircle, Loader2, ChevronDown, ChevronRight, X, Search } from "lucide-react";
+import { useStore, type AdminStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
 
 /** Unidentified Items — review queue for rejected scans awaiting identification. */
 
@@ -65,9 +67,11 @@ function normalize(raw: any): Row {
 function ManualSearch({
   onPick,
   disabled,
+  activeStore,
 }: {
   onPick: (p: ProductLite) => void;
   disabled?: boolean;
+  activeStore: AdminStore;
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<ProductLite[]>([]);
@@ -82,10 +86,11 @@ function ManualSearch({
     let cancelled = false;
     const t = setTimeout(async () => {
       setSearching(true);
-      const { data } = await (supabase.from("products") as any)
+      let query = (supabase.from("products") as any)
         .select("id, sku, title, image")
-        .or(`title.ilike.%${term}%,sku.ilike.%${term}%`)
-        .limit(10);
+        .or(`title.ilike.%${term}%,sku.ilike.%${term}%`);
+      if (activeStore !== "ALL") query = query.eq("warehouse", activeStore);
+      const { data } = await query.limit(10);
       if (cancelled) return;
       setSearching(false);
       setResults((data || []) as ProductLite[]);
@@ -94,7 +99,7 @@ function ManualSearch({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [q]);
+  }, [q, activeStore]);
 
   return (
     <div className="space-y-2">
@@ -138,6 +143,7 @@ function ManualSearch({
 }
 
 export default function AdminUnidentifiedItems() {
+  const { activeStore } = useStore();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -262,6 +268,7 @@ export default function AdminUnidentifiedItems() {
       <div className="flex items-center gap-2">
         <HelpCircle className="h-5 w-5" />
         <h1 className="text-xl font-semibold">Unidentified Items</h1>
+        <ToggleStore />
         <span className="ml-auto text-sm text-muted-foreground">{pending.length} pending</span>
       </div>
 
@@ -358,6 +365,7 @@ export default function AdminUnidentifiedItems() {
             )}
 
             <ManualSearch
+              activeStore={activeStore}
               disabled={busyId === row.id}
               onPick={(p) => matchExisting(row, { id: p.id, title: p.title })}
             />

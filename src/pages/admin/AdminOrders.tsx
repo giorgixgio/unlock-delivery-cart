@@ -13,6 +13,9 @@ import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
+import ToggleStore from "@/components/admin/ToggleStore";
+import { useStore } from "@/contexts/StoreContext";
+import { filterOrdersForStore } from "@/lib/adminStoreFilter";
 
 type Tab = "review" | "ready" | "fulfilled" | "returns" | "merged" | "canceled" | "all";
 
@@ -131,12 +134,13 @@ const AdminOrders = () => {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { applyToCount, hasModifier } = useViewModifier();
+  const { activeStore } = useStore();
 
   const fetchCounts = useCallback(async () => {
-    const [{ count: reviewCount }, { count: readyCount }, { count: fulfilledCount }, { count: returnsCount }] = await Promise.all([
+    const [reviewRes, readyRes, fulfilledRes, returnsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
@@ -144,7 +148,7 @@ const AdminOrders = () => {
         .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true"),
       supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("status", "confirmed")
         .eq("is_confirmed", true)
         .eq("review_required", false)
@@ -152,22 +156,23 @@ const AdminOrders = () => {
         .neq("status", "merged"),
       supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("is_fulfilled", true)
         .not("status", "in", "(canceled,returned,merged)"),
       supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("status", "return_review"),
     ]);
 
-    setCounts({
-      review: applyToCount(reviewCount || 0),
-      ready: applyToCount(readyCount || 0),
-      fulfilled: applyToCount(fulfilledCount || 0),
-      returns: returnsCount || 0,
-    });
-  }, [applyToCount]);
+    const [review, ready, fulfilled, returns] = await Promise.all([
+      filterOrdersForStore(reviewRes.data || [], activeStore),
+      filterOrdersForStore(readyRes.data || [], activeStore),
+      filterOrdersForStore(fulfilledRes.data || [], activeStore),
+      filterOrdersForStore(returnsRes.data || [], activeStore),
+    ]);
+    setCounts({ review: applyToCount(review.length), ready: applyToCount(ready.length), fulfilled: applyToCount(fulfilled.length), returns: returns.length });
+  }, [applyToCount, activeStore]);
 
   const fetchOrders = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -237,8 +242,8 @@ const AdminOrders = () => {
       );
     }
 
-    const { data } = await query.limit(500);
-    let result = (data as unknown as OrderRow[]) || [];
+    const { data } = await query.limit(1000);
+    let result = await filterOrdersForStore((data as unknown as OrderRow[]) || [], activeStore);
     // If modifier is active, trim the visible list to match the modified count
     if (hasModifier) {
       const targetLen = applyToCount(result.length);
@@ -251,9 +256,10 @@ const AdminOrders = () => {
     setLoading(false);
     setRefreshing(false);
     setLastRefreshed(new Date());
-  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount]);
+  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount, activeStore]);
 
   useEffect(() => {
+    setSelectedIds([]);
     fetchOrders();
     fetchCounts();
   }, [fetchOrders, fetchCounts]);
@@ -331,7 +337,10 @@ const AdminOrders = () => {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-extrabold text-foreground">Orders</h1>
+          <ToggleStore />
+        </div>
         <div className="flex gap-2 items-center">
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {lastRefreshed.toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" })}

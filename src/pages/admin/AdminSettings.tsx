@@ -10,6 +10,7 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import PresentationSettingsPanel from "@/components/admin/PresentationSettingsPanel";
 import StaffPasswordPanel from "@/components/admin/StaffPasswordPanel";
 import SiteBrandingPanel from "@/components/admin/SiteBrandingPanel";
+import DefaultStoreSettings from "@/components/admin/DefaultStoreSettings";
 
 interface AdminUser {
   id: string;
@@ -133,6 +134,7 @@ const AdminSettings = () => {
       <h1 className="text-2xl font-extrabold text-foreground">Settings</h1>
 
       <SiteBrandingPanel />
+      <DefaultStoreSettings />
 
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Eye, EyeOff, HeartPulse, Loader2, Search, X } from "lucide-react";
 import SkuCheckDialog, { type SkuCheckProduct } from "@/components/admin/SkuCheckDialog";
+import { useStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
 
 const HIDDEN_KEY = "skuHealth:hiddenIds";
 
@@ -22,10 +24,11 @@ type Product = {
   previous_sku: string | null;
   sku_reassigned_at: string | null;
   available: boolean | null;
+  warehouse: string | null;
 };
 
 const SELECT =
-  "id, title, sku, image, bin_location, sku_reassigned, previous_sku, sku_reassigned_at, available";
+  "id, title, sku, image, bin_location, sku_reassigned, previous_sku, sku_reassigned_at, available, warehouse";
 
 function toCsv(rows: string[][]) {
   return rows
@@ -122,6 +125,7 @@ const isRealSku = (sku?: string | null) => {
 
 
 const AdminSkuHealth = () => {
+  const { activeStore } = useStore();
   const [loading, setLoading] = useState(true);
   const [unverified, setUnverified] = useState<Product[]>([]);
   const [qUnverified, setQUnverified] = useState("");
@@ -226,6 +230,7 @@ const AdminSkuHealth = () => {
   const filteredUnverified = useMemo(() => {
     const t = qUnverified.trim().toLowerCase();
     return unverified
+      .filter((p) => activeStore === "ALL" || (p.warehouse || "B") === activeStore)
       .filter((p) => showHidden || !hiddenIds.has(p.id))
       .filter(
         (p) =>
@@ -234,7 +239,7 @@ const AdminSkuHealth = () => {
           (p.sku ?? "").toLowerCase().includes(t) ||
           (p.bin_location ?? "").toLowerCase().includes(t),
       );
-  }, [unverified, qUnverified, hiddenIds, showHidden]);
+  }, [unverified, qUnverified, hiddenIds, showHidden, activeStore]);
 
 
   return (
@@ -242,6 +247,7 @@ const AdminSkuHealth = () => {
       <div className="flex items-center gap-2">
         <HeartPulse className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-extrabold text-foreground">SKU Health</h1>
+        <ToggleStore />
       </div>
 
       <Tabs defaultValue="unverified">
