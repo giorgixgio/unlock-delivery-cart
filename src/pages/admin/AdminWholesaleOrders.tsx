@@ -401,16 +401,29 @@ const AdminWholesaleOrders = () => {
     return sorted;
   }, [items, warehouse, batchFilter, stageFilter, sortBy]);
 
+  const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
+
   const summary = useMemo(() => {
     const calc = (w: Warehouse) => {
       const rows = items.filter((i) => i.warehouse === w);
       return {
         count: rows.length,
-        value: rows.reduce((sum, r) => sum + (Number(r.unit_price) || 0), 0),
+        value: rows.reduce((sum, r) => sum + lineValueUsd(r), 0),
       };
     };
     return { A: calc("A"), B: calc("B") };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
+
+  /** Grand total across currently visible (filtered) rows. */
+  const filteredTotal = useMemo(
+    () => ({
+      count: visibleItems.length,
+      value: visibleItems.reduce((sum, r) => sum + lineValueUsd(r), 0),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleItems],
+  );
 
   const batchNumber = (id: string | null) =>
     batches.find((b) => b.id === id)?.batch_number ?? "—";
@@ -626,21 +639,21 @@ const AdminWholesaleOrders = () => {
         </div>
       </div>
 
-      {/* Summary strip */}
+      {/* Summary strip — values are USD (hero) with GEL conversion beneath. */}
       <div className="grid gap-3 sm:grid-cols-3">
         {(["A", "B"] as const).map((w) => (
           <div key={w} className={`rounded-xl border p-4 ${warehouseClass(w)}`}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Warehouse {w}</div>
-            <div className="mt-1 text-lg font-bold text-foreground">
-              {summary[w].count} items · {gel(summary[w].value)}
-            </div>
+            <div className="mt-1 text-sm text-foreground/80">{summary[w].count} items</div>
+            <DualPrice amountUsd={summary[w].value} size="lg" />
           </div>
         ))}
         <div className="rounded-xl border border-border p-4 bg-muted/30">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</div>
-          <div className="mt-1 text-lg font-bold">
-            {summary.A.count + summary.B.count} items · {gel(summary.A.value + summary.B.value)}
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Total (filtered)
           </div>
+          <div className="mt-1 text-sm text-muted-foreground">{filteredTotal.count} items</div>
+          <DualPrice amountUsd={filteredTotal.value} size="lg" />
         </div>
       </div>
 
