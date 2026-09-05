@@ -132,6 +132,8 @@ const AdminSettings = () => {
     <div className="p-6 space-y-6 max-w-3xl">
       <h1 className="text-2xl font-extrabold text-foreground">Settings</h1>
 
+      <SiteBrandingPanel />
+
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}
       {isSuperAdmin && users.length > 0 && (
