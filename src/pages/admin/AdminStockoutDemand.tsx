@@ -15,8 +15,10 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
 
-interface ProductInfo { id: string; title: string; price: number; image?: string | null; available?: boolean | null; }
+interface ProductInfo { id: string; title: string; price: number; image?: string | null; available?: boolean | null; warehouse?: string | null; }
 
 const STATUS_OPTIONS = [
   { key: "reviewed", label: "Mark reviewed", color: "bg-blue-100 text-blue-800" },
@@ -26,6 +28,7 @@ const STATUS_OPTIONS = [
 ];
 
 const AdminStockoutDemand = () => {
+  const { activeStore } = useStore();
   const [rows, setRows] = useState<StockoutAttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Record<string, ProductInfo>>({});
@@ -43,7 +46,7 @@ const AdminStockoutDemand = () => {
       if (ids.length) {
           const { data: prods } = await supabase
           .from("products")
-            .select("id, title, price, image, available")
+            .select("id, title, price, image, available, warehouse")
           .in("id", ids);
         const map: Record<string, ProductInfo> = {};
         (prods || []).forEach((p: any) => (map[p.id] = p));
@@ -70,14 +73,19 @@ const AdminStockoutDemand = () => {
 
   useEffect(() => { load(); }, []);
 
-  const aggregated = useMemo(() => aggregateByProduct(rows), [rows]);
+  const storeRows = useMemo(() => rows.filter((row) => {
+    if (activeStore === "ALL") return true;
+    if (!row.product_id) return activeStore === "B";
+    return (products[row.product_id]?.warehouse || "B") === activeStore;
+  }), [rows, products, activeStore]);
+  const aggregated = useMemo(() => aggregateByProduct(storeRows), [storeRows]);
   const alerts = useMemo(() => aggregated.filter(isStockoutAlert), [aggregated]);
 
   const visible = filter === "alerts" ? alerts : aggregated;
 
   // Top cards (today)
   const todayMs = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
-  const todayRows = rows.filter((r) => new Date(r.last_attempt_at).getTime() >= todayMs);
+  const todayRows = storeRows.filter((r) => new Date(r.last_attempt_at).getTime() >= todayMs);
   const totalAttemptsToday = todayRows.reduce((s, r) => s + r.attempt_count, 0);
   const uniquePhonesToday = new Set(todayRows.map((r) => r.phone_normalized).filter(Boolean)).size;
   const distinctProductsToday = new Set(todayRows.map((r) => r.product_id || r.sku).filter(Boolean)).size;
@@ -109,6 +117,7 @@ const AdminStockoutDemand = () => {
           <p className="text-sm text-muted-foreground mt-0.5">
             Buyer intent on sold-out products. Use this to spot Meta ads that need to be paused.
           </p>
+          <ToggleStore className="mt-3" />
         </div>
         <div className="flex gap-2">
           {filter === "alerts" ? (

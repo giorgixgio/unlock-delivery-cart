@@ -925,6 +925,7 @@ const AdminProducts = () => {
           {oosCount > 0 && (
             <Badge variant="destructive" className="text-xs">{oosCount} out of stock</Badge>
           )}
+          <ToggleStore />
         </div>
         <div className="flex gap-2">
           {!isWarehouse && (
