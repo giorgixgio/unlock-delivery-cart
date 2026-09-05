@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
 import { tbilisiStartOfDay, tbilisiDayKey, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
+import { useStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
+import { getOrderIdsForStore } from "@/lib/adminStoreFilter";
 
 type DatePreset = "today" | "yesterday" | "7d" | "30d" | "custom";
 type ViewMode = "workload" | "day";
@@ -148,6 +151,7 @@ type SortKey =
   | "addedRevenue" | "upsellRate" | "addressRate" | "sameDay" | "backlog" | "firstTouch";
 
 export default function AdminOperatorStats() {
+  const { activeStore } = useStore();
   const [preset, setPreset] = useState<DatePreset>("7d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -205,15 +209,25 @@ export default function AdminOperatorStats() {
       ]);
 
       if (cancelled) return;
-      setOrders((outcomeOrdersRes.data as OrderRow[]) || []);
-      setDayOrders((dayOrdersRes.data as unknown as DayOrderRow[]) || []);
-      setEvents((addEventsRes.data as EventRow[]) || []);
-      setSessions((sessionsRes.data as unknown as SessionRow[]) || []);
+      const outcomeRows = (outcomeOrdersRes.data as OrderRow[]) || [];
+      const createdRows = (dayOrdersRes.data as unknown as DayOrderRow[]) || [];
+      const eventRows = (addEventsRes.data as EventRow[]) || [];
+      const sessionRows = (sessionsRes.data as unknown as SessionRow[]) || [];
+      const referencedIds = Array.from(new Set([
+        ...outcomeRows.map((row) => row.id), ...createdRows.map((row) => row.id),
+        ...eventRows.map((row) => row.order_id), ...sessionRows.map((row) => row.order_id),
+      ]));
+      const allowedIds = await getOrderIdsForStore(referencedIds, activeStore);
+      if (cancelled) return;
+      setOrders(outcomeRows.filter((row) => allowedIds.has(row.id)));
+      setDayOrders(createdRows.filter((row) => allowedIds.has(row.id)));
+      setEvents(eventRows.filter((row) => allowedIds.has(row.order_id)));
+      setSessions(sessionRows.filter((row) => allowedIds.has(row.order_id)));
       setLastLoadedAt(new Date());
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [range.from, range.to, reloadKey]);
+  }, [range.from, range.to, reloadKey, activeStore]);
 
   const refresh = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -442,6 +456,7 @@ export default function AdminOperatorStats() {
           <div className="flex items-center gap-2">
             <Users className="w-6 h-6 text-primary" />
             <h1 className="text-xl sm:text-2xl font-extrabold">Operator Stats</h1>
+            <ToggleStore />
           </div>
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-muted">Timezone: Tbilisi</span>

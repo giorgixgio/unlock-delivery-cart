@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, X, Delete, Loader2, Zap, AlertTriangle } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
+import ToggleStore from "@/components/admin/ToggleStore";
 
 type MatchedProduct = { id: string; sku: string; title: string; image: string | null };
 
@@ -18,6 +20,7 @@ function startOfToday() {
 }
 
 export default function AdminFastInventoryCheck() {
+  const { activeStore } = useStore();
   const { toast } = useToast();
   const [sku, setSku] = useState("");
   const [matched, setMatched] = useState<MatchedProduct | null>(null);
@@ -63,11 +66,13 @@ export default function AdminFastInventoryCheck() {
     }
     setLooking(true);
     const t = setTimeout(async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("products")
         .select("id, sku, title, image")
         .eq("sku", value)
         .order("id", { ascending: true });
+      if (activeStore !== "ALL") query = query.eq("warehouse", activeStore);
+      const { data } = await query;
       // Ignore stale responses from earlier keystrokes.
       if (reqId !== reqRef.current) return;
       const rows = (data ?? []).map((p) => ({ id: p.id, sku: p.sku, title: p.title, image: p.image || null }));
@@ -81,7 +86,7 @@ export default function AdminFastInventoryCheck() {
       setLooking(false);
     }, 250);
     return () => clearTimeout(t);
-  }, [sku]);
+  }, [sku, activeStore]);
 
   const reset = () => {
     reqRef.current++;
@@ -224,6 +229,7 @@ export default function AdminFastInventoryCheck() {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-3 p-3 select-none">
+      <div className="flex justify-center"><ToggleStore /></div>
       <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
         <span className="flex items-center gap-1.5 text-foreground">
           <Zap className="h-4 w-4" /> სწრაფი შემოწმება
