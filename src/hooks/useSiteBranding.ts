@@ -52,13 +52,27 @@ export function useSiteBranding(): SiteConfig {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (base.primaryColor) root.style.setProperty("--brand-primary", base.primaryColor);
-    if (base.accentColor) root.style.setProperty("--brand-accent", base.accentColor);
+    if (base.primaryColor) {
+      root.style.setProperty("--brand-primary", base.primaryColor);
+      const hsl = hexToHslTriplet(base.primaryColor);
+      if (hsl) {
+        root.style.setProperty("--primary", hsl.triplet);
+        root.style.setProperty("--primary-foreground", hsl.isLight ? "0 0% 8%" : "0 0% 100%");
+      }
+    }
+    if (base.accentColor) {
+      root.style.setProperty("--brand-accent", base.accentColor);
+      const hsl = hexToHslTriplet(base.accentColor);
+      if (hsl) {
+        root.style.setProperty("--accent", hsl.triplet);
+        root.style.setProperty("--accent-foreground", hsl.isLight ? "0 0% 8%" : "0 0% 100%");
+      }
+    }
     // Only rebrand the tab title for the BigMart domain; TrendMart keeps today's titles.
     if (base.warehouse === "A") {
       document.title = document.title.replace(/TrendMart/gi, base.siteName) || base.siteName;
     }
-  }, [base.primaryColor, base.accentColor, base.siteName]);
+  }, [base.primaryColor, base.accentColor, base.siteName, base.warehouse]);
 
   return { ...base, logoUrl };
 }
