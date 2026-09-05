@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/useProducts";
 import { setStockOverride, getStockOverrides } from "@/lib/stockOverrideStore";
