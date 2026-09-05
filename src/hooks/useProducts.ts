@@ -3,6 +3,7 @@ import { useSyncExternalStore, useMemo } from "react";
 import { Product } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
+import { getSiteWarehouse } from "@/config/siteConfig";
 
 const CACHE_KEY = "bigmart-products-v8";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
