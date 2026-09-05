@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { applyOrderConfirmStock } from "@/lib/stockService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,6 +260,7 @@ const AdminOrderDetail = () => {
         review_required: false,
       });
 
+      await applyOrderConfirmStock(id);
       await recordIdempotency(idemKey, "ORDER_CONFIRM", id, { version: newVersion, status: "confirmed" });
       await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
       await logSystemEvent({
