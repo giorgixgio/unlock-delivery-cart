@@ -157,8 +157,7 @@ const warehouseClass = (w: Warehouse) =>
     ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
     : "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30";
 
-const gel = (n: number) =>
-  `₾${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+/** Manual FX rate — update this value if the USD→GEL rate changes. */
 
 /** Manual FX rate — update this value if the USD→GEL rate changes. */
 const USD_TO_GEL = 2.65;
@@ -793,13 +792,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={17} className="p-8 text-center text-muted-foreground">
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={17} className="p-8 text-center text-muted-foreground">
+                <td colSpan={18} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
