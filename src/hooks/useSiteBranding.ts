@@ -55,7 +55,6 @@ function hexToHslTriplet(hex: string): { triplet: string; isLight: boolean } | n
     isLight: l > 0.6,
   };
 }
-}
 
 /**
  * Storefront branding: resolves the domain's site config and the
