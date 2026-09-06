@@ -1383,8 +1383,18 @@ const AdminWholesaleOrders = () => {
                       onUpload={(files) => uploadImages(it, files)}
                       onSetPrimary={(p) => setPrimaryImage(it, p)}
                       onRemove={(p) => removeImage(it, p)}
+                      onOpen={() => setEditId(it.id)}
                     />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-7 px-2 text-xs"
+                      onClick={() => setEditId(it.id)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" /> Edit
+                    </Button>
                   </td>
+
 
                   <td className="px-4 py-3">
                     <SkuCell
