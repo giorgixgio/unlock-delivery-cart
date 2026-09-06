@@ -162,7 +162,17 @@ Deno.serve(async (req) => {
 
     const certRaw = parsed.requires_certification;
     const requiresCert = certRaw === true ? true : certRaw === false ? false : null;
-    const notes = String(parsed.notes || "").trim().slice(0, 1200) || null;
+    let notes = String(parsed.notes || "").trim().slice(0, 1200) || null;
+
+    // Georgian customs declarations require the full national code (8-10 digits).
+    // A bare 6-digit international heading is incomplete — cap confidence and flag it.
+    const digitCount = (hsCode.replace(/[^0-9]/g, "") || "").length;
+    if (digitCount < 8) {
+      if (confidence === "high") confidence = "medium";
+      const incompleteNote =
+        "Returned code has fewer than 8 digits and may be incomplete for Georgian customs purposes — full national code needs forwarder confirmation.";
+      notes = notes ? `${notes} ${incompleteNote}` : incompleteNote;
+    }
 
     const { error: updErr } = await admin
       .from("wholesale_items")
