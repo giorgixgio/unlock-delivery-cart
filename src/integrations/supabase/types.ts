@@ -2309,6 +2309,7 @@ export type Database = {
           listing_status: string
           logistics_stage: string
           notes: string | null
+          old_price: number | null
           quantity: number | null
           selling_price: number | null
           sku: string
@@ -2337,6 +2338,7 @@ export type Database = {
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          old_price?: number | null
           quantity?: number | null
           selling_price?: number | null
           sku: string
@@ -2365,6 +2367,7 @@ export type Database = {
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
+          old_price?: number | null
           quantity?: number | null
           selling_price?: number | null
           sku?: string
@@ -2462,6 +2465,7 @@ export type Database = {
           listing_status: string
           logistics_stage: string
           notes: string | null
+          old_price: number | null
           quantity: number | null
           selling_price: number | null
           sku: string

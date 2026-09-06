@@ -1,0 +1,1 @@
+ALTER TABLE public.wholesale_items ADD COLUMN IF NOT EXISTS old_price numeric;

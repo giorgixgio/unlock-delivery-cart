@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle, Pencil } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Warehouse = "A" | "B";
@@ -45,6 +45,8 @@ type Item = {
   supplier_group_id: string | null;
   unit_price: number | null;
   selling_price: number | null;
+  old_price: number | null;
+
   weight_kg: number | null;
   quantity: number | null;
   carton_count: number | null;
@@ -223,22 +225,32 @@ function Thumb({
   primary,
   onMakePrimary,
   onRemove,
+  onOpen,
 }: {
   path: string;
   primary: boolean;
   onMakePrimary: () => void;
   onRemove: () => void;
+  onOpen?: () => void;
 }) {
   const url = useSignedUrl(path);
+
   return (
     <div
       className={`group/th relative h-14 w-14 shrink-0 overflow-hidden rounded-md border ${
         primary ? "border-primary ring-1 ring-primary" : "border-border"
       } bg-muted/40`}
-      title={primary ? "Primary image" : "Click the star to make primary"}
+      title={onOpen ? "Click the image to edit this item" : primary ? "Primary image" : "Click the star to make primary"}
     >
       {url ? (
-        <img src={url} alt="Wholesale item" className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={url}
+          alt="Wholesale item"
+          className={`h-full w-full object-cover ${onOpen ? "cursor-pointer" : ""}`}
+          loading="lazy"
+          onClick={onOpen}
+        />
+
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
@@ -272,6 +284,8 @@ function ItemImages({
   onSetPrimary,
   onRemove,
   uploading,
+  onOpen,
+  className,
 }: {
   images: string[];
   primary: string | null;
@@ -279,11 +293,13 @@ function ItemImages({
   onSetPrimary: (path: string) => void;
   onRemove: (path: string) => void;
   uploading: boolean;
+  onOpen?: () => void;
+  className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div
-      className="flex max-w-[140px] flex-wrap gap-1"
+      className={`flex flex-wrap gap-1 ${className ?? "max-w-[140px]"}`}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -298,8 +314,10 @@ function ItemImages({
           primary={p === primary}
           onMakePrimary={() => onSetPrimary(p)}
           onRemove={() => onRemove(p)}
+          onOpen={onOpen}
         />
       ))}
+
       <div
         onClick={() => inputRef.current?.click()}
         className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/60"
@@ -499,6 +517,287 @@ async function copyImageToProductBucket(path: string | null, sku: string): Promi
   return supabase.storage.from("product-images").getPublicUrl(target).data.publicUrl;
 }
 
+/** Labelled field wrapper for the item edit popup. */
+function Field({
+  label,
+  hint,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-1.5 ${className ?? ""}`}>
+      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * Full single-item editor. Every field autosaves through `onPatch`, exactly like
+ * the inline grid cells did — the popup is only a nicer surface for the same data.
+ */
+function WholesaleItemModal({
+  item,
+  batches,
+  groupItems,
+  images,
+  uploading,
+  hsLoading,
+  publishing,
+  onClose,
+  onPatch,
+  onUpload,
+  onSetPrimary,
+  onRemoveImage,
+  onGenerateHs,
+  onPublish,
+}: {
+  item: Item;
+  batches: Batch[];
+  groupItems: Item[];
+  images: string[];
+  uploading: boolean;
+  hsLoading: boolean;
+  publishing: boolean;
+  onClose: () => void;
+  onPatch: (patch: Partial<Item>) => void;
+  onUpload: (files: File[]) => void;
+  onSetPrimary: (path: string) => void;
+  onRemoveImage: (path: string) => void;
+  onGenerateHs: () => void;
+  onPublish: () => void;
+}) {
+  // Old Price auto-fills at 2x the selling price until the operator edits it directly.
+  const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
+  useEffect(() => {
+    setOldPriceManual(item.old_price != null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  const onSellingPriceSave = (v: string) => {
+    const price = v === "" ? null : Number(v);
+    const patch: Partial<Item> = { selling_price: price };
+    if (!oldPriceManual) {
+      patch.old_price =
+        price != null && !Number.isNaN(price) && price > 0
+          ? Math.round(price * 2 * 100) / 100
+          : null;
+    }
+    onPatch(patch);
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>{item.title || "Untitled item"}</span>
+            <Badge variant="outline" className={warehouseClass(item.warehouse)}>
+              Warehouse {item.warehouse}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                item.listing_status === "published"
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                  : "bg-muted text-muted-foreground"
+              }
+            >
+              {item.listing_status === "published" ? "Published" : "Not Listed"}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          <Field label="SKU (click to copy supplier message)">
+            <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
+          </Field>
+
+          <Field label="Images" hint="Drag & drop or click the tile to add. Star sets the primary image.">
+            <ItemImages
+              images={images}
+              primary={item.image_url ?? images[0] ?? null}
+              uploading={uploading}
+              onUpload={onUpload}
+              onSetPrimary={onSetPrimary}
+              onRemove={onRemoveImage}
+              className="max-w-full"
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Title" className="sm:col-span-2">
+              <EditableCell
+                value={item.title}
+                placeholder="Product title"
+                onSave={(v) => onPatch({ title: v || null })}
+              />
+            </Field>
+            <Field label="Alibaba title">
+              <EditableCell
+                value={item.alibaba_title}
+                placeholder="Seller's listing title"
+                onSave={(v) => onPatch({ alibaba_title: v || null })}
+              />
+            </Field>
+            <Field label="Alibaba link">
+              <div className="flex items-center gap-1">
+                <EditableCell
+                  value={item.alibaba_link}
+                  placeholder="https://…"
+                  onSave={(v) => onPatch({ alibaba_link: v || null })}
+                />
+                {item.alibaba_link && (
+                  <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
+                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </a>
+                )}
+              </div>
+            </Field>
+          </div>
+
+          <Field label="Notes / key features">
+            <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Quantity">
+              <EditableCell
+                type="number"
+                value={item.quantity}
+                placeholder="1"
+                onSave={(v) => onPatch({ quantity: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Cartons">
+              <EditableCell
+                type="number"
+                value={item.carton_count}
+                placeholder="1"
+                onSave={(v) => onPatch({ carton_count: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Weight (kg)">
+              <EditableCell
+                type="number"
+                value={item.weight_kg}
+                placeholder="0.0"
+                onSave={(v) => onPatch({ weight_kg: v === "" ? null : Number(v) })}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Unit price (USD)" hint={gelFromUsd(Number(item.unit_price) || 0)}>
+              <EditableCell
+                type="number"
+                value={item.unit_price}
+                placeholder="0.00"
+                onSave={(v) => onPatch({ unit_price: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Selling price (₾)" hint="Used as the storefront price when publishing.">
+              <EditableCell
+                type="number"
+                value={item.selling_price}
+                placeholder="0.00"
+                onSave={onSellingPriceSave}
+              />
+            </Field>
+            <Field
+              label="Old price (₾)"
+              hint={oldPriceManual ? "Manually set — no longer auto-calculated." : "Auto-set to 2× the selling price."}
+            >
+              <EditableCell
+                type="number"
+                value={item.old_price}
+                placeholder="0.00"
+                onSave={(v) => {
+                  setOldPriceManual(v !== "");
+                  onPatch({ old_price: v === "" ? null : Number(v) });
+                }}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Logistics stage">
+              <Select value={item.logistics_stage} onValueChange={(v) => onPatch({ logistics_stage: v })}>
+                <SelectTrigger className="h-9">
+                  <SelectValue>
+                    <Badge variant="outline" className={stageMeta(item.logistics_stage).className}>
+                      {stageMeta(item.logistics_stage).label}
+                    </Badge>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Batch" hint="Warehouse is inherited from the batch and cannot be changed here.">
+              <Select value={item.batch_id ?? ""} onValueChange={(v) => onPatch({ batch_id: v })}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {batches
+                    .filter((b) => b.warehouse === item.warehouse)
+                    .map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.batch_number}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              HS classification
+            </div>
+            <HsCell
+              item={item}
+              images={images}
+              loading={hsLoading}
+              onGenerate={onGenerateHs}
+              onPatch={onPatch}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={onPublish} disabled={publishing}>
+            {publishing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1" />
+            )}
+            {item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 const AdminWholesaleOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const warehouseParam = (searchParams.get("warehouse") ?? "ALL").toUpperCase();
@@ -523,6 +822,8 @@ const AdminWholesaleOrders = () => {
   const [addingRow, setAddingRow] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
   const [bulkPublishing, setBulkPublishing] = useState(false);
 
   const setWarehouse = (w: Warehouse | "ALL") => {
@@ -763,6 +1064,9 @@ const AdminWholesaleOrders = () => {
       handle: `${slugify(item.title)}-${item.sku.toLowerCase()}`,
       sku: item.sku,
       price,
+      compare_at_price:
+        item.old_price != null && Number(item.old_price) > 0 ? Number(item.old_price) : null,
+
       warehouse: item.warehouse,
       // draft by default: hidden from the live storefront until reviewed
       available: false,
@@ -864,6 +1168,8 @@ const AdminWholesaleOrders = () => {
     toast.success(`${ids.length} item(s) grouped as same supplier`);
     setSelected(new Set());
   };
+
+  const editItem = editId ? items.find((i) => i.id === editId) ?? null : null;
 
   const allChecked = visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
 
@@ -1079,8 +1385,18 @@ const AdminWholesaleOrders = () => {
                       onUpload={(files) => uploadImages(it, files)}
                       onSetPrimary={(p) => setPrimaryImage(it, p)}
                       onRemove={(p) => removeImage(it, p)}
+                      onOpen={() => setEditId(it.id)}
                     />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mt-1 h-7 px-2 text-xs"
+                      onClick={() => setEditId(it.id)}
+                    >
+                      <Pencil className="mr-1 h-3 w-3" /> Edit
+                    </Button>
                   </td>
+
 
                   <td className="px-4 py-3">
                     <SkuCell
@@ -1269,6 +1585,29 @@ const AdminWholesaleOrders = () => {
           </tbody>
         </table>
       </div>
+
+      {editItem && (
+        <WholesaleItemModal
+          item={editItem}
+          batches={batches}
+          groupItems={
+            editItem.supplier_group_id
+              ? items.filter((x) => x.supplier_group_id === editItem.supplier_group_id)
+              : [editItem]
+          }
+          images={imgList(editItem)}
+          uploading={uploadingId === editItem.id}
+          hsLoading={hsLoadingId === editItem.id}
+          publishing={publishingId === editItem.id}
+          onClose={() => setEditId(null)}
+          onPatch={(patch) => patchItem(editItem.id, patch)}
+          onUpload={(files) => uploadImages(editItem, files)}
+          onSetPrimary={(p) => setPrimaryImage(editItem, p)}
+          onRemoveImage={(p) => removeImage(editItem, p)}
+          onGenerateHs={() => generateHs(editItem)}
+          onPublish={() => handlePublish(editItem)}
+        />
+      )}
 
       <Dialog open={newBatchOpen} onOpenChange={setNewBatchOpen}>
         <DialogContent>
