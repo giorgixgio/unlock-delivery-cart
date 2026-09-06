@@ -96,10 +96,49 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
   const [keyFeatures, setKeyFeatures] = useState("");
   const [fetching, setFetching] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(false);
+  const isEdit = !!editProductId;
 
   useEffect(() => {
     if (open) setWarehouse(defaultWarehouse);
   }, [open, defaultWarehouse]);
+
+  // Edit mode: load the full product row and pre-fill every field.
+  useEffect(() => {
+    if (!open || !editProductId) return;
+    let cancelled = false;
+    setLoadingProduct(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("title, sku, price, compare_at_price, category, vendor, description, image, images, bin_location, stock_quantity, is_verified, warehouse")
+        .eq("id", editProductId)
+        .maybeSingle();
+      if (cancelled) return;
+      setLoadingProduct(false);
+      if (error || !data) {
+        toast({ title: "Couldn't load product", description: error?.message, variant: "destructive" });
+        return;
+      }
+      const imgs: string[] = Array.isArray(data.images) && data.images.length
+        ? (data.images as string[])
+        : (data.image ? [data.image] : []);
+      setTitle(data.title || "");
+      setSku(data.sku || "");
+      setPrice(data.price != null ? String(data.price) : "");
+      setCompareAtPrice(data.compare_at_price != null ? String(data.compare_at_price) : "");
+      setCategory(data.category || "uncategorized");
+      setVendor(data.vendor || "");
+      setDescription(data.description || "");
+      setImages(imgs);
+      setPrimary(data.image && imgs.includes(data.image) ? data.image : (imgs[0] || ""));
+      setBinLocation(data.bin_location || "");
+      setStockQuantity(String(Math.max(data.stock_quantity ?? 0, 0)));
+      setIsVerified(data.is_verified !== false);
+      setWarehouse((data.warehouse as "" | "A" | "B") || "");
+    })();
+    return () => { cancelled = true; };
+  }, [open, editProductId]);
 
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
