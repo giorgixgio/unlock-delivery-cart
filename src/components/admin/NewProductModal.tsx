@@ -148,6 +148,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
 
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
+    setCompareManuallyEdited(false); setLastAutoCompare(null);
     setCategory("uncategorized"); setVendor(""); setDescription("");
     setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse(defaultWarehouse);
     setSourceLink(""); setKeyFeatures(""); setStockQuantity("0");
