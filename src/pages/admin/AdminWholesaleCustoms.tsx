@@ -33,6 +33,7 @@ import {
   type XlsxItem,
 } from "@/lib/wholesalePackingListXlsx";
 import { generateTitleRu } from "@/lib/wholesaleRuTitle";
+import { loadCustomsDocSettings } from "@/lib/customsDocSettings";
 
 type Warehouse = "A" | "B";
 
@@ -366,7 +367,8 @@ export default function AdminWholesaleCustoms() {
           hs_code: i.hs_code,
         }));
         const warnings = packingListWarnings(xlsxItems);
-        blob = await buildPackingListWorkbook(xlsxItems, meta);
+        const settings = await loadCustomsDocSettings();
+        blob = await buildPackingListWorkbook(xlsxItems, { ...meta, settings });
         fileName = `packing-list-${batch.batch_number}-${Date.now()}.xlsx`;
         contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         if (warnings.length) {
