@@ -183,18 +183,8 @@ function DualPrice({ amountUsd, size = "sm" }: { amountUsd: number; size?: "sm" 
 /** Signed-URL cache for the private wholesale-images bucket. */
 const signedCache = new Map<string, string>();
 
-function ItemImage({
-  path,
-  onUpload,
-  uploading,
-}: {
-  path: string | null;
-  onUpload: (file: File) => void;
-  uploading: boolean;
-}) {
+function useSignedUrl(path: string | null) {
   const [url, setUrl] = useState<string | null>(path ? signedCache.get(path) ?? null : null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     let active = true;
     if (!path) {
@@ -218,40 +208,118 @@ function ItemImage({
       active = false;
     };
   }, [path]);
+  return url;
+}
 
+function Thumb({
+  path,
+  primary,
+  onMakePrimary,
+  onRemove,
+}: {
+  path: string;
+  primary: boolean;
+  onMakePrimary: () => void;
+  onRemove: () => void;
+}) {
+  const url = useSignedUrl(path);
   return (
     <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        const f = e.dataTransfer.files?.[0];
-        if (f) onUpload(f);
-      }}
-      onClick={() => inputRef.current?.click()}
-      className="h-14 w-14 shrink-0 rounded-md border border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/60 transition-colors"
-      title="Click or drag an image here"
+      className={`group/th relative h-14 w-14 shrink-0 overflow-hidden rounded-md border ${
+        primary ? "border-primary ring-1 ring-primary" : "border-border"
+      } bg-muted/40`}
+      title={primary ? "Primary image" : "Click the star to make primary"}
     >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onUpload(f);
-          e.target.value = "";
-        }}
-      />
-      {uploading ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      ) : url ? (
+      {url ? (
         <img src={url} alt="Wholesale item" className="h-full w-full object-cover" loading="lazy" />
       ) : (
-        <ImagePlus className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-full w-full items-center justify-center">
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 flex justify-between bg-background/80 opacity-0 transition-opacity group-hover/th:opacity-100">
+        <button
+          type="button"
+          onClick={onMakePrimary}
+          title="Make primary"
+          className="p-0.5 hover:text-primary"
+        >
+          <Star className={`h-3 w-3 ${primary ? "fill-primary text-primary" : ""}`} />
+        </button>
+        <button type="button" onClick={onRemove} title="Remove image" className="p-0.5 hover:text-destructive">
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      {primary && (
+        <Star className="absolute right-0.5 top-0.5 h-3 w-3 fill-primary text-primary drop-shadow" />
       )}
     </div>
   );
 }
+
+/** Multi-image cell: thumbnail stack, add more, remove, set primary. */
+function ItemImages({
+  images,
+  primary,
+  onUpload,
+  onSetPrimary,
+  onRemove,
+  uploading,
+}: {
+  images: string[];
+  primary: string | null;
+  onUpload: (files: File[]) => void;
+  onSetPrimary: (path: string) => void;
+  onRemove: (path: string) => void;
+  uploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      className="flex max-w-[140px] flex-wrap gap-1"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+        if (files.length) onUpload(files);
+      }}
+    >
+      {images.map((p) => (
+        <Thumb
+          key={p}
+          path={p}
+          primary={p === primary}
+          onMakePrimary={() => onSetPrimary(p)}
+          onRemove={() => onRemove(p)}
+        />
+      ))}
+      <div
+        onClick={() => inputRef.current?.click()}
+        className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/60"
+        title="Click or drag images here (multiple allowed)"
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length) onUpload(files);
+            e.target.value = "";
+          }}
+        />
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 /** Text/number cell with autosave on blur. */
 function EditableCell({
