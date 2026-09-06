@@ -1959,6 +1959,10 @@ const AdminWholesaleOrders = () => {
           </tbody>
         </table>
       </div>
+      </>
+      )}
+
+
 
       {editItem && (
         <WholesaleItemModal
