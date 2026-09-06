@@ -528,9 +528,11 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border">
           <Button variant="outline" onClick={handleClose} disabled={saving || uploading}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || uploading}>
-            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</> : "Create product"}
+            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {isEdit ? "Saving..." : "Creating..."}</> : (isEdit ? "Save changes" : "Create product")}
           </Button>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
