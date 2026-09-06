@@ -1893,6 +1893,7 @@ const AdminWholesaleOrders = () => {
                     <Select
                       value={it.logistics_stage}
                       onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
+                      disabled={!!batches.find((b) => b.id === it.batch_id)?.shipping_stage}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue>
@@ -1902,7 +1903,7 @@ const AdminWholesaleOrders = () => {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {STAGES.map((s) => (
+                        {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
                           <SelectItem key={s.value} value={s.value}>
                             {s.label}
                           </SelectItem>
@@ -1910,6 +1911,7 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
+
                   <td className="px-4 py-3">
                     <EditableCell
                       value={it.notes}
