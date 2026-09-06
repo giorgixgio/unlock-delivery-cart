@@ -238,10 +238,17 @@ function Thumb({
       className={`group/th relative h-14 w-14 shrink-0 overflow-hidden rounded-md border ${
         primary ? "border-primary ring-1 ring-primary" : "border-border"
       } bg-muted/40`}
-      title={primary ? "Primary image" : "Click the star to make primary"}
+      title={onOpen ? "Click the image to edit this item" : primary ? "Primary image" : "Click the star to make primary"}
     >
       {url ? (
-        <img src={url} alt="Wholesale item" className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={url}
+          alt="Wholesale item"
+          className={`h-full w-full object-cover ${onOpen ? "cursor-pointer" : ""}`}
+          loading="lazy"
+          onClick={onOpen}
+        />
+
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
