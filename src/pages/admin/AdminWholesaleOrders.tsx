@@ -1693,7 +1693,10 @@ const AdminWholesaleOrders = () => {
         {(["A", "B"] as const).map((w) => (
           <div key={w} className={`rounded-xl border p-4 ${warehouseClass(w)}`}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Warehouse {w}</div>
-            <div className="mt-1 text-sm text-foreground/80">{summary[w].count} items</div>
+            <div className="mt-1 text-sm text-foreground/80">
+              {summary[w].count} items <span className="opacity-60">(excl. completed batches)</span>
+            </div>
+
             <DualPrice amountUsd={summary[w].value} size="lg" />
           </div>
         ))}
