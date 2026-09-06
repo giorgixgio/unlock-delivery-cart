@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Star, Loader2, ImageIcon, Link2, Sparkles, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { clearProductsCache } from "@/hooks/useProducts";
+import { titleFromUrl } from "@/lib/sourceTitleParser";
+
 
 interface Props {
   open: boolean;
