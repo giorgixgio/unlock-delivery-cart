@@ -15,6 +15,8 @@ interface Props {
   onClose: () => void;
   onCreated: () => void;
   defaultWarehouse?: "" | "A" | "B";
+  /** When set, the modal runs in edit mode, pre-filled with this product. */
+  editProductId?: string | null;
 }
 
 const BUCKET = "product-images";
@@ -72,7 +74,7 @@ function slugify(input: string): string {
     .slice(0, 80) || `product-${Date.now()}`;
 }
 
-const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Props) => {
+const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", editProductId = null }: Props) => {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [sku, setSku] = useState("");
