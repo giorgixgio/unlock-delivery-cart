@@ -67,7 +67,7 @@ const CustomsDocSettingsPanel = () => {
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             {FIELDS.map((f) => (
-              <div key={f.key} className="space-y-1">
+              <div key={String(f.key)} className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">{f.label}</label>
                 <Input
                   value={values[f.key] ?? ""}
