@@ -885,7 +885,18 @@ function WholesaleItemModal({
                 </Button>
               </div>
             </Field>
+            <Field
+              label="Alibaba Order ID"
+              hint="Items sharing this order ID (same warehouse) are grouped automatically."
+            >
+              <EditableCell
+                value={item.alibaba_order_id}
+                placeholder="e.g. 1234567890123"
+                onSave={(v) => onPatch({ alibaba_order_id: v || null })}
+              />
+            </Field>
           </div>
+
 
           <Field
             label="Russian name (customs)"
