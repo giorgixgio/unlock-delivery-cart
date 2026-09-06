@@ -1,0 +1,2 @@
+ALTER TABLE public.wholesale_items ADD COLUMN IF NOT EXISTS alibaba_order_id text;
+CREATE INDEX IF NOT EXISTS wholesale_items_alibaba_order_id_idx ON public.wholesale_items (alibaba_order_id) WHERE alibaba_order_id IS NOT NULL;
