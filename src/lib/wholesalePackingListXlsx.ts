@@ -80,12 +80,12 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
   };
 
   /* ── header block ── */
-  ws.mergeCells("B2:K2");
+  ws.mergeCells("B2:J2");
   set("B2", s.sellerName, { bold: true, size: 12 });
-  ws.mergeCells("B3:K3");
+  ws.mergeCells("B3:J3");
   set("B3", s.sellerAddress);
 
-  ws.mergeCells("C4:I4");
+  ws.mergeCells("C4:H4");
   set("C4", "INVOICE", { bold: true, size: 14, center: true });
 
   set("B5", `Invoice no: ${invoiceNumber(meta.batchNumber, s.invoicePrefix)}`);
