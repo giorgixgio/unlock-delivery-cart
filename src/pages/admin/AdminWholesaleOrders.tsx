@@ -51,6 +51,8 @@ type Item = {
   quantity: number | null;
   carton_count: number | null;
   notes: string | null;
+  description: string | null;
+  title_ru: string | null;
   logistics_stage: string;
   listing_status: string;
   storefront_product_id: string | null;
