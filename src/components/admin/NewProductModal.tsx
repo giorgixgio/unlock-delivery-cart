@@ -133,6 +133,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
       setSku(data.sku || "");
       setPrice(data.price != null ? String(data.price) : "");
       setCompareAtPrice(data.compare_at_price != null ? String(data.compare_at_price) : "");
+      // Editing an existing product: treat the loaded compare price as the
+      // operator's own value so price tweaks don't silently overwrite it.
+      setCompareManuallyEdited(data.compare_at_price != null && data.compare_at_price !== "");
+      setLastAutoCompare(null);
       setCategory(data.category || "uncategorized");
       setVendor(data.vendor || "");
       setDescription(data.description || "");
