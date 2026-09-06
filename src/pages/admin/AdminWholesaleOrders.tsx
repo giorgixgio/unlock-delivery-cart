@@ -1062,6 +1062,9 @@ const AdminWholesaleOrders = () => {
       handle: `${slugify(item.title)}-${item.sku.toLowerCase()}`,
       sku: item.sku,
       price,
+      compare_at_price:
+        item.old_price != null && Number(item.old_price) > 0 ? Number(item.old_price) : null,
+
       warehouse: item.warehouse,
       // draft by default: hidden from the live storefront until reviewed
       available: false,
