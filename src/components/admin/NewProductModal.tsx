@@ -343,9 +343,15 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base font-bold">Add new product</DialogTitle>
+          <DialogTitle className="text-base font-bold">{isEdit ? "Edit product" : "Add new product"}</DialogTitle>
         </DialogHeader>
 
+        {loadingProduct ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading product…
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="md:col-span-2">
             <Label className="text-xs font-bold">Title *</Label>
@@ -357,7 +363,12 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
           </div>
           <div>
             <Label className="text-xs font-bold">Stock quantity</Label>
-            <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} />
+            <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} disabled={isEdit} />
+            {isEdit && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Stock changes go through the logged "Adjust Stock" action in the products list.
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-xs font-bold">Bin location</Label>
