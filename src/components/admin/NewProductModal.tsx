@@ -287,8 +287,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
 
     setSaving(true);
     try {
-      // check duplicate sku
-      const { data: dup } = await supabase.from("products").select("id,title").eq("sku", s).maybeSingle();
+      // check duplicate sku (excluding the product being edited)
+      let dupQuery = supabase.from("products").select("id,title").eq("sku", s);
+      if (isEdit) dupQuery = dupQuery.neq("id", editProductId);
+      const { data: dup } = await dupQuery.maybeSingle();
       if (dup) { toast({ title: "Duplicate SKU", description: `Already used by "${dup.title}"`, variant: "destructive" }); setSaving(false); return; }
 
       const cmp = compareAtPrice.trim() === "" ? null : parseFloat(compareAtPrice);
@@ -296,24 +298,38 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
         toast({ title: "Invalid compare price", variant: "destructive" }); setSaving(false); return;
       }
 
-      const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const handle = slugify(t);
       const finalPrimary = primary && images.includes(primary) ? primary : (images[0] || "/placeholder.svg");
       const ordered = images.length ? [finalPrimary, ...images.filter((u) => u !== finalPrimary)] : [];
 
-      const payload: any = {
-        id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
-        image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
-        description: description.trim(), tags: [], available: true,
-        stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
-        is_verified: isVerified, warehouse,
-      };
-      if (binLocation.trim()) payload.bin_location = binLocation.trim();
+      if (isEdit) {
+        // Edit mode: update in place. Keep the original handle/id, and do NOT
+        // touch stock_quantity here — stock changes go through the logged
+        // Adjust Stock flow.
+        const payload: any = {
+          title: t, sku: s, price: p, compare_at_price: cmp,
+          image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
+          description: description.trim(), is_verified: isVerified, warehouse,
+          bin_location: binLocation.trim() || null,
+        };
+        const { error } = await supabase.from("products").update(payload).eq("id", editProductId);
+        if (error) throw error;
+        toast({ title: "Product updated" });
+      } else {
+        const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const handle = slugify(t);
+        const payload: any = {
+          id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
+          image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
+          description: description.trim(), tags: [], available: true,
+          stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
+          is_verified: isVerified, warehouse,
+        };
+        if (binLocation.trim()) payload.bin_location = binLocation.trim();
 
-      const { error } = await supabase.from("products").insert(payload);
-      if (error) throw error;
-
-      toast({ title: "Product created" });
+        const { error } = await supabase.from("products").insert(payload);
+        if (error) throw error;
+        toast({ title: "Product created" });
+      }
       clearProductsCache();
       onCreated();
       reset();
