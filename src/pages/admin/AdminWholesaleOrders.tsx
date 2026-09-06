@@ -1464,13 +1464,11 @@ const AdminWholesaleOrders = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <ItemImages
+                    <GridImageCell
                       images={imgList(it)}
                       primary={it.image_url ?? imgList(it)[0] ?? null}
                       uploading={uploadingId === it.id}
                       onUpload={(files) => uploadImages(it, files)}
-                      onSetPrimary={(p) => setPrimaryImage(it, p)}
-                      onRemove={(p) => removeImage(it, p)}
                       onOpen={() => setEditId(it.id)}
                     />
                     <Button
