@@ -464,7 +464,7 @@ export default function AdminWholesaleCustoms() {
       const q = i.quantity ?? 1;
       qty += q;
       value += q * (i.unit_price ?? 0);
-      weight += q * (i.weight_kg ?? 0);
+      weight += i.weight_kg ?? 0;
     }
     return { value, weight, qty };
   }, [items]);

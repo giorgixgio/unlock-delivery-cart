@@ -7,8 +7,8 @@ import type { CustomsDocSettings } from "./customsDocSettings";
  *
  * Column map:
  *  A №  | B SKU | C Наименование | D Код товара | E Мест (merged total)
- *  F Количество | G Брутто Kg | H Нетто Kg
- *  I Цена за единицу USD | J Сумма USD
+ *  F Cartons | G Количество | H Брутто Kg | I Нетто Kg
+ *  J Цена за единицу USD | K Сумма USD
  */
 
 /** Gross weight uplift used by the forwarder's template. */
@@ -64,11 +64,12 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
     { width: 42 },  // C Наименование
     { width: 16 },  // D Код товара
     { width: 10 },  // E Мест
-    { width: 12 },  // F Количество
-    { width: 13 },  // G Брутто
-    { width: 13 },  // H Нетто
-    { width: 16 },  // I Цена
-    { width: 15 },  // J Сумма
+    { width: 10 },  // F Cartons
+    { width: 12 },  // G Количество
+    { width: 13 },  // H Брутто
+    { width: 13 },  // I Нетто
+    { width: 16 },  // J Цена
+    { width: 15 },  // K Сумма
   ];
 
   const set = (addr: string, value: unknown, opts?: { bold?: boolean; size?: number; center?: boolean }) => {
@@ -80,21 +81,21 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
   };
 
   /* ── header block ── */
-  ws.mergeCells("B2:J2");
+  ws.mergeCells("B2:K2");
   set("B2", s.sellerName, { bold: true, size: 12 });
-  ws.mergeCells("B3:J3");
+  ws.mergeCells("B3:K3");
   set("B3", s.sellerAddress);
 
-  ws.mergeCells("C4:H4");
+  ws.mergeCells("C4:I4");
   set("C4", "INVOICE", { bold: true, size: 14, center: true });
 
   set("B5", `Invoice no: ${invoiceNumber(meta.batchNumber, s.invoicePrefix)}`);
-  set("F5", `Invoice дата: ${ddmmyyyy(new Date())}`);
+  set("G5", `Invoice дата: ${ddmmyyyy(new Date())}`);
 
   set("B7", `Получатель: ${s.receiverName}`);
   set("B8", `code: ${s.receiverCode}`);
   set("B9", `Адрес: ${s.receiverAddress}`);
-  set("F9", `Условия поставки: ${s.incoterms}`);
+  set("G9", `Условия поставки: ${s.incoterms}`);
 
   /* ── table header (row 11) ── */
   const HEAD = [
@@ -103,6 +104,7 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
     "Наименование",
     "Код товара",
     "Мест",
+    "Cartons",
     "Количество",
     "Брутто Kg",
     "Нетто Kg",
@@ -121,25 +123,37 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
   /* ── data rows ── */
   const FIRST = 12;
   const cartonsTotal = items.reduce((sum, i) => sum + num(i.carton_count), 0);
+  // All numeric values are computed in JS and written as plain numbers so that
+  // every spreadsheet viewer shows results without recalculating formulas.
+  let grossTotal = 0;
+  let netTotal = 0;
+  let amountTotal = 0;
 
   items.forEach((it, idx) => {
     const rowNum = FIRST + idx;
     const row = ws.getRow(rowNum);
     const qty = num(it.quantity);
     const net = num(it.weight_kg);
+    const gross = net * GROSS_FACTOR;
+    const price = num(it.unit_price);
+    const amount = qty * price;
+    grossTotal += gross;
+    netTotal += net;
+    amountTotal += amount;
 
     row.getCell(1).value = idx + 1;
     row.getCell(2).value = it.sku;
     row.getCell(3).value = it.title_ru || it.title || "";
     row.getCell(4).value = dotlessHs(it.hs_code);
     row.getCell(5).value = idx === 0 ? cartonsTotal : null;
-    row.getCell(6).value = qty;
-    row.getCell(7).value = net * GROSS_FACTOR;
-    row.getCell(8).value = net;
-    row.getCell(9).value = num(it.unit_price);
-    row.getCell(10).value = { formula: `F${rowNum}*I${rowNum}` };
+    row.getCell(6).value = num(it.carton_count);
+    row.getCell(7).value = qty;
+    row.getCell(8).value = gross;
+    row.getCell(9).value = net;
+    row.getCell(10).value = price;
+    row.getCell(11).value = amount;
 
-    for (let col = 1; col <= 10; col++) {
+    for (let col = 1; col <= 11; col++) {
       const c = row.getCell(col);
       c.font = FONT;
       c.border = BORDER;
@@ -148,8 +162,8 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
         horizontal: col === 3 ? "left" : "center",
         wrapText: col === 3,
       };
-      if (col === 7 || col === 8) c.numFmt = "0.000";
-      if (col === 9 || col === 10) c.numFmt = "#,##0.00";
+      if (col === 8 || col === 9) c.numFmt = "0.000";
+      if (col === 10 || col === 11) c.numFmt = "#,##0.00";
     }
     row.commit?.();
   });
@@ -168,25 +182,25 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
 
   const tv = ws.getRow(totalsRow);
   tv.getCell(5).value = cartonsTotal;
-  tv.getCell(7).value = { formula: `SUM(G${FIRST}:G${LAST})` };
-  tv.getCell(8).value = { formula: `SUM(H${FIRST}:H${LAST})` };
-  tv.getCell(10).value = { formula: `SUM(J${FIRST}:J${LAST})` };
-  [5, 7, 8, 10].forEach((col) => {
+  tv.getCell(8).value = grossTotal;
+  tv.getCell(9).value = netTotal;
+  tv.getCell(11).value = amountTotal;
+  [5, 8, 9, 11].forEach((col) => {
     const c = tv.getCell(col);
     c.font = { ...FONT, bold: true };
     c.border = BORDER;
     c.alignment = { horizontal: "center", vertical: "middle" };
-    if (col === 7 || col === 8) c.numFmt = "0.000";
-    if (col === 10) c.numFmt = "#,##0.00";
+    if (col === 8 || col === 9) c.numFmt = "0.000";
+    if (col === 11) c.numFmt = "#,##0.00";
   });
 
   const tl = ws.getRow(labelsRow);
   tl.getCell(3).value = "TOTAL:";
   tl.getCell(5).value = " Мест";
-  tl.getCell(7).value = "Kg";
-  tl.getCell(8).value = " Kg";
-  tl.getCell(10).value = "USD";
-  [3, 5, 7, 8, 10].forEach((col) => {
+  tl.getCell(8).value = "Kg";
+  tl.getCell(9).value = " Kg";
+  tl.getCell(11).value = "USD";
+  [3, 5, 8, 9, 11].forEach((col) => {
     const c = tl.getCell(col);
     c.font = { ...FONT, bold: true };
     c.alignment = { horizontal: col === 3 ? "right" : "center", vertical: "middle" };
