@@ -19,6 +19,50 @@ interface Props {
 
 const BUCKET = "product-images";
 
+// Parse a human-readable product title from the URL slug itself — no network
+// request, so nothing to bot-block. Returns null for unknown patterns.
+function titleFromUrl(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname;
+    let slug: string | null = null;
+
+    if (host.includes("temu.com")) {
+      // temu.com/{hyphenated-slug}-g-{numeric-id}.html
+      const m = path.match(/\/([a-z0-9-]+)-g-\d+\.html/i);
+      if (m) slug = m[1];
+    } else if (host.includes("aliexpress.")) {
+      // description query param on some variants, or slug before item id
+      const desc = u.searchParams.get("description");
+      if (desc && desc.length > 3) slug = desc;
+      else {
+        const m = path.match(/\/([a-z0-9-]{8,})\/\d+\.html/i) || path.match(/\/([a-z0-9-]{8,})-\d+\.html/i);
+        if (m) slug = m[1];
+      }
+    } else if (host.includes("amazon.")) {
+      // amazon.com/{slug}/dp/{ASIN}
+      const m = path.match(/^\/([A-Za-z0-9-]{8,})\/(?:dp|gp\/product)\//);
+      if (m) slug = m[1];
+    }
+
+    if (!slug) return null;
+    const words = decodeURIComponent(slug)
+      .replace(/[-_+]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w.length > 0 && !/^\d+$/.test(w));
+    if (words.length < 2) return null;
+    const title = words
+      .map((w) => (w.length <= 2 && /^[a-z]+$/i.test(w) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1)))
+      .join(" ");
+    return title.slice(0, 200);
+  } catch {
+    return null;
+  }
+}
+
 function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -101,35 +145,46 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     if (!/^https?:\/\/\S+$/i.test(url)) {
       return toast({ title: "Paste a valid link first", variant: "destructive" });
     }
+    // Step 1: parse title from the URL slug itself — instant, no network,
+    // works even when the site (e.g. Temu) blocks scrapers. Never overwrites.
+    let filled = 0;
+    const slugTitle = titleFromUrl(url);
+    if (slugTitle && !title.trim()) {
+      setTitle(slugTitle);
+      filled++;
+    }
+
+    // Step 2: best-effort live fetch for image/price (and title only if the
+    // slug parse found nothing).
     setFetching(true);
+    let fetched = false;
     try {
       const { data, error } = await supabase.functions.invoke("fetch-product-info", { body: { url } });
       if (error) throw error;
-      if (!data?.ok) {
-        toast({
-          title: "Couldn't auto-fetch details",
-          description: "You can still generate a description from the title and key features below.",
-        });
-        return;
+      if (data?.ok) {
+        fetched = true;
+        if (data.title && !slugTitle && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
+        if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
+        if (data.image && images.length === 0) {
+          setImages([String(data.image)]);
+          setPrimary(String(data.image));
+          filled++;
+        }
       }
-      let filled = 0;
-      if (data.title && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
-      if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
-      if (data.image && images.length === 0) {
-        setImages([String(data.image)]);
-        setPrimary(String(data.image));
-        filled++;
-      }
-      toast({
-        title: filled ? `Filled ${filled} empty field${filled > 1 ? "s" : ""}` : "Nothing new to fill",
-        description: filled ? undefined : "Your existing values were kept as-is.",
-      });
-    } catch (err: any) {
+    } catch (_err) {
+      // ignore — slug result still stands
+    } finally { setFetching(false); }
+
+    if (filled > 0) {
+      toast({ title: `Filled ${filled} empty field${filled > 1 ? "s" : ""}` });
+    } else if (!fetched) {
       toast({
         title: "Couldn't auto-fetch details",
         description: "You can still generate a description from the title and key features below.",
       });
-    } finally { setFetching(false); }
+    } else {
+      toast({ title: "Nothing new to fill", description: "Your existing values were kept as-is." });
+    }
   };
 
   const handleGenerateDescription = async () => {
