@@ -149,21 +149,34 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     // works even when the site (e.g. Temu) blocks scrapers. Never overwrites.
     let filled = 0;
     const slugTitle = titleFromUrl(url);
-    if (slugTitle && !title.trim()) {
-      setTitle(slugTitle);
-      filled++;
-    }
+    const titleWasEmpty = !title.trim();
+
+    // Run the AI title polish and the live page fetch in parallel — neither
+    // blocks the other, and each falls back gracefully on its own.
+    const aiTitlePromise = (async (): Promise<string | null> => {
+      if (!slugTitle || !titleWasEmpty) return null;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-product-title", {
+          body: { raw_title: slugTitle },
+        });
+        if (error || !data?.title) return null;
+        return String(data.title).slice(0, 200);
+      } catch {
+        return null; // fall back to the raw slug title below
+      }
+    })();
 
     // Step 2: best-effort live fetch for image/price (and title only if the
     // slug parse found nothing).
     setFetching(true);
     let fetched = false;
+    let fetchedTitle: string | null = null;
     try {
       const { data, error } = await supabase.functions.invoke("fetch-product-info", { body: { url } });
       if (error) throw error;
       if (data?.ok) {
         fetched = true;
-        if (data.title && !slugTitle && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
+        if (data.title && !slugTitle) fetchedTitle = String(data.title).slice(0, 200);
         if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
         if (data.image && images.length === 0) {
           setImages([String(data.image)]);
@@ -174,6 +187,17 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     } catch (_err) {
       // ignore — slug result still stands
     } finally { setFetching(false); }
+
+    // Step 3: fill the title (only if still empty) — prefer the AI-polished
+    // Georgian title, fall back to the raw slug, then the fetched page title.
+    if (titleWasEmpty) {
+      const aiTitle = await aiTitlePromise;
+      const finalTitle = aiTitle || slugTitle || fetchedTitle;
+      if (finalTitle) {
+        setTitle(finalTitle);
+        filled++;
+      }
+    }
 
     if (filled > 0) {
       toast({ title: `Filled ${filled} empty field${filled > 1 ? "s" : ""}` });
