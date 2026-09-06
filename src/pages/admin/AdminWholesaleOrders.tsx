@@ -33,6 +33,8 @@ type Batch = {
   batch_number: string;
   warehouse: Warehouse;
   created_at: string;
+  is_completed: boolean;
+  shipping_stage: string | null;
 };
 
 type Item = {
@@ -157,12 +159,16 @@ function SkuCell({
 }
 
 const STAGES = [
+  { value: "to_be_ordered", label: "To Be Ordered", className: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
   { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
   { value: "at_freight_forwarder", label: "At Forwarder", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
   { value: "in_transit", label: "In Transit", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
   { value: "arrived", label: "Arrived", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
   { value: "cleared_customs", label: "Cleared Customs", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
 ];
+
+/** Stages that are managed for the whole batch at once, not per item. */
+const SHIPPING_STAGES = ["in_transit", "arrived", "cleared_customs"];
 
 const stageMeta = (v: string) => STAGES.find((s) => s.value === v) ?? STAGES[0];
 
@@ -645,6 +651,7 @@ function WholesaleItemModal({
   publishing,
   onClose,
   onPatch,
+  onAssignBatch,
   onUpload,
   onSetPrimary,
   onRemoveImage,
@@ -660,12 +667,14 @@ function WholesaleItemModal({
   publishing: boolean;
   onClose: () => void;
   onPatch: (patch: Partial<Item>) => void;
+  onAssignBatch: (batchId: string | null) => void;
   onUpload: (files: File[]) => void;
   onSetPrimary: (path: string) => void;
   onRemoveImage: (path: string) => void;
   onGenerateHs: () => void;
   onPublish: () => void;
 }) {
+  const itemBatch = batches.find((b) => b.id === item.batch_id) ?? null;
   // Old Price auto-fills at 2x the selling price until the operator edits it directly.
   const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
   const [fetching, setFetching] = useState(false);
@@ -964,8 +973,19 @@ function WholesaleItemModal({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Logistics stage">
-              <Select value={item.logistics_stage} onValueChange={(v) => onPatch({ logistics_stage: v })}>
+            <Field
+              label="Logistics stage"
+              hint={
+                itemBatch?.shipping_stage
+                  ? "Managed at batch level — shipping stages follow the batch."
+                  : undefined
+              }
+            >
+              <Select
+                value={item.logistics_stage}
+                onValueChange={(v) => onPatch({ logistics_stage: v })}
+                disabled={!!itemBatch?.shipping_stage}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue>
                     <Badge variant="outline" className={stageMeta(item.logistics_stage).className}>
@@ -974,7 +994,7 @@ function WholesaleItemModal({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {STAGES.map((s) => (
+                  {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
                     <SelectItem key={s.value} value={s.value}>
                       {s.label}
                     </SelectItem>
@@ -982,23 +1002,36 @@ function WholesaleItemModal({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Batch" hint="Warehouse is inherited from the batch and cannot be changed here.">
-              <Select value={item.batch_id ?? ""} onValueChange={(v) => onPatch({ batch_id: v })}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {batches
-                    .filter((b) => b.warehouse === item.warehouse)
-                    .map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.batch_number}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            <Field label="Batch" hint="Moving an item into a shipped batch adopts that batch's stage.">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={item.batch_id ?? "UNASSIGNED"}
+                  onValueChange={(v) => onAssignBatch(v === "UNASSIGNED" ? null : v)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UNASSIGNED">Unassigned (hanging)</SelectItem>
+                    {batches
+                      .filter((b) => b.warehouse === item.warehouse)
+                      .map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.batch_number}
+                          {b.is_completed ? " · Completed" : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {item.batch_id && (
+                  <Button size="sm" variant="outline" onClick={() => onAssignBatch(null)}>
+                    Remove
+                  </Button>
+                )}
+              </div>
             </Field>
           </div>
+
 
           <div className="rounded-lg border border-border p-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1045,7 +1078,9 @@ const AdminWholesaleOrders = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  const [batchFilter, setBatchFilter] = useState<string>("ALL");
+  // One control drives both "which batch do new rows go into" and "which items are listed".
+  // "" = nothing picked yet, "UNASSIGNED" = items detached from every batch.
+  const [activeBatch, setActiveBatch] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("sku");
 
@@ -1053,7 +1088,6 @@ const AdminWholesaleOrders = () => {
   const [newBatchNumber, setNewBatchNumber] = useState("");
   const [newBatchWarehouse, setNewBatchWarehouse] = useState<Warehouse>("A");
   const [creatingBatch, setCreatingBatch] = useState(false);
-  const [addBatchId, setAddBatchId] = useState<string>("");
   const [addingRow, setAddingRow] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
   const [publishingId, setPublishingId] = useState<string | null>(null);
@@ -1066,7 +1100,7 @@ const AdminWholesaleOrders = () => {
     if (w === "ALL") next.delete("warehouse");
     else next.set("warehouse", w);
     setSearchParams(next, { replace: true });
-    setBatchFilter("ALL");
+    setActiveBatch("");
     setSelected(new Set());
   };
 
@@ -1093,15 +1127,25 @@ const AdminWholesaleOrders = () => {
   );
 
   useEffect(() => {
-    if (!addBatchId || !warehouseBatches.some((b) => b.id === addBatchId)) {
-      setAddBatchId(warehouseBatches[0]?.id ?? "");
+    if (activeBatch && activeBatch !== "UNASSIGNED" && !warehouseBatches.some((b) => b.id === activeBatch)) {
+      setActiveBatch("");
     }
-  }, [warehouseBatches, addBatchId]);
+  }, [warehouseBatches, activeBatch]);
+
+  const selectedBatch = useMemo(
+    () => batches.find((b) => b.id === activeBatch) ?? null,
+    [batches, activeBatch],
+  );
 
   const visibleItems = useMemo(() => {
+    if (!activeBatch) return [];
     let rows = items.filter((it) => (warehouse === "ALL" ? true : it.warehouse === warehouse));
-    if (batchFilter !== "ALL") rows = rows.filter((it) => it.batch_id === batchFilter);
+    rows =
+      activeBatch === "UNASSIGNED"
+        ? rows.filter((it) => !it.batch_id)
+        : rows.filter((it) => it.batch_id === activeBatch);
     if (stageFilter !== "ALL") rows = rows.filter((it) => it.logistics_stage === stageFilter);
+
     const sorted = [...rows];
     sorted.sort((a, b) => {
       switch (sortBy) {
@@ -1118,7 +1162,7 @@ const AdminWholesaleOrders = () => {
       }
     });
     return sorted;
-  }, [items, warehouse, batchFilter, stageFilter, sortBy]);
+  }, [items, warehouse, activeBatch, stageFilter, sortBy]);
 
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
 
@@ -1186,21 +1230,82 @@ const AdminWholesaleOrders = () => {
     setCreatingBatch(false);
     if (error) return toast.error(error.message);
     setBatches((b) => [data as Batch, ...b]);
-    setAddBatchId((data as Batch).id);
+    setActiveBatch((data as Batch).id);
     setNewBatchOpen(false);
     toast.success(`Batch ${num} created (Warehouse ${newBatchWarehouse})`);
   };
 
   const addRow = async () => {
-    if (!addBatchId) return toast.error("Create or select a batch first");
+    if (!activeBatch || activeBatch === "UNASSIGNED")
+      return toast.error("Create or select a batch first");
     setAddingRow(true);
-    const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: addBatchId });
+    const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: activeBatch });
     setAddingRow(false);
     if (error) return toast.error(error.message);
     const row = (Array.isArray(data) ? data[0] : data) as Item;
     setItems((rows) => [...rows, row]);
     toast.success(`Row added — ${row.sku}`);
   };
+
+  /** Detach an item, or move it into another batch — adopting that batch's shipping stage. */
+  const assignBatch = async (item: Item, batchId: string | null) => {
+    const target = batchId ? batches.find((b) => b.id === batchId) ?? null : null;
+    const patch: Partial<Item> = { batch_id: batchId };
+    if (target?.shipping_stage) patch.logistics_stage = target.shipping_stage;
+    await patchItem(item.id, patch);
+    toast.success(batchId ? `Moved to ${target?.batch_number ?? "batch"}` : "Removed from batch");
+  };
+
+  const toggleBatchCompleted = async () => {
+    if (!selectedBatch) return;
+    const next = !selectedBatch.is_completed;
+    const prev = batches;
+    setBatches((bs) => bs.map((b) => (b.id === selectedBatch.id ? { ...b, is_completed: next } : b)));
+    const { error } = await supabase
+      .from("wholesale_batches")
+      .update({ is_completed: next })
+      .eq("id", selectedBatch.id);
+    if (error) {
+      setBatches(prev);
+      return toast.error(error.message);
+    }
+    toast.success(next ? "Batch marked completed" : "Batch reopened");
+  };
+
+  /** Batch-level shipping stage — cascades to every item still in the batch. */
+  const setBatchShippingStage = async (stage: string | null) => {
+    if (!selectedBatch) return;
+    const batchId = selectedBatch.id;
+    const prevBatches = batches;
+    const prevItems = items;
+    setBatches((bs) => bs.map((b) => (b.id === batchId ? { ...b, shipping_stage: stage } : b)));
+    if (stage) {
+      setItems((rows) => rows.map((r) => (r.batch_id === batchId ? { ...r, logistics_stage: stage } : r)));
+    }
+    const { error } = await supabase
+      .from("wholesale_batches")
+      .update({ shipping_stage: stage })
+      .eq("id", batchId);
+    if (error) {
+      setBatches(prevBatches);
+      setItems(prevItems);
+      return toast.error(error.message);
+    }
+    if (stage) {
+      const { error: e2 } = await supabase
+        .from("wholesale_items")
+        .update({ logistics_stage: stage })
+        .eq("batch_id", batchId);
+      if (e2) {
+        setItems(prevItems);
+        return toast.error(e2.message);
+      }
+      toast.success(`Batch moved to ${stageMeta(stage).label}`);
+    } else {
+      toast.success("Batch shipping stage cleared — items are editable again");
+    }
+  };
+
 
   const imgList = (it: Item): string[] =>
     Array.isArray(it.images) && it.images.length
@@ -1455,39 +1560,33 @@ const AdminWholesaleOrders = () => {
           <Plus className="h-4 w-4 mr-1" /> New Batch
         </Button>
 
-        <Select value={addBatchId} onValueChange={setAddBatchId}>
-          <SelectTrigger className="h-9 w-[190px]">
-            <SelectValue placeholder="Select batch" />
+        {/* One selector: it picks the batch new rows go into AND filters the list below. */}
+        <Select value={activeBatch} onValueChange={(v) => { setActiveBatch(v); setSelected(new Set()); }}>
+          <SelectTrigger className="h-9 w-[240px]">
+            <SelectValue placeholder="Select a batch" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="UNASSIGNED">Unassigned (hanging items)</SelectItem>
             {warehouseBatches.map((b) => (
               <SelectItem key={b.id} value={b.id}>
                 {b.warehouse} · {b.batch_number}
+                {b.is_completed ? " · ✅ Completed" : ""}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Button onClick={addRow} size="sm" disabled={addingRow || !addBatchId}>
+        <Button
+          onClick={addRow}
+          size="sm"
+          disabled={addingRow || !activeBatch || activeBatch === "UNASSIGNED"}
+        >
           {addingRow ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
           Add Row
         </Button>
 
         <div className="mx-2 h-6 w-px bg-border" />
 
-        <Select value={batchFilter} onValueChange={setBatchFilter}>
-          <SelectTrigger className="h-9 w-[170px]">
-            <SelectValue placeholder="Batch" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All batches</SelectItem>
-            {warehouseBatches.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.warehouse} · {b.batch_number}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <Select value={stageFilter} onValueChange={setStageFilter}>
           <SelectTrigger className="h-9 w-[170px]">
@@ -1550,7 +1649,49 @@ const AdminWholesaleOrders = () => {
         )}
       </div>
 
+      {/* Batch header — completion badge and the shared shipping stage for the whole batch. */}
+      {selectedBatch && (
+        <div className="rounded-xl border border-border p-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold">{selectedBatch.batch_number}</span>
+            <Badge variant="outline" className={warehouseClass(selectedBatch.warehouse)}>
+              Warehouse {selectedBatch.warehouse}
+            </Badge>
+            {selectedBatch.is_completed && (
+              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                Completed
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Batch stage</span>
+            {SHIPPING_STAGES.map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant={selectedBatch.shipping_stage === s ? "default" : "outline"}
+                onClick={() => setBatchShippingStage(selectedBatch.shipping_stage === s ? null : s)}
+              >
+                {stageMeta(s).label}
+              </Button>
+            ))}
+            <div className="mx-1 h-6 w-px bg-border" />
+            <Button size="sm" variant="secondary" onClick={toggleBatchCompleted}>
+              {selectedBatch.is_completed ? "Reopen batch" : "Mark as completed"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!activeBatch ? (
+        <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
+          Select or create a batch to see its items.
+        </div>
+      ) : (
+      <>
       {/* Grid */}
+
       <div className="rounded-xl border border-border overflow-x-auto">
         <table className="w-full min-w-[1990px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
@@ -1648,24 +1789,40 @@ const AdminWholesaleOrders = () => {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Select
-                      value={it.batch_id ?? ""}
-                      onValueChange={(v) => patchItem(it.id, { batch_id: v })}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder={batchNumber(it.batch_id)} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches
-                          .filter((b) => b.warehouse === it.warehouse)
-                          .map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.batch_number}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-1">
+                      <Select
+                        value={it.batch_id ?? "UNASSIGNED"}
+                        onValueChange={(v) => assignBatch(it, v === "UNASSIGNED" ? null : v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={batchNumber(it.batch_id)} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                          {batches
+                            .filter((b) => b.warehouse === it.warehouse)
+                            .map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.batch_number}
+                                {b.is_completed ? " · Completed" : ""}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {it.batch_id && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          title="Remove from batch"
+                          onClick={() => assignBatch(it, null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
+
                   <td className="px-4 py-3">
                     <EditableCell
                       value={it.title}
@@ -1752,6 +1909,7 @@ const AdminWholesaleOrders = () => {
                     <Select
                       value={it.logistics_stage}
                       onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
+                      disabled={!!batches.find((b) => b.id === it.batch_id)?.shipping_stage}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue>
@@ -1761,7 +1919,7 @@ const AdminWholesaleOrders = () => {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {STAGES.map((s) => (
+                        {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
                           <SelectItem key={s.value} value={s.value}>
                             {s.label}
                           </SelectItem>
@@ -1769,6 +1927,7 @@ const AdminWholesaleOrders = () => {
                       </SelectContent>
                     </Select>
                   </td>
+
                   <td className="px-4 py-3">
                     <EditableCell
                       value={it.notes}
@@ -1818,6 +1977,10 @@ const AdminWholesaleOrders = () => {
           </tbody>
         </table>
       </div>
+      </>
+      )}
+
+
 
       {editItem && (
         <WholesaleItemModal
@@ -1834,6 +1997,7 @@ const AdminWholesaleOrders = () => {
           publishing={publishingId === editItem.id}
           onClose={() => setEditId(null)}
           onPatch={(patch) => patchItem(editItem.id, patch)}
+          onAssignBatch={(batchId) => assignBatch(editItem, batchId)}
           onUpload={(files) => uploadImages(editItem, files)}
           onSetPrimary={(p) => setPrimaryImage(editItem, p)}
           onRemoveImage={(p) => removeImage(editItem, p)}

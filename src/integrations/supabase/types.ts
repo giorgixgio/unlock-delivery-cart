@@ -2237,18 +2237,24 @@ export type Database = {
           batch_number: string
           created_at: string
           id: string
+          is_completed: boolean
+          shipping_stage: string | null
           warehouse: string
         }
         Insert: {
           batch_number: string
           created_at?: string
           id?: string
+          is_completed?: boolean
+          shipping_stage?: string | null
           warehouse: string
         }
         Update: {
           batch_number?: string
           created_at?: string
           id?: string
+          is_completed?: boolean
+          shipping_stage?: string | null
           warehouse?: string
         }
         Relationships: []
