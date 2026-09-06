@@ -843,7 +843,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ alibaba_title: v || null })}
               />
             </Field>
-            <Field label="Alibaba link">
+            <Field label="Alibaba link" hint="Used as the source link for Fetch Info.">
               <div className="flex items-center gap-1">
                 <EditableCell
                   value={item.alibaba_link}
@@ -855,13 +855,53 @@ function WholesaleItemModal({
                     <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                   </a>
                 )}
+                <Button size="sm" variant="outline" onClick={handleFetchInfo} disabled={fetching}>
+                  {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  <span className="ml-1">Fetch Info</span>
+                </Button>
               </div>
             </Field>
           </div>
 
+          <Field
+            label="Russian name (customs)"
+            hint="Plain descriptive name used on the packing list. Auto-generated on export if left empty."
+          >
+            <div className="flex items-center gap-2">
+              <EditableCell
+                value={item.title_ru}
+                placeholder="Наименование товара"
+                onSave={(v) => onPatch({ title_ru: v || null })}
+              />
+              <Button size="sm" variant="outline" onClick={handleGenerateRu} disabled={genRu}>
+                {genRu ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span className="ml-1 whitespace-nowrap">{item.title_ru ? "Regenerate" : "Generate"}</span>
+              </Button>
+            </div>
+          </Field>
+
           <Field label="Notes / key features">
             <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
           </Field>
+
+          <Field label="Description (storefront)">
+            <div className="space-y-2">
+              <Textarea
+                value={descLocal}
+                placeholder="Georgian product description"
+                rows={6}
+                onChange={(e) => setDescLocal(e.target.value)}
+                onBlur={() => {
+                  if (descLocal !== (item.description ?? "")) onPatch({ description: descLocal || null });
+                }}
+              />
+              <Button size="sm" variant="outline" onClick={handleGenerateDescription} disabled={genDesc}>
+                {genDesc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span className="ml-1">{item.description ? "Regenerate description" : "Generate description"}</span>
+              </Button>
+            </div>
+          </Field>
+
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Quantity">
