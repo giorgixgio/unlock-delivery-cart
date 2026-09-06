@@ -1560,39 +1560,33 @@ const AdminWholesaleOrders = () => {
           <Plus className="h-4 w-4 mr-1" /> New Batch
         </Button>
 
-        <Select value={addBatchId} onValueChange={setAddBatchId}>
-          <SelectTrigger className="h-9 w-[190px]">
-            <SelectValue placeholder="Select batch" />
+        {/* One selector: it picks the batch new rows go into AND filters the list below. */}
+        <Select value={activeBatch} onValueChange={(v) => { setActiveBatch(v); setSelected(new Set()); }}>
+          <SelectTrigger className="h-9 w-[240px]">
+            <SelectValue placeholder="Select a batch" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="UNASSIGNED">Unassigned (hanging items)</SelectItem>
             {warehouseBatches.map((b) => (
               <SelectItem key={b.id} value={b.id}>
                 {b.warehouse} · {b.batch_number}
+                {b.is_completed ? " · ✅ Completed" : ""}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Button onClick={addRow} size="sm" disabled={addingRow || !addBatchId}>
+        <Button
+          onClick={addRow}
+          size="sm"
+          disabled={addingRow || !activeBatch || activeBatch === "UNASSIGNED"}
+        >
           {addingRow ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
           Add Row
         </Button>
 
         <div className="mx-2 h-6 w-px bg-border" />
 
-        <Select value={batchFilter} onValueChange={setBatchFilter}>
-          <SelectTrigger className="h-9 w-[170px]">
-            <SelectValue placeholder="Batch" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All batches</SelectItem>
-            {warehouseBatches.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.warehouse} · {b.batch_number}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <Select value={stageFilter} onValueChange={setStageFilter}>
           <SelectTrigger className="h-9 w-[170px]">
