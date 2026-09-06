@@ -960,12 +960,16 @@ const AdminWholesaleOrders = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <ItemImage
-                      path={it.image_url}
+                    <ItemImages
+                      images={imgList(it)}
+                      primary={it.image_url ?? imgList(it)[0] ?? null}
                       uploading={uploadingId === it.id}
-                      onUpload={(f) => uploadImage(it, f)}
+                      onUpload={(files) => uploadImages(it, files)}
+                      onSetPrimary={(p) => setPrimaryImage(it, p)}
+                      onRemove={(p) => removeImage(it, p)}
                     />
                   </td>
+
                   <td className="px-4 py-3">
                     <SkuCell
                       item={it}
