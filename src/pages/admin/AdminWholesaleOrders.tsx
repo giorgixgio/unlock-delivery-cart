@@ -276,7 +276,75 @@ function Thumb({
   );
 }
 
-/** Multi-image cell: thumbnail stack, add more, remove, set primary. */
+/** Compact grid cell: single primary thumbnail + count badge; still accepts file drops. */
+function GridImageCell({
+  images,
+  primary,
+  onUpload,
+  uploading,
+  onOpen,
+}: {
+  images: string[];
+  primary: string | null;
+  onUpload: (files: File[]) => void;
+  uploading: boolean;
+  onOpen: () => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const primaryPath = primary ?? images[0] ?? null;
+  const url = useSignedUrl(primaryPath);
+
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+        if (files.length) onUpload(files);
+      }}
+      title="Click to edit item — or drop images here to add them"
+      className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40 transition-colors ${
+        dragOver ? "border-primary ring-2 ring-primary/40" : "border-border"
+      }`}
+    >
+      {primaryPath && url ? (
+        <img
+          src={url}
+          alt="Wholesale item"
+          className="h-full w-full cursor-pointer object-cover"
+          loading="lazy"
+          onClick={onOpen}
+        />
+      ) : uploading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : primaryPath ? (
+        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+      ) : (
+        <ImagePlus
+          className="h-4 w-4 cursor-pointer text-muted-foreground"
+          onClick={onOpen}
+        />
+      )}
+      {images.length > 1 && (
+        <span className="absolute bottom-0.5 right-0.5 rounded bg-background/85 px-1 py-px text-[10px] font-semibold text-foreground shadow-sm">
+          ×{images.length}
+        </span>
+      )}
+      {uploading && primaryPath && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Multi-image editor (item popup): thumbnail stack, obvious drop zone, remove, set primary. */
 function ItemImages({
   images,
   primary,
@@ -297,31 +365,40 @@ function ItemImages({
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
   return (
-    <div
-      className={`flex flex-wrap gap-1 ${className ?? "max-w-[140px]"}`}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
-        if (files.length) onUpload(files);
-      }}
-    >
-      {images.map((p) => (
-        <Thumb
-          key={p}
-          path={p}
-          primary={p === primary}
-          onMakePrimary={() => onSetPrimary(p)}
-          onRemove={() => onRemove(p)}
-          onOpen={onOpen}
-        />
-      ))}
+    <div className={`space-y-2 ${className ?? ""}`}>
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {images.map((p) => (
+            <Thumb
+              key={p}
+              path={p}
+              primary={p === primary}
+              onMakePrimary={() => onSetPrimary(p)}
+              onRemove={() => onRemove(p)}
+              onOpen={onOpen}
+            />
+          ))}
+        </div>
+      )}
 
       <div
         onClick={() => inputRef.current?.click()}
-        className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/60"
-        title="Click or drag images here (multiple allowed)"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+          if (files.length) onUpload(files);
+        }}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/40 hover:border-primary/60"
+        }`}
       >
         <input
           ref={inputRef}
@@ -336,9 +413,18 @@ function ItemImages({
           }}
         />
         {uploading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <>
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium">Uploading…</span>
+          </>
         ) : (
-          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+          <>
+            <ImagePlus className={`h-5 w-5 ${dragOver ? "text-primary" : "text-muted-foreground"}`} />
+            <span className="text-sm font-medium">
+              {dragOver ? "Drop images to add them" : "Drag & drop images here, or click to browse"}
+            </span>
+            <span className="text-xs text-muted-foreground">Multiple files allowed</span>
+          </>
         )}
       </div>
     </div>
