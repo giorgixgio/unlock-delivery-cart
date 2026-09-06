@@ -1274,8 +1274,12 @@ const AdminWholesaleOrders = () => {
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
 
   const summary = useMemo(() => {
+    // Completed batches are done & shipped — they shouldn't inflate current totals.
+    const completed = new Set(batches.filter((b) => b.is_completed).map((b) => b.id));
     const calc = (w: Warehouse) => {
-      const rows = items.filter((i) => i.warehouse === w);
+      const rows = items.filter(
+        (i) => i.warehouse === w && !(i.batch_id && completed.has(i.batch_id)),
+      );
       return {
         count: rows.length,
         value: rows.reduce((sum, r) => sum + lineValueUsd(r), 0),
@@ -1283,7 +1287,8 @@ const AdminWholesaleOrders = () => {
     };
     return { A: calc("A"), B: calc("B") };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, batches]);
+
 
   /** Grand total across currently visible (filtered) rows. */
   const filteredTotal = useMemo(
