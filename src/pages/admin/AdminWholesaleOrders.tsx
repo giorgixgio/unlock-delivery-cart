@@ -46,6 +46,8 @@ type Item = {
   image_url: string | null;
   images: string[] | null;
   alibaba_link: string | null;
+  alibaba_order_id: string | null;
+
   alibaba_title: string | null;
   supplier_group_id: string | null;
   unit_price: number | null;
