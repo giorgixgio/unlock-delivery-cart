@@ -188,30 +188,73 @@ export default function AdminWholesaleCustoms() {
     }
   };
 
+  /** Fill in any missing Russian names (saved back to the item) before export. */
+  const ensureRussianNames = async (list: Item[]): Promise<Item[]> => {
+    const missing = list.filter((i) => !(i.title_ru || "").trim() && (i.title || "").trim());
+    if (!missing.length) return list;
+    const results = await Promise.all(
+      missing.map(async (i) => {
+        try {
+          const ru = await generateTitleRu({ title: i.title });
+          await supabase.from("wholesale_items").update({ title_ru: ru }).eq("id", i.id);
+          return { id: i.id, ru };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const map = new Map(results.filter(Boolean).map((r) => [r!.id, r!.ru]));
+    if (map.size) setItems((prev) => prev.map((i) => (map.has(i.id) ? { ...i, title_ru: map.get(i.id)! } : i)));
+    return list.map((i) => (map.has(i.id) ? { ...i, title_ru: map.get(i.id)! } : i));
+  };
+
   /* ── generate ── */
   const generate = async (kind: "invoice" | "packing_list") => {
     if (!batch) return;
     if (!items.length) return toast.error("This batch has no items");
     setBusy(kind);
     try {
-      const stamp = kind === "invoice" ? await stampDataUrl(batch.warehouse) : null;
+      const stamp = await stampDataUrl(batch.warehouse);
       const meta = {
         batchNumber: batch.batch_number,
         warehouse: batch.warehouse,
         stampDataUrl: stamp,
       };
-      const pdf =
-        kind === "invoice"
-          ? await buildWholesaleInvoice(items, meta)
-          : await buildWholesalePackingList(items, meta);
 
-      const fileName = `${kind === "invoice" ? "invoice" : "packing-list"}-${batch.batch_number}-${Date.now()}.pdf`;
+      let fileName: string;
+      let blob: Blob;
+      let contentType: string;
+
+      if (kind === "invoice") {
+        const pdf = await buildWholesaleInvoice(items, meta);
+        fileName = `invoice-${batch.batch_number}-${Date.now()}.pdf`;
+        blob = pdf.output("blob");
+        contentType = "application/pdf";
+      } else {
+        const withRu = await ensureRussianNames(items);
+        const xlsxItems: XlsxItem[] = withRu.map((i) => ({
+          sku: i.sku,
+          title: i.title,
+          title_ru: i.title_ru,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          weight_kg: i.weight_kg,
+          carton_count: i.carton_count,
+          hs_code: i.hs_code,
+        }));
+        const warnings = packingListWarnings(xlsxItems);
+        blob = await buildPackingListWorkbook(xlsxItems, meta);
+        fileName = `packing-list-${batch.batch_number}-${Date.now()}.xlsx`;
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (warnings.length) {
+          toast.warning("Packing list has incomplete data", { description: warnings.join(" · ") });
+        }
+      }
+
       const path = `${batch.id}/${fileName}`;
-      const blob = pdf.output("blob");
-
       const { error: upErr } = await supabase.storage
         .from("wholesale-documents")
-        .upload(path, blob, { contentType: "application/pdf", upsert: false });
+        .upload(path, blob, { contentType, upsert: false });
       if (upErr) throw upErr;
 
       const { error: rowErr } = await supabase.from("wholesale_documents").insert({
@@ -223,8 +266,14 @@ export default function AdminWholesaleCustoms() {
       });
       if (rowErr) throw rowErr;
 
-      pdf.save(fileName);
-      toast.success(kind === "invoice" ? "Invoice generated" : "Packing list generated");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(kind === "invoice" ? "Invoice generated" : "Packing list generated (Excel)");
       loadBatchData(batch.id);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
@@ -232,6 +281,7 @@ export default function AdminWholesaleCustoms() {
       setBusy(null);
     }
   };
+
 
   /* ── uploads ── */
   const uploadDocs = async (files: FileList | File[]) => {
