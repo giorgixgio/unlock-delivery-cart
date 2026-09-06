@@ -713,7 +713,7 @@ const AdminProducts = () => {
                 <td className="px-3 py-2">
                   <button
                     className="relative w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center group/img"
-                    title="Manage images"
+                    title="Edit product"
                     onClick={() => setImageManagerProduct(row)}
                   >
                     {row.image && row.image !== "/placeholder.svg" ? (
