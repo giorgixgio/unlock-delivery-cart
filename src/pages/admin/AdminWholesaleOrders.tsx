@@ -1789,24 +1789,40 @@ const AdminWholesaleOrders = () => {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Select
-                      value={it.batch_id ?? ""}
-                      onValueChange={(v) => patchItem(it.id, { batch_id: v })}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder={batchNumber(it.batch_id)} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches
-                          .filter((b) => b.warehouse === it.warehouse)
-                          .map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.batch_number}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-1">
+                      <Select
+                        value={it.batch_id ?? "UNASSIGNED"}
+                        onValueChange={(v) => assignBatch(it, v === "UNASSIGNED" ? null : v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={batchNumber(it.batch_id)} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                          {batches
+                            .filter((b) => b.warehouse === it.warehouse)
+                            .map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.batch_number}
+                                {b.is_completed ? " · Completed" : ""}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {it.batch_id && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          title="Remove from batch"
+                          onClick={() => assignBatch(it, null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
+
                   <td className="px-4 py-3">
                     <EditableCell
                       value={it.title}
