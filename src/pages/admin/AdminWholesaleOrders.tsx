@@ -45,6 +45,8 @@ type Item = {
   supplier_group_id: string | null;
   unit_price: number | null;
   selling_price: number | null;
+  old_price: number | null;
+
   weight_kg: number | null;
   quantity: number | null;
   carton_count: number | null;
