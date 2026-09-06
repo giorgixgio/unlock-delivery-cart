@@ -46,6 +46,8 @@ type Item = {
   image_url: string | null;
   images: string[] | null;
   alibaba_link: string | null;
+  alibaba_order_id: string | null;
+
   alibaba_title: string | null;
   supplier_group_id: string | null;
   unit_price: number | null;
@@ -99,11 +101,24 @@ const GROUP_COLORS = [
   "bg-lime-500",
   "bg-orange-500",
 ];
-const groupColor = (id: string) => {
+const GROUP_ROW_TINTS = [
+  "bg-rose-500/10",
+  "bg-amber-500/10",
+  "bg-emerald-500/10",
+  "bg-sky-500/10",
+  "bg-violet-500/10",
+  "bg-fuchsia-500/10",
+  "bg-lime-500/10",
+  "bg-orange-500/10",
+];
+const groupHash = (id: string) => {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return GROUP_COLORS[h % GROUP_COLORS.length];
+  return h;
 };
+const groupColor = (id: string) => GROUP_COLORS[groupHash(id) % GROUP_COLORS.length];
+const groupRowTint = (id: string) => GROUP_ROW_TINTS[groupHash(id) % GROUP_ROW_TINTS.length];
+
 
 /** SKU cell with click-to-copy supplier message + group indicator. */
 function SkuCell({
@@ -870,7 +885,18 @@ function WholesaleItemModal({
                 </Button>
               </div>
             </Field>
+            <Field
+              label="Alibaba Order ID"
+              hint="Items sharing this order ID (same warehouse) are grouped automatically."
+            >
+              <EditableCell
+                value={item.alibaba_order_id}
+                placeholder="e.g. 1234567890123"
+                onSave={(v) => onPatch({ alibaba_order_id: v || null })}
+              />
+            </Field>
           </div>
+
 
           <Field
             label="Russian name (customs)"
@@ -1161,7 +1187,30 @@ const AdminWholesaleOrders = () => {
           return a.sku.localeCompare(b.sku);
       }
     });
+
+    // Cluster same-supplier rows together (default view + explicit "group" sort).
+    if (sortBy === "sku" || sortBy === "group") {
+      const order: string[] = [];
+      const buckets = new Map<string, Item[]>();
+      for (const r of sorted) {
+        const key = r.supplier_group_id ?? `solo:${r.id}`;
+        if (!buckets.has(key)) {
+          buckets.set(key, []);
+          order.push(key);
+        }
+        buckets.get(key)!.push(r);
+      }
+      if (sortBy === "group") {
+        order.sort((a, b) => {
+          const ga = a.startsWith("solo:") ? 1 : 0;
+          const gb = b.startsWith("solo:") ? 1 : 0;
+          return ga - gb;
+        });
+      }
+      return order.flatMap((k) => buckets.get(k)!);
+    }
     return sorted;
+
   }, [items, warehouse, activeBatch, stageFilter, sortBy]);
 
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
@@ -1191,6 +1240,40 @@ const AdminWholesaleOrders = () => {
   const batchNumber = (id: string | null) =>
     batches.find((b) => b.id === id)?.batch_number ?? "—";
 
+  /** Auto-group items that share the same Alibaba Order ID (same warehouse). */
+  const autoGroupByOrderId = async (item: Item, orderId: string) => {
+    const key = orderId.trim();
+    if (!key) return;
+    const matches = items.filter(
+      (r) =>
+        r.id !== item.id &&
+        r.warehouse === item.warehouse &&
+        (r.alibaba_order_id || "").trim().toLowerCase() === key.toLowerCase(),
+    );
+    if (matches.length === 0) return;
+
+    const existingGroup =
+      matches.find((m) => m.supplier_group_id)?.supplier_group_id ||
+      item.supplier_group_id ||
+      crypto.randomUUID();
+
+    const toUpdate = [item, ...matches].filter((r) => r.supplier_group_id !== existingGroup);
+    if (toUpdate.length === 0) return;
+
+    const ids = toUpdate.map((r) => r.id);
+    setItems((rows) =>
+      rows.map((r) => (ids.includes(r.id) ? { ...r, supplier_group_id: existingGroup } : r)),
+    );
+    const { error } = await supabase
+      .from("wholesale_items")
+      .update({ supplier_group_id: existingGroup })
+      .in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(
+      `Grouped with ${matches.length} other item${matches.length === 1 ? "" : "s"} sharing this order ID`,
+    );
+  };
+
   const patchItem = async (id: string, patch: Partial<Item>) => {
     const prev = items;
     setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -1198,8 +1281,14 @@ const AdminWholesaleOrders = () => {
     if (error) {
       setItems(prev);
       toast.error(error.message);
+      return;
+    }
+    if (typeof patch.alibaba_order_id === "string" && patch.alibaba_order_id.trim()) {
+      const target = prev.find((r) => r.id === id);
+      if (target) await autoGroupByOrderId({ ...target, ...patch }, patch.alibaba_order_id);
     }
   };
+
 
   const suggestedBatchNumber = () => {
     const year = new Date().getFullYear();
@@ -1607,7 +1696,9 @@ const AdminWholesaleOrders = () => {
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="sku">Sort: SKU</SelectItem>
+            <SelectItem value="sku">Sort: SKU (grouped)</SelectItem>
+            <SelectItem value="group">Sort: Supplier group</SelectItem>
+
             <SelectItem value="created">Sort: Newest</SelectItem>
             <SelectItem value="stage">Sort: Stage</SelectItem>
             <SelectItem value="price">Sort: Price</SelectItem>
@@ -1739,7 +1830,13 @@ const AdminWholesaleOrders = () => {
               </tr>
             ) : (
               visibleItems.map((it) => (
-                <tr key={it.id} className="border-t border-border align-middle">
+                <tr
+                  key={it.id}
+                  className={`border-t border-border align-middle ${
+                    it.supplier_group_id ? groupRowTint(it.supplier_group_id) : ""
+                  }`}
+                >
+
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={selected.has(it.id)}

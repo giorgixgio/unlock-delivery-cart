@@ -2300,6 +2300,7 @@ export type Database = {
       wholesale_items: {
         Row: {
           alibaba_link: string | null
+          alibaba_order_id: string | null
           alibaba_title: string | null
           batch_id: string | null
           carton_count: number | null
@@ -2331,6 +2332,7 @@ export type Database = {
         }
         Insert: {
           alibaba_link?: string | null
+          alibaba_order_id?: string | null
           alibaba_title?: string | null
           batch_id?: string | null
           carton_count?: number | null
@@ -2362,6 +2364,7 @@ export type Database = {
         }
         Update: {
           alibaba_link?: string | null
+          alibaba_order_id?: string | null
           alibaba_title?: string | null
           batch_id?: string | null
           carton_count?: number | null
@@ -2462,6 +2465,7 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: {
           alibaba_link: string | null
+          alibaba_order_id: string | null
           alibaba_title: string | null
           batch_id: string | null
           carton_count: number | null
