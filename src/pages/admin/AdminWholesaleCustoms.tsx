@@ -53,8 +53,18 @@ const DOC_TYPES: Record<string, { label: string; className: string }> = {
   invoice: { label: "Invoice", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
   packing_list: { label: "Packing list", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
   logistics_invoice: { label: "Logistics invoice", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  shipping_receipt: { label: "Shipping receipt", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  shipping_receipt: { label: "Warehouse receive list", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  cmr: { label: "CMR", className: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
 };
+
+/** The five documents a batch needs before it clears customs. */
+const CHECKLIST: { type: string; title: string; description: string; mode: "generate" | "upload" }[] = [
+  { type: "invoice", title: "Commercial Invoice", description: "Generated PDF invoice for customs.", mode: "generate" },
+  { type: "packing_list", title: "Packing List (Customs)", description: "Generated Excel in the forwarder's template.", mode: "generate" },
+  { type: "logistics_invoice", title: "Logistics Invoice", description: "Freight forwarder's invoice — upload the file you received.", mode: "upload" },
+  { type: "cmr", title: "CMR", description: "International road transport consignment note — upload.", mode: "upload" },
+  { type: "shipping_receipt", title: "Warehouse Receive List", description: "Excel the forwarder sends back with matched shipping marks and weights.", mode: "upload" },
+];
 
 const warehouseClass = (w: Warehouse) =>
   w === "A"
@@ -284,9 +294,9 @@ export default function AdminWholesaleCustoms() {
 
 
   /* ── uploads ── */
-  const uploadDocs = async (files: FileList | File[]) => {
+  const uploadDocs = async (files: FileList | File[], docType: string = uploadType) => {
     if (!batch) return toast.error("Select a batch first");
-    setBusy("upload");
+    setBusy(`upload-${docType}`);
     try {
       for (const file of Array.from(files)) {
         const safe = file.name.replace(/[^\w.\-]+/g, "_");
@@ -298,7 +308,7 @@ export default function AdminWholesaleCustoms() {
         const { error: rowErr } = await supabase.from("wholesale_documents").insert({
           batch_id: batch.id,
           warehouse: batch.warehouse,
-          doc_type: uploadType,
+          doc_type: docType,
           file_name: file.name,
           file_url: path,
         });
