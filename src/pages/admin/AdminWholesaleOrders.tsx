@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle, Pencil } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Warehouse = "A" | "B";
@@ -1169,6 +1169,8 @@ const AdminWholesaleOrders = () => {
     setSelected(new Set());
   };
 
+  const editItem = editId ? items.find((i) => i.id === editId) ?? null : null;
+
   const allChecked = visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
 
   return (
@@ -1583,6 +1585,29 @@ const AdminWholesaleOrders = () => {
           </tbody>
         </table>
       </div>
+
+      {editItem && (
+        <WholesaleItemModal
+          item={editItem}
+          batches={batches}
+          groupItems={
+            editItem.supplier_group_id
+              ? items.filter((x) => x.supplier_group_id === editItem.supplier_group_id)
+              : [editItem]
+          }
+          images={imgList(editItem)}
+          uploading={uploadingId === editItem.id}
+          hsLoading={hsLoadingId === editItem.id}
+          publishing={publishingId === editItem.id}
+          onClose={() => setEditId(null)}
+          onPatch={(patch) => patchItem(editItem.id, patch)}
+          onUpload={(files) => uploadImages(editItem, files)}
+          onSetPrimary={(p) => setPrimaryImage(editItem, p)}
+          onRemoveImage={(p) => removeImage(editItem, p)}
+          onGenerateHs={() => generateHs(editItem)}
+          onPublish={() => handlePublish(editItem)}
+        />
+      )}
 
       <Dialog open={newBatchOpen} onOpenChange={setNewBatchOpen}>
         <DialogContent>
