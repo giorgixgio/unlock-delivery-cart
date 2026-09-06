@@ -1191,6 +1191,40 @@ const AdminWholesaleOrders = () => {
   const batchNumber = (id: string | null) =>
     batches.find((b) => b.id === id)?.batch_number ?? "—";
 
+  /** Auto-group items that share the same Alibaba Order ID (same warehouse). */
+  const autoGroupByOrderId = async (item: Item, orderId: string) => {
+    const key = orderId.trim();
+    if (!key) return;
+    const matches = items.filter(
+      (r) =>
+        r.id !== item.id &&
+        r.warehouse === item.warehouse &&
+        (r.alibaba_order_id || "").trim().toLowerCase() === key.toLowerCase(),
+    );
+    if (matches.length === 0) return;
+
+    const existingGroup =
+      matches.find((m) => m.supplier_group_id)?.supplier_group_id ||
+      item.supplier_group_id ||
+      crypto.randomUUID();
+
+    const toUpdate = [item, ...matches].filter((r) => r.supplier_group_id !== existingGroup);
+    if (toUpdate.length === 0) return;
+
+    const ids = toUpdate.map((r) => r.id);
+    setItems((rows) =>
+      rows.map((r) => (ids.includes(r.id) ? { ...r, supplier_group_id: existingGroup } : r)),
+    );
+    const { error } = await supabase
+      .from("wholesale_items")
+      .update({ supplier_group_id: existingGroup })
+      .in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(
+      `Grouped with ${matches.length} other item${matches.length === 1 ? "" : "s"} sharing this order ID`,
+    );
+  };
+
   const patchItem = async (id: string, patch: Partial<Item>) => {
     const prev = items;
     setItems((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -1198,8 +1232,14 @@ const AdminWholesaleOrders = () => {
     if (error) {
       setItems(prev);
       toast.error(error.message);
+      return;
+    }
+    if (typeof patch.alibaba_order_id === "string" && patch.alibaba_order_id.trim()) {
+      const target = prev.find((r) => r.id === id);
+      if (target) await autoGroupByOrderId({ ...target, ...patch }, patch.alibaba_order_id);
     }
   };
+
 
   const suggestedBatchNumber = () => {
     const year = new Date().getFullYear();
