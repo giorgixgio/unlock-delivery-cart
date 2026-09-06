@@ -1685,7 +1685,9 @@ const AdminWholesaleOrders = () => {
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="sku">Sort: SKU</SelectItem>
+            <SelectItem value="sku">Sort: SKU (grouped)</SelectItem>
+            <SelectItem value="group">Sort: Supplier group</SelectItem>
+
             <SelectItem value="created">Sort: Newest</SelectItem>
             <SelectItem value="stage">Sort: Stage</SelectItem>
             <SelectItem value="price">Sort: Price</SelectItem>
