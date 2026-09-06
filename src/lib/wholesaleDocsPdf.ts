@@ -106,7 +106,7 @@ export async function buildWholesaleInvoice(items: DocItem[], meta: DocMeta): Pr
     const line = qty * price;
     grand += line;
     qtyTotal += qty;
-    weight += (it.weight_kg ?? 0) * qty;
+    weight += it.weight_kg ?? 0;
 
     pdf.setFontSize(9);
     pdf.text(it.sku, cols.sku, y);
@@ -169,7 +169,7 @@ export async function buildWholesalePackingList(items: DocItem[], meta: DocMeta)
       return tableHead(ny + 26);
     });
     const qty = it.quantity ?? 1;
-    const w = (it.weight_kg ?? 0) * qty;
+    const w = it.weight_kg ?? 0;
     qtyTotal += qty;
     weight += w;
     cartons += it.carton_count ?? 0;
