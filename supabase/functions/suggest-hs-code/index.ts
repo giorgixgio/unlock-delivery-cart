@@ -15,13 +15,18 @@ function json(body: unknown, status = 200) {
 
 const MODEL = "google/gemini-3.6-flash";
 
-const SYSTEM = `You are a customs classification assistant supporting a freight forwarder review process.
+const SYSTEM = `You are a customs classification assistant supporting a freight forwarder review process for goods imported into Georgia (the country).
 
 Rules you must follow, in order of priority:
-1. Classify accurately and defensibly according to the Harmonized System (HS). Correctness comes first, always.
+1. Classify accurately and defensibly according to the Harmonized System (HS) and Georgia's national commodity nomenclature. Correctness comes first, always.
 2. ONLY when a genuine, real ambiguity exists between two or more equally valid HS headings for the actual product may you prefer the valid option with the lower compliance/certification burden. If one heading is clearly correct, use it even if it carries a heavier burden.
-3. NEVER attempt to evade or hide a certification requirement that legitimately applies to the product's real nature. Misclassification to dodge certification is a legal and compliance risk. If the product plainly requires certification (e.g. power tools, electrical goods, wireless devices, cosmetics, food-contact items requiring pre-notification or conformity assessment in the destination market), set hs_requires_certification to true and say so plainly.
-4. If you cannot classify confidently, say so: set confidence "low" and explain what extra information is needed.
+3. Provide the FULL Georgian national commodity code, not just the bare 6-digit international HS heading. Georgia extends the international 6-digit HS code to a longer national nomenclature code (typically 8-10 digits total). Format the code with standard dot-grouping (e.g. XXXX.XX.XX or XXXX.XX.XX.XX) following HS/national nomenclature conventions. A bare 6-digit heading such as "8513.10" is NOT usable as a final declaration code — always extend it to the full national code when you can.
+4. If you can only confidently determine the 6-digit international heading but cannot confidently determine the full Georgian national extension, still return the 6-digit heading as hs_code (dot-grouped), but MUST say so explicitly in hs_notes (e.g. "Base HS heading identified; full Georgian national code needs confirmation from forwarder") and set confidence to "medium" at best — never present a 6-digit code as if it were a complete declaration code.
+5. Certification requirements — Georgian import context only:
+   - DO NOT flag battery / electrical-and-electronic-equipment waste management (extended producer responsibility, "მგვ" / ნარჩენების მართვის მწარმოებლის გაფართოებული ვალდებულება) as a certification need. The importing business already holds that company-level registration covering batteries and electronics — it is satisfied at the company level and does NOT apply per-product. Never set hs_requires_certification=true or mention it in hs_notes on that basis, regardless of the product.
+   - DO still flag "წინასწარი შეტყობინება" (pre-notification) requirements that apply to certain product categories in the Georgian import/customs context (e.g. certain power tools, construction equipment, machinery, and other categories subject to pre-market notification/conformity assessment). Set hs_requires_certification=true and state it plainly in hs_notes when such a requirement genuinely applies.
+   - NEVER attempt to evade or hide a legitimate certification requirement (other than the already-satisfied მგვ waste-management registration above). Misclassification to dodge certification is a legal and compliance risk.
+6. If you cannot classify confidently, say so: set confidence "low" and explain what extra information is needed.
 
 You are assisting, not replacing, forwarder/logistics review.`;
 
@@ -87,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     const textPrompt = [
-      "Classify this imported product for customs and suggest an HS code.",
+      "Classify this imported product for customs and suggest a Georgian national commodity code (HS-based, 8-10 digits).",
       "",
       `Product title: ${title}`,
       item.alibaba_title ? `Supplier listing title: ${item.alibaba_title}` : null,
@@ -97,8 +102,8 @@ Deno.serve(async (req) => {
         : "NO product photo could be loaded, so you are working from text only. Because of this limitation, cap your confidence at 'medium' at best.",
       "",
       "Respond with ONLY a JSON object, no markdown fences:",
-      `{"hs_code":"6-10 digit HS code with dots as usual","confidence":"high|medium|low","requires_certification":true|false|null,"notes":"1-3 short sentences of rationale, plus any certification requirement stated plainly, plus what extra info is needed if confidence is low"}`,
-      "Use null for requires_certification only when you genuinely cannot tell.",
+      `{"hs_code":"the FULL Georgian national commodity code (8-10 digits, dot-grouped) — or the 6-digit international heading if you cannot determine the national extension, clearly noted","confidence":"high|medium|low","requires_certification":true|false|null,"notes":"1-3 short sentences of rationale, the full national code status (complete or needs forwarder confirmation), any წინასწარი შეტყობინება pre-notification requirement stated plainly, plus what extra info is needed if confidence is low"}`,
+      "Use null for requires_certification only when you genuinely cannot tell. Never flag battery/electronics waste-management (მგვ) registration — it is already satisfied at the company level.",
     ]
       .filter(Boolean)
       .join("\n");
@@ -157,7 +162,17 @@ Deno.serve(async (req) => {
 
     const certRaw = parsed.requires_certification;
     const requiresCert = certRaw === true ? true : certRaw === false ? false : null;
-    const notes = String(parsed.notes || "").trim().slice(0, 1200) || null;
+    let notes = String(parsed.notes || "").trim().slice(0, 1200) || null;
+
+    // Georgian customs declarations require the full national code (8-10 digits).
+    // A bare 6-digit international heading is incomplete — cap confidence and flag it.
+    const digitCount = (hsCode.replace(/[^0-9]/g, "") || "").length;
+    if (digitCount < 8) {
+      if (confidence === "high") confidence = "medium";
+      const incompleteNote =
+        "Returned code has fewer than 8 digits and may be incomplete for Georgian customs purposes — full national code needs forwarder confirmation.";
+      notes = notes ? `${notes} ${incompleteNote}` : incompleteNote;
+    }
 
     const { error: updErr } = await admin
       .from("wholesale_items")
