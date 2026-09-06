@@ -727,6 +727,8 @@ function WholesaleItemModal({
   onPublish: () => void;
 }) {
   const itemBatch = batches.find((b) => b.id === item.batch_id) ?? null;
+  const miss = missingKeys(item);
+
   // Old Price auto-fills at 2x the selling price until the operator edits it directly.
   const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
   const [fetching, setFetching] = useState(false);
