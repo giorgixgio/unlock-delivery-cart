@@ -1111,10 +1111,16 @@ function WholesaleItemModal({
           </div>
 
 
-          <div className="rounded-lg border border-border p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div
+            className={`rounded-lg border p-3 ${
+              miss.has("hs_code") ? "border-destructive/40 bg-destructive/5" : "border-border"
+            }`}
+          >
+            <div className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               HS classification
+              {miss.has("hs_code") && <AlertTriangle className="h-3 w-3 text-destructive" />}
             </div>
+
             <HsCell
               item={item}
               images={images}
