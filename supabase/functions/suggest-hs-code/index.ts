@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     const textPrompt = [
-      "Classify this imported product for customs and suggest an HS code.",
+      "Classify this imported product for customs and suggest a Georgian national commodity code (HS-based, 8-10 digits).",
       "",
       `Product title: ${title}`,
       item.alibaba_title ? `Supplier listing title: ${item.alibaba_title}` : null,
@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
         : "NO product photo could be loaded, so you are working from text only. Because of this limitation, cap your confidence at 'medium' at best.",
       "",
       "Respond with ONLY a JSON object, no markdown fences:",
-      `{"hs_code":"6-10 digit HS code with dots as usual","confidence":"high|medium|low","requires_certification":true|false|null,"notes":"1-3 short sentences of rationale, plus any certification requirement stated plainly, plus what extra info is needed if confidence is low"}`,
-      "Use null for requires_certification only when you genuinely cannot tell.",
+      `{"hs_code":"the FULL Georgian national commodity code (8-10 digits, dot-grouped) — or the 6-digit international heading if you cannot determine the national extension, clearly noted","confidence":"high|medium|low","requires_certification":true|false|null,"notes":"1-3 short sentences of rationale, the full national code status (complete or needs forwarder confirmation), any წინასწარი შეტყობინება pre-notification requirement stated plainly, plus what extra info is needed if confidence is low"}`,
+      "Use null for requires_certification only when you genuinely cannot tell. Never flag battery/electronics waste-management (მგვ) registration — it is already satisfied at the company level.",
     ]
       .filter(Boolean)
       .join("\n");
