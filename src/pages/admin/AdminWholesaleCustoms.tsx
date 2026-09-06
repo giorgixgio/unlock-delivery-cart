@@ -19,6 +19,8 @@ import {
   Loader2,
   Upload,
   Stamp as StampIcon,
+  CheckCircle2,
+  AlertCircle,
   ClipboardList,
 } from "lucide-react";
 import {
@@ -82,6 +84,120 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+/** One document slot in the per-batch checklist: present (download) or missing (act). */
+function DocSlot({
+  slot,
+  doc,
+  busy,
+  onGenerate,
+  onUpload,
+  onDownload,
+}: {
+  slot: { type: string; title: string; description: string; mode: "generate" | "upload" };
+  doc: Doc | null;
+  busy: boolean;
+  onGenerate: () => void;
+  onUpload: (files: FileList | File[]) => void;
+  onDownload: (doc: Doc) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+
+  return (
+    <div
+      className={`rounded-lg border p-3 transition-colors ${
+        doc
+          ? "border-emerald-500/40 bg-emerald-500/5"
+          : over
+            ? "border-primary bg-primary/5"
+            : "border-dashed border-border"
+      }`}
+      onDragOver={
+        slot.mode === "upload"
+          ? (e) => {
+              e.preventDefault();
+              setOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={slot.mode === "upload" ? () => setOver(false) : undefined}
+      onDrop={
+        slot.mode === "upload"
+          ? (e) => {
+              e.preventDefault();
+              setOver(false);
+              if (e.dataTransfer.files?.length) onUpload(e.dataTransfer.files);
+            }
+          : undefined
+      }
+    >
+      <div className="flex items-start gap-2">
+        {doc ? (
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+        ) : (
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{slot.title}</p>
+          {doc ? (
+            <>
+              <p className="truncate text-xs text-muted-foreground">{doc.file_name ?? "file"}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(doc.created_at).toLocaleString()}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">{slot.description}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {doc && (
+          <Button size="sm" variant="outline" onClick={() => onDownload(doc)}>
+            <Download className="mr-1 h-4 w-4" />
+            Download
+          </Button>
+        )}
+        {slot.mode === "generate" ? (
+          <Button size="sm" variant={doc ? "ghost" : "default"} onClick={onGenerate} disabled={busy}>
+            {busy ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : slot.type === "invoice" ? (
+              <FileText className="mr-1 h-4 w-4" />
+            ) : (
+              <ClipboardList className="mr-1 h-4 w-4" />
+            )}
+            {doc ? "Regenerate" : "Generate"}
+          </Button>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) onUpload(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              size="sm"
+              variant={doc ? "ghost" : "default"}
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+              {doc ? "Replace" : "Upload or drop file"}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminWholesaleCustoms() {
   const [params, setParams] = useSearchParams();
   const warehouse = (params.get("wh") as Warehouse | "all") ?? "all";
@@ -95,9 +211,6 @@ export default function AdminWholesaleCustoms() {
   const [stamps, setStamps] = useState<Record<Warehouse, string | null>>({ A: null, B: null });
   const stampInputA = useRef<HTMLInputElement>(null);
   const stampInputB = useRef<HTMLInputElement>(null);
-  const uploadRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState("logistics_invoice");
-  const [dragOver, setDragOver] = useState(false);
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -294,7 +407,7 @@ export default function AdminWholesaleCustoms() {
 
 
   /* ── uploads ── */
-  const uploadDocs = async (files: FileList | File[], docType: string = uploadType) => {
+  const uploadDocs = async (files: FileList | File[], docType: string) => {
     if (!batch) return toast.error("Select a batch first");
     setBusy(`upload-${docType}`);
     try {
