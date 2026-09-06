@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle, Pencil } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
+import { titleFromUrl } from "@/lib/sourceTitleParser";
+import { generateTitleRu } from "@/lib/wholesaleRuTitle";
 
 type Warehouse = "A" | "B";
 
