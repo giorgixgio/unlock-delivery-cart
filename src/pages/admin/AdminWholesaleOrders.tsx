@@ -665,8 +665,6 @@ function WholesaleItemModal({
 }) {
   // Old Price auto-fills at 2x the selling price until the operator edits it directly.
   const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
-  // Old Price auto-fills at 2x the selling price until the operator edits it directly.
-  const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
   const [fetching, setFetching] = useState(false);
   const [genDesc, setGenDesc] = useState(false);
   const [genRu, setGenRu] = useState(false);
