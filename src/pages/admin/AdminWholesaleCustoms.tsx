@@ -526,58 +526,36 @@ export default function AdminWholesaleCustoms() {
             {totals.weight.toFixed(2)} kg
           </p>
 
-          {/* upload zone */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Select value={uploadType} onValueChange={setUploadType}>
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="logistics_invoice">Logistics invoice</SelectItem>
-                  <SelectItem value="shipping_receipt">Shipping receipt</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
-                  <SelectItem value="packing_list">Packing list</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* document checklist */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Documents for {batch.batch_number}
+              </h2>
               <span className="text-xs text-muted-foreground">
-                Tagged Warehouse {batch.warehouse} automatically
+                {CHECKLIST.filter((c) => docs.some((d) => d.doc_type === c.type)).length} of{" "}
+                {CHECKLIST.length} complete
               </span>
             </div>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                if (e.dataTransfer.files?.length) uploadDocs(e.dataTransfer.files);
-              }}
-              onClick={() => uploadRef.current?.click()}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-sm transition-colors ${
-                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-              }`}
-            >
-              <input
-                ref={uploadRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.length) uploadDocs(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              {busy === "upload" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              ) : (
-                <Upload className="h-5 w-5 text-muted-foreground" />
-              )}
-              <span className="text-muted-foreground">Drop logistics invoices / shipping receipts here</span>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {CHECKLIST.map((slot) => {
+                const doc = docs.find((d) => d.doc_type === slot.type) ?? null;
+                const slotBusy = busy === slot.type || busy === `upload-${slot.type}`;
+                return (
+                  <DocSlot
+                    key={slot.type}
+                    slot={slot}
+                    doc={doc}
+                    busy={slotBusy}
+                    onGenerate={() => generate(slot.type as "invoice" | "packing_list")}
+                    onUpload={(files) => uploadDocs(files, slot.type)}
+                    onDownload={downloadDoc}
+                  />
+                );
+              })}
             </div>
           </div>
+
 
           {/* document list */}
           <div className="rounded-lg border border-border overflow-x-auto">
