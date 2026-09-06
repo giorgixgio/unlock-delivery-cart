@@ -555,18 +555,86 @@ const AdminWholesaleOrders = () => {
     toast.success(`Row added — ${row.sku}`);
   };
 
-  const uploadImage = async (item: Item, file: File) => {
+  const imgList = (it: Item): string[] =>
+    Array.isArray(it.images) && it.images.length
+      ? it.images
+      : it.image_url
+        ? [it.image_url]
+        : [];
+
+  const uploadImages = async (item: Item, files: File[]) => {
     setUploadingId(item.id);
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${item.warehouse}/${item.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("wholesale-images").upload(path, file, {
-      upsert: true,
-      contentType: file.type,
-    });
+    const uploaded: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${item.warehouse}/${item.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const { error } = await supabase.storage.from("wholesale-images").upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+      if (error) toast.error(error.message);
+      else uploaded.push(path);
+    }
     setUploadingId(null);
-    if (error) return toast.error(error.message);
-    await patchItem(item.id, { image_url: path });
+    if (!uploaded.length) return;
+    const next = [...imgList(item), ...uploaded];
+    await patchItem(item.id, { images: next, image_url: item.image_url || next[0] });
   };
+
+  const setPrimaryImage = async (item: Item, path: string) => {
+    const next = [path, ...imgList(item).filter((p) => p !== path)];
+    await patchItem(item.id, { images: next, image_url: path });
+  };
+
+  const removeImage = async (item: Item, path: string) => {
+    const next = imgList(item).filter((p) => p !== path);
+    await patchItem(item.id, {
+      images: next,
+      image_url: item.image_url === path ? next[0] ?? null : item.image_url,
+    });
+    supabase.storage.from("wholesale-images").remove([path]).catch(() => {});
+  };
+
+  const [hsLoadingId, setHsLoadingId] = useState<string | null>(null);
+
+  const generateHs = async (item: Item) => {
+    setHsLoadingId(item.id);
+    const { data, error } = await supabase.functions.invoke("suggest-hs-code", {
+      body: { item_id: item.id },
+    });
+    setHsLoadingId(null);
+    if (error) {
+      const msg = (data as { error?: string } | null)?.error || error.message;
+      return toast.error(msg || "Could not suggest an HS code");
+    }
+    const res = data as {
+      hs_code: string;
+      hs_confidence: string;
+      hs_requires_certification: boolean | null;
+      hs_notes: string | null;
+      used_image?: boolean;
+    };
+    setItems((rows) =>
+      rows.map((r) =>
+        r.id === item.id
+          ? {
+              ...r,
+              hs_code: res.hs_code,
+              hs_confidence: res.hs_confidence,
+              hs_requires_certification: res.hs_requires_certification,
+              hs_notes: res.hs_notes,
+              hs_reviewed: false,
+            }
+          : r,
+      ),
+    );
+    toast.success(
+      res.hs_confidence === "low"
+        ? `Suggested ${res.hs_code} — low confidence, needs manual review`
+        : `Suggested ${res.hs_code}`,
+    );
+  };
+
 
   /** Idempotent upsert of one wholesale item into the storefront products table. */
   const publishItem = async (item: Item): Promise<string> => {
