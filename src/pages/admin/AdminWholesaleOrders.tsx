@@ -119,6 +119,34 @@ const groupHash = (id: string) => {
 const groupColor = (id: string) => GROUP_COLORS[groupHash(id) % GROUP_COLORS.length];
 const groupRowTint = (id: string) => GROUP_ROW_TINTS[groupHash(id) % GROUP_ROW_TINTS.length];
 
+/**
+ * Operator-facing completeness check. Purely informative — nothing is required
+ * for saving, publishing or generating documents. Notes and Old price are
+ * intentionally excluded.
+ */
+const COMPLETENESS_FIELDS: { key: string; label: string; get: (i: Item) => unknown }[] = [
+  { key: "title", label: "Title", get: (i) => i.title },
+  { key: "alibaba_title", label: "Alibaba title", get: (i) => i.alibaba_title },
+  { key: "alibaba_link", label: "Alibaba link", get: (i) => i.alibaba_link },
+  { key: "images", label: "Image", get: (i) => i.image_url ?? (i.images?.length ? "x" : null) },
+  { key: "quantity", label: "Quantity", get: (i) => i.quantity },
+  { key: "carton_count", label: "Cartons", get: (i) => i.carton_count },
+  { key: "weight_kg", label: "Weight", get: (i) => i.weight_kg },
+  { key: "unit_price", label: "Unit price", get: (i) => i.unit_price },
+  { key: "selling_price", label: "Selling price", get: (i) => i.selling_price },
+  { key: "hs_code", label: "HS code", get: (i) => i.hs_code },
+  { key: "title_ru", label: "Russian name", get: (i) => i.title_ru },
+  { key: "description", label: "Description", get: (i) => i.description },
+];
+
+const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && !v.trim());
+
+const missingFields = (i: Item) =>
+  COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.label);
+
+const missingKeys = (i: Item) => new Set(COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.key));
+
+
 
 /** SKU cell with click-to-copy supplier message + group indicator. */
 function SkuCell({
