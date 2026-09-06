@@ -80,6 +80,12 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [compareAtPrice, setCompareAtPrice] = useState("");
+  // Tracks whether the operator has directly typed in the Compare-at field
+  // this session. Once true, auto-calc stops overwriting it.
+  const [compareManuallyEdited, setCompareManuallyEdited] = useState(false);
+  // Remembers the last value we auto-filled so we can detect if the operator
+  // is still on our suggestion (letting us keep updating it as price changes).
+  const [lastAutoCompare, setLastAutoCompare] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("uncategorized");
   const [vendor, setVendor] = useState("");
   const [description, setDescription] = useState("");
@@ -127,6 +133,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
       setSku(data.sku || "");
       setPrice(data.price != null ? String(data.price) : "");
       setCompareAtPrice(data.compare_at_price != null ? String(data.compare_at_price) : "");
+      // Editing an existing product: treat the loaded compare price as the
+      // operator's own value so price tweaks don't silently overwrite it.
+      setCompareManuallyEdited(data.compare_at_price != null);
+      setLastAutoCompare(null);
       setCategory(data.category || "uncategorized");
       setVendor(data.vendor || "");
       setDescription(data.description || "");
@@ -142,6 +152,7 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
 
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
+    setCompareManuallyEdited(false); setLastAutoCompare(null);
     setCategory("uncategorized"); setVendor(""); setDescription("");
     setImages([]); setPrimary(""); setBinLocation(""); setIsVerified(true); setWarehouse(defaultWarehouse);
     setSourceLink(""); setKeyFeatures(""); setStockQuantity("0");
@@ -376,11 +387,31 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
           </div>
           <div>
             <Label className="text-xs font-bold">Price (₾) *</Label>
-            <Input type="number" step="0.1" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <Input type="number" step="0.1" min="0" value={price} onChange={(e) => {
+              const v = e.target.value;
+              setPrice(v);
+              // Auto-suggest Compare-at = Price * 2, but only as a default: stop
+              // overwriting once the operator has manually edited it, unless the
+              // current value still matches our last auto-suggestion (so a price
+              // tweak keeps updating the suggestion until they diverge).
+              const n = parseFloat(v);
+              if (!compareManuallyEdited && !isNaN(n) && n > 0) {
+                const auto = (Math.round(n * 2 * 100) / 100).toString();
+                setCompareAtPrice(auto);
+                setLastAutoCompare(auto);
+              } else if (compareManuallyEdited && compareAtPrice === lastAutoCompare && !isNaN(n) && n > 0) {
+                const auto = (Math.round(n * 2 * 100) / 100).toString();
+                setCompareAtPrice(auto);
+                setLastAutoCompare(auto);
+              }
+            }} />
           </div>
           <div>
             <Label className="text-xs font-bold">Compare-at price (₾)</Label>
-            <Input type="number" step="0.1" min="0" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} placeholder="optional" />
+            <Input type="number" step="0.1" min="0" value={compareAtPrice} onChange={(e) => {
+              setCompareAtPrice(e.target.value);
+              setCompareManuallyEdited(true);
+            }} placeholder="auto: 2× price" />
           </div>
           <div>
             <Label className="text-xs font-bold">Category</Label>
