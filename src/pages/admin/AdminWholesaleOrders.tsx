@@ -951,6 +951,7 @@ function WholesaleItemModal({
 
           <Field
             label="Russian name (customs)"
+            missing={miss.has("title_ru")}
             hint="Plain descriptive name used on the packing list. Auto-generated on export if left empty."
           >
             <div className="flex items-center gap-2">
@@ -970,7 +971,7 @@ function WholesaleItemModal({
             <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
           </Field>
 
-          <Field label="Description (storefront)">
+          <Field label="Description (storefront)" missing={miss.has("description")}>
             <div className="space-y-2">
               <Textarea
                 value={descLocal}
@@ -990,7 +991,7 @@ function WholesaleItemModal({
 
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Quantity">
+            <Field label="Quantity" missing={miss.has("quantity")}>
               <EditableCell
                 type="number"
                 value={item.quantity}
@@ -998,7 +999,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ quantity: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Cartons">
+            <Field label="Cartons" missing={miss.has("carton_count")}>
               <EditableCell
                 type="number"
                 value={item.carton_count}
@@ -1006,7 +1007,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ carton_count: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Weight (kg)">
+            <Field label="Weight (kg)" missing={miss.has("weight_kg")}>
               <EditableCell
                 type="number"
                 value={item.weight_kg}
@@ -1017,7 +1018,7 @@ function WholesaleItemModal({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Unit price (USD)" hint={gelFromUsd(Number(item.unit_price) || 0)}>
+            <Field label="Unit price (USD)" missing={miss.has("unit_price")} hint={gelFromUsd(Number(item.unit_price) || 0)}>
               <EditableCell
                 type="number"
                 value={item.unit_price}
@@ -1025,7 +1026,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ unit_price: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Selling price (₾)" hint="Used as the storefront price when publishing.">
+            <Field label="Selling price (₾)" missing={miss.has("selling_price")} hint="Used as the storefront price when publishing.">
               <EditableCell
                 type="number"
                 value={item.selling_price}
