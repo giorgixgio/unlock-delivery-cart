@@ -282,6 +282,8 @@ function ItemImages({
   onSetPrimary,
   onRemove,
   uploading,
+  onOpen,
+  className,
 }: {
   images: string[];
   primary: string | null;
@@ -289,11 +291,13 @@ function ItemImages({
   onSetPrimary: (path: string) => void;
   onRemove: (path: string) => void;
   uploading: boolean;
+  onOpen?: () => void;
+  className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div
-      className="flex max-w-[140px] flex-wrap gap-1"
+      className={`flex flex-wrap gap-1 ${className ?? "max-w-[140px]"}`}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -308,8 +312,10 @@ function ItemImages({
           primary={p === primary}
           onMakePrimary={() => onSetPrimary(p)}
           onRemove={() => onRemove(p)}
+          onOpen={onOpen}
         />
       ))}
+
       <div
         onClick={() => inputRef.current?.click()}
         className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/60"
