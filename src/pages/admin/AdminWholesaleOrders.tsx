@@ -159,12 +159,16 @@ function SkuCell({
 }
 
 const STAGES = [
+  { value: "to_be_ordered", label: "To Be Ordered", className: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
   { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
   { value: "at_freight_forwarder", label: "At Forwarder", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
   { value: "in_transit", label: "In Transit", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
   { value: "arrived", label: "Arrived", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
   { value: "cleared_customs", label: "Cleared Customs", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
 ];
+
+/** Stages that are managed for the whole batch at once, not per item. */
+const SHIPPING_STAGES = ["in_transit", "arrived", "cleared_customs"];
 
 const stageMeta = (v: string) => STAGES.find((s) => s.value === v) ?? STAGES[0];
 
