@@ -707,7 +707,7 @@ function WholesaleItemModal({
             <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
           </Field>
 
-          <Field label="Images" hint="Drag & drop or click the tile to add. Star sets the primary image.">
+          <Field label="Images" hint="Drag & drop into the dashed area or click it to browse. Star sets the primary image.">
             <ItemImages
               images={images}
               primary={item.image_url ?? images[0] ?? null}
