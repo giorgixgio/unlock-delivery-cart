@@ -1936,16 +1936,20 @@ const AdminWholesaleOrders = () => {
 
 
                   <td className="px-4 py-3">
-                    <SkuCell
-                      item={it}
-                      groupItems={
-                        it.supplier_group_id
-                          ? items.filter((x) => x.supplier_group_id === it.supplier_group_id)
-                          : [it]
-                      }
-                      onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <SkuCell
+                        item={it}
+                        groupItems={
+                          it.supplier_group_id
+                            ? items.filter((x) => x.supplier_group_id === it.supplier_group_id)
+                            : [it]
+                        }
+                        onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
+                      />
+                      <IncompleteBadge item={it} />
+                    </div>
                   </td>
+
                   <td className="px-4 py-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
