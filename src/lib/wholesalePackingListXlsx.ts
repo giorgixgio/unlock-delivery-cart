@@ -126,21 +126,20 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
     const rowNum = FIRST + idx;
     const row = ws.getRow(rowNum);
     const qty = num(it.quantity);
-    const net = qty * num(it.weight_kg);
+    const net = num(it.weight_kg);
 
     row.getCell(1).value = idx + 1;
     row.getCell(2).value = it.sku;
     row.getCell(3).value = it.title_ru || it.title || "";
     row.getCell(4).value = dotlessHs(it.hs_code);
     row.getCell(5).value = idx === 0 ? cartonsTotal : null;
-    row.getCell(6).value = num(it.carton_count);
-    row.getCell(7).value = qty;
-    row.getCell(8).value = net * GROSS_FACTOR;
-    row.getCell(9).value = net;
-    row.getCell(10).value = num(it.unit_price);
-    row.getCell(11).value = { formula: `G${rowNum}*J${rowNum}` };
+    row.getCell(6).value = qty;
+    row.getCell(7).value = net * GROSS_FACTOR;
+    row.getCell(8).value = net;
+    row.getCell(9).value = num(it.unit_price);
+    row.getCell(10).value = { formula: `F${rowNum}*I${rowNum}` };
 
-    for (let col = 1; col <= 11; col++) {
+    for (let col = 1; col <= 10; col++) {
       const c = row.getCell(col);
       c.font = FONT;
       c.border = BORDER;
@@ -149,8 +148,8 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
         horizontal: col === 3 ? "left" : "center",
         wrapText: col === 3,
       };
-      if (col === 8 || col === 9) c.numFmt = "0.000";
-      if (col === 10 || col === 11) c.numFmt = "#,##0.00";
+      if (col === 7 || col === 8) c.numFmt = "0.000";
+      if (col === 9 || col === 10) c.numFmt = "#,##0.00";
     }
     row.commit?.();
   });
