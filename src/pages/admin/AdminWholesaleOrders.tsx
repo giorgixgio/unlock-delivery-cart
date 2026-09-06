@@ -1649,7 +1649,49 @@ const AdminWholesaleOrders = () => {
         )}
       </div>
 
+      {/* Batch header — completion badge and the shared shipping stage for the whole batch. */}
+      {selectedBatch && (
+        <div className="rounded-xl border border-border p-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold">{selectedBatch.batch_number}</span>
+            <Badge variant="outline" className={warehouseClass(selectedBatch.warehouse)}>
+              Warehouse {selectedBatch.warehouse}
+            </Badge>
+            {selectedBatch.is_completed && (
+              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                Completed
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Batch stage</span>
+            {SHIPPING_STAGES.map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant={selectedBatch.shipping_stage === s ? "default" : "outline"}
+                onClick={() => setBatchShippingStage(selectedBatch.shipping_stage === s ? null : s)}
+              >
+                {stageMeta(s).label}
+              </Button>
+            ))}
+            <div className="mx-1 h-6 w-px bg-border" />
+            <Button size="sm" variant="secondary" onClick={toggleBatchCompleted}>
+              {selectedBatch.is_completed ? "Reopen batch" : "Mark as completed"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!activeBatch ? (
+        <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
+          Select or create a batch to see its items.
+        </div>
+      ) : (
+      <>
       {/* Grid */}
+
       <div className="rounded-xl border border-border overflow-x-auto">
         <table className="w-full min-w-[1990px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
