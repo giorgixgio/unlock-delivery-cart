@@ -1078,7 +1078,9 @@ const AdminWholesaleOrders = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  const [batchFilter, setBatchFilter] = useState<string>("ALL");
+  // One control drives both "which batch do new rows go into" and "which items are listed".
+  // "" = nothing picked yet, "UNASSIGNED" = items detached from every batch.
+  const [activeBatch, setActiveBatch] = useState<string>("");
   const [stageFilter, setStageFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("sku");
 
@@ -1086,7 +1088,6 @@ const AdminWholesaleOrders = () => {
   const [newBatchNumber, setNewBatchNumber] = useState("");
   const [newBatchWarehouse, setNewBatchWarehouse] = useState<Warehouse>("A");
   const [creatingBatch, setCreatingBatch] = useState(false);
-  const [addBatchId, setAddBatchId] = useState<string>("");
   const [addingRow, setAddingRow] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
   const [publishingId, setPublishingId] = useState<string | null>(null);
@@ -1099,7 +1100,7 @@ const AdminWholesaleOrders = () => {
     if (w === "ALL") next.delete("warehouse");
     else next.set("warehouse", w);
     setSearchParams(next, { replace: true });
-    setBatchFilter("ALL");
+    setActiveBatch("");
     setSelected(new Set());
   };
 
@@ -1126,15 +1127,25 @@ const AdminWholesaleOrders = () => {
   );
 
   useEffect(() => {
-    if (!addBatchId || !warehouseBatches.some((b) => b.id === addBatchId)) {
-      setAddBatchId(warehouseBatches[0]?.id ?? "");
+    if (activeBatch && activeBatch !== "UNASSIGNED" && !warehouseBatches.some((b) => b.id === activeBatch)) {
+      setActiveBatch("");
     }
-  }, [warehouseBatches, addBatchId]);
+  }, [warehouseBatches, activeBatch]);
+
+  const selectedBatch = useMemo(
+    () => batches.find((b) => b.id === activeBatch) ?? null,
+    [batches, activeBatch],
+  );
 
   const visibleItems = useMemo(() => {
+    if (!activeBatch) return [];
     let rows = items.filter((it) => (warehouse === "ALL" ? true : it.warehouse === warehouse));
-    if (batchFilter !== "ALL") rows = rows.filter((it) => it.batch_id === batchFilter);
+    rows =
+      activeBatch === "UNASSIGNED"
+        ? rows.filter((it) => !it.batch_id)
+        : rows.filter((it) => it.batch_id === activeBatch);
     if (stageFilter !== "ALL") rows = rows.filter((it) => it.logistics_stage === stageFilter);
+
     const sorted = [...rows];
     sorted.sort((a, b) => {
       switch (sortBy) {
