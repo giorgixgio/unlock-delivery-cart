@@ -23,15 +23,21 @@ import {
 } from "lucide-react";
 import {
   buildWholesaleInvoice,
-  buildWholesalePackingList,
   type DocItem,
 } from "@/lib/wholesaleDocsPdf";
+import {
+  buildPackingListWorkbook,
+  packingListWarnings,
+  type XlsxItem,
+} from "@/lib/wholesalePackingListXlsx";
+import { generateTitleRu } from "@/lib/wholesaleRuTitle";
 
 type Warehouse = "A" | "B";
 
 type Batch = { id: string; batch_number: string; warehouse: Warehouse; created_at: string };
 
-type Item = DocItem & { id: string };
+type Item = DocItem & { id: string; title_ru: string | null; hs_code: string | null };
+
 
 type Doc = {
   id: string;
