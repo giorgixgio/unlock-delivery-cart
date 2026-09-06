@@ -663,22 +663,31 @@ function Field({
   hint,
   children,
   className,
+  missing,
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
   className?: string;
+  /** Visual-only completeness flag — never blocks saving. */
+  missing?: boolean;
 }) {
   return (
-    <div className={`space-y-1.5 ${className ?? ""}`}>
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div
+      className={`space-y-1.5 ${
+        missing ? "rounded-md border border-destructive/40 bg-destructive/5 p-2 -m-2" : ""
+      } ${className ?? ""}`}
+    >
+      <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
+        {missing && <AlertTriangle className="h-3 w-3 text-destructive" />}
       </label>
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
+
 
 /**
  * Full single-item editor. Every field autosaves through `onPatch`, exactly like
