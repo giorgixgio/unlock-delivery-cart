@@ -328,7 +328,118 @@ function ItemImages({
 }
 
 
+const CONF_CLASS: Record<string, string> = {
+  high: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  medium: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  low: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+};
+
+/**
+ * HS classification cell — AI suggestion + manual override + reviewed toggle.
+ * Informational only: it never blocks customs docs, publishing or anything else.
+ */
+function HsCell({
+  item,
+  images,
+  loading,
+  onGenerate,
+  onPatch,
+}: {
+  item: Item;
+  images: string[];
+  loading: boolean;
+  onGenerate: () => void;
+  onPatch: (patch: Partial<Item>) => void;
+}) {
+  const canGenerate = !!(item.title && item.title.trim()) && images.length > 0;
+  const conf = (item.hs_confidence || "").toLowerCase();
+  const certUnknownOrTrue = item.hs_requires_certification !== false;
+
+  return (
+    <div className="min-w-[210px] space-y-1.5">
+      <EditableCell
+        value={item.hs_code}
+        placeholder="HS code"
+        className="font-mono"
+        onSave={(v) => onPatch({ hs_code: v || null })}
+      />
+
+      {item.hs_code && (
+        <div className="flex flex-wrap items-center gap-1">
+          {conf && (
+            <Badge variant="outline" className={CONF_CLASS[conf] ?? CONF_CLASS.low}>
+              {conf}
+            </Badge>
+          )}
+          {item.hs_confidence && certUnknownOrTrue && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px]">
+                  {item.hs_requires_certification
+                    ? "Certification appears to be required for this product."
+                    : "Certification requirement unknown — check with the forwarder."}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {conf === "low" && (
+            <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+              Needs manual review
+            </span>
+          )}
+        </div>
+      )}
+
+      {item.hs_notes && (
+        <p className="text-xs leading-snug text-muted-foreground line-clamp-3" title={item.hs_notes}>
+          {item.hs_notes}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  disabled={!canGenerate || loading}
+                  onClick={onGenerate}
+                >
+                  {loading ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-3 w-3" />
+                  )}
+                  {item.hs_code ? "Regenerate" : "Generate HS Code"}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canGenerate && (
+              <TooltipContent>Add a title and at least one image first</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Checkbox
+          checked={!!item.hs_reviewed}
+          onCheckedChange={(c) => onPatch({ hs_reviewed: !!c })}
+        />
+        Reviewed
+      </label>
+    </div>
+  );
+}
+
 /** Text/number cell with autosave on blur. */
+
 function EditableCell({
   value,
   onSave,
