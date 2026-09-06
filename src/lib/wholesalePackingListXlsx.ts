@@ -168,25 +168,25 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
 
   const tv = ws.getRow(totalsRow);
   tv.getCell(5).value = cartonsTotal;
+  tv.getCell(7).value = { formula: `SUM(G${FIRST}:G${LAST})` };
   tv.getCell(8).value = { formula: `SUM(H${FIRST}:H${LAST})` };
-  tv.getCell(9).value = { formula: `SUM(I${FIRST}:I${LAST})` };
-  tv.getCell(11).value = { formula: `SUM(K${FIRST}:K${LAST})` };
-  [5, 8, 9, 11].forEach((col) => {
+  tv.getCell(10).value = { formula: `SUM(J${FIRST}:J${LAST})` };
+  [5, 7, 8, 10].forEach((col) => {
     const c = tv.getCell(col);
     c.font = { ...FONT, bold: true };
     c.border = BORDER;
     c.alignment = { horizontal: "center", vertical: "middle" };
-    if (col === 8 || col === 9) c.numFmt = "0.000";
-    if (col === 11) c.numFmt = "#,##0.00";
+    if (col === 7 || col === 8) c.numFmt = "0.000";
+    if (col === 10) c.numFmt = "#,##0.00";
   });
 
   const tl = ws.getRow(labelsRow);
   tl.getCell(3).value = "TOTAL:";
   tl.getCell(5).value = " Мест";
-  tl.getCell(8).value = "Kg";
-  tl.getCell(9).value = " Kg";
-  tl.getCell(11).value = "USD";
-  [3, 5, 8, 9, 11].forEach((col) => {
+  tl.getCell(7).value = "Kg";
+  tl.getCell(8).value = " Kg";
+  tl.getCell(10).value = "USD";
+  [3, 5, 7, 8, 10].forEach((col) => {
     const c = tl.getCell(col);
     c.font = { ...FONT, bold: true };
     c.alignment = { horizontal: col === 3 ? "right" : "center", vertical: "middle" };
