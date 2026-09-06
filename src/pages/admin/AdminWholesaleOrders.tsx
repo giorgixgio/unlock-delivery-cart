@@ -1979,6 +1979,7 @@ const AdminWholesaleOrders = () => {
           publishing={publishingId === editItem.id}
           onClose={() => setEditId(null)}
           onPatch={(patch) => patchItem(editItem.id, patch)}
+          onAssignBatch={(batchId) => assignBatch(editItem, batchId)}
           onUpload={(files) => uploadImages(editItem, files)}
           onSetPrimary={(p) => setPrimaryImage(editItem, p)}
           onRemoveImage={(p) => removeImage(editItem, p)}
