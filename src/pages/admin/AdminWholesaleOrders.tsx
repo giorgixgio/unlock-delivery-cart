@@ -201,6 +201,27 @@ function SkuCell({
   );
 }
 
+/** Visual-only "fields still missing" flag for the grid. */
+function IncompleteBadge({ item }: { item: Item }) {
+  const missing = missingFields(item);
+  if (!missing.length) return null;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[220px]">
+          <p className="text-xs font-semibold">Incomplete ({missing.length})</p>
+          <p className="text-xs">{missing.join(", ")}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 const STAGES = [
   { value: "to_be_ordered", label: "To Be Ordered", className: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
   { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
@@ -2007,9 +2028,12 @@ const AdminWholesaleOrders = () => {
                         onSave={(v) => patchItem(it.id, { alibaba_link: v || null })}
                       />
                       {it.alibaba_link && (
-                        <a href={it.alibaba_link} target="_blank" rel="noreferrer noopener">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </a>
+                        <Button size="sm" variant="outline" className="h-8 shrink-0 px-2" asChild>
+                          <a href={it.alibaba_link} target="_blank" rel="noreferrer noopener">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span className="ml-1 text-xs">Open</span>
+                          </a>
+                        </Button>
                       )}
                     </div>
                   </td>
