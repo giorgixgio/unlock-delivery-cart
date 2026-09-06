@@ -33,6 +33,8 @@ type Batch = {
   batch_number: string;
   warehouse: Warehouse;
   created_at: string;
+  is_completed: boolean;
+  shipping_stage: string | null;
 };
 
 type Item = {
