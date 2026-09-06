@@ -101,11 +101,24 @@ const GROUP_COLORS = [
   "bg-lime-500",
   "bg-orange-500",
 ];
-const groupColor = (id: string) => {
+const GROUP_ROW_TINTS = [
+  "bg-rose-500/10",
+  "bg-amber-500/10",
+  "bg-emerald-500/10",
+  "bg-sky-500/10",
+  "bg-violet-500/10",
+  "bg-fuchsia-500/10",
+  "bg-lime-500/10",
+  "bg-orange-500/10",
+];
+const groupHash = (id: string) => {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return GROUP_COLORS[h % GROUP_COLORS.length];
+  return h;
 };
+const groupColor = (id: string) => GROUP_COLORS[groupHash(id) % GROUP_COLORS.length];
+const groupRowTint = (id: string) => GROUP_ROW_TINTS[groupHash(id) % GROUP_ROW_TINTS.length];
+
 
 /** SKU cell with click-to-copy supplier message + group indicator. */
 function SkuCell({
