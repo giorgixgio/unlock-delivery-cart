@@ -103,7 +103,6 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
     "Наименование",
     "Код товара",
     "Мест",
-    "Cartons",
     "Количество",
     "Брутто Kg",
     "Нетто Kg",
