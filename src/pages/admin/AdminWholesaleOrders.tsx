@@ -879,7 +879,11 @@ function WholesaleItemModal({
             <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
           </Field>
 
-          <Field label="Images" hint="Drag & drop into the dashed area or click it to browse. Star sets the primary image.">
+          <Field
+            label="Images"
+            missing={miss.has("images")}
+            hint="Drag & drop into the dashed area or click it to browse. Star sets the primary image."
+          >
             <ItemImages
               images={images}
               primary={item.image_url ?? images[0] ?? null}
@@ -892,21 +896,25 @@ function WholesaleItemModal({
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title" className="sm:col-span-2">
+            <Field label="Title" className="sm:col-span-2" missing={miss.has("title")}>
               <EditableCell
                 value={item.title}
                 placeholder="Product title"
                 onSave={(v) => onPatch({ title: v || null })}
               />
             </Field>
-            <Field label="Alibaba title">
+            <Field label="Alibaba title" missing={miss.has("alibaba_title")}>
               <EditableCell
                 value={item.alibaba_title}
                 placeholder="Seller's listing title"
                 onSave={(v) => onPatch({ alibaba_title: v || null })}
               />
             </Field>
-            <Field label="Alibaba link" hint="Used as the source link for Fetch Info.">
+            <Field
+              label="Alibaba link"
+              missing={miss.has("alibaba_link")}
+              hint="Used as the source link for Fetch Info."
+            >
               <div className="flex items-center gap-1">
                 <EditableCell
                   value={item.alibaba_link}
@@ -914,9 +922,12 @@ function WholesaleItemModal({
                   onSave={(v) => onPatch({ alibaba_link: v || null })}
                 />
                 {item.alibaba_link && (
-                  <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
-                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  </a>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="ml-1">Open</span>
+                    </a>
+                  </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={handleFetchInfo} disabled={fetching}>
                   {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
@@ -924,6 +935,7 @@ function WholesaleItemModal({
                 </Button>
               </div>
             </Field>
+
             <Field
               label="Alibaba Order ID"
               hint="Items sharing this order ID (same warehouse) are grouped automatically."
