@@ -64,12 +64,11 @@ export async function buildPackingListWorkbook(items: XlsxItem[], meta: XlsxMeta
     { width: 42 },  // C Наименование
     { width: 16 },  // D Код товара
     { width: 10 },  // E Мест
-    { width: 10 },  // F Cartons
-    { width: 12 },  // G Количество
-    { width: 13 },  // H Брутто
-    { width: 13 },  // I Нетто
-    { width: 16 },  // J Цена
-    { width: 15 },  // K Сумма
+    { width: 12 },  // F Количество
+    { width: 13 },  // G Брутто
+    { width: 13 },  // H Нетто
+    { width: 16 },  // I Цена
+    { width: 15 },  // J Сумма
   ];
 
   const set = (addr: string, value: unknown, opts?: { bold?: boolean; size?: number; center?: boolean }) => {
