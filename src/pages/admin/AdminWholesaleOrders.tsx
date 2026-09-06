@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle, Pencil } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
+import { titleFromUrl } from "@/lib/sourceTitleParser";
+import { generateTitleRu } from "@/lib/wholesaleRuTitle";
 
 type Warehouse = "A" | "B";
 
@@ -51,6 +54,8 @@ type Item = {
   quantity: number | null;
   carton_count: number | null;
   notes: string | null;
+  description: string | null;
+  title_ru: string | null;
   logistics_stage: string;
   listing_status: string;
   storefront_product_id: string | null;
@@ -663,8 +668,13 @@ function WholesaleItemModal({
 }) {
   // Old Price auto-fills at 2x the selling price until the operator edits it directly.
   const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
+  const [fetching, setFetching] = useState(false);
+  const [genDesc, setGenDesc] = useState(false);
+  const [genRu, setGenRu] = useState(false);
+  const [descLocal, setDescLocal] = useState(item.description ?? "");
   useEffect(() => {
     setOldPriceManual(item.old_price != null);
+    setDescLocal(item.description ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
@@ -680,8 +690,107 @@ function WholesaleItemModal({
     onPatch(patch);
   };
 
+  /** Same flow as the product form: slug parse → AI Georgian title, plus a
+   *  best-effort live fetch for image/price. Never overwrites filled fields. */
+  const handleFetchInfo = async () => {
+    const url = (item.alibaba_link || "").trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) return toast.error("Add a valid Alibaba/source link first");
+
+    const slugTitle = titleFromUrl(url);
+    const titleWasEmpty = !(item.title || "").trim();
+    let filled = 0;
+
+    const aiTitlePromise = (async (): Promise<string | null> => {
+      if (!slugTitle || !titleWasEmpty) return null;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-product-title", {
+          body: { raw_title: slugTitle },
+        });
+        if (error || !data?.title) return null;
+        return String(data.title).slice(0, 200);
+      } catch {
+        return null;
+      }
+    })();
+
+    setFetching(true);
+    let fetched = false;
+    let fetchedTitle: string | null = null;
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-product-info", { body: { url } });
+      if (error) throw error;
+      if (data?.ok) {
+        fetched = true;
+        if (data.title && !slugTitle) fetchedTitle = String(data.title).slice(0, 200);
+        if (data.price && item.unit_price == null) {
+          onPatch({ unit_price: Number(data.price) });
+          filled++;
+        }
+      }
+    } catch {
+      /* slug result still stands */
+    } finally {
+      setFetching(false);
+    }
+
+    if (titleWasEmpty) {
+      const finalTitle = (await aiTitlePromise) || slugTitle || fetchedTitle;
+      if (finalTitle) {
+        onPatch({ title: finalTitle });
+        filled++;
+      }
+    }
+
+    if (filled > 0) toast.success(`Filled ${filled} empty field${filled > 1 ? "s" : ""}`);
+    else if (!fetched) toast.message("Couldn't auto-fetch details", { description: "Fill the title manually." });
+    else toast.message("Nothing new to fill");
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!(item.title || item.alibaba_title || item.notes)) {
+      return toast.error("Add a title or notes first");
+    }
+    setGenDesc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-description", {
+        body: {
+          title: (item.title || item.alibaba_title || "").trim(),
+          features: (item.notes || "").trim(),
+          existing_description: descLocal.trim(),
+          source_url: (item.alibaba_link || "").trim(),
+          price: item.selling_price ?? null,
+        },
+      });
+      if (error) throw error;
+      if (data?.error || !data?.description) throw new Error(data?.error || "No description returned");
+      const text = String(data.description);
+      setDescLocal(text);
+      onPatch({ description: text });
+      toast.success("Description generated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setGenDesc(false);
+    }
+  };
+
+  const handleGenerateRu = async () => {
+    if (!(item.title || item.alibaba_title)) return toast.error("Add a title first");
+    setGenRu(true);
+    try {
+      const ru = await generateTitleRu(item);
+      onPatch({ title_ru: ru });
+      toast.success("Russian name generated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Translation failed");
+    } finally {
+      setGenRu(false);
+    }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
+
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
@@ -734,7 +843,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ alibaba_title: v || null })}
               />
             </Field>
-            <Field label="Alibaba link">
+            <Field label="Alibaba link" hint="Used as the source link for Fetch Info.">
               <div className="flex items-center gap-1">
                 <EditableCell
                   value={item.alibaba_link}
@@ -746,13 +855,53 @@ function WholesaleItemModal({
                     <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                   </a>
                 )}
+                <Button size="sm" variant="outline" onClick={handleFetchInfo} disabled={fetching}>
+                  {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  <span className="ml-1">Fetch Info</span>
+                </Button>
               </div>
             </Field>
           </div>
 
+          <Field
+            label="Russian name (customs)"
+            hint="Plain descriptive name used on the packing list. Auto-generated on export if left empty."
+          >
+            <div className="flex items-center gap-2">
+              <EditableCell
+                value={item.title_ru}
+                placeholder="Наименование товара"
+                onSave={(v) => onPatch({ title_ru: v || null })}
+              />
+              <Button size="sm" variant="outline" onClick={handleGenerateRu} disabled={genRu}>
+                {genRu ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span className="ml-1 whitespace-nowrap">{item.title_ru ? "Regenerate" : "Generate"}</span>
+              </Button>
+            </div>
+          </Field>
+
           <Field label="Notes / key features">
             <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
           </Field>
+
+          <Field label="Description (storefront)">
+            <div className="space-y-2">
+              <Textarea
+                value={descLocal}
+                placeholder="Georgian product description"
+                rows={6}
+                onChange={(e) => setDescLocal(e.target.value)}
+                onBlur={() => {
+                  if (descLocal !== (item.description ?? "")) onPatch({ description: descLocal || null });
+                }}
+              />
+              <Button size="sm" variant="outline" onClick={handleGenerateDescription} disabled={genDesc}>
+                {genDesc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span className="ml-1">{item.description ? "Regenerate description" : "Generate description"}</span>
+              </Button>
+            </div>
+          </Field>
+
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Quantity">

@@ -2298,6 +2298,7 @@ export type Database = {
           batch_id: string | null
           carton_count: number | null
           created_at: string
+          description: string | null
           hs_code: string | null
           hs_confidence: string | null
           hs_notes: string | null
@@ -2316,6 +2317,7 @@ export type Database = {
           storefront_product_id: string | null
           supplier_group_id: string | null
           title: string | null
+          title_ru: string | null
           unit_price: number | null
           updated_at: string
           warehouse: string
@@ -2327,6 +2329,7 @@ export type Database = {
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
+          description?: string | null
           hs_code?: string | null
           hs_confidence?: string | null
           hs_notes?: string | null
@@ -2345,6 +2348,7 @@ export type Database = {
           storefront_product_id?: string | null
           supplier_group_id?: string | null
           title?: string | null
+          title_ru?: string | null
           unit_price?: number | null
           updated_at?: string
           warehouse: string
@@ -2356,6 +2360,7 @@ export type Database = {
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
+          description?: string | null
           hs_code?: string | null
           hs_confidence?: string | null
           hs_notes?: string | null
@@ -2374,6 +2379,7 @@ export type Database = {
           storefront_product_id?: string | null
           supplier_group_id?: string | null
           title?: string | null
+          title_ru?: string | null
           unit_price?: number | null
           updated_at?: string
           warehouse?: string
@@ -2454,6 +2460,7 @@ export type Database = {
           batch_id: string | null
           carton_count: number | null
           created_at: string
+          description: string | null
           hs_code: string | null
           hs_confidence: string | null
           hs_notes: string | null
@@ -2472,6 +2479,7 @@ export type Database = {
           storefront_product_id: string | null
           supplier_group_id: string | null
           title: string | null
+          title_ru: string | null
           unit_price: number | null
           updated_at: string
           warehouse: string
