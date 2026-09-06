@@ -223,13 +223,16 @@ function Thumb({
   primary,
   onMakePrimary,
   onRemove,
+  onOpen,
 }: {
   path: string;
   primary: boolean;
   onMakePrimary: () => void;
   onRemove: () => void;
+  onOpen?: () => void;
 }) {
   const url = useSignedUrl(path);
+
   return (
     <div
       className={`group/th relative h-14 w-14 shrink-0 overflow-hidden rounded-md border ${
