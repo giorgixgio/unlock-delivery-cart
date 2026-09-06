@@ -1162,7 +1162,7 @@ const AdminWholesaleOrders = () => {
       }
     });
     return sorted;
-  }, [items, warehouse, batchFilter, stageFilter, sortBy]);
+  }, [items, warehouse, activeBatch, stageFilter, sortBy]);
 
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
 
