@@ -1819,7 +1819,13 @@ const AdminWholesaleOrders = () => {
               </tr>
             ) : (
               visibleItems.map((it) => (
-                <tr key={it.id} className="border-t border-border align-middle">
+                <tr
+                  key={it.id}
+                  className={`border-t border-border align-middle ${
+                    it.supplier_group_id ? groupRowTint(it.supplier_group_id) : ""
+                  }`}
+                >
+
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={selected.has(it.id)}
