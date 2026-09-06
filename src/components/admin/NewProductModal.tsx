@@ -80,6 +80,12 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [compareAtPrice, setCompareAtPrice] = useState("");
+  // Tracks whether the operator has directly typed in the Compare-at field
+  // this session. Once true, auto-calc stops overwriting it.
+  const [compareManuallyEdited, setCompareManuallyEdited] = useState(false);
+  // Remembers the last value we auto-filled so we can detect if the operator
+  // is still on our suggestion (letting us keep updating it as price changes).
+  const [lastAutoCompare, setLastAutoCompare] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("uncategorized");
   const [vendor, setVendor] = useState("");
   const [description, setDescription] = useState("");
