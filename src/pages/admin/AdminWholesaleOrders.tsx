@@ -20,7 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2 } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Warehouse = "A" | "B";
 
@@ -38,6 +39,7 @@ type Item = {
   sku: string;
   title: string | null;
   image_url: string | null;
+  images: string[] | null;
   alibaba_link: string | null;
   alibaba_title: string | null;
   supplier_group_id: string | null;
@@ -50,6 +52,11 @@ type Item = {
   logistics_stage: string;
   listing_status: string;
   storefront_product_id: string | null;
+  hs_code: string | null;
+  hs_confidence: string | null;
+  hs_requires_certification: boolean | null;
+  hs_notes: string | null;
+  hs_reviewed: boolean;
   created_at: string;
   updated_at: string;
 };
