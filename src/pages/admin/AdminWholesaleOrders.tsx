@@ -119,6 +119,34 @@ const groupHash = (id: string) => {
 const groupColor = (id: string) => GROUP_COLORS[groupHash(id) % GROUP_COLORS.length];
 const groupRowTint = (id: string) => GROUP_ROW_TINTS[groupHash(id) % GROUP_ROW_TINTS.length];
 
+/**
+ * Operator-facing completeness check. Purely informative — nothing is required
+ * for saving, publishing or generating documents. Notes and Old price are
+ * intentionally excluded.
+ */
+const COMPLETENESS_FIELDS: { key: string; label: string; get: (i: Item) => unknown }[] = [
+  { key: "title", label: "Title", get: (i) => i.title },
+  { key: "alibaba_title", label: "Alibaba title", get: (i) => i.alibaba_title },
+  { key: "alibaba_link", label: "Alibaba link", get: (i) => i.alibaba_link },
+  { key: "images", label: "Image", get: (i) => i.image_url ?? (i.images?.length ? "x" : null) },
+  { key: "quantity", label: "Quantity", get: (i) => i.quantity },
+  { key: "carton_count", label: "Cartons", get: (i) => i.carton_count },
+  { key: "weight_kg", label: "Weight", get: (i) => i.weight_kg },
+  { key: "unit_price", label: "Unit price", get: (i) => i.unit_price },
+  { key: "selling_price", label: "Selling price", get: (i) => i.selling_price },
+  { key: "hs_code", label: "HS code", get: (i) => i.hs_code },
+  { key: "title_ru", label: "Russian name", get: (i) => i.title_ru },
+  { key: "description", label: "Description", get: (i) => i.description },
+];
+
+const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && !v.trim());
+
+const missingFields = (i: Item) =>
+  COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.label);
+
+const missingKeys = (i: Item) => new Set(COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.key));
+
+
 
 /** SKU cell with click-to-copy supplier message + group indicator. */
 function SkuCell({
@@ -170,6 +198,27 @@ function SkuCell({
         )}
       </button>
     </div>
+  );
+}
+
+/** Visual-only "fields still missing" flag for the grid. */
+function IncompleteBadge({ item }: { item: Item }) {
+  const missing = missingFields(item);
+  if (!missing.length) return null;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[220px]">
+          <p className="text-xs font-semibold">Incomplete ({missing.length})</p>
+          <p className="text-xs">{missing.join(", ")}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -635,22 +684,31 @@ function Field({
   hint,
   children,
   className,
+  missing,
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
   className?: string;
+  /** Visual-only completeness flag — never blocks saving. */
+  missing?: boolean;
 }) {
   return (
-    <div className={`space-y-1.5 ${className ?? ""}`}>
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div
+      className={`space-y-1.5 ${
+        missing ? "rounded-md border border-destructive/40 bg-destructive/5 p-2 -m-2" : ""
+      } ${className ?? ""}`}
+    >
+      <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
+        {missing && <AlertTriangle className="h-3 w-3 text-destructive" />}
       </label>
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
+
 
 /**
  * Full single-item editor. Every field autosaves through `onPatch`, exactly like
@@ -690,6 +748,8 @@ function WholesaleItemModal({
   onPublish: () => void;
 }) {
   const itemBatch = batches.find((b) => b.id === item.batch_id) ?? null;
+  const miss = missingKeys(item);
+
   // Old Price auto-fills at 2x the selling price until the operator edits it directly.
   const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
   const [fetching, setFetching] = useState(false);
@@ -840,7 +900,11 @@ function WholesaleItemModal({
             <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
           </Field>
 
-          <Field label="Images" hint="Drag & drop into the dashed area or click it to browse. Star sets the primary image.">
+          <Field
+            label="Images"
+            missing={miss.has("images")}
+            hint="Drag & drop into the dashed area or click it to browse. Star sets the primary image."
+          >
             <ItemImages
               images={images}
               primary={item.image_url ?? images[0] ?? null}
@@ -853,21 +917,25 @@ function WholesaleItemModal({
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title" className="sm:col-span-2">
+            <Field label="Title" className="sm:col-span-2" missing={miss.has("title")}>
               <EditableCell
                 value={item.title}
                 placeholder="Product title"
                 onSave={(v) => onPatch({ title: v || null })}
               />
             </Field>
-            <Field label="Alibaba title">
+            <Field label="Alibaba title" missing={miss.has("alibaba_title")}>
               <EditableCell
                 value={item.alibaba_title}
                 placeholder="Seller's listing title"
                 onSave={(v) => onPatch({ alibaba_title: v || null })}
               />
             </Field>
-            <Field label="Alibaba link" hint="Used as the source link for Fetch Info.">
+            <Field
+              label="Alibaba link"
+              missing={miss.has("alibaba_link")}
+              hint="Used as the source link for Fetch Info."
+            >
               <div className="flex items-center gap-1">
                 <EditableCell
                   value={item.alibaba_link}
@@ -875,9 +943,12 @@ function WholesaleItemModal({
                   onSave={(v) => onPatch({ alibaba_link: v || null })}
                 />
                 {item.alibaba_link && (
-                  <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
-                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  </a>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="ml-1">Open</span>
+                    </a>
+                  </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={handleFetchInfo} disabled={fetching}>
                   {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
@@ -885,6 +956,7 @@ function WholesaleItemModal({
                 </Button>
               </div>
             </Field>
+
             <Field
               label="Alibaba Order ID"
               hint="Items sharing this order ID (same warehouse) are grouped automatically."
@@ -900,6 +972,7 @@ function WholesaleItemModal({
 
           <Field
             label="Russian name (customs)"
+            missing={miss.has("title_ru")}
             hint="Plain descriptive name used on the packing list. Auto-generated on export if left empty."
           >
             <div className="flex items-center gap-2">
@@ -919,7 +992,7 @@ function WholesaleItemModal({
             <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
           </Field>
 
-          <Field label="Description (storefront)">
+          <Field label="Description (storefront)" missing={miss.has("description")}>
             <div className="space-y-2">
               <Textarea
                 value={descLocal}
@@ -939,7 +1012,7 @@ function WholesaleItemModal({
 
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Quantity">
+            <Field label="Quantity" missing={miss.has("quantity")}>
               <EditableCell
                 type="number"
                 value={item.quantity}
@@ -947,7 +1020,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ quantity: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Cartons">
+            <Field label="Cartons" missing={miss.has("carton_count")}>
               <EditableCell
                 type="number"
                 value={item.carton_count}
@@ -955,7 +1028,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ carton_count: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Weight (kg)">
+            <Field label="Weight (kg)" missing={miss.has("weight_kg")}>
               <EditableCell
                 type="number"
                 value={item.weight_kg}
@@ -966,7 +1039,7 @@ function WholesaleItemModal({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Unit price (USD)" hint={gelFromUsd(Number(item.unit_price) || 0)}>
+            <Field label="Unit price (USD)" missing={miss.has("unit_price")} hint={gelFromUsd(Number(item.unit_price) || 0)}>
               <EditableCell
                 type="number"
                 value={item.unit_price}
@@ -974,7 +1047,7 @@ function WholesaleItemModal({
                 onSave={(v) => onPatch({ unit_price: v === "" ? null : Number(v) })}
               />
             </Field>
-            <Field label="Selling price (₾)" hint="Used as the storefront price when publishing.">
+            <Field label="Selling price (₾)" missing={miss.has("selling_price")} hint="Used as the storefront price when publishing.">
               <EditableCell
                 type="number"
                 value={item.selling_price}
@@ -1059,10 +1132,16 @@ function WholesaleItemModal({
           </div>
 
 
-          <div className="rounded-lg border border-border p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div
+            className={`rounded-lg border p-3 ${
+              miss.has("hs_code") ? "border-destructive/40 bg-destructive/5" : "border-border"
+            }`}
+          >
+            <div className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               HS classification
+              {miss.has("hs_code") && <AlertTriangle className="h-3 w-3 text-destructive" />}
             </div>
+
             <HsCell
               item={item}
               images={images}
@@ -1216,8 +1295,12 @@ const AdminWholesaleOrders = () => {
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
 
   const summary = useMemo(() => {
+    // Completed batches are done & shipped — they shouldn't inflate current totals.
+    const completed = new Set(batches.filter((b) => b.is_completed).map((b) => b.id));
     const calc = (w: Warehouse) => {
-      const rows = items.filter((i) => i.warehouse === w);
+      const rows = items.filter(
+        (i) => i.warehouse === w && !(i.batch_id && completed.has(i.batch_id)),
+      );
       return {
         count: rows.length,
         value: rows.reduce((sum, r) => sum + lineValueUsd(r), 0),
@@ -1225,7 +1308,8 @@ const AdminWholesaleOrders = () => {
     };
     return { A: calc("A"), B: calc("B") };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, batches]);
+
 
   /** Grand total across currently visible (filtered) rows. */
   const filteredTotal = useMemo(
@@ -1630,7 +1714,10 @@ const AdminWholesaleOrders = () => {
         {(["A", "B"] as const).map((w) => (
           <div key={w} className={`rounded-xl border p-4 ${warehouseClass(w)}`}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Warehouse {w}</div>
-            <div className="mt-1 text-sm text-foreground/80">{summary[w].count} items</div>
+            <div className="mt-1 text-sm text-foreground/80">
+              {summary[w].count} items <span className="opacity-60">(excl. completed batches)</span>
+            </div>
+
             <DualPrice amountUsd={summary[w].value} size="lg" />
           </div>
         ))}
@@ -1870,16 +1957,20 @@ const AdminWholesaleOrders = () => {
 
 
                   <td className="px-4 py-3">
-                    <SkuCell
-                      item={it}
-                      groupItems={
-                        it.supplier_group_id
-                          ? items.filter((x) => x.supplier_group_id === it.supplier_group_id)
-                          : [it]
-                      }
-                      onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <SkuCell
+                        item={it}
+                        groupItems={
+                          it.supplier_group_id
+                            ? items.filter((x) => x.supplier_group_id === it.supplier_group_id)
+                            : [it]
+                        }
+                        onUngroup={() => patchItem(it.id, { supplier_group_id: null })}
+                      />
+                      <IncompleteBadge item={it} />
+                    </div>
                   </td>
+
                   <td className="px-4 py-3">
                     <Badge variant="outline" className={warehouseClass(it.warehouse)}>
                       {it.warehouse}
@@ -1937,9 +2028,12 @@ const AdminWholesaleOrders = () => {
                         onSave={(v) => patchItem(it.id, { alibaba_link: v || null })}
                       />
                       {it.alibaba_link && (
-                        <a href={it.alibaba_link} target="_blank" rel="noreferrer noopener">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </a>
+                        <Button size="sm" variant="outline" className="h-8 shrink-0 px-2" asChild>
+                          <a href={it.alibaba_link} target="_blank" rel="noreferrer noopener">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span className="ml-1 text-xs">Open</span>
+                          </a>
+                        </Button>
                       )}
                     </div>
                   </td>

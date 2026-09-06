@@ -1,0 +1,2 @@
+ALTER TABLE public.wholesale_documents DROP CONSTRAINT IF EXISTS wholesale_documents_doc_type_check;
+ALTER TABLE public.wholesale_documents ADD CONSTRAINT wholesale_documents_doc_type_check CHECK (doc_type IN ('invoice','packing_list','logistics_invoice','shipping_receipt','cmr'));

@@ -19,6 +19,8 @@ import {
   Loader2,
   Upload,
   Stamp as StampIcon,
+  CheckCircle2,
+  AlertCircle,
   ClipboardList,
 } from "lucide-react";
 import {
@@ -53,8 +55,18 @@ const DOC_TYPES: Record<string, { label: string; className: string }> = {
   invoice: { label: "Invoice", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
   packing_list: { label: "Packing list", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
   logistics_invoice: { label: "Logistics invoice", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  shipping_receipt: { label: "Shipping receipt", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  shipping_receipt: { label: "Warehouse receive list", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
+  cmr: { label: "CMR", className: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
 };
+
+/** The five documents a batch needs before it clears customs. */
+const CHECKLIST: { type: string; title: string; description: string; mode: "generate" | "upload" }[] = [
+  { type: "invoice", title: "Commercial Invoice", description: "Generated PDF invoice for customs.", mode: "generate" },
+  { type: "packing_list", title: "Packing List (Customs)", description: "Generated Excel in the forwarder's template.", mode: "generate" },
+  { type: "logistics_invoice", title: "Logistics Invoice", description: "Freight forwarder's invoice — upload the file you received.", mode: "upload" },
+  { type: "cmr", title: "CMR", description: "International road transport consignment note — upload.", mode: "upload" },
+  { type: "shipping_receipt", title: "Warehouse Receive List", description: "Excel the forwarder sends back with matched shipping marks and weights.", mode: "upload" },
+];
 
 const warehouseClass = (w: Warehouse) =>
   w === "A"
@@ -72,6 +84,120 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+/** One document slot in the per-batch checklist: present (download) or missing (act). */
+function DocSlot({
+  slot,
+  doc,
+  busy,
+  onGenerate,
+  onUpload,
+  onDownload,
+}: {
+  slot: { type: string; title: string; description: string; mode: "generate" | "upload" };
+  doc: Doc | null;
+  busy: boolean;
+  onGenerate: () => void;
+  onUpload: (files: FileList | File[]) => void;
+  onDownload: (doc: Doc) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+
+  return (
+    <div
+      className={`rounded-lg border p-3 transition-colors ${
+        doc
+          ? "border-emerald-500/40 bg-emerald-500/5"
+          : over
+            ? "border-primary bg-primary/5"
+            : "border-dashed border-border"
+      }`}
+      onDragOver={
+        slot.mode === "upload"
+          ? (e) => {
+              e.preventDefault();
+              setOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={slot.mode === "upload" ? () => setOver(false) : undefined}
+      onDrop={
+        slot.mode === "upload"
+          ? (e) => {
+              e.preventDefault();
+              setOver(false);
+              if (e.dataTransfer.files?.length) onUpload(e.dataTransfer.files);
+            }
+          : undefined
+      }
+    >
+      <div className="flex items-start gap-2">
+        {doc ? (
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+        ) : (
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{slot.title}</p>
+          {doc ? (
+            <>
+              <p className="truncate text-xs text-muted-foreground">{doc.file_name ?? "file"}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(doc.created_at).toLocaleString()}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">{slot.description}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {doc && (
+          <Button size="sm" variant="outline" onClick={() => onDownload(doc)}>
+            <Download className="mr-1 h-4 w-4" />
+            Download
+          </Button>
+        )}
+        {slot.mode === "generate" ? (
+          <Button size="sm" variant={doc ? "ghost" : "default"} onClick={onGenerate} disabled={busy}>
+            {busy ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : slot.type === "invoice" ? (
+              <FileText className="mr-1 h-4 w-4" />
+            ) : (
+              <ClipboardList className="mr-1 h-4 w-4" />
+            )}
+            {doc ? "Regenerate" : "Generate"}
+          </Button>
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) onUpload(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              size="sm"
+              variant={doc ? "ghost" : "default"}
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+              {doc ? "Replace" : "Upload or drop file"}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminWholesaleCustoms() {
   const [params, setParams] = useSearchParams();
   const warehouse = (params.get("wh") as Warehouse | "all") ?? "all";
@@ -85,9 +211,6 @@ export default function AdminWholesaleCustoms() {
   const [stamps, setStamps] = useState<Record<Warehouse, string | null>>({ A: null, B: null });
   const stampInputA = useRef<HTMLInputElement>(null);
   const stampInputB = useRef<HTMLInputElement>(null);
-  const uploadRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState("logistics_invoice");
-  const [dragOver, setDragOver] = useState(false);
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -284,9 +407,9 @@ export default function AdminWholesaleCustoms() {
 
 
   /* ── uploads ── */
-  const uploadDocs = async (files: FileList | File[]) => {
+  const uploadDocs = async (files: FileList | File[], docType: string) => {
     if (!batch) return toast.error("Select a batch first");
-    setBusy("upload");
+    setBusy(`upload-${docType}`);
     try {
       for (const file of Array.from(files)) {
         const safe = file.name.replace(/[^\w.\-]+/g, "_");
@@ -298,7 +421,7 @@ export default function AdminWholesaleCustoms() {
         const { error: rowErr } = await supabase.from("wholesale_documents").insert({
           batch_id: batch.id,
           warehouse: batch.warehouse,
-          doc_type: uploadType,
+          doc_type: docType,
           file_name: file.name,
           file_url: path,
         });
@@ -516,58 +639,36 @@ export default function AdminWholesaleCustoms() {
             {totals.weight.toFixed(2)} kg
           </p>
 
-          {/* upload zone */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Select value={uploadType} onValueChange={setUploadType}>
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="logistics_invoice">Logistics invoice</SelectItem>
-                  <SelectItem value="shipping_receipt">Shipping receipt</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
-                  <SelectItem value="packing_list">Packing list</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* document checklist */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Documents for {batch.batch_number}
+              </h2>
               <span className="text-xs text-muted-foreground">
-                Tagged Warehouse {batch.warehouse} automatically
+                {CHECKLIST.filter((c) => docs.some((d) => d.doc_type === c.type)).length} of{" "}
+                {CHECKLIST.length} complete
               </span>
             </div>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                if (e.dataTransfer.files?.length) uploadDocs(e.dataTransfer.files);
-              }}
-              onClick={() => uploadRef.current?.click()}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-sm transition-colors ${
-                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-              }`}
-            >
-              <input
-                ref={uploadRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.length) uploadDocs(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-              {busy === "upload" ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              ) : (
-                <Upload className="h-5 w-5 text-muted-foreground" />
-              )}
-              <span className="text-muted-foreground">Drop logistics invoices / shipping receipts here</span>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {CHECKLIST.map((slot) => {
+                const doc = docs.find((d) => d.doc_type === slot.type) ?? null;
+                const slotBusy = busy === slot.type || busy === `upload-${slot.type}`;
+                return (
+                  <DocSlot
+                    key={slot.type}
+                    slot={slot}
+                    doc={doc}
+                    busy={slotBusy}
+                    onGenerate={() => generate(slot.type as "invoice" | "packing_list")}
+                    onUpload={(files) => uploadDocs(files, slot.type)}
+                    onDownload={downloadDoc}
+                  />
+                );
+              })}
             </div>
           </div>
+
 
           {/* document list */}
           <div className="rounded-lg border border-border overflow-x-auto">
