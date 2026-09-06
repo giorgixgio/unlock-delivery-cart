@@ -1011,7 +1011,7 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1750px] text-sm">
+        <table className="w-full min-w-[1990px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3">
@@ -1037,6 +1037,7 @@ const AdminWholesaleOrders = () => {
               <th className="px-4 py-3 text-left min-w-[120px]">Line Total</th>
               <th className="px-4 py-3 text-left w-44">Stage</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
+              <th className="px-4 py-3 text-left min-w-[220px]">HS Code</th>
               <th className="px-4 py-3 text-left w-32">Listing</th>
               <th className="px-4 py-3 text-left w-32">Storefront</th>
             </tr>
@@ -1044,13 +1045,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                <td colSpan={19} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                <td colSpan={19} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
@@ -1224,6 +1225,15 @@ const AdminWholesaleOrders = () => {
                       value={it.notes}
                       placeholder="Notes"
                       onSave={(v) => patchItem(it.id, { notes: v || null })}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <HsCell
+                      item={it}
+                      images={imgList(it)}
+                      loading={hsLoadingId === it.id}
+                      onGenerate={() => generateHs(it)}
+                      onPatch={(patch) => patchItem(it.id, patch)}
                     />
                   </td>
                   <td className="px-4 py-3">
