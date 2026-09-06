@@ -822,6 +822,8 @@ const AdminWholesaleOrders = () => {
   const [addingRow, setAddingRow] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
   const [bulkPublishing, setBulkPublishing] = useState(false);
 
   const setWarehouse = (w: Warehouse | "ALL") => {
