@@ -20,7 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2 } from "lucide-react";
+import { Plus, ImagePlus, Loader2, ExternalLink, Package, Upload, Copy, Check, X, Link2, Star, Sparkles, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Warehouse = "A" | "B";
 
@@ -38,6 +39,7 @@ type Item = {
   sku: string;
   title: string | null;
   image_url: string | null;
+  images: string[] | null;
   alibaba_link: string | null;
   alibaba_title: string | null;
   supplier_group_id: string | null;
@@ -50,6 +52,11 @@ type Item = {
   logistics_stage: string;
   listing_status: string;
   storefront_product_id: string | null;
+  hs_code: string | null;
+  hs_confidence: string | null;
+  hs_requires_certification: boolean | null;
+  hs_notes: string | null;
+  hs_reviewed: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -183,18 +190,8 @@ function DualPrice({ amountUsd, size = "sm" }: { amountUsd: number; size?: "sm" 
 /** Signed-URL cache for the private wholesale-images bucket. */
 const signedCache = new Map<string, string>();
 
-function ItemImage({
-  path,
-  onUpload,
-  uploading,
-}: {
-  path: string | null;
-  onUpload: (file: File) => void;
-  uploading: boolean;
-}) {
+function useSignedUrl(path: string | null) {
   const [url, setUrl] = useState<string | null>(path ? signedCache.get(path) ?? null : null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     let active = true;
     if (!path) {
@@ -218,42 +215,231 @@ function ItemImage({
       active = false;
     };
   }, [path]);
+  return url;
+}
 
+function Thumb({
+  path,
+  primary,
+  onMakePrimary,
+  onRemove,
+}: {
+  path: string;
+  primary: boolean;
+  onMakePrimary: () => void;
+  onRemove: () => void;
+}) {
+  const url = useSignedUrl(path);
   return (
     <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        const f = e.dataTransfer.files?.[0];
-        if (f) onUpload(f);
-      }}
-      onClick={() => inputRef.current?.click()}
-      className="h-14 w-14 shrink-0 rounded-md border border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/60 transition-colors"
-      title="Click or drag an image here"
+      className={`group/th relative h-14 w-14 shrink-0 overflow-hidden rounded-md border ${
+        primary ? "border-primary ring-1 ring-primary" : "border-border"
+      } bg-muted/40`}
+      title={primary ? "Primary image" : "Click the star to make primary"}
     >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onUpload(f);
-          e.target.value = "";
-        }}
-      />
-      {uploading ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      ) : url ? (
+      {url ? (
         <img src={url} alt="Wholesale item" className="h-full w-full object-cover" loading="lazy" />
       ) : (
-        <ImagePlus className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-full w-full items-center justify-center">
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 flex justify-between bg-background/80 opacity-0 transition-opacity group-hover/th:opacity-100">
+        <button
+          type="button"
+          onClick={onMakePrimary}
+          title="Make primary"
+          className="p-0.5 hover:text-primary"
+        >
+          <Star className={`h-3 w-3 ${primary ? "fill-primary text-primary" : ""}`} />
+        </button>
+        <button type="button" onClick={onRemove} title="Remove image" className="p-0.5 hover:text-destructive">
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      {primary && (
+        <Star className="absolute right-0.5 top-0.5 h-3 w-3 fill-primary text-primary drop-shadow" />
       )}
     </div>
   );
 }
 
+/** Multi-image cell: thumbnail stack, add more, remove, set primary. */
+function ItemImages({
+  images,
+  primary,
+  onUpload,
+  onSetPrimary,
+  onRemove,
+  uploading,
+}: {
+  images: string[];
+  primary: string | null;
+  onUpload: (files: File[]) => void;
+  onSetPrimary: (path: string) => void;
+  onRemove: (path: string) => void;
+  uploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      className="flex max-w-[140px] flex-wrap gap-1"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+        if (files.length) onUpload(files);
+      }}
+    >
+      {images.map((p) => (
+        <Thumb
+          key={p}
+          path={p}
+          primary={p === primary}
+          onMakePrimary={() => onSetPrimary(p)}
+          onRemove={() => onRemove(p)}
+        />
+      ))}
+      <div
+        onClick={() => inputRef.current?.click()}
+        className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/60"
+        title="Click or drag images here (multiple allowed)"
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length) onUpload(files);
+            e.target.value = "";
+          }}
+        />
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+const CONF_CLASS: Record<string, string> = {
+  high: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  medium: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  low: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+};
+
+/**
+ * HS classification cell — AI suggestion + manual override + reviewed toggle.
+ * Informational only: it never blocks customs docs, publishing or anything else.
+ */
+function HsCell({
+  item,
+  images,
+  loading,
+  onGenerate,
+  onPatch,
+}: {
+  item: Item;
+  images: string[];
+  loading: boolean;
+  onGenerate: () => void;
+  onPatch: (patch: Partial<Item>) => void;
+}) {
+  const canGenerate = !!(item.title && item.title.trim()) && images.length > 0;
+  const conf = (item.hs_confidence || "").toLowerCase();
+  const certUnknownOrTrue = item.hs_requires_certification !== false;
+
+  return (
+    <div className="min-w-[210px] space-y-1.5">
+      <EditableCell
+        value={item.hs_code}
+        placeholder="HS code"
+        className="font-mono"
+        onSave={(v) => onPatch({ hs_code: v || null })}
+      />
+
+      {item.hs_code && (
+        <div className="flex flex-wrap items-center gap-1">
+          {conf && (
+            <Badge variant="outline" className={CONF_CLASS[conf] ?? CONF_CLASS.low}>
+              {conf}
+            </Badge>
+          )}
+          {item.hs_confidence && certUnknownOrTrue && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px]">
+                  {item.hs_requires_certification
+                    ? "Certification appears to be required for this product."
+                    : "Certification requirement unknown — check with the forwarder."}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {conf === "low" && (
+            <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+              Needs manual review
+            </span>
+          )}
+        </div>
+      )}
+
+      {item.hs_notes && (
+        <p className="text-xs leading-snug text-muted-foreground line-clamp-3" title={item.hs_notes}>
+          {item.hs_notes}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  disabled={!canGenerate || loading}
+                  onClick={onGenerate}
+                >
+                  {loading ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-3 w-3" />
+                  )}
+                  {item.hs_code ? "Regenerate" : "Generate HS Code"}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canGenerate && (
+              <TooltipContent>Add a title and at least one image first</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Checkbox
+          checked={!!item.hs_reviewed}
+          onCheckedChange={(c) => onPatch({ hs_reviewed: !!c })}
+        />
+        Reviewed
+      </label>
+    </div>
+  );
+}
+
 /** Text/number cell with autosave on blur. */
+
 function EditableCell({
   value,
   onSave,
@@ -480,18 +666,86 @@ const AdminWholesaleOrders = () => {
     toast.success(`Row added — ${row.sku}`);
   };
 
-  const uploadImage = async (item: Item, file: File) => {
+  const imgList = (it: Item): string[] =>
+    Array.isArray(it.images) && it.images.length
+      ? it.images
+      : it.image_url
+        ? [it.image_url]
+        : [];
+
+  const uploadImages = async (item: Item, files: File[]) => {
     setUploadingId(item.id);
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${item.warehouse}/${item.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("wholesale-images").upload(path, file, {
-      upsert: true,
-      contentType: file.type,
-    });
+    const uploaded: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${item.warehouse}/${item.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const { error } = await supabase.storage.from("wholesale-images").upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+      if (error) toast.error(error.message);
+      else uploaded.push(path);
+    }
     setUploadingId(null);
-    if (error) return toast.error(error.message);
-    await patchItem(item.id, { image_url: path });
+    if (!uploaded.length) return;
+    const next = [...imgList(item), ...uploaded];
+    await patchItem(item.id, { images: next, image_url: item.image_url || next[0] });
   };
+
+  const setPrimaryImage = async (item: Item, path: string) => {
+    const next = [path, ...imgList(item).filter((p) => p !== path)];
+    await patchItem(item.id, { images: next, image_url: path });
+  };
+
+  const removeImage = async (item: Item, path: string) => {
+    const next = imgList(item).filter((p) => p !== path);
+    await patchItem(item.id, {
+      images: next,
+      image_url: item.image_url === path ? next[0] ?? null : item.image_url,
+    });
+    supabase.storage.from("wholesale-images").remove([path]).catch(() => {});
+  };
+
+  const [hsLoadingId, setHsLoadingId] = useState<string | null>(null);
+
+  const generateHs = async (item: Item) => {
+    setHsLoadingId(item.id);
+    const { data, error } = await supabase.functions.invoke("suggest-hs-code", {
+      body: { item_id: item.id },
+    });
+    setHsLoadingId(null);
+    if (error) {
+      const msg = (data as { error?: string } | null)?.error || error.message;
+      return toast.error(msg || "Could not suggest an HS code");
+    }
+    const res = data as {
+      hs_code: string;
+      hs_confidence: string;
+      hs_requires_certification: boolean | null;
+      hs_notes: string | null;
+      used_image?: boolean;
+    };
+    setItems((rows) =>
+      rows.map((r) =>
+        r.id === item.id
+          ? {
+              ...r,
+              hs_code: res.hs_code,
+              hs_confidence: res.hs_confidence,
+              hs_requires_certification: res.hs_requires_certification,
+              hs_notes: res.hs_notes,
+              hs_reviewed: false,
+            }
+          : r,
+      ),
+    );
+    toast.success(
+      res.hs_confidence === "low"
+        ? `Suggested ${res.hs_code} — low confidence, needs manual review`
+        : `Suggested ${res.hs_code}`,
+    );
+  };
+
 
   /** Idempotent upsert of one wholesale item into the storefront products table. */
   const publishItem = async (item: Item): Promise<string> => {
@@ -757,7 +1011,7 @@ const AdminWholesaleOrders = () => {
 
       {/* Grid */}
       <div className="rounded-xl border border-border overflow-x-auto">
-        <table className="w-full min-w-[1750px] text-sm">
+        <table className="w-full min-w-[1990px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3">
@@ -783,6 +1037,7 @@ const AdminWholesaleOrders = () => {
               <th className="px-4 py-3 text-left min-w-[120px]">Line Total</th>
               <th className="px-4 py-3 text-left w-44">Stage</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
+              <th className="px-4 py-3 text-left min-w-[220px]">HS Code</th>
               <th className="px-4 py-3 text-left w-32">Listing</th>
               <th className="px-4 py-3 text-left w-32">Storefront</th>
             </tr>
@@ -790,13 +1045,13 @@ const AdminWholesaleOrders = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                <td colSpan={19} className="p-8 text-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin inline" />
                 </td>
               </tr>
             ) : visibleItems.length === 0 ? (
               <tr>
-                <td colSpan={18} className="p-8 text-center text-muted-foreground">
+                <td colSpan={19} className="p-8 text-center text-muted-foreground">
                   No items yet. Create a batch and add rows.
                 </td>
               </tr>
@@ -817,12 +1072,16 @@ const AdminWholesaleOrders = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <ItemImage
-                      path={it.image_url}
+                    <ItemImages
+                      images={imgList(it)}
+                      primary={it.image_url ?? imgList(it)[0] ?? null}
                       uploading={uploadingId === it.id}
-                      onUpload={(f) => uploadImage(it, f)}
+                      onUpload={(files) => uploadImages(it, files)}
+                      onSetPrimary={(p) => setPrimaryImage(it, p)}
+                      onRemove={(p) => removeImage(it, p)}
                     />
                   </td>
+
                   <td className="px-4 py-3">
                     <SkuCell
                       item={it}
@@ -966,6 +1225,15 @@ const AdminWholesaleOrders = () => {
                       value={it.notes}
                       placeholder="Notes"
                       onSave={(v) => patchItem(it.id, { notes: v || null })}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <HsCell
+                      item={it}
+                      images={imgList(it)}
+                      loading={hsLoadingId === it.id}
+                      onGenerate={() => generateHs(it)}
+                      onPatch={(patch) => patchItem(it.id, patch)}
                     />
                   </td>
                   <td className="px-4 py-3">

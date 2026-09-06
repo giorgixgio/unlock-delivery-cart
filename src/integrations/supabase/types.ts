@@ -2298,8 +2298,14 @@ export type Database = {
           batch_id: string | null
           carton_count: number | null
           created_at: string
+          hs_code: string | null
+          hs_confidence: string | null
+          hs_notes: string | null
+          hs_requires_certification: boolean | null
+          hs_reviewed: boolean
           id: string
           image_url: string | null
+          images: Json
           listing_status: string
           logistics_stage: string
           notes: string | null
@@ -2320,8 +2326,14 @@ export type Database = {
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
+          hs_code?: string | null
+          hs_confidence?: string | null
+          hs_notes?: string | null
+          hs_requires_certification?: boolean | null
+          hs_reviewed?: boolean
           id?: string
           image_url?: string | null
+          images?: Json
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
@@ -2342,8 +2354,14 @@ export type Database = {
           batch_id?: string | null
           carton_count?: number | null
           created_at?: string
+          hs_code?: string | null
+          hs_confidence?: string | null
+          hs_notes?: string | null
+          hs_requires_certification?: boolean | null
+          hs_reviewed?: boolean
           id?: string
           image_url?: string | null
+          images?: Json
           listing_status?: string
           logistics_stage?: string
           notes?: string | null
@@ -2433,8 +2451,14 @@ export type Database = {
           batch_id: string | null
           carton_count: number | null
           created_at: string
+          hs_code: string | null
+          hs_confidence: string | null
+          hs_notes: string | null
+          hs_requires_certification: boolean | null
+          hs_reviewed: boolean
           id: string
           image_url: string | null
+          images: Json
           listing_status: string
           logistics_stage: string
           notes: string | null
