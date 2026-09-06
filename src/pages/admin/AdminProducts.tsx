@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
-import ProductImageManager from "@/components/admin/ProductImageManager";
+
 import NewProductModal from "@/components/admin/NewProductModal";
 import { clearProductsCache } from "@/hooks/useProducts";
 import StockAdjustModal from "@/components/admin/StockAdjustModal";
@@ -713,7 +713,7 @@ const AdminProducts = () => {
                 <td className="px-3 py-2">
                   <button
                     className="relative w-12 h-12 rounded-md border border-border overflow-hidden bg-muted/30 flex items-center justify-center group/img"
-                    title="Manage images"
+                    title="Edit product"
                     onClick={() => setImageManagerProduct(row)}
                   >
                     {row.image && row.image !== "/placeholder.svg" ? (
@@ -1399,14 +1399,11 @@ const AdminProducts = () => {
       </Dialog>
 
       {imageManagerProduct && (
-        <ProductImageManager
+        <NewProductModal
           open={!!imageManagerProduct}
           onClose={() => setImageManagerProduct(null)}
-          productId={imageManagerProduct.productId}
-          productTitle={imageManagerProduct.title}
-          currentImage={imageManagerProduct.image}
-          currentImages={(products || []).find((p) => p.id === imageManagerProduct.productId)?.images || []}
-          onSaved={refreshProducts}
+          editProductId={imageManagerProduct.productId}
+          onCreated={refreshProducts}
         />
       )}
 

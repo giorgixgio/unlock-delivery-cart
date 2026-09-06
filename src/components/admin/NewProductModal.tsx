@@ -15,6 +15,8 @@ interface Props {
   onClose: () => void;
   onCreated: () => void;
   defaultWarehouse?: "" | "A" | "B";
+  /** When set, the modal runs in edit mode, pre-filled with this product. */
+  editProductId?: string | null;
 }
 
 const BUCKET = "product-images";
@@ -72,7 +74,7 @@ function slugify(input: string): string {
     .slice(0, 80) || `product-${Date.now()}`;
 }
 
-const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Props) => {
+const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", editProductId = null }: Props) => {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [sku, setSku] = useState("");
@@ -94,10 +96,49 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
   const [keyFeatures, setKeyFeatures] = useState("");
   const [fetching, setFetching] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(false);
+  const isEdit = !!editProductId;
 
   useEffect(() => {
     if (open) setWarehouse(defaultWarehouse);
   }, [open, defaultWarehouse]);
+
+  // Edit mode: load the full product row and pre-fill every field.
+  useEffect(() => {
+    if (!open || !editProductId) return;
+    let cancelled = false;
+    setLoadingProduct(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("title, sku, price, compare_at_price, category, vendor, description, image, images, bin_location, stock_quantity, is_verified, warehouse")
+        .eq("id", editProductId)
+        .maybeSingle();
+      if (cancelled) return;
+      setLoadingProduct(false);
+      if (error || !data) {
+        toast({ title: "Couldn't load product", description: error?.message, variant: "destructive" });
+        return;
+      }
+      const imgs: string[] = Array.isArray(data.images) && data.images.length
+        ? (data.images as string[])
+        : (data.image ? [data.image] : []);
+      setTitle(data.title || "");
+      setSku(data.sku || "");
+      setPrice(data.price != null ? String(data.price) : "");
+      setCompareAtPrice(data.compare_at_price != null ? String(data.compare_at_price) : "");
+      setCategory(data.category || "uncategorized");
+      setVendor(data.vendor || "");
+      setDescription(data.description || "");
+      setImages(imgs);
+      setPrimary(data.image && imgs.includes(data.image) ? data.image : (imgs[0] || ""));
+      setBinLocation(data.bin_location || "");
+      setStockQuantity(String(Math.max(data.stock_quantity ?? 0, 0)));
+      setIsVerified(data.is_verified !== false);
+      setWarehouse((data.warehouse as "" | "A" | "B") || "");
+    })();
+    return () => { cancelled = true; };
+  }, [open, editProductId]);
 
   const reset = () => {
     setTitle(""); setSku(""); setPrice(""); setCompareAtPrice("");
@@ -246,8 +287,10 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
 
     setSaving(true);
     try {
-      // check duplicate sku
-      const { data: dup } = await supabase.from("products").select("id,title").eq("sku", s).maybeSingle();
+      // check duplicate sku (excluding the product being edited)
+      let dupQuery = supabase.from("products").select("id,title").eq("sku", s);
+      if (isEdit) dupQuery = dupQuery.neq("id", editProductId);
+      const { data: dup } = await dupQuery.maybeSingle();
       if (dup) { toast({ title: "Duplicate SKU", description: `Already used by "${dup.title}"`, variant: "destructive" }); setSaving(false); return; }
 
       const cmp = compareAtPrice.trim() === "" ? null : parseFloat(compareAtPrice);
@@ -255,24 +298,38 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
         toast({ title: "Invalid compare price", variant: "destructive" }); setSaving(false); return;
       }
 
-      const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const handle = slugify(t);
       const finalPrimary = primary && images.includes(primary) ? primary : (images[0] || "/placeholder.svg");
       const ordered = images.length ? [finalPrimary, ...images.filter((u) => u !== finalPrimary)] : [];
 
-      const payload: any = {
-        id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
-        image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
-        description: description.trim(), tags: [], available: true,
-        stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
-        is_verified: isVerified, warehouse,
-      };
-      if (binLocation.trim()) payload.bin_location = binLocation.trim();
+      if (isEdit) {
+        // Edit mode: update in place. Keep the original handle/id, and do NOT
+        // touch stock_quantity here — stock changes go through the logged
+        // Adjust Stock flow.
+        const payload: any = {
+          title: t, sku: s, price: p, compare_at_price: cmp,
+          image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
+          description: description.trim(), is_verified: isVerified, warehouse,
+          bin_location: binLocation.trim() || null,
+        };
+        const { error } = await supabase.from("products").update(payload).eq("id", editProductId);
+        if (error) throw error;
+        toast({ title: "Product updated" });
+      } else {
+        const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const handle = slugify(t);
+        const payload: any = {
+          id, title: t, handle, sku: s, price: p, compare_at_price: cmp,
+          image: finalPrimary, images: ordered, category, vendor: vendor.trim(),
+          description: description.trim(), tags: [], available: true,
+          stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
+          is_verified: isVerified, warehouse,
+        };
+        if (binLocation.trim()) payload.bin_location = binLocation.trim();
 
-      const { error } = await supabase.from("products").insert(payload);
-      if (error) throw error;
-
-      toast({ title: "Product created" });
+        const { error } = await supabase.from("products").insert(payload);
+        if (error) throw error;
+        toast({ title: "Product created" });
+      }
       clearProductsCache();
       onCreated();
       reset();
@@ -286,9 +343,15 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base font-bold">Add new product</DialogTitle>
+          <DialogTitle className="text-base font-bold">{isEdit ? "Edit product" : "Add new product"}</DialogTitle>
         </DialogHeader>
 
+        {loadingProduct ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading product…
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="md:col-span-2">
             <Label className="text-xs font-bold">Title *</Label>
@@ -300,7 +363,12 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
           </div>
           <div>
             <Label className="text-xs font-bold">Stock quantity</Label>
-            <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} />
+            <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} disabled={isEdit} />
+            {isEdit && (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Stock changes go through the logged "Adjust Stock" action in the products list.
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-xs font-bold">Bin location</Label>
@@ -460,9 +528,11 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border">
           <Button variant="outline" onClick={handleClose} disabled={saving || uploading}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || uploading}>
-            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</> : "Create product"}
+            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {isEdit ? "Saving..." : "Creating..."}</> : (isEdit ? "Save changes" : "Create product")}
           </Button>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
