@@ -1176,7 +1176,30 @@ const AdminWholesaleOrders = () => {
           return a.sku.localeCompare(b.sku);
       }
     });
+
+    // Cluster same-supplier rows together (default view + explicit "group" sort).
+    if (sortBy === "sku" || sortBy === "group") {
+      const order: string[] = [];
+      const buckets = new Map<string, Item[]>();
+      for (const r of sorted) {
+        const key = r.supplier_group_id ?? `solo:${r.id}`;
+        if (!buckets.has(key)) {
+          buckets.set(key, []);
+          order.push(key);
+        }
+        buckets.get(key)!.push(r);
+      }
+      if (sortBy === "group") {
+        order.sort((a, b) => {
+          const ga = a.startsWith("solo:") ? 1 : 0;
+          const gb = b.startsWith("solo:") ? 1 : 0;
+          return ga - gb;
+        });
+      }
+      return order.flatMap((k) => buckets.get(k)!);
+    }
     return sorted;
+
   }, [items, warehouse, activeBatch, stageFilter, sortBy]);
 
   const lineValueUsd = (r: Item) => (Number(r.quantity) || 0) * (Number(r.unit_price) || 0);
