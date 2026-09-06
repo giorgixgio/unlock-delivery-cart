@@ -7,8 +7,8 @@ import type { CustomsDocSettings } from "./customsDocSettings";
  *
  * Column map:
  *  A №  | B SKU | C Наименование | D Код товара | E Мест (merged total)
- *  F Cartons | G Количество | H Брутто Kg | I Нетто Kg
- *  J Цена за единицу USD | K Сумма USD
+ *  F Количество | G Брутто Kg | H Нетто Kg
+ *  I Цена за единицу USD | J Сумма USD
  */
 
 /** Gross weight uplift used by the forwarder's template. */
