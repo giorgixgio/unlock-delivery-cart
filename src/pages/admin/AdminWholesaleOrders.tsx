@@ -1230,21 +1230,82 @@ const AdminWholesaleOrders = () => {
     setCreatingBatch(false);
     if (error) return toast.error(error.message);
     setBatches((b) => [data as Batch, ...b]);
-    setAddBatchId((data as Batch).id);
+    setActiveBatch((data as Batch).id);
     setNewBatchOpen(false);
     toast.success(`Batch ${num} created (Warehouse ${newBatchWarehouse})`);
   };
 
   const addRow = async () => {
-    if (!addBatchId) return toast.error("Create or select a batch first");
+    if (!activeBatch || activeBatch === "UNASSIGNED")
+      return toast.error("Create or select a batch first");
     setAddingRow(true);
-    const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: addBatchId });
+    const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: activeBatch });
     setAddingRow(false);
     if (error) return toast.error(error.message);
     const row = (Array.isArray(data) ? data[0] : data) as Item;
     setItems((rows) => [...rows, row]);
     toast.success(`Row added — ${row.sku}`);
   };
+
+  /** Detach an item, or move it into another batch — adopting that batch's shipping stage. */
+  const assignBatch = async (item: Item, batchId: string | null) => {
+    const target = batchId ? batches.find((b) => b.id === batchId) ?? null : null;
+    const patch: Partial<Item> = { batch_id: batchId };
+    if (target?.shipping_stage) patch.logistics_stage = target.shipping_stage;
+    await patchItem(item.id, patch);
+    toast.success(batchId ? `Moved to ${target?.batch_number ?? "batch"}` : "Removed from batch");
+  };
+
+  const toggleBatchCompleted = async () => {
+    if (!selectedBatch) return;
+    const next = !selectedBatch.is_completed;
+    const prev = batches;
+    setBatches((bs) => bs.map((b) => (b.id === selectedBatch.id ? { ...b, is_completed: next } : b)));
+    const { error } = await supabase
+      .from("wholesale_batches")
+      .update({ is_completed: next })
+      .eq("id", selectedBatch.id);
+    if (error) {
+      setBatches(prev);
+      return toast.error(error.message);
+    }
+    toast.success(next ? "Batch marked completed" : "Batch reopened");
+  };
+
+  /** Batch-level shipping stage — cascades to every item still in the batch. */
+  const setBatchShippingStage = async (stage: string | null) => {
+    if (!selectedBatch) return;
+    const batchId = selectedBatch.id;
+    const prevBatches = batches;
+    const prevItems = items;
+    setBatches((bs) => bs.map((b) => (b.id === batchId ? { ...b, shipping_stage: stage } : b)));
+    if (stage) {
+      setItems((rows) => rows.map((r) => (r.batch_id === batchId ? { ...r, logistics_stage: stage } : r)));
+    }
+    const { error } = await supabase
+      .from("wholesale_batches")
+      .update({ shipping_stage: stage })
+      .eq("id", batchId);
+    if (error) {
+      setBatches(prevBatches);
+      setItems(prevItems);
+      return toast.error(error.message);
+    }
+    if (stage) {
+      const { error: e2 } = await supabase
+        .from("wholesale_items")
+        .update({ logistics_stage: stage })
+        .eq("batch_id", batchId);
+      if (e2) {
+        setItems(prevItems);
+        return toast.error(e2.message);
+      }
+      toast.success(`Batch moved to ${stageMeta(stage).label}`);
+    } else {
+      toast.success("Batch shipping stage cleared — items are editable again");
+    }
+  };
+
 
   const imgList = (it: Item): string[] =>
     Array.isArray(it.images) && it.images.length
