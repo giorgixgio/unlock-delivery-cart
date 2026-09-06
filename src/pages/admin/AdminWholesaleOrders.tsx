@@ -517,6 +517,287 @@ async function copyImageToProductBucket(path: string | null, sku: string): Promi
   return supabase.storage.from("product-images").getPublicUrl(target).data.publicUrl;
 }
 
+/** Labelled field wrapper for the item edit popup. */
+function Field({
+  label,
+  hint,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-1.5 ${className ?? ""}`}>
+      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/**
+ * Full single-item editor. Every field autosaves through `onPatch`, exactly like
+ * the inline grid cells did — the popup is only a nicer surface for the same data.
+ */
+function WholesaleItemModal({
+  item,
+  batches,
+  groupItems,
+  images,
+  uploading,
+  hsLoading,
+  publishing,
+  onClose,
+  onPatch,
+  onUpload,
+  onSetPrimary,
+  onRemoveImage,
+  onGenerateHs,
+  onPublish,
+}: {
+  item: Item;
+  batches: Batch[];
+  groupItems: Item[];
+  images: string[];
+  uploading: boolean;
+  hsLoading: boolean;
+  publishing: boolean;
+  onClose: () => void;
+  onPatch: (patch: Partial<Item>) => void;
+  onUpload: (files: File[]) => void;
+  onSetPrimary: (path: string) => void;
+  onRemoveImage: (path: string) => void;
+  onGenerateHs: () => void;
+  onPublish: () => void;
+}) {
+  // Old Price auto-fills at 2x the selling price until the operator edits it directly.
+  const [oldPriceManual, setOldPriceManual] = useState(item.old_price != null);
+  useEffect(() => {
+    setOldPriceManual(item.old_price != null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  const onSellingPriceSave = (v: string) => {
+    const price = v === "" ? null : Number(v);
+    const patch: Partial<Item> = { selling_price: price };
+    if (!oldPriceManual) {
+      patch.old_price =
+        price != null && !Number.isNaN(price) && price > 0
+          ? Math.round(price * 2 * 100) / 100
+          : null;
+    }
+    onPatch(patch);
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>{item.title || "Untitled item"}</span>
+            <Badge variant="outline" className={warehouseClass(item.warehouse)}>
+              Warehouse {item.warehouse}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                item.listing_status === "published"
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                  : "bg-muted text-muted-foreground"
+              }
+            >
+              {item.listing_status === "published" ? "Published" : "Not Listed"}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          <Field label="SKU (click to copy supplier message)">
+            <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
+          </Field>
+
+          <Field label="Images" hint="Drag & drop or click the tile to add. Star sets the primary image.">
+            <ItemImages
+              images={images}
+              primary={item.image_url ?? images[0] ?? null}
+              uploading={uploading}
+              onUpload={onUpload}
+              onSetPrimary={onSetPrimary}
+              onRemove={onRemoveImage}
+              className="max-w-full"
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Title" className="sm:col-span-2">
+              <EditableCell
+                value={item.title}
+                placeholder="Product title"
+                onSave={(v) => onPatch({ title: v || null })}
+              />
+            </Field>
+            <Field label="Alibaba title">
+              <EditableCell
+                value={item.alibaba_title}
+                placeholder="Seller's listing title"
+                onSave={(v) => onPatch({ alibaba_title: v || null })}
+              />
+            </Field>
+            <Field label="Alibaba link">
+              <div className="flex items-center gap-1">
+                <EditableCell
+                  value={item.alibaba_link}
+                  placeholder="https://…"
+                  onSave={(v) => onPatch({ alibaba_link: v || null })}
+                />
+                {item.alibaba_link && (
+                  <a href={item.alibaba_link} target="_blank" rel="noreferrer noopener">
+                    <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </a>
+                )}
+              </div>
+            </Field>
+          </div>
+
+          <Field label="Notes / key features">
+            <EditableCell value={item.notes} placeholder="Notes" onSave={(v) => onPatch({ notes: v || null })} />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Quantity">
+              <EditableCell
+                type="number"
+                value={item.quantity}
+                placeholder="1"
+                onSave={(v) => onPatch({ quantity: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Cartons">
+              <EditableCell
+                type="number"
+                value={item.carton_count}
+                placeholder="1"
+                onSave={(v) => onPatch({ carton_count: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Weight (kg)">
+              <EditableCell
+                type="number"
+                value={item.weight_kg}
+                placeholder="0.0"
+                onSave={(v) => onPatch({ weight_kg: v === "" ? null : Number(v) })}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Unit price (USD)" hint={gelFromUsd(Number(item.unit_price) || 0)}>
+              <EditableCell
+                type="number"
+                value={item.unit_price}
+                placeholder="0.00"
+                onSave={(v) => onPatch({ unit_price: v === "" ? null : Number(v) })}
+              />
+            </Field>
+            <Field label="Selling price (₾)" hint="Used as the storefront price when publishing.">
+              <EditableCell
+                type="number"
+                value={item.selling_price}
+                placeholder="0.00"
+                onSave={onSellingPriceSave}
+              />
+            </Field>
+            <Field
+              label="Old price (₾)"
+              hint={oldPriceManual ? "Manually set — no longer auto-calculated." : "Auto-set to 2× the selling price."}
+            >
+              <EditableCell
+                type="number"
+                value={item.old_price}
+                placeholder="0.00"
+                onSave={(v) => {
+                  setOldPriceManual(v !== "");
+                  onPatch({ old_price: v === "" ? null : Number(v) });
+                }}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Logistics stage">
+              <Select value={item.logistics_stage} onValueChange={(v) => onPatch({ logistics_stage: v })}>
+                <SelectTrigger className="h-9">
+                  <SelectValue>
+                    <Badge variant="outline" className={stageMeta(item.logistics_stage).className}>
+                      {stageMeta(item.logistics_stage).label}
+                    </Badge>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Batch" hint="Warehouse is inherited from the batch and cannot be changed here.">
+              <Select value={item.batch_id ?? ""} onValueChange={(v) => onPatch({ batch_id: v })}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {batches
+                    .filter((b) => b.warehouse === item.warehouse)
+                    .map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.batch_number}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              HS classification
+            </div>
+            <HsCell
+              item={item}
+              images={images}
+              loading={hsLoading}
+              onGenerate={onGenerateHs}
+              onPatch={onPatch}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={onPublish} disabled={publishing}>
+            {publishing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1" />
+            )}
+            {item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 const AdminWholesaleOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const warehouseParam = (searchParams.get("warehouse") ?? "ALL").toUpperCase();
