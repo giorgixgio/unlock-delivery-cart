@@ -145,35 +145,46 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "" }: Pr
     if (!/^https?:\/\/\S+$/i.test(url)) {
       return toast({ title: "Paste a valid link first", variant: "destructive" });
     }
+    // Step 1: parse title from the URL slug itself — instant, no network,
+    // works even when the site (e.g. Temu) blocks scrapers. Never overwrites.
+    let filled = 0;
+    const slugTitle = titleFromUrl(url);
+    if (slugTitle && !title.trim()) {
+      setTitle(slugTitle);
+      filled++;
+    }
+
+    // Step 2: best-effort live fetch for image/price (and title only if the
+    // slug parse found nothing).
     setFetching(true);
+    let fetched = false;
     try {
       const { data, error } = await supabase.functions.invoke("fetch-product-info", { body: { url } });
       if (error) throw error;
-      if (!data?.ok) {
-        toast({
-          title: "Couldn't auto-fetch details",
-          description: "You can still generate a description from the title and key features below.",
-        });
-        return;
+      if (data?.ok) {
+        fetched = true;
+        if (data.title && !slugTitle && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
+        if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
+        if (data.image && images.length === 0) {
+          setImages([String(data.image)]);
+          setPrimary(String(data.image));
+          filled++;
+        }
       }
-      let filled = 0;
-      if (data.title && !title.trim()) { setTitle(String(data.title).slice(0, 200)); filled++; }
-      if (data.price && !price.trim()) { setPrice(String(data.price)); filled++; }
-      if (data.image && images.length === 0) {
-        setImages([String(data.image)]);
-        setPrimary(String(data.image));
-        filled++;
-      }
-      toast({
-        title: filled ? `Filled ${filled} empty field${filled > 1 ? "s" : ""}` : "Nothing new to fill",
-        description: filled ? undefined : "Your existing values were kept as-is.",
-      });
-    } catch (err: any) {
+    } catch (_err) {
+      // ignore — slug result still stands
+    } finally { setFetching(false); }
+
+    if (filled > 0) {
+      toast({ title: `Filled ${filled} empty field${filled > 1 ? "s" : ""}` });
+    } else if (!fetched) {
       toast({
         title: "Couldn't auto-fetch details",
         description: "You can still generate a description from the title and key features below.",
       });
-    } finally { setFetching(false); }
+    } else {
+      toast({ title: "Nothing new to fill", description: "Your existing values were kept as-is." });
+    }
   };
 
   const handleGenerateDescription = async () => {
