@@ -970,8 +970,19 @@ function WholesaleItemModal({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Logistics stage">
-              <Select value={item.logistics_stage} onValueChange={(v) => onPatch({ logistics_stage: v })}>
+            <Field
+              label="Logistics stage"
+              hint={
+                itemBatch?.shipping_stage
+                  ? "Managed at batch level — shipping stages follow the batch."
+                  : undefined
+              }
+            >
+              <Select
+                value={item.logistics_stage}
+                onValueChange={(v) => onPatch({ logistics_stage: v })}
+                disabled={!!itemBatch?.shipping_stage}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue>
                     <Badge variant="outline" className={stageMeta(item.logistics_stage).className}>
@@ -980,7 +991,7 @@ function WholesaleItemModal({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {STAGES.map((s) => (
+                  {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
                     <SelectItem key={s.value} value={s.value}>
                       {s.label}
                     </SelectItem>
@@ -988,23 +999,36 @@ function WholesaleItemModal({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Batch" hint="Warehouse is inherited from the batch and cannot be changed here.">
-              <Select value={item.batch_id ?? ""} onValueChange={(v) => onPatch({ batch_id: v })}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Select batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {batches
-                    .filter((b) => b.warehouse === item.warehouse)
-                    .map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.batch_number}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            <Field label="Batch" hint="Moving an item into a shipped batch adopts that batch's stage.">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={item.batch_id ?? "UNASSIGNED"}
+                  onValueChange={(v) => onAssignBatch(v === "UNASSIGNED" ? null : v)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UNASSIGNED">Unassigned (hanging)</SelectItem>
+                    {batches
+                      .filter((b) => b.warehouse === item.warehouse)
+                      .map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.batch_number}
+                          {b.is_completed ? " · Completed" : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {item.batch_id && (
+                  <Button size="sm" variant="outline" onClick={() => onAssignBatch(null)}>
+                    Remove
+                  </Button>
+                )}
+              </div>
             </Field>
           </div>
+
 
           <div className="rounded-lg border border-border p-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
