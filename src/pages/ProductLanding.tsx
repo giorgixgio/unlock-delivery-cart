@@ -403,6 +403,8 @@ const GenericLanding = ({
           setRepeatBlocked(rec);
           setCodOpen(false);
         }}
+        giftProduct={giftProduct}
+
 
       />
       {singleOfferActive && (
