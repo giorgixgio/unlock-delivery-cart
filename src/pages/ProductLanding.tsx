@@ -324,6 +324,11 @@ const GenericLanding = ({
 
         </div>
 
+        {/* Pre-selected free gift */}
+        {giftOffer && giftProduct && (
+          <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} />
+        )}
+
         {/* Trust row */}
         <LandingTrustRow />
 
