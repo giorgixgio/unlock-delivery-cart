@@ -32,6 +32,8 @@ import { trackEvent } from "@/lib/analytics";
 import SingleUpsellSheet from "@/components/landing/SingleUpsellSheet";
 import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
+import FreeGiftCard from "@/components/landing/FreeGiftCard";
+import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
 
 
 
