@@ -128,7 +128,13 @@ const CODFormModal = ({
         order: {
           customerName: submitPhone,
           customerPhone: submitPhone,
-          items: [{ product, quantity }],
+          items: [
+            { product, quantity },
+            // Free gift — real order line at 0 ₾ so pickers/courier labels see the SKU
+            ...(giftProduct
+              ? [{ product: { ...giftProduct, price: 0 }, quantity: 1 }]
+              : []),
+          ],
           subtotal: totalAfter,
           total: totalAfter + 5,
           shippingFee: 5,
