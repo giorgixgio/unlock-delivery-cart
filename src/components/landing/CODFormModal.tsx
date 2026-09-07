@@ -28,6 +28,8 @@ interface CODFormModalProps {
   onPhoneOrderCreated: (orderId: string, orderNumber: string, orderTotal: number) => void;
   /** Fired when server returns an existing recent order for this phone+sku. */
   onDuplicateBlocked?: (orderNumber: string, createdAt: string) => void;
+  /** Free gift added to the order at 0 ₾ (one per order). */
+  giftProduct?: Product | null;
 }
 
 
