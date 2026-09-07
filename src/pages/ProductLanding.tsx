@@ -357,6 +357,12 @@ const GenericLanding = ({
           {repeatBlocked ? (
             <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={handleReorder} />
           ) : (
+            <>
+            {giftOffer && giftProduct && (
+              <p className="mb-1.5 flex items-center justify-center gap-1 text-[11px] font-extrabold text-success">
+                🎁 საჩუქარი შეკვეთაზე — უფასოდ
+              </p>
+            )}
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
