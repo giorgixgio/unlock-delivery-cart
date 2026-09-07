@@ -19,7 +19,7 @@ const FreeGiftCard = ({
   return (
     <div className="relative overflow-hidden rounded-2xl border-2 border-success/50 bg-gradient-to-br from-success/10 via-card to-card shadow-[0_8px_28px_-12px_hsl(var(--success)/0.55)]">
       {/* animated sheen */}
-      <div className="pointer-events-none absolute inset-0 opacity-60 [background:linear-gradient(110deg,transparent_35%,hsl(var(--success)/0.18)_50%,transparent_65%)] bg-[length:220%_100%] animate-[shimmer_2.8s_linear_infinite]" />
+      <div className="gift-sheen pointer-events-none absolute inset-0 opacity-70" />
 
       {/* ribbon */}
       <div className="relative flex items-center gap-1.5 bg-success px-3 py-1.5 text-success-foreground">

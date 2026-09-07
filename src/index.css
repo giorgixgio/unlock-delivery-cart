@@ -794,3 +794,17 @@
 }
 .bnd-cat-swap { animation: bnd-cat-swap-in .22s cubic-bezier(.4,0,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .bnd-cat-swap { animation: none; } }
+
+/* Free-gift card sheen */
+@keyframes giftSheen {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.gift-sheen {
+  background: linear-gradient(110deg, transparent 35%, hsl(var(--success) / 0.18) 50%, transparent 65%);
+  background-size: 220% 100%;
+  animation: giftSheen 3s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gift-sheen { animation: none; }
+}
