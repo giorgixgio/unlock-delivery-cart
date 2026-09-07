@@ -237,6 +237,23 @@ const CODFormModal = ({
               <p className="text-lg font-extrabold text-primary">{totalAfter.toFixed(2)} ₾</p>
             </div>
 
+            {/* Free gift line */}
+            {giftProduct && (
+              <div className="-mt-3 mb-5 flex items-center gap-3 rounded-xl border border-success/40 bg-success/10 p-3">
+                <img
+                  src={giftProduct.image}
+                  alt={giftProduct.title}
+                  className="h-12 w-12 rounded-lg object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase text-success">🎁 საჩუქარი</p>
+                  <p className="truncate text-sm font-bold text-foreground">{giftProduct.title}</p>
+                </div>
+                <p className="text-base font-extrabold text-success">0 ₾</p>
+              </div>
+            )}
+
+
             {/* Phone field */}
             <div className="mb-4">
               <Label className="text-sm font-bold text-foreground">ტელეფონი</Label>
