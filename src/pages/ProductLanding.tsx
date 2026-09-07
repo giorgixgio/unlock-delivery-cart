@@ -382,6 +382,7 @@ const GenericLanding = ({
               </Button>
 
             </div>
+            </>
           )}
         </div>
       </div>
