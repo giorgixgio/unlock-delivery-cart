@@ -42,6 +42,7 @@ const CODFormModal = ({
   landingSlug,
   onPhoneOrderCreated,
   onDuplicateBlocked,
+  giftProduct,
 }: CODFormModalProps) => {
 
   const [phone, setPhone] = useState("");
