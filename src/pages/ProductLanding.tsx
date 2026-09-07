@@ -154,6 +154,13 @@ const GenericLanding = ({
   );
   const singleOfferActive = !!(singleOffer && singleOfferProduct);
 
+  // Pre-selected free gift for every order of this SKU
+  const giftOffer = getFreeGiftOffer(product.sku);
+  const giftProduct = useMemo(
+    () => (giftOffer ? allProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
+    [giftOffer, allProducts]
+  );
+
   // When a single offer is configured, the generic multi-product upsell is disabled.
   const upsellsActive =
     !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
