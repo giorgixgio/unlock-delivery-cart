@@ -47,6 +47,7 @@ import AdminCourierAnalytics from "./pages/admin/AdminCourierAnalytics";
 import AdminCourierImportMapping from "./pages/admin/AdminCourierImportMapping";
 import AdminPacking from "./pages/admin/AdminPacking";
 import AdminCourierLabels from "./pages/admin/AdminCourierLabels";
+import AdminCityQA from "./pages/admin/AdminCityQA";
 import AdminBinLocations from "./pages/admin/AdminBinLocations";
 import AdminProductScan from "./pages/admin/AdminProductScan";
 import AdminPhotoReview from "./pages/admin/AdminPhotoReview";
@@ -187,6 +188,7 @@ const App = () => (
                       <Route path="packing-waves/:waveId/runs/:runId" element={<AdminPackingRun />} />
                       <Route path="shipping" element={<AdminShipping />} />
                       <Route path="courier-labels" element={<AdminCourierLabels />} />
+                      <Route path="city-qa" element={<AdminCityQA />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="landing-pages" element={<AdminLandingPages />} />
                       <Route path="products-import" element={<AdminProductsImport />} />

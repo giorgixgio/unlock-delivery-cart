@@ -39,6 +39,7 @@ const navGroups = [
     items: [
       { to: "/admin/shipping", label: "Shipping", icon: Truck },
       { to: "/admin/courier-labels", label: "Courier Labels", icon: Printer },
+      { to: "/admin/city-qa", label: "City QA", icon: MapPin },
       { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
       { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },
       { to: "/admin/courier-import/return-matching", label: "Return Matching", icon: GitMerge },
