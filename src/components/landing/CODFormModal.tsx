@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, CheckCircle2, Check } from "lucide-react";
+import { Loader2, Phone, CheckCircle2, Check, Gift } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
@@ -28,6 +28,8 @@ interface CODFormModalProps {
   onPhoneOrderCreated: (orderId: string, orderNumber: string, orderTotal: number) => void;
   /** Fired when server returns an existing recent order for this phone+sku. */
   onDuplicateBlocked?: (orderNumber: string, createdAt: string) => void;
+  /** Free gift added to the order at 0 ₾ (one per order). */
+  giftProduct?: Product | null;
 }
 
 
@@ -40,6 +42,7 @@ const CODFormModal = ({
   landingSlug,
   onPhoneOrderCreated,
   onDuplicateBlocked,
+  giftProduct,
 }: CODFormModalProps) => {
 
   const [phone, setPhone] = useState("");
@@ -125,7 +128,13 @@ const CODFormModal = ({
         order: {
           customerName: submitPhone,
           customerPhone: submitPhone,
-          items: [{ product, quantity }],
+          items: [
+            { product, quantity },
+            // Free gift — real order line at 0 ₾ so pickers/courier labels see the SKU
+            ...(giftProduct
+              ? [{ product: { ...giftProduct, price: 0 }, quantity: 1 }]
+              : []),
+          ],
           subtotal: totalAfter,
           total: totalAfter + 5,
           shippingFee: 5,
@@ -227,6 +236,25 @@ const CODFormModal = ({
               </div>
               <p className="text-lg font-extrabold text-primary">{totalAfter.toFixed(2)} ₾</p>
             </div>
+
+            {/* Free gift line */}
+            {giftProduct && (
+              <div className="-mt-3 mb-5 flex items-center gap-3 rounded-xl border border-success/40 bg-success/10 p-3">
+                <img
+                  src={giftProduct.image}
+                  alt={giftProduct.title}
+                  className="h-12 w-12 rounded-lg object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1 text-[11px] font-extrabold uppercase text-success">
+                    <Gift className="h-3 w-3" /> საჩუქარი
+                  </p>
+                  <p className="truncate text-sm font-bold text-foreground">{giftProduct.title}</p>
+                </div>
+                <p className="text-base font-extrabold text-success">0 ₾</p>
+              </div>
+            )}
+
 
             {/* Phone field */}
             <div className="mb-4">

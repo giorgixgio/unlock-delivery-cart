@@ -7,7 +7,7 @@ import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, ArrowLeft } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Gift } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
@@ -32,6 +32,8 @@ import { trackEvent } from "@/lib/analytics";
 import SingleUpsellSheet from "@/components/landing/SingleUpsellSheet";
 import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
+import FreeGiftCard from "@/components/landing/FreeGiftCard";
+import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
 
 
 
@@ -151,6 +153,13 @@ const GenericLanding = ({
     [singleOffer, allProducts]
   );
   const singleOfferActive = !!(singleOffer && singleOfferProduct);
+
+  // Pre-selected free gift for every order of this SKU
+  const giftOffer = getFreeGiftOffer(product.sku);
+  const giftProduct = useMemo(
+    () => (giftOffer ? allProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
+    [giftOffer, allProducts]
+  );
 
   // When a single offer is configured, the generic multi-product upsell is disabled.
   const upsellsActive =
@@ -315,6 +324,11 @@ const GenericLanding = ({
 
         </div>
 
+        {/* Pre-selected free gift */}
+        {giftOffer && giftProduct && (
+          <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} />
+        )}
+
         {/* Trust row */}
         <LandingTrustRow />
 
@@ -343,6 +357,12 @@ const GenericLanding = ({
           {repeatBlocked ? (
             <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={handleReorder} />
           ) : (
+            <>
+            {giftOffer && giftProduct && (
+              <p className="mb-1.5 flex items-center justify-center gap-1 text-[11px] font-extrabold text-success">
+                <Gift className="h-3.5 w-3.5" /> საჩუქარი შეკვეთაზე — უფასოდ
+              </p>
+            )}
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
                 <p className="text-xl font-extrabold text-primary">{totalPrice.toFixed(0)} ₾</p>
@@ -362,6 +382,7 @@ const GenericLanding = ({
               </Button>
 
             </div>
+            </>
           )}
         </div>
       </div>
@@ -382,6 +403,8 @@ const GenericLanding = ({
           setRepeatBlocked(rec);
           setCodOpen(false);
         }}
+        giftProduct={giftProduct}
+
 
       />
       {singleOfferActive && (
