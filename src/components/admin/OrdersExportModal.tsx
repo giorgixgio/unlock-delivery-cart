@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Download, X, Truck, Store } from "lucide-react";
 import * as XLSX from "xlsx";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
-import { suggestCity } from "@/lib/georgianCities";
+import { classifyCity, loadCityRef } from "@/lib/cityQa";
 import CityTypoCorrectionModal, { TypoRow } from "@/components/admin/CityTypoCorrectionModal";
 import { useStore } from "@/contexts/StoreContext";
 
@@ -188,24 +188,39 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
   };
 
   const handleDownload = async () => {
-    // Check for city typos first
+    // Pre-flight city validation: auto-fix what is safe, surface the rest.
     const orders = preview?.orders || [];
-    const typos: TypoRow[] = [];
-    for (const o of orders) {
-      const suggestion = suggestCity(o.city);
-      if (suggestion) {
-        typos.push({
+    let flagged: TypoRow[] = [];
+    try {
+      const ref = await loadCityRef();
+      const autoFixes: { id: string; city: string }[] = [];
+      for (const o of orders) {
+        const res = classifyCity(o.city || "", ref);
+        if (res.status === "valid") continue;
+        if (res.status === "auto_fix" && res.city && !res.leftover) {
+          autoFixes.push({ id: o.id, city: res.city });
+          continue;
+        }
+        flagged.push({
           order_id: o.id,
           public_order_number: o.public_order_number,
           customer_name: o.customer_name,
           customer_phone: o.customer_phone,
           original_city: o.city,
-          suggested_city: suggestion,
+          suggested_city: res.city || res.candidates[0]?.city || "",
         });
       }
+      for (const f of autoFixes) {
+        await (supabase.from("orders") as any)
+          .update({ normalized_city: f.city })
+          .eq("id", f.id);
+      }
+    } catch (e) {
+      console.error("City pre-flight failed:", e);
     }
-    if (typos.length > 0) {
-      setTypoRows(typos);
+
+    if (flagged.length > 0) {
+      setTypoRows(flagged);
       setTypoModalOpen(true);
       return;
     }

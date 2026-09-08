@@ -247,6 +247,33 @@ export type Database = {
         }
         Relationships: []
       }
+      city_aliases: {
+        Row: {
+          alias_normalized: string
+          canonical_city: string
+          created_at: string
+          id: string
+          source: string
+          zone_id: number | null
+        }
+        Insert: {
+          alias_normalized: string
+          canonical_city: string
+          created_at?: string
+          id?: string
+          source: string
+          zone_id?: number | null
+        }
+        Update: {
+          alias_normalized?: string
+          canonical_city?: string
+          created_at?: string
+          id?: string
+          source?: string
+          zone_id?: number | null
+        }
+        Relationships: []
+      }
       courier_export_settings: {
         Row: {
           created_at: string
