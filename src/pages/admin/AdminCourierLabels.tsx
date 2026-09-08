@@ -466,7 +466,10 @@ export default function AdminCourierLabels() {
       // Skip 0.00 GEL orders in the singles lane — nothing to collect on delivery.
       if (Number((r as any).total ?? 0) <= 0) continue;
       singles.push(r);
-      if ((skuSet.get(r.id)?.size || 0) > 1) bad.push(r);
+      const orderSkus = Array.from(skuSet.get(r.id) || []);
+      // Free-gift orders (product + its gift) are single-lane by design — the
+      // slip already prints both SKUs, so don't flag them as missing a round.
+      if (orderSkus.length > 1 && !isGiftPairSkuSet(orderSkus)) bad.push(r);
     }
     setUnmatched(bad);
 
