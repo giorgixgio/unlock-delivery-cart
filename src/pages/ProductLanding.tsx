@@ -34,6 +34,7 @@ import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
 import FreeGiftCard from "@/components/landing/FreeGiftCard";
 import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
+import ProductDemoGif from "@/components/landing/ProductDemoGif";
 
 
 
@@ -331,6 +332,9 @@ const GenericLanding = ({
 
         {/* Trust row */}
         <LandingTrustRow />
+
+        {/* Animated "see it in action" demo (per-SKU) */}
+        <ProductDemoGif sku={product.sku} />
 
         {/* Description as bullets */}
         {product.description && (
