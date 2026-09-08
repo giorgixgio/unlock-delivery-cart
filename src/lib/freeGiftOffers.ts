@@ -27,6 +27,17 @@ export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
       "უკვე დამატებულია შენს შეკვეთაში",
     ],
   },
+  // ბატარეაზე მომუშავე ნათურა → 3-დონიანი დანების გასამწფო
+  "450": {
+    giftSku: "242",
+    valueGel: 19,
+    label: "საჩუქარი",
+    headline: "საჩუქარი ყველა შეკვეთაზე",
+    bullets: [
+      "იგზავნება იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+      "უკვე დამატებულია შენს შეკვეთაში",
+    ],
+  },
 };
 
 export function getFreeGiftOffer(sku?: string | null): FreeGiftOffer | null {
