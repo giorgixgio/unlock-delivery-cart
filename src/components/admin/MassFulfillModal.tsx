@@ -364,7 +364,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       .eq("id", batchId);
 
     // Fetch full order details for sticker/packing list generation + SMS targets
-    const appliedOrderIds = toApply.filter(r => r.matchedOrderId).map(r => r.matchedOrderId!);
+    const appliedOrderIds = appliedIds;
     let smsTargets: FulfillmentSmsTarget[] = [];
     if (appliedOrderIds.length > 0) {
       const { data: fullOrders } = await supabase
