@@ -212,7 +212,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
       }
       for (const f of autoFixes) {
         await (supabase.from("orders") as any)
-          .update({ city: f.city, normalized_city: f.city })
+          .update({ normalized_city: f.city })
           .eq("id", f.id);
       }
     } catch (e) {
