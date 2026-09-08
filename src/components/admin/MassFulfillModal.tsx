@@ -307,80 +307,41 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     await (supabase.from("import_staging_rows") as any).insert(stagingRows);
 
     let failCount = 0;
+    const appliedIds: string[] = [];
 
-    for (const row of toApply) {
+    // Bulk apply via a single set-based RPC per chunk — replaces the old
+    // per-order loop (5-6 round trips each) with ~1 round trip per 500 orders.
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < toApply.length; i += CHUNK_SIZE) {
+      const chunk = toApply.slice(i, i + CHUNK_SIZE);
+      const payload = chunk.map((r) => ({
+        order_id: r.matchedOrderId!,
+        tracking_number: r.tracking,
+        order_ref: r.orderRef,
+      }));
+
       try {
-        const { data: currentOrder } = await supabase
-          .from("orders")
-          .select("status, courier_name, tracking_number, version")
-          .eq("id", row.matchedOrderId!)
-          .single();
-
-        if (!currentOrder) continue;
-
-        const updates: Record<string, unknown> = {
-          tracking_number: row.tracking,
-          is_fulfilled: true,
-        };
-
-        if (["confirmed", "new", "on_hold"].includes(currentOrder.status)) {
-          updates.status = "shipped";
-        }
-
-        if (!currentOrder.courier_name) {
-          updates.courier_name = "Onway";
-        }
-
-        // Versioned update — skip silently on conflict (another operator handled it)
-        const newVersion = ((currentOrder as any).version ?? 0) + 1;
-        const { data: updated, error } = await (supabase.from("orders") as any)
-          .update({ ...updates, version: newVersion })
-          .eq("id", row.matchedOrderId!)
-          .eq("version", (currentOrder as any).version ?? 0)
-          .select("id")
-          .maybeSingle();
+        const { data, error } = await (supabase as any).rpc("bulk_fulfill_orders", {
+          p_rows: payload as any,
+          p_batch_id: batchId,
+          p_source_file: fileName,
+          p_actor: "admin",
+        });
         if (error) throw error;
-        if (!updated) continue; // conflict — skip this row
 
-        await supabase.from("order_events").insert({
-          order_id: row.matchedOrderId!,
-          actor: "admin",
-          event_type: "tracking_import_mass_fulfill",
-          payload: {
-            tracking: row.tracking,
-            order_ref: row.orderRef,
-            source_file: fileName,
-          } as any,
-        });
-
-        await logSystemEvent({
-          entityType: "import_batch",
-          entityId: batchId,
-          eventType: "COURIER_IMPORT_APPLY",
-          actorId: "admin",
-          payload: {
-            order_id: row.matchedOrderId,
-            tracking: row.tracking,
-            source_file: fileName,
-            before_status: currentOrder.status,
-          },
-        });
-
-        // Mark staging row as applied
-        await (supabase.from("import_staging_rows") as any)
-          .update({ applied: true, applied_at: new Date().toISOString(), match_status: "applied" })
-          .eq("batch_id", batchId)
-          .eq("matched_order_id", row.matchedOrderId);
-
-        applied++;
+        const result = Array.isArray(data) ? data[0] : data;
+        const ok: string[] = result?.applied_order_ids || [];
+        appliedIds.push(...ok);
+        applied += ok.length;
         setAppliedCount(applied);
+        // Conflicted rows were changed by another operator — skipped, not failed.
       } catch (err: any) {
-        failCount++;
-        // Mark staging row as failed
+        failCount += chunk.length;
+        const chunkIds = chunk.map((r) => r.matchedOrderId!);
         await (supabase.from("import_staging_rows") as any)
           .update({ match_status: "failed", error_message: err?.message || String(err) })
           .eq("batch_id", batchId)
-          .eq("matched_order_id", row.matchedOrderId);
+          .in("matched_order_id", chunkIds);
 
         await logSystemEventFailed({
           entityType: "import_batch",
@@ -388,7 +349,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           eventType: "COURIER_IMPORT_APPLY",
           actorId: "admin",
           errorMessage: err?.message || String(err),
-          payload: { order_id: row.matchedOrderId, tracking: row.tracking },
+          payload: { order_ids: chunkIds, chunk_size: chunk.length },
         });
       }
     }
@@ -403,7 +364,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       .eq("id", batchId);
 
     // Fetch full order details for sticker/packing list generation + SMS targets
-    const appliedOrderIds = toApply.filter(r => r.matchedOrderId).map(r => r.matchedOrderId!);
+    const appliedOrderIds = appliedIds;
     let smsTargets: FulfillmentSmsTarget[] = [];
     if (appliedOrderIds.length > 0) {
       const { data: fullOrders } = await supabase
