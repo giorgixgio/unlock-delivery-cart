@@ -2437,6 +2437,18 @@ export type Database = {
           run_number: number
         }[]
       }
+      bulk_fulfill_orders: {
+        Args: {
+          p_actor?: string
+          p_batch_id: string
+          p_rows: Json
+          p_source_file: string
+        }
+        Returns: {
+          applied_order_ids: string[]
+          conflicted_order_ids: string[]
+        }[]
+      }
       bulk_update_tracking: {
         Args: { rows: Json }
         Returns: {
