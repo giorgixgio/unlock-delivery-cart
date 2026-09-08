@@ -4,7 +4,6 @@
  * on that product's landing page. Keep entries sparse and high-quality — these
  * are conversion assets, not gallery images.
  */
-import sku316DemoAsset from "@/assets/sku316-demo.webp.asset.json";
 
 export interface ProductDemoMedia {
   /** Animated demo image URL (animated WebP / GIF). */
@@ -18,7 +17,7 @@ export interface ProductDemoMedia {
 const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
   // Pet-hair laundry collector — demo of placing it in the washing machine
   "316": {
-    src: sku316DemoAsset.url,
+    src: "/images/sku316-demo.webp",
     eyebrow: "როგორ მუშაობს",
     caption: "უბრალოდ ჩაუდეთ სარეცხ მანქანაში — თმა და ბუსუსი თავად შემოიყრება",
   },
