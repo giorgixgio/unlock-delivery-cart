@@ -17,6 +17,7 @@ import {
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 import { useStore } from "@/contexts/StoreContext";
+import { isGiftPairSkuSet } from "@/lib/freeGiftOffers";
 
 type LabelStore = "A" | "B";
 
