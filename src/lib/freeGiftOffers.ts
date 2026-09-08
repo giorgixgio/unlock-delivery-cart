@@ -58,8 +58,7 @@ export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
     ],
   },
   "24": {
-    giftSku: "90",
-    valueGel: 9,
+    giftSku: "423",
     label: "საჩუქარი",
     headline: "საჩუქარი ყველა შეკვეთაზე",
     bullets: [
