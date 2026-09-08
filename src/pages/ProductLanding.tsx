@@ -360,7 +360,7 @@ const GenericLanding = ({
             <>
             {giftOffer && giftProduct && (
               <p className="mb-1.5 flex items-center justify-center gap-1 text-[11px] font-extrabold text-success">
-                🎁 საჩუქარი შეკვეთაზე — უფასოდ
+                <Gift className="h-3.5 w-3.5" /> საჩუქარი შეკვეთაზე — უფასოდ
               </p>
             )}
             <div className="flex items-center gap-3">

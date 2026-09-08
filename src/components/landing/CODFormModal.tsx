@@ -246,7 +246,9 @@ const CODFormModal = ({
                   className="h-12 w-12 rounded-lg object-cover"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-extrabold uppercase text-success">🎁 საჩუქარი</p>
+                  <p className="flex items-center gap-1 text-[11px] font-extrabold uppercase text-success">
+                    <Gift className="h-3 w-3" /> საჩუქარი
+                  </p>
                   <p className="truncate text-sm font-bold text-foreground">{giftProduct.title}</p>
                 </div>
                 <p className="text-base font-extrabold text-success">0 ₾</p>
