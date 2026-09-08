@@ -151,14 +151,21 @@ Deno.serve(async (req) => {
       : (ordersRaw || []);
 
     // ── Classify + compute primary SKU + bin for each order.
+    // Free-gift pairs (base SKU -> gift SKU) stay in the SINGLE lane: the gift
+    // travels with the main product, so pickers make one bin trip. Keep this in
+    // sync with src/lib/freeGiftOffers.ts.
+    const GIFT_PAIRS: [string, string][] = [["316", "147"], ["450", "242"], ["411", "294"]];
+    const isGiftPair = (set: Set<string>) =>
+      set.size === 2 && GIFT_PAIRS.some(([b, g]) => set.has(b) && set.has(g));
     const meta = (ordersForStore || []).map((o: any) => {
       const items = o.order_items || [];
       const skus = new Set(items.map((i: any) => String(i.sku || "")));
       const primary = [...items]
         .map((i: any) => String(i.sku || ""))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0] || "";
-      return { order: o, multi: skus.size > 1, primary, bin: binBySku[primary] || "" };
+      return { order: o, multi: skus.size > 1 && !isGiftPair(skus as Set<string>), primary, bin: binBySku[primary] || "" };
     });
+
 
     // ── Single-SKU lane: sort by bin (fallback SKU, then date). Same SKU/bin ends up contiguous.
     const singles = meta
