@@ -20,7 +20,7 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
   "316": {
     src: sku316DemoAsset.url,
     eyebrow: "როგორ მუშაობს",
-    caption: "უბრალოდ ჩაუდეთ სარეცხ მანქანაში — თმა და ბუსუსი თავად შემოი收集ა",
+    caption: "უბრალოდ ჩაუდეთ სარეცხ მანქანაში — თმა და ბუსუსი თავად შემოიყრება",
   },
 };
 
