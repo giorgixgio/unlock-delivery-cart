@@ -66,6 +66,15 @@ export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
       "უკვე დამატებულია შენს შეკვეთაში",
     ],
   },
+  "4": {
+    giftSku: "307",
+    label: "საჩუქარი",
+    headline: "საჩუქარი ყველა შეკვეთაზე",
+    bullets: [
+      "იგზავნება იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+      "უკვე დამატებულია შენს შეკვეთაში",
+    ],
+  },
 };
 
 /** Base SKU → gift SKU pairs. Orders holding exactly one such pair are still
