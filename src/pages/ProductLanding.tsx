@@ -447,8 +447,8 @@ const GenericLanding = ({
           orderId={pendingOrderId}
           product={product}
           bumpConfig={sku002BumpConfig}
-          originalQty={effectiveQty}
-          originalDiscount={qtyDiscountPct}
+          basePrice={pendingOrderTotal}
+          deliveryFee={deliveryFee}
           onDone={handleBumpDone}
         />
       )}

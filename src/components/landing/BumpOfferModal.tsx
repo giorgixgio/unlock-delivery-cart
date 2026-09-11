@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Gift, X, Loader2 } from "lucide-react";
+import { Gift, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "@/lib/constants";
 import { BumpConfig } from "@/hooks/useLandingConfig";
+import { addUpsellItems } from "@/lib/orderService";
 
 interface BumpOfferModalProps {
   open: boolean;
   orderId: string;
   product: Product;
   bumpConfig: BumpConfig;
-  originalQty: number;
-  originalDiscount: number;
+  basePrice: number;
+  deliveryFee: number;
   onDone: (accepted: boolean) => void;
 }
 
@@ -21,8 +22,8 @@ const BumpOfferModal = ({
   orderId,
   product,
   bumpConfig,
-  originalQty,
-  originalDiscount,
+  basePrice,
+  deliveryFee,
   onDone,
 }: BumpOfferModalProps) => {
   const [loading, setLoading] = useState(false);
@@ -33,19 +34,13 @@ const BumpOfferModal = ({
   const handleAccept = async () => {
     setLoading(true);
     try {
-      // Apply bump via SECURITY DEFINER RPC (inserts item + updates totals
-      // atomically, and enforces "fresh unconfirmed order" server-side).
-      const { error: bumpErr } = await (supabase as any).rpc("storefront_apply_bump", {
-        p_order_id: orderId,
-        p_product_id: product.id,
-        p_sku: product.sku || product.id,
-        p_title: `${product.title} (ბამპ)`,
-        p_quantity: bumpConfig.bump_qty,
-        p_unit_price: bumpUnitPrice,
-        p_line_total: bumpTotal,
-        p_image_url: product.image || "",
-      });
-      if (bumpErr) throw bumpErr;
+      const newSubtotal = basePrice + bumpTotal;
+      await addUpsellItems(
+        orderId,
+        [{ product: { ...product, price: bumpUnitPrice }, quantity: bumpConfig.bump_qty }],
+        deliveryFee,
+        newSubtotal + deliveryFee
+      );
 
       await (supabase as any).rpc("storefront_log_order_event", {
         p_order_id: orderId,
