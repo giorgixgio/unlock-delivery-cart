@@ -36,6 +36,7 @@ import FreeGiftCard from "@/components/landing/FreeGiftCard";
 import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
 import ProductDemoGif from "@/components/landing/ProductDemoGif";
 import ProductPromoImage from "@/components/landing/ProductPromoImage";
+import SkuUrgencyTimer from "@/components/landing/SkuUrgencyTimer";
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
@@ -359,6 +360,8 @@ const GenericLanding = ({
 
         {/* Per-product promotional creative */}
         <ProductPromoImage sku={product.sku} />
+
+        {hasSku002QuantityOffer && <SkuUrgencyTimer />}
 
         {/* Trust row */}
         <LandingTrustRow />
