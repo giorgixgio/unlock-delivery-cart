@@ -19,6 +19,20 @@ export interface SingleUpsellOffer {
 }
 
 export const SINGLE_UPSELL_OFFERS: Record<string, SingleUpsellOffer> = {
+  // მინი Wi-Fi კამერა → მინი GPS ტრეკერი
+  "002": {
+    offerSku: "0011",
+    offerPrice: 19,
+    compareAtPrice: 29,
+    timerSeconds: 180,
+    headline: "დაამატე GPS ტრეკერი სპეციალურ ფასად",
+    subline: "აკონტროლე ავტომობილი, ჩანთა ან სხვა მნიშვნელოვანი ნივთი",
+    bullets: [
+      "მდებარეობის კონტროლი პირდაპირ ტელეფონიდან",
+      "ემატება იმავე შეკვეთას",
+      "გადახდა კურიერთან მიღებისას",
+    ],
+  },
   // ფეხსაცმლის ჯადოსნური საშლელი → სფერული დეოდორანტები ფეხსაცმლისთვის 6ც
   "134": {
     offerSku: "112",
