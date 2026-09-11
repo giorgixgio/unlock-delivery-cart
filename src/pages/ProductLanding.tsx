@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, lazy, Suspense } from "react";
 import logoSrc from "@/assets/logo.png";
 import { useParams, useNavigate } from "react-router-dom";
-import { useProducts } from "@/hooks/useProducts";
+import { useProducts, useStorefrontProducts } from "@/hooks/useProducts";
 import { useLandingPage } from "@/contexts/LandingPageContext";
 import { useLandingConfig } from "@/hooks/useLandingConfig";
 import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
@@ -148,22 +148,22 @@ const GenericLanding = ({
 }) => {
 
   const navigate = useNavigate();
-  const { data: allProducts = [] } = useProducts();
+  const { data: storefrontProducts = [] } = useStorefrontProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
 
   // Per-product single-item offer (shown right after phone submit)
   const singleOffer = getSingleUpsellOffer(product.sku);
   const singleOfferProduct = useMemo(
-    () => (singleOffer ? allProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
-    [singleOffer, allProducts]
+    () => (singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
+    [singleOffer, storefrontProducts]
   );
   const singleOfferActive = !!(singleOffer && singleOfferProduct);
 
   // Pre-selected free gift for every order of this SKU
   const giftOffer = getFreeGiftOffer(product.sku);
   const giftProduct = useMemo(
-    () => (giftOffer ? allProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
-    [giftOffer, allProducts]
+    () => (giftOffer ? storefrontProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
+    [giftOffer, storefrontProducts]
   );
 
   // When a single offer is configured, the generic multi-product upsell is disabled.
