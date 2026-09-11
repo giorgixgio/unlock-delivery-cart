@@ -2,6 +2,8 @@ interface LandingBulletDescriptionProps {
   /** Raw HTML description from product */
   description: string;
   dark?: boolean;
+  /** Preserve the author's paragraphs, line breaks, and embedded emoji markers. */
+  preserveAuthoredFormatting?: boolean;
 }
 
 /**
@@ -9,8 +11,29 @@ interface LandingBulletDescriptionProps {
  * Parses <li>, <p>, or line-break separated content into clean bullets.
  * Falls back to short paragraph if no structure is found.
  */
-const LandingBulletDescription = ({ description, dark = false }: LandingBulletDescriptionProps) => {
+const LandingBulletDescription = ({
+  description,
+  dark = false,
+  preserveAuthoredFormatting = false,
+}: LandingBulletDescriptionProps) => {
   if (!description) return null;
+
+  if (preserveAuthoredFormatting) {
+    const tempDiv = typeof document !== "undefined" ? document.createElement("div") : null;
+    if (tempDiv) tempDiv.innerHTML = description;
+    const authoredText = (tempDiv?.innerText || tempDiv?.textContent || description).trim();
+
+    return (
+      <section className={`rounded-xl border p-4 ${dark ? "bg-white/5 border-white/10" : "bg-card border-border"}`}>
+        <p className={`mb-3 text-base font-bold ${dark ? "text-white" : "text-foreground"}`}>
+          პროდუქტის შესახებ
+        </p>
+        <p className={`whitespace-pre-line text-sm leading-relaxed ${dark ? "text-white/70" : "text-foreground"}`}>
+          {authoredText}
+        </p>
+      </section>
+    );
+  }
 
   // Strip HTML and extract text chunks
   const tempDiv = typeof document !== "undefined" ? document.createElement("div") : null;

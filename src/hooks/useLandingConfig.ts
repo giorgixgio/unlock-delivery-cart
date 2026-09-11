@@ -12,6 +12,8 @@ export interface BumpConfig {
   type: string;
   discount_pct: number;
   bump_qty: number;
+  /** Optional exact total for the added quantity. */
+  fixed_price?: number;
   title: string;
   subtitle: string;
 }
