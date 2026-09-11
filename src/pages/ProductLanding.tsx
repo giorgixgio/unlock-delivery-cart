@@ -245,7 +245,8 @@ const GenericLanding = ({
     });
     // NEW ORDER: single offer (if configured) → address → done.
     setDeliveryFee(5);
-    if (hasSku002QuantityOffer) setBumpOpen(true);
+    if (hasSku002QuantityOffer && effectiveQty < 2) setBumpOpen(true);
+    else if (hasSku002QuantityOffer) setAddressOpen(true);
     else if (singleOfferActive) setSingleUpsellOpen(true);
     else setAddressOpen(true);
   };
