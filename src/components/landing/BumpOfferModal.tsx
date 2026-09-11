@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Gift, Loader2 } from "lucide-react";
@@ -30,6 +30,14 @@ const BumpOfferModal = ({
 
   const bumpTotal = bumpConfig.fixed_price ?? product.price * (1 - bumpConfig.discount_pct / 100) * bumpConfig.bump_qty;
   const bumpUnitPrice = bumpTotal / bumpConfig.bump_qty;
+  const savings = Math.max(0, product.price * bumpConfig.bump_qty - bumpTotal);
+
+  const [progress, setProgress] = useState(60);
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setProgress(90), 120);
+    return () => clearTimeout(t);
+  }, [open]);
 
   const handleAccept = async () => {
     setLoading(true);
@@ -94,6 +102,25 @@ const BumpOfferModal = ({
             <p className="text-sm text-muted-foreground mt-1">
               {bumpConfig.subtitle || "უმეტესობა ამატებს — იგივე მიტანა."}
             </p>
+          </div>
+
+          {/* Order completion progress */}
+          <div className="bg-accent/40 rounded-xl p-3 text-left">
+            <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+              <span className="text-foreground">🎁 შენი შეკვეთა {progress}% დასრულებულია</span>
+              <span className="text-primary">{progress}%</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-accent overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            {savings > 0 && (
+              <p className="text-sm font-extrabold text-deal mt-2">
+                დაამატე ახლა და დაზოგე {savings.toFixed(0)}₾ მეორე ცალზე!
+              </p>
+            )}
           </div>
 
           {/* Product preview */}

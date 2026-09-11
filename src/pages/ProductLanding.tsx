@@ -204,11 +204,11 @@ const GenericLanding = ({
   const sku002BumpConfig: BumpConfig = {
     enabled: true,
     type: "additional_item",
-    discount_pct: 48,
+    discount_pct: 34,
     bump_qty: 1,
-    fixed_price: 15,
+    fixed_price: 19,
     title: "დაამატე და დაზოგე",
-    subtitle: "დაამატე კიდევ ერთი კამერა მხოლოდ 15₾-ად",
+    subtitle: "დაამატე კიდევ ერთი კამერა მხოლოდ 19₾-ად",
   };
 
   useEffect(() => {
