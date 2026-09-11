@@ -27,8 +27,8 @@ const BumpOfferModal = ({
 }: BumpOfferModalProps) => {
   const [loading, setLoading] = useState(false);
 
-  const bumpUnitPrice = product.price * (1 - bumpConfig.discount_pct / 100);
-  const bumpTotal = bumpUnitPrice * bumpConfig.bump_qty;
+  const bumpTotal = bumpConfig.fixed_price ?? product.price * (1 - bumpConfig.discount_pct / 100) * bumpConfig.bump_qty;
+  const bumpUnitPrice = bumpTotal / bumpConfig.bump_qty;
 
   const handleAccept = async () => {
     setLoading(true);
@@ -94,7 +94,7 @@ const BumpOfferModal = ({
           {/* Title */}
           <div>
             <h2 className="text-xl font-extrabold text-foreground">
-              {bumpConfig.title || "დაამატე კიდევ ერთი 50%-იანი ფასდაკლებით?"}
+              {bumpConfig.title || "დაამატე და დაზოგე"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {bumpConfig.subtitle || "უმეტესობა ამატებს — იგივე მიტანა."}
@@ -108,9 +108,9 @@ const BumpOfferModal = ({
               <p className="text-sm font-bold text-foreground truncate">{product.title}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-muted-foreground line-through">
-                  {(product.price * bumpConfig.bump_qty).toFixed(2)} ₾
+                  {(product.price * bumpConfig.bump_qty).toFixed(0)} ₾
                 </span>
-                <span className="text-base font-extrabold text-primary">{bumpTotal.toFixed(2)} ₾</span>
+                <span className="text-base font-extrabold text-primary">{bumpTotal.toFixed(0)} ₾</span>
                 <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
                   -{bumpConfig.discount_pct}%
                 </span>
@@ -129,7 +129,7 @@ const BumpOfferModal = ({
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                `✅ დამატება ${bumpTotal.toFixed(2)} ₾-ად`
+                `დაამატე შეკვეთაში — ${bumpTotal.toFixed(0)}₾`
               )}
             </Button>
             <button

@@ -35,6 +35,10 @@ import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
 import FreeGiftCard from "@/components/landing/FreeGiftCard";
 import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
 import ProductDemoGif from "@/components/landing/ProductDemoGif";
+import ProductPromoImage from "@/components/landing/ProductPromoImage";
+import BumpOfferModal from "@/components/landing/BumpOfferModal";
+import { getProductLandingMedia } from "@/lib/productLandingMedia";
+import type { BumpConfig } from "@/hooks/useLandingConfig";
 
 
 
@@ -183,6 +187,7 @@ const GenericLanding = ({
 
   // Funnel state
   const [codOpen, setCodOpen] = useState(false);
+  const [bumpOpen, setBumpOpen] = useState(false);
   const [singleUpsellOpen, setSingleUpsellOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
 
@@ -193,6 +198,17 @@ const GenericLanding = ({
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
+  const landingMedia = getProductLandingMedia(product.sku);
+  const hasSku002QuantityOffer = String(product.sku) === "002";
+  const sku002BumpConfig: BumpConfig = {
+    enabled: true,
+    type: "additional_item",
+    discount_pct: 48,
+    bump_qty: 1,
+    fixed_price: 15,
+    title: "დაამატე და დაზოგე",
+    subtitle: "დაამატე კიდევ ერთი კამერა მხოლოდ 15₾-ად",
+  };
 
   useEffect(() => {
     trackViewContent(product);
@@ -228,6 +244,14 @@ const GenericLanding = ({
     });
     // NEW ORDER: single offer (if configured) → address → done.
     setDeliveryFee(5);
+    if (hasSku002QuantityOffer) setBumpOpen(true);
+    else if (singleOfferActive) setSingleUpsellOpen(true);
+    else setAddressOpen(true);
+  };
+
+  const handleBumpDone = (accepted: boolean) => {
+    if (accepted) setPendingOrderTotal((current) => current + 15);
+    setBumpOpen(false);
     if (singleOfferActive) setSingleUpsellOpen(true);
     else setAddressOpen(true);
   };
@@ -330,6 +354,9 @@ const GenericLanding = ({
           <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} />
         )}
 
+        {/* Per-product promotional creative */}
+        <ProductPromoImage sku={product.sku} />
+
         {/* Trust row */}
         <LandingTrustRow />
 
@@ -338,7 +365,10 @@ const GenericLanding = ({
 
         {/* Description as bullets */}
         {product.description && (
-          <LandingBulletDescription description={product.description} />
+          <LandingBulletDescription
+            description={product.description}
+            preserveAuthoredFormatting={landingMedia?.preserveAuthoredDescription}
+          />
         )}
 
         {/* Quantity selector (hidden while the 1+1 offer fixes qty at 2) */}
@@ -411,13 +441,24 @@ const GenericLanding = ({
 
 
       />
-      {singleOfferActive && (
+      {hasSku002QuantityOffer && (
+        <BumpOfferModal
+          open={bumpOpen}
+          orderId={pendingOrderId}
+          product={product}
+          bumpConfig={sku002BumpConfig}
+          originalQty={effectiveQty}
+          originalDiscount={qtyDiscountPct}
+          onDone={handleBumpDone}
+        />
+      )}
+      {singleOfferActive && singleOffer && singleOfferProduct && (
         <SingleUpsellSheet
           open={singleUpsellOpen}
           orderId={pendingOrderId}
           orderNumber={pendingOrderNumber}
-          offer={singleOffer!}
-          offerProduct={singleOfferProduct!}
+          offer={singleOffer}
+          offerProduct={singleOfferProduct}
           basePrice={pendingOrderTotal}
           deliveryFee={deliveryFee}
           onDone={handleSingleUpsellDone}

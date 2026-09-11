@@ -18,7 +18,9 @@ const LandingBulletDescription = ({
 }: LandingBulletDescriptionProps) => {
   if (!description) return null;
 
-  if (preserveAuthoredFormatting) {
+  const hasAuthoredStructure = /(?:^|\n)\s*(?:[•▪▫◾◽🔹📱🔍🔋📶📖⏳👉🛒]|\d+[.)])/u.test(description);
+
+  if (preserveAuthoredFormatting || hasAuthoredStructure) {
     const tempDiv = typeof document !== "undefined" ? document.createElement("div") : null;
     if (tempDiv) tempDiv.innerHTML = description;
     const authoredText = (tempDiv?.innerText || tempDiv?.textContent || description).trim();
