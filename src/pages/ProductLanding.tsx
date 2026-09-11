@@ -358,10 +358,20 @@ const GenericLanding = ({
           <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} />
         )}
 
+        {/* SKU-002 urgency hook + delivery separator + promo creative */}
+        {hasSku002QuantityOffer && <SkuUrgencyTimer />}
+
+        {hasSku002QuantityOffer && (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-success/25 bg-success/8 px-4 py-2.5">
+            <Truck className="h-4 w-4 text-success" aria-hidden="true" />
+            <span className="text-sm font-bold text-success">
+              მიწოდება ყველა ქალაქში და სოფელში
+            </span>
+          </div>
+        )}
+
         {/* Per-product promotional creative */}
         <ProductPromoImage sku={product.sku} />
-
-        {hasSku002QuantityOffer && <SkuUrgencyTimer />}
 
         {/* Trust row */}
         <LandingTrustRow />
