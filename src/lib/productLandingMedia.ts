@@ -1,4 +1,4 @@
-import sku002PromoAsset from "@/assets/sku-002-security-promo.png.asset.json";
+import sku002PromoAsset from "@/assets/sku-002-security-promo-v2.jpg.asset.json";
 
 export interface ProductLandingMedia {
   promoImage?: {
