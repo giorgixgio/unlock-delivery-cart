@@ -252,20 +252,23 @@ const GenericLanding = ({
   const handleBumpDone = (accepted: boolean) => {
     if (accepted) setPendingOrderTotal((current) => current + 15);
     setBumpOpen(false);
-    if (singleOfferActive) setSingleUpsellOpen(true);
+    if (hasSku002QuantityOffer) setAddressOpen(true);
+    else if (singleOfferActive) setSingleUpsellOpen(true);
     else setAddressOpen(true);
   };
 
   const handleSingleUpsellDone = (_accepted: boolean, newSubtotal: number) => {
     setPendingOrderTotal(newSubtotal);
     setSingleUpsellOpen(false);
-    setAddressOpen(true);
+    if (hasSku002QuantityOffer) setDoneOpen(true);
+    else setAddressOpen(true);
   };
 
 
   const afterAddress = (onum: string) => {
     setAddressOpen(false);
-    if (upsellsActive) setUpsellOpen(true);
+    if (hasSku002QuantityOffer && singleOfferActive) setSingleUpsellOpen(true);
+    else if (upsellsActive) setUpsellOpen(true);
     else goToSuccess(onum);
   };
 
