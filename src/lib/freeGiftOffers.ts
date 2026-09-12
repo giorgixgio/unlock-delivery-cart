@@ -93,11 +93,21 @@ export const FREE_GIFT_PAIRS: [string, string][] = Object.entries(FREE_GIFT_OFFE
   ([base, o]) => [base, o.giftSku]
 );
 
-/** True when the order's SKU set is exactly one base+gift pair. */
+/** Non-gift SKU pairs that also stay in the SINGLE lane for courier picking
+ *  (paid upsell that ships in the same parcel). Keep in sync with the
+ *  GIFT_PAIRS list in supabase/functions/export-courier/index.ts. */
+export const SINGLE_LANE_PAIRS: [string, string][] = [
+  ...FREE_GIFT_PAIRS,
+  // SKU 002 (camera) + its 0011 GPS-tracker upsell — picked together.
+  ["002", "0011"],
+];
+
+/** True when the order's SKU set is exactly one single-lane pair
+ *  (base+gift, or an allowed base+upsell combo). */
 export function isGiftPairSkuSet(skus: string[]): boolean {
   const set = new Set(skus.map(String).filter(Boolean));
   if (set.size !== 2) return false;
-  return FREE_GIFT_PAIRS.some(([b, g]) => set.has(b) && set.has(g));
+  return SINGLE_LANE_PAIRS.some(([b, g]) => set.has(b) && set.has(g));
 }
 
 export function getFreeGiftOffer(sku?: string | null): FreeGiftOffer | null {
