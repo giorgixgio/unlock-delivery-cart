@@ -87,6 +87,7 @@ function mapDbProduct(p: DbProduct, extraCategories?: string[]): Product {
     vendor: p.vendor || "",
     handle: p.handle || "",
     warehouse: ((p as any).warehouse as string) || "B",
+    binLocation: ((p as any).bin_location as string) || "",
   };
 }
 

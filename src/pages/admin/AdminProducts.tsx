@@ -28,6 +28,7 @@ interface VariantRow {
   title: string;
   variantTitle: string;
   sku: string;
+  binLocation: string;
   price: number;
   compareAtPrice: number | null;
   available: boolean;
@@ -48,6 +49,7 @@ function productsToVariantRows(products: Product[]): VariantRow[] {
     title: p.title,
     variantTitle: "",
     sku: p.sku,
+    binLocation: p.binLocation || "",
     price: p.price,
     compareAtPrice: p.compareAtPrice,
     available: p.available,

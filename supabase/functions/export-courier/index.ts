@@ -177,6 +177,12 @@ Deno.serve(async (req) => {
         if (bc) return bc;
         const sc = a.primary.localeCompare(b.primary, undefined, { numeric: true });
         if (sc) return sc;
+        const primaryQty = (m: any) =>
+          (m.order.order_items || [])
+            .filter((i: any) => String(i.sku ?? "") === m.primary)
+            .reduce((sum: number, i: any) => sum + Number(i.quantity || 1), 0);
+        const qc = primaryQty(a) - primaryQty(b);
+        if (qc) return qc;
         return new Date(a.order.created_at).getTime() - new Date(b.order.created_at).getTime();
       });
 
@@ -353,7 +359,16 @@ Deno.serve(async (req) => {
       const order = a.order;
       const items = order.order_items || [];
       // Quantity column is always "1"; real qty lives in the SKU string as "SKU - QTY".
-      const skuWithQty = items.map((i: any) => `${i.sku ?? ""} - ${Number(i.quantity || 1)}`).join(", ");
+      // Merge duplicate order_items rows of the same SKU into a single entry,
+      // then print the product's bin location (falling back to the SKU itself).
+      const qtyBySku = new Map<string, number>();
+      for (const i of items as any[]) {
+        const sku = String(i.sku ?? "");
+        qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + Number(i.quantity || 1));
+      }
+      const skuWithQty = Array.from(qtyBySku.entries())
+        .map(([sku, qty]) => `${(binBySku[sku] || "").trim() || sku} - ${qty}`)
+        .join(", ");
       const titles = items.map((i: any) => i.title).join(", ");
       const quantityColumn = "1";
       const tag = `[${a.tag}]`; // printed on the slip so the stack self-sorts
