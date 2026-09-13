@@ -757,7 +757,8 @@ export default function AdminCourierLabels() {
       try {
         const filtered = await filterByStore(rows, labelStore);
         if (cancelled) return;
-        setStoreRows(filtered);
+        setStoreRows(filtered.kept);
+        setStoreSplit(filtered.split);
         setSelected(new Set());
       } catch (e: any) {
         if (!cancelled) {
