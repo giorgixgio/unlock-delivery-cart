@@ -196,7 +196,10 @@ export default function AdminCourierLabels() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "courier_label_actions" },
-        () => loadLog()
+        () => {
+          loadLog();
+          loadBatchActions();
+        }
       )
       .subscribe();
     return () => {
