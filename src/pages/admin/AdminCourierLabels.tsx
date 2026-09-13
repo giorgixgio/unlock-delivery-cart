@@ -537,11 +537,18 @@ export default function AdminCourierLabels() {
         whBySku.set(String(p.sku), wh === "A" ? "A" : "B");
       });
     }
-    return list.filter((r) => {
+    const split = { A: 0, B: 0 };
+    const kept: Row[] = [];
+    for (const r of list) {
       const items = skusByOrder.get(r.id) || [];
-      if (!items.length) return store === "B";
-      return items.some((sku) => (whBySku.get(sku) ?? "B") === store);
-    });
+      const stores = items.length
+        ? new Set(items.map((sku) => whBySku.get(sku) ?? "B"))
+        : new Set<"A" | "B">(["B"]);
+      if (stores.has("A")) split.A += 1;
+      if (stores.has("B")) split.B += 1;
+      if (stores.has(store)) kept.push(r);
+    }
+    return { kept, split };
   };
 
   // Build print groups from the round/slot code already printed on the slip:
