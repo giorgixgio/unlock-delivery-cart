@@ -722,13 +722,10 @@ export default function AdminCourierLabels() {
     loadBatchActions();
   }, [labelStore]);
 
-  // Uploads tagged with another store are hidden. Untagged legacy uploads
-  // (made before the multi-store split) are treated as TrendMart (Warehouse B),
-  // matching how all other pre-split data defaults to Warehouse B.
-  const visibleBatches = batches.filter((b) => {
-    const effectiveStore = b.store ?? "B";
-    return !labelStore || effectiveStore === labelStore;
-  });
+  // Every upload stays listed for both stores. The upload's own store tag can
+  // be stale (products get moved between stores after the upload was made), so
+  // the real store decision is taken per order, inside filterByStore.
+  const visibleBatches = batches;
 
   // History = every logged label group of that upload is finished.
   // Active = anything else, including never-opened uploads.
