@@ -151,21 +151,16 @@ Deno.serve(async (req) => {
       : (ordersRaw || []);
 
     // ── Classify + compute primary SKU + bin for each order.
-    // Free-gift pairs (base SKU -> gift SKU) stay in the SINGLE lane: the gift
-    // travels with the main product, so pickers make one bin trip. Keep this in
-    // sync with SINGLE_LANE_PAIRS in src/lib/freeGiftOffers.ts.
-    // Also includes SKU 002 + its 0011 upsell: the tracker ships in the same
-    // parcel, so the order is picked as a single, not via rounds.
-    const GIFT_PAIRS: [string, string][] = [["316", "147"], ["450", "242"], ["411", "294"], ["002", "0011"]];
-    const isGiftPair = (set: Set<string>) =>
-      set.size === 2 && GIFT_PAIRS.some(([b, g]) => set.has(b) && set.has(g));
+    // Routing rule: an order with 2 or fewer DISTINCT SKUs is always a single
+    // (offer, bundle, upsell, gift — no whitelist). Only 3+ distinct SKUs go
+    // through the multi-SKU round lane.
     const meta = (ordersForStore || []).map((o: any) => {
       const items = o.order_items || [];
       const skus = new Set(items.map((i: any) => String(i.sku || "")));
       const primary = [...items]
         .map((i: any) => String(i.sku || ""))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0] || "";
-      return { order: o, multi: skus.size > 1 && !isGiftPair(skus as Set<string>), primary, bin: binBySku[primary] || "" };
+      return { order: o, multi: skus.size > 2, primary, bin: binBySku[primary] || "" };
     });
 
 

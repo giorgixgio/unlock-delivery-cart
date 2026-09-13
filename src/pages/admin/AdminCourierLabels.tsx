@@ -17,7 +17,7 @@ import {
 import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 import { useStore } from "@/contexts/StoreContext";
-import { isGiftPairSkuSet } from "@/lib/freeGiftOffers";
+
 
 type LabelStore = "A" | "B";
 
@@ -196,7 +196,10 @@ export default function AdminCourierLabels() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "courier_label_actions" },
-        () => loadLog()
+        () => {
+          loadLog();
+          loadBatchActions();
+        }
       )
       .subscribe();
     return () => {
@@ -322,6 +325,61 @@ export default function AdminCourierLabels() {
       setBatches((data as UploadBatch[]) || []);
     }
   };
+
+  /**
+   * Lightweight per-batch progress digest built purely from
+   * courier_label_actions (group_key = "<scopeId>::<groupKey>").
+   * Map: batchId -> (groupKey -> set of logged kinds). No order data needed.
+   */
+  const [batchActions, setBatchActions] = useState<Map<string, Map<string, Set<string>>>>(new Map());
+
+  const loadBatchActions = async () => {
+    const { data, error } = await supabase
+      .from("courier_label_actions")
+      .select("group_key,kind")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (error || !data) return;
+    const next = new Map<string, Map<string, Set<string>>>();
+    for (const r of data as { group_key: string; kind: string }[]) {
+      const idx = r.group_key.indexOf("::");
+      if (idx <= 0) continue;
+      const scope = r.group_key.slice(0, idx);
+      const key = r.group_key.slice(idx + 2);
+      let byKey = next.get(scope);
+      if (!byKey) {
+        byKey = new Map();
+        next.set(scope, byKey);
+      }
+      const kinds = byKey.get(key) ?? new Set<string>();
+      kinds.add(r.kind);
+      byKey.set(key, kinds);
+    }
+    setBatchActions(next);
+  };
+
+  /** Never opened / touched since upload. */
+  const isBatchUntouched = (id: string) => !batchActions.has(id);
+
+  /**
+   * Fully finished = every label group that was worked on for this batch has a
+   * "finish" entry. For the currently open batch we also require that all of
+   * its actual computed groups are finished (we already have them loaded).
+   */
+  const isBatchFinished = (id: string) => {
+    const byKey = batchActions.get(id);
+    if (!byKey || byKey.size === 0) return false;
+    const allLoggedFinished = Array.from(byKey.values()).every((kinds) => kinds.has("finish"));
+    if (!allLoggedFinished) return false;
+    if (id === activeBatch && groups.length > 0) {
+      return groups.every((g) => byKey.get(g.key)?.has("finish"));
+    }
+    return true;
+  };
+
+  const [uploadTab, setUploadTab] = useState<"active" | "history">("active");
+
+
 
   const ORDER_COLS =
     "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city, total";
@@ -468,9 +526,10 @@ export default function AdminCourierLabels() {
       if (Number((r as any).total ?? 0) <= 0) continue;
       singles.push(r);
       const orderSkus = Array.from(skuSet.get(r.id) || []);
-      // Free-gift orders (product + its gift) are single-lane by design — the
-      // slip already prints both SKUs, so don't flag them as missing a round.
-      if (orderSkus.length > 1 && !isGiftPairSkuSet(orderSkus)) bad.push(r);
+      // Orders with 2 or fewer distinct SKUs are single-lane by design (the
+      // slip prints both SKUs), so a missing round code is expected, not an
+      // error. Only 3+ distinct SKUs need a round code.
+      if (orderSkus.length > 2) bad.push(r);
     }
     setUnmatched(bad);
 
@@ -572,6 +631,7 @@ export default function AdminCourierLabels() {
 
   useEffect(() => {
     loadBatches();
+    loadBatchActions();
   }, [labelStore]);
 
   // Uploads tagged with another store are hidden. Untagged legacy uploads
@@ -581,6 +641,12 @@ export default function AdminCourierLabels() {
     const effectiveStore = b.store ?? "B";
     return !labelStore || effectiveStore === labelStore;
   });
+
+  // History = every logged label group of that upload is finished.
+  // Active = anything else, including never-opened uploads.
+  const historyBatches = visibleBatches.filter((b) => isBatchFinished(b.id));
+  const activeBatches = visibleBatches.filter((b) => !isBatchFinished(b.id));
+
 
   // If the currently opened upload belongs to another store, fall back to all.
   useEffect(() => {
@@ -783,7 +849,22 @@ export default function AdminCourierLabels() {
 
       <Card>
         <CardContent className="p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Recent uploads</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Recent uploads</h2>
+            <div className="flex items-center gap-1">
+              {(["active", "history"] as const).map((t) => (
+                <Button
+                  key={t}
+                  variant={uploadTab === t ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUploadTab(t)}
+                >
+                  {t === "active" ? "Active" : "History"} (
+                  {t === "active" ? activeBatches.length : historyBatches.length})
+                </Button>
+              ))}
+            </div>
+          </div>
           {visibleBatches.length === 0 ? (
             <p className="text-sm text-muted-foreground">No courier uploads yet.</p>
           ) : (
@@ -795,26 +876,38 @@ export default function AdminCourierLabels() {
               >
                 All tracked orders
               </Button>
-              {visibleBatches.map((b) => (
-                <Button
-                  key={b.id}
-                  variant={activeBatch === b.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveBatch(b.id)}
-                  className="flex-col items-start h-auto py-1.5"
-                >
-                  <span className="text-xs">
-                    {(() => {
-                      const ts = b.applied_at || b.created_at;
-                      return ts ? new Date(ts).toLocaleString() : "—";
-                    })()}
-                  </span>
-                  <span className="text-[11px] opacity-70">
-                    {b.matched ?? 0} orders
-                  </span>
-
-                </Button>
-              ))}
+              {(uploadTab === "active" ? activeBatches : historyBatches).length === 0 ? (
+                <p className="text-sm text-muted-foreground self-center">
+                  {uploadTab === "active"
+                    ? "No uploads with unfinished work."
+                    : "No fully finished uploads yet."}
+                </p>
+              ) : (
+                (uploadTab === "active" ? activeBatches : historyBatches).map((b) => (
+                  <Button
+                    key={b.id}
+                    variant={activeBatch === b.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveBatch(b.id)}
+                    className="flex-col items-start h-auto py-1.5"
+                  >
+                    <span className="flex items-center gap-1.5 text-xs">
+                      {(() => {
+                        const ts = b.applied_at || b.created_at;
+                        return ts ? new Date(ts).toLocaleString() : "—";
+                      })()}
+                      {uploadTab === "active" && isBatchUntouched(b.id) && (
+                        <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                          New
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] opacity-70">
+                      {b.matched ?? 0} orders
+                    </span>
+                  </Button>
+                ))
+              )}
             </div>
           )}
         </CardContent>
