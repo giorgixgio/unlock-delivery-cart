@@ -71,7 +71,15 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
-type ActionKind = "pdf" | "tags" | "finish";
+type ActionKind = "pdf" | "tags" | "finish" | "opened" | "archived";
+
+/**
+ * Bookkeeping markers (not real print groups): they record that a batch was
+ * opened at least once, or was manually archived into History. They must never
+ * appear in the packer log and must never count towards "all groups finished".
+ */
+const MARKER_KEYS = new Set(["_opened", "_archived"]);
+const isMarkerKey = (key: string) => MARKER_KEYS.has(key);
 
 interface ActionEntry {
   /** group key */
@@ -185,7 +193,10 @@ export default function AdminCourierLabels() {
       .like("group_key", `${s}::%`)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (!error && data) setLog(mapRows(data));
+    if (!error && data) {
+      // Markers (_opened / _archived) are bookkeeping, never packer progress.
+      setLog(mapRows(data.filter((r) => !isMarkerKey(r.group_key.split("::").slice(1).join("::")))));
+    }
   };
 
   useEffect(() => {
@@ -358,19 +369,51 @@ export default function AdminCourierLabels() {
     setBatchActions(next);
   };
 
-  /** Never opened / touched since upload. */
+  /** Real (non-marker) group keys logged for a batch. */
+  const realGroupKinds = (id: string) => {
+    const byKey = batchActions.get(id);
+    if (!byKey) return [] as Set<string>[];
+    return Array.from(byKey.entries())
+      .filter(([k]) => !isMarkerKey(k))
+      .map(([, kinds]) => kinds);
+  };
+
+  const hasMarker = (id: string, key: string) => batchActions.get(id)?.has(key) ?? false;
+
+  /** Never opened / touched since upload (any action, incl. the open marker). */
   const isBatchUntouched = (id: string) => !batchActions.has(id);
 
+  /** Write a one-off marker row for a batch (idempotent enough for our use). */
+  const writeMarker = async (batchId: string, key: string, kind: ActionKind, title: string) => {
+    if (hasMarker(batchId, key)) return;
+    const { data: auth } = await supabase.auth.getUser();
+    await supabase
+      .from("courier_label_actions")
+      .insert({ group_key: `${batchId}::${key}`, title, kind, actor: auth?.user?.email ?? null });
+    await loadBatchActions();
+  };
+
+  const archiveBatch = async (batchId: string) => {
+    await writeMarker(batchId, "_archived", "archived", "Archived");
+  };
+
+  const archiveAllActive = async () => {
+    for (const b of activeBatches) await archiveBatch(b.id);
+    toast({ title: "Active uploads archived" });
+  };
+
   /**
-   * Fully finished = every label group that was worked on for this batch has a
-   * "finish" entry. For the currently open batch we also require that all of
-   * its actual computed groups are finished (we already have them loaded).
+   * Fully finished = manually archived, OR every real label group that was
+   * worked on for this batch has a "finish" entry. Markers never count.
+   * For the currently open batch we also require that all of its actual
+   * computed groups are finished (we already have them loaded).
    */
   const isBatchFinished = (id: string) => {
+    if (hasMarker(id, "_archived")) return true;
     const byKey = batchActions.get(id);
-    if (!byKey || byKey.size === 0) return false;
-    const allLoggedFinished = Array.from(byKey.values()).every((kinds) => kinds.has("finish"));
-    if (!allLoggedFinished) return false;
+    const real = realGroupKinds(id);
+    if (!byKey || real.length === 0) return false;
+    if (!real.every((kinds) => kinds.has("finish"))) return false;
     if (id === activeBatch && groups.length > 0) {
       return groups.every((g) => byKey.get(g.key)?.has("finish"));
     }
@@ -663,6 +706,11 @@ export default function AdminCourierLabels() {
   useEffect(() => {
     load(activeBatch);
     setSelected(new Set());
+    // Viewing an upload counts as "touched" — clears the NEW badge on first open.
+    if (activeBatch && isBatchUntouched(activeBatch)) {
+      writeMarker(activeBatch, "_opened", "opened", "Opened");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBatch]);
 
   // Re-apply the store filter whenever the loaded orders or the chosen store
@@ -870,6 +918,22 @@ export default function AdminCourierLabels() {
                   {t === "active" ? activeBatches.length : historyBatches.length})
                 </Button>
               ))}
+              {uploadTab === "active" && activeBatches.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    ask(
+                      "Archive all active uploads?",
+                      `${activeBatches.length} upload(s) will move to History, even if their print work isn't finished.`,
+                      "Archive all",
+                      archiveAllActive
+                    )
+                  }
+                >
+                  Archive all active
+                </Button>
+              )}
             </div>
           </div>
           {visibleBatches.length === 0 ? (
@@ -891,28 +955,46 @@ export default function AdminCourierLabels() {
                 </p>
               ) : (
                 (uploadTab === "active" ? activeBatches : historyBatches).map((b) => (
-                  <Button
-                    key={b.id}
-                    variant={activeBatch === b.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveBatch(b.id)}
-                    className="flex-col items-start h-auto py-1.5"
-                  >
-                    <span className="flex items-center gap-1.5 text-xs">
-                      {(() => {
-                        const ts = b.applied_at || b.created_at;
-                        return ts ? new Date(ts).toLocaleString() : "—";
-                      })()}
-                      {uploadTab === "active" && isBatchUntouched(b.id) && (
-                        <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                          New
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-[11px] opacity-70">
-                      {b.matched ?? 0} orders
-                    </span>
-                  </Button>
+                  <div key={b.id} className="flex items-stretch gap-1">
+                    <Button
+                      variant={activeBatch === b.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveBatch(b.id)}
+                      className="flex-col items-start h-auto py-1.5"
+                    >
+                      <span className="flex items-center gap-1.5 text-xs">
+                        {(() => {
+                          const ts = b.applied_at || b.created_at;
+                          return ts ? new Date(ts).toLocaleString() : "—";
+                        })()}
+                        {uploadTab === "active" && isBatchUntouched(b.id) && (
+                          <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                            New
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[11px] opacity-70">
+                        {b.matched ?? 0} orders
+                      </span>
+                    </Button>
+                    {uploadTab === "active" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 text-[11px] text-muted-foreground"
+                        onClick={() =>
+                          ask(
+                            "Archive this upload?",
+                            "It moves to History even if its print work isn't finished.",
+                            "Archive",
+                            () => archiveBatch(b.id)
+                          )
+                        }
+                      >
+                        Archive
+                      </Button>
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -939,7 +1021,20 @@ export default function AdminCourierLabels() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tracked orders to print.</p>
+            (() => {
+              const matchedCount =
+                batches.find((b) => b.id === activeBatch)?.matched ?? 0;
+              if (activeBatch && matchedCount > 0 && unmatched.length === 0) {
+                return (
+                  <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                    Loaded {matchedCount} orders but none are shown below — check the store
+                    filter above (this upload's orders may belong to the other store), or these
+                    may all be ₾0-total orders, which are excluded from printing by design.
+                  </div>
+                );
+              }
+              return <p className="text-sm text-muted-foreground">No tracked orders to print.</p>;
+            })()
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((g) => {

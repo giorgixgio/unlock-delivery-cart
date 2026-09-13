@@ -1,0 +1,2 @@
+ALTER TABLE public.courier_label_actions DROP CONSTRAINT IF EXISTS courier_label_actions_kind_check;
+ALTER TABLE public.courier_label_actions ADD CONSTRAINT courier_label_actions_kind_check CHECK (kind = ANY (ARRAY['pdf'::text, 'tags'::text, 'finish'::text, 'opened'::text, 'archived'::text]));
