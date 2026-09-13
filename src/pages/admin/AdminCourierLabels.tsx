@@ -631,6 +631,7 @@ export default function AdminCourierLabels() {
 
   useEffect(() => {
     loadBatches();
+    loadBatchActions();
   }, [labelStore]);
 
   // Uploads tagged with another store are hidden. Untagged legacy uploads
