@@ -955,28 +955,46 @@ export default function AdminCourierLabels() {
                 </p>
               ) : (
                 (uploadTab === "active" ? activeBatches : historyBatches).map((b) => (
-                  <Button
-                    key={b.id}
-                    variant={activeBatch === b.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveBatch(b.id)}
-                    className="flex-col items-start h-auto py-1.5"
-                  >
-                    <span className="flex items-center gap-1.5 text-xs">
-                      {(() => {
-                        const ts = b.applied_at || b.created_at;
-                        return ts ? new Date(ts).toLocaleString() : "—";
-                      })()}
-                      {uploadTab === "active" && isBatchUntouched(b.id) && (
-                        <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                          New
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-[11px] opacity-70">
-                      {b.matched ?? 0} orders
-                    </span>
-                  </Button>
+                  <div key={b.id} className="flex items-stretch gap-1">
+                    <Button
+                      variant={activeBatch === b.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveBatch(b.id)}
+                      className="flex-col items-start h-auto py-1.5"
+                    >
+                      <span className="flex items-center gap-1.5 text-xs">
+                        {(() => {
+                          const ts = b.applied_at || b.created_at;
+                          return ts ? new Date(ts).toLocaleString() : "—";
+                        })()}
+                        {uploadTab === "active" && isBatchUntouched(b.id) && (
+                          <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                            New
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[11px] opacity-70">
+                        {b.matched ?? 0} orders
+                      </span>
+                    </Button>
+                    {uploadTab === "active" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 text-[11px] text-muted-foreground"
+                        onClick={() =>
+                          ask(
+                            "Archive this upload?",
+                            "It moves to History even if its print work isn't finished.",
+                            "Archive",
+                            () => archiveBatch(b.id)
+                          )
+                        }
+                      >
+                        Archive
+                      </Button>
+                    )}
+                  </div>
                 ))
               )}
             </div>
