@@ -129,6 +129,8 @@ export default function AdminCourierLabels() {
   }, [activeStore]);
   /** Rows kept after warehouse matching — drives every group/print action. */
   const [storeRows, setStoreRows] = useState<Row[]>([]);
+  /** How the loaded orders split across the two stores (for diagnostics). */
+  const [storeSplit, setStoreSplit] = useState<{ A: number; B: number }>({ A: 0, B: 0 });
 
   /** Every destructive / logged action goes through a confirmation popup. */
   const [confirmState, setConfirmState] = useState<{
