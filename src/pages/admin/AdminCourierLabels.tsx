@@ -459,13 +459,39 @@ export default function AdminCourierLabels() {
         );
         setRows(collected);
       } else {
-        const { data, error } = await (supabase.from("orders") as any)
-          .select(ORDER_COLS)
-          .not("tracking_number", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        if (error) throw error;
-        setRows((data as Row[]) || []);
+        // "All tracked orders" = only the uploads still in Active. Archived
+        // uploads are finished work and must not come back into the print list.
+        const activeIds = batches.filter((b) => !hasMarker(b.id, "_archived")).map((b) => b.id);
+        if (activeIds.length === 0) {
+          setRows([]);
+          return;
+        }
+        const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
+          .select("matched_order_id")
+          .in("batch_id", activeIds)
+          .not("matched_order_id", "is", null)
+          .limit(5000);
+        if (sErr) throw sErr;
+        const ids = Array.from(
+          new Set(((staged as { matched_order_id: string }[]) || []).map((s) => s.matched_order_id))
+        );
+        if (ids.length === 0) {
+          setRows([]);
+          return;
+        }
+        const collected: Row[] = [];
+        const CHUNK = 200;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const { data, error } = await (supabase.from("orders") as any)
+            .select(ORDER_COLS)
+            .in("id", ids.slice(i, i + CHUNK));
+          if (error) throw error;
+          collected.push(...((data as Row[]) || []));
+        }
+        collected.sort((a, b) =>
+          (b.public_order_number || "").localeCompare(a.public_order_number || "")
+        );
+        setRows(collected);
       }
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
