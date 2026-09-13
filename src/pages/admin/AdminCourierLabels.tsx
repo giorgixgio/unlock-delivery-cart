@@ -1055,14 +1055,15 @@ export default function AdminCourierLabels() {
             </div>
           ) : groups.length === 0 ? (
             (() => {
-              const matchedCount =
-                batches.find((b) => b.id === activeBatch)?.matched ?? 0;
-              if (activeBatch && matchedCount > 0 && unmatched.length === 0) {
+              if (rows.length > 0 && unmatched.length === 0) {
+                const other = labelStore === "A" ? "B" : "A";
+                const otherLabel = other === "A" ? "BigMart" : "TrendMart";
                 return (
                   <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                    Loaded {matchedCount} orders but none are shown below — check the store
-                    filter above (this upload's orders may belong to the other store), or these
-                    may all be ₾0-total orders, which are excluded from printing by design.
+                    Loaded {rows.length} orders, but none belong to the selected store.{" "}
+                    {storeSplit[other] > 0
+                      ? `${storeSplit[other]} of them belong to ${otherLabel} — switch the store above to print them.`
+                      : "They may all be ₾0-total orders, which are excluded from printing by design."}
                   </div>
                 );
               }
