@@ -71,7 +71,15 @@ function parseRoundSlot(text: string | null | undefined): { round: number; slot:
   return { round: Number(m[1]), slot: Number(m[2]) };
 }
 
-type ActionKind = "pdf" | "tags" | "finish";
+type ActionKind = "pdf" | "tags" | "finish" | "opened" | "archived";
+
+/**
+ * Bookkeeping markers (not real print groups): they record that a batch was
+ * opened at least once, or was manually archived into History. They must never
+ * appear in the packer log and must never count towards "all groups finished".
+ */
+const MARKER_KEYS = new Set(["_opened", "_archived"]);
+const isMarkerKey = (key: string) => MARKER_KEYS.has(key);
 
 interface ActionEntry {
   /** group key */
