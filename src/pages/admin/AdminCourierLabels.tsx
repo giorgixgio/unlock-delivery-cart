@@ -987,7 +987,20 @@ export default function AdminCourierLabels() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tracked orders to print.</p>
+            (() => {
+              const matchedCount =
+                batches.find((b) => b.id === activeBatch)?.matched ?? 0;
+              if (activeBatch && matchedCount > 0 && unmatched.length === 0) {
+                return (
+                  <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                    Loaded {matchedCount} orders but none are shown below — check the store
+                    filter above (this upload's orders may belong to the other store), or these
+                    may all be ₾0-total orders, which are excluded from printing by design.
+                  </div>
+                );
+              }
+              return <p className="text-sm text-muted-foreground">No tracked orders to print.</p>;
+            })()
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {groups.map((g) => {
