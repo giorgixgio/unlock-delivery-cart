@@ -193,7 +193,10 @@ export default function AdminCourierLabels() {
       .like("group_key", `${s}::%`)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (!error && data) setLog(mapRows(data));
+    if (!error && data) {
+      // Markers (_opened / _archived) are bookkeeping, never packer progress.
+      setLog(mapRows(data.filter((r) => !isMarkerKey(r.group_key.split("::").slice(1).join("::")))));
+    }
   };
 
   useEffect(() => {
