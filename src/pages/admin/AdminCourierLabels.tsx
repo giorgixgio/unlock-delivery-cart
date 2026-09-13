@@ -733,10 +733,7 @@ export default function AdminCourierLabels() {
   const activeBatches = visibleBatches.filter((b) => !isBatchFinished(b.id));
 
 
-  // If the currently opened upload belongs to another store, fall back to all.
-  useEffect(() => {
-    if (activeBatch && !visibleBatches.some((b) => b.id === activeBatch)) setActiveBatch(null);
-  }, [labelStore, batches]);
+  const activeBatchKey = activeBatches.map((b) => b.id).join(",");
 
   useEffect(() => {
     load(activeBatch);
@@ -746,7 +743,7 @@ export default function AdminCourierLabels() {
       writeMarker(activeBatch, "_opened", "opened", "Opened");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBatch]);
+  }, [activeBatch, activeBatch ? "" : activeBatchKey]);
 
   // Re-apply the store filter whenever the loaded orders or the chosen store
   // changes. Clears any selection so labels can't mix stores by accident.
