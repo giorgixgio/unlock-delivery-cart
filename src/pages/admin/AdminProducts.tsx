@@ -28,6 +28,7 @@ interface VariantRow {
   title: string;
   variantTitle: string;
   sku: string;
+  binLocation: string;
   price: number;
   compareAtPrice: number | null;
   available: boolean;
@@ -48,6 +49,7 @@ function productsToVariantRows(products: Product[]): VariantRow[] {
     title: p.title,
     variantTitle: "",
     sku: p.sku,
+    binLocation: p.binLocation || "",
     price: p.price,
     compareAtPrice: p.compareAtPrice,
     available: p.available,
@@ -694,6 +696,7 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">Product</th>
             <th className="text-left px-3 py-3 font-bold w-8"></th>
             <th className="text-left px-3 py-3 font-bold">SKU</th>
+            <th className="text-left px-3 py-3 font-bold">Bin</th>
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
             <th className="text-left px-3 py-3 font-bold">Stock</th>
@@ -819,6 +822,9 @@ const AdminProducts = () => {
                       )}
                     </div>
                   )}
+                </td>
+                <td className="px-3 py-2">
+                  <span className="font-mono text-xs">{row.binLocation || "—"}</span>
                 </td>
                 <td className="px-3 py-2 font-medium">
                   {editingPrice === row.productId ? (

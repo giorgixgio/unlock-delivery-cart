@@ -294,7 +294,9 @@ const NewProductModal = ({ open, onClose, onCreated, defaultWarehouse = "", edit
           stock_quantity: Math.max(parseInt(stockQuantity, 10) || 0, 0),
           is_verified: isVerified, warehouse,
         };
-        if (binLocation.trim()) payload.bin_location = binLocation.trim();
+        // New products default their bin location to the SKU, matching the
+        // historical catalog where bin == SKU unless a shelf was assigned.
+        payload.bin_location = binLocation.trim() || s;
 
         const { error } = await supabase.from("products").insert(payload);
         if (error) throw error;

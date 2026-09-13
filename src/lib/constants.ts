@@ -44,6 +44,7 @@ export interface Product {
   vendor: string;
   handle: string;
   warehouse: string;
+  binLocation?: string;
 }
 
 export interface CartItem {
