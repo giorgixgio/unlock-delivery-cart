@@ -369,19 +369,51 @@ export default function AdminCourierLabels() {
     setBatchActions(next);
   };
 
-  /** Never opened / touched since upload. */
+  /** Real (non-marker) group keys logged for a batch. */
+  const realGroupKinds = (id: string) => {
+    const byKey = batchActions.get(id);
+    if (!byKey) return [] as Set<string>[];
+    return Array.from(byKey.entries())
+      .filter(([k]) => !isMarkerKey(k))
+      .map(([, kinds]) => kinds);
+  };
+
+  const hasMarker = (id: string, key: string) => batchActions.get(id)?.has(key) ?? false;
+
+  /** Never opened / touched since upload (any action, incl. the open marker). */
   const isBatchUntouched = (id: string) => !batchActions.has(id);
 
+  /** Write a one-off marker row for a batch (idempotent enough for our use). */
+  const writeMarker = async (batchId: string, key: string, kind: ActionKind, title: string) => {
+    if (hasMarker(batchId, key)) return;
+    const { data: auth } = await supabase.auth.getUser();
+    await supabase
+      .from("courier_label_actions")
+      .insert({ group_key: `${batchId}::${key}`, title, kind, actor: auth?.user?.email ?? null });
+    await loadBatchActions();
+  };
+
+  const archiveBatch = async (batchId: string) => {
+    await writeMarker(batchId, "_archived", "archived", "Archived");
+  };
+
+  const archiveAllActive = async () => {
+    for (const b of activeBatches) await archiveBatch(b.id);
+    toast({ title: "Active uploads archived" });
+  };
+
   /**
-   * Fully finished = every label group that was worked on for this batch has a
-   * "finish" entry. For the currently open batch we also require that all of
-   * its actual computed groups are finished (we already have them loaded).
+   * Fully finished = manually archived, OR every real label group that was
+   * worked on for this batch has a "finish" entry. Markers never count.
+   * For the currently open batch we also require that all of its actual
+   * computed groups are finished (we already have them loaded).
    */
   const isBatchFinished = (id: string) => {
+    if (hasMarker(id, "_archived")) return true;
     const byKey = batchActions.get(id);
-    if (!byKey || byKey.size === 0) return false;
-    const allLoggedFinished = Array.from(byKey.values()).every((kinds) => kinds.has("finish"));
-    if (!allLoggedFinished) return false;
+    const real = realGroupKinds(id);
+    if (!byKey || real.length === 0) return false;
+    if (!real.every((kinds) => kinds.has("finish"))) return false;
     if (id === activeBatch && groups.length > 0) {
       return groups.every((g) => byKey.get(g.key)?.has("finish"));
     }
