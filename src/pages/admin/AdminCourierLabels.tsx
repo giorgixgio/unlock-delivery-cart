@@ -706,6 +706,11 @@ export default function AdminCourierLabels() {
   useEffect(() => {
     load(activeBatch);
     setSelected(new Set());
+    // Viewing an upload counts as "touched" — clears the NEW badge on first open.
+    if (activeBatch && isBatchUntouched(activeBatch)) {
+      writeMarker(activeBatch, "_opened", "opened", "Opened");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBatch]);
 
   // Re-apply the store filter whenever the loaded orders or the chosen store
