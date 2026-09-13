@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
       const primary = [...items]
         .map((i: any) => String(i.sku || ""))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0] || "";
-      return { order: o, multi: skus.size > 2, primary, bin: binBySku[primary] || "" };
+      return { order: o, multi: skus.size > 2, primary, bin: binBySku[primary] || "", distinct: skus.size };
     });
 
 
