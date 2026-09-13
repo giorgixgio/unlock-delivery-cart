@@ -160,14 +160,19 @@ Deno.serve(async (req) => {
       const primary = [...items]
         .map((i: any) => String(i.sku || ""))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0] || "";
-      return { order: o, multi: skus.size > 2, primary, bin: binBySku[primary] || "" };
+      return { order: o, multi: skus.size > 2, primary, bin: binBySku[primary] || "", distinct: skus.size };
     });
 
 
-    // ── Single-SKU lane: sort by bin (fallback SKU, then date). Same SKU/bin ends up contiguous.
+    // ── Single-SKU lane: top-level sort = distinct SKU count (1 before 2),
+    //    so all single-item orders cluster together, then all bundle/gift/offer
+    //    (2-distinct-SKU) orders form their own contiguous block. Within each
+    //    block the existing order holds: bin → primary SKU → quantity → date.
     const singles = meta
       .filter((m) => !m.multi)
       .sort((a, b) => {
+        const dc = a.distinct - b.distinct;
+        if (dc) return dc;
         const bc = cmpBin(a.bin, b.bin);
         if (bc) return bc;
         const sc = a.primary.localeCompare(b.primary, undefined, { numeric: true });

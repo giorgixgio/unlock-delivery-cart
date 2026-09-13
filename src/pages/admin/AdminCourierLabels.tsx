@@ -533,8 +533,15 @@ export default function AdminCourierLabels() {
     }
     setUnmatched(bad);
 
-    // Singles: one group, sorted by SKU ascending so same-SKU orders stack together.
-    singles.sort((a, b) => repSku(a.id).localeCompare(repSku(b.id)));
+    // Singles: cluster 1-distinct-SKU orders first, then 2-distinct-SKU
+    // (bundles/gifts/offers) as a contiguous block. Within each block, sort by
+    // representative SKU ascending so same-SKU orders stack together.
+    const distinctCount = (id: string) => skuSet.get(id)?.size ?? 0;
+    singles.sort((a, b) => {
+      const dc = distinctCount(a.id) - distinctCount(b.id);
+      if (dc) return dc;
+      return repSku(a.id).localeCompare(repSku(b.id));
+    });
 
     const next: LabelGroup[] = [];
     if (singles.length > 0) next.push({ key: "singles", title: "Singles", rows: singles });
