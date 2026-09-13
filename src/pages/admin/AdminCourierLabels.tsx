@@ -323,6 +323,61 @@ export default function AdminCourierLabels() {
     }
   };
 
+  /**
+   * Lightweight per-batch progress digest built purely from
+   * courier_label_actions (group_key = "<scopeId>::<groupKey>").
+   * Map: batchId -> (groupKey -> set of logged kinds). No order data needed.
+   */
+  const [batchActions, setBatchActions] = useState<Map<string, Map<string, Set<string>>>>(new Map());
+
+  const loadBatchActions = async () => {
+    const { data, error } = await supabase
+      .from("courier_label_actions")
+      .select("group_key,kind")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (error || !data) return;
+    const next = new Map<string, Map<string, Set<string>>>();
+    for (const r of data as { group_key: string; kind: string }[]) {
+      const idx = r.group_key.indexOf("::");
+      if (idx <= 0) continue;
+      const scope = r.group_key.slice(0, idx);
+      const key = r.group_key.slice(idx + 2);
+      let byKey = next.get(scope);
+      if (!byKey) {
+        byKey = new Map();
+        next.set(scope, byKey);
+      }
+      const kinds = byKey.get(key) ?? new Set<string>();
+      kinds.add(r.kind);
+      byKey.set(key, kinds);
+    }
+    setBatchActions(next);
+  };
+
+  /** Never opened / touched since upload. */
+  const isBatchUntouched = (id: string) => !batchActions.has(id);
+
+  /**
+   * Fully finished = every label group that was worked on for this batch has a
+   * "finish" entry. For the currently open batch we also require that all of
+   * its actual computed groups are finished (we already have them loaded).
+   */
+  const isBatchFinished = (id: string) => {
+    const byKey = batchActions.get(id);
+    if (!byKey || byKey.size === 0) return false;
+    const allLoggedFinished = Array.from(byKey.values()).every((kinds) => kinds.has("finish"));
+    if (!allLoggedFinished) return false;
+    if (id === activeBatch && groups.length > 0) {
+      return groups.every((g) => byKey.get(g.key)?.has("finish"));
+    }
+    return true;
+  };
+
+  const [uploadTab, setUploadTab] = useState<"active" | "history">("active");
+
+
+
   const ORDER_COLS =
     "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city, total";
 
