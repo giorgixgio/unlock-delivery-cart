@@ -918,6 +918,22 @@ export default function AdminCourierLabels() {
                   {t === "active" ? activeBatches.length : historyBatches.length})
                 </Button>
               ))}
+              {uploadTab === "active" && activeBatches.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    ask(
+                      "Archive all active uploads?",
+                      `${activeBatches.length} upload(s) will move to History, even if their print work isn't finished.`,
+                      "Archive all",
+                      archiveAllActive
+                    )
+                  }
+                >
+                  Archive all active
+                </Button>
+              )}
             </div>
           </div>
           {visibleBatches.length === 0 ? (
