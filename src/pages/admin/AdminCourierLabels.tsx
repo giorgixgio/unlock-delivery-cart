@@ -129,6 +129,8 @@ export default function AdminCourierLabels() {
   }, [activeStore]);
   /** Rows kept after warehouse matching — drives every group/print action. */
   const [storeRows, setStoreRows] = useState<Row[]>([]);
+  /** How the loaded orders split across the two stores (for diagnostics). */
+  const [storeSplit, setStoreSplit] = useState<{ A: number; B: number }>({ A: 0, B: 0 });
 
   /** Every destructive / logged action goes through a confirmation popup. */
   const [confirmState, setConfirmState] = useState<{
@@ -459,13 +461,39 @@ export default function AdminCourierLabels() {
         );
         setRows(collected);
       } else {
-        const { data, error } = await (supabase.from("orders") as any)
-          .select(ORDER_COLS)
-          .not("tracking_number", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        if (error) throw error;
-        setRows((data as Row[]) || []);
+        // "All tracked orders" = only the uploads still in Active. Archived
+        // uploads are finished work and must not come back into the print list.
+        const activeIds = batches.filter((b) => !hasMarker(b.id, "_archived")).map((b) => b.id);
+        if (activeIds.length === 0) {
+          setRows([]);
+          return;
+        }
+        const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
+          .select("matched_order_id")
+          .in("batch_id", activeIds)
+          .not("matched_order_id", "is", null)
+          .limit(5000);
+        if (sErr) throw sErr;
+        const ids = Array.from(
+          new Set(((staged as { matched_order_id: string }[]) || []).map((s) => s.matched_order_id))
+        );
+        if (ids.length === 0) {
+          setRows([]);
+          return;
+        }
+        const collected: Row[] = [];
+        const CHUNK = 200;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const { data, error } = await (supabase.from("orders") as any)
+            .select(ORDER_COLS)
+            .in("id", ids.slice(i, i + CHUNK));
+          if (error) throw error;
+          collected.push(...((data as Row[]) || []));
+        }
+        collected.sort((a, b) =>
+          (b.public_order_number || "").localeCompare(a.public_order_number || "")
+        );
+        setRows(collected);
       }
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
@@ -477,8 +505,11 @@ export default function AdminCourierLabels() {
   // ── Store filter: keep only orders containing an item from the chosen
   //    warehouse. Unmatched/legacy SKUs default to Warehouse B — matching the
   //    admin store-filter / courier-export convention. Empty-item orders = B.
-  const filterByStore = async (list: Row[], store: LabelStore | null): Promise<Row[]> => {
-    if (!store || list.length === 0) return [];
+  const filterByStore = async (
+    list: Row[],
+    store: LabelStore | null
+  ): Promise<{ kept: Row[]; split: { A: number; B: number } }> => {
+    if (!store || list.length === 0) return { kept: [], split: { A: 0, B: 0 } };
     const ids = list.map((r) => r.id);
     const CHUNK = 200;
     const skusByOrder = new Map<string, string[]>();
@@ -508,11 +539,18 @@ export default function AdminCourierLabels() {
         whBySku.set(String(p.sku), wh === "A" ? "A" : "B");
       });
     }
-    return list.filter((r) => {
+    const split = { A: 0, B: 0 };
+    const kept: Row[] = [];
+    for (const r of list) {
       const items = skusByOrder.get(r.id) || [];
-      if (!items.length) return store === "B";
-      return items.some((sku) => (whBySku.get(sku) ?? "B") === store);
-    });
+      const stores = items.length
+        ? new Set(items.map((sku) => whBySku.get(sku) ?? "B"))
+        : new Set<"A" | "B">(["B"]);
+      if (stores.has("A")) split.A += 1;
+      if (stores.has("B")) split.B += 1;
+      if (stores.has(store)) kept.push(r);
+    }
+    return { kept, split };
   };
 
   // Build print groups from the round/slot code already printed on the slip:
@@ -684,13 +722,10 @@ export default function AdminCourierLabels() {
     loadBatchActions();
   }, [labelStore]);
 
-  // Uploads tagged with another store are hidden. Untagged legacy uploads
-  // (made before the multi-store split) are treated as TrendMart (Warehouse B),
-  // matching how all other pre-split data defaults to Warehouse B.
-  const visibleBatches = batches.filter((b) => {
-    const effectiveStore = b.store ?? "B";
-    return !labelStore || effectiveStore === labelStore;
-  });
+  // Every upload stays listed for both stores. The upload's own store tag can
+  // be stale (products get moved between stores after the upload was made), so
+  // the real store decision is taken per order, inside filterByStore.
+  const visibleBatches = batches;
 
   // History = every logged label group of that upload is finished.
   // Active = anything else, including never-opened uploads.
@@ -698,10 +733,7 @@ export default function AdminCourierLabels() {
   const activeBatches = visibleBatches.filter((b) => !isBatchFinished(b.id));
 
 
-  // If the currently opened upload belongs to another store, fall back to all.
-  useEffect(() => {
-    if (activeBatch && !visibleBatches.some((b) => b.id === activeBatch)) setActiveBatch(null);
-  }, [labelStore, batches]);
+  const activeBatchKey = activeBatches.map((b) => b.id).join(",");
 
   useEffect(() => {
     load(activeBatch);
@@ -711,7 +743,7 @@ export default function AdminCourierLabels() {
       writeMarker(activeBatch, "_opened", "opened", "Opened");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBatch]);
+  }, [activeBatch, activeBatch ? "" : activeBatchKey]);
 
   // Re-apply the store filter whenever the loaded orders or the chosen store
   // changes. Clears any selection so labels can't mix stores by accident.
@@ -721,7 +753,8 @@ export default function AdminCourierLabels() {
       try {
         const filtered = await filterByStore(rows, labelStore);
         if (cancelled) return;
-        setStoreRows(filtered);
+        setStoreRows(filtered.kept);
+        setStoreSplit(filtered.split);
         setSelected(new Set());
       } catch (e: any) {
         if (!cancelled) {
@@ -1022,14 +1055,15 @@ export default function AdminCourierLabels() {
             </div>
           ) : groups.length === 0 ? (
             (() => {
-              const matchedCount =
-                batches.find((b) => b.id === activeBatch)?.matched ?? 0;
-              if (activeBatch && matchedCount > 0 && unmatched.length === 0) {
+              if (rows.length > 0 && unmatched.length === 0) {
+                const other = labelStore === "A" ? "B" : "A";
+                const otherLabel = other === "A" ? "BigMart" : "TrendMart";
                 return (
                   <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                    Loaded {matchedCount} orders but none are shown below — check the store
-                    filter above (this upload's orders may belong to the other store), or these
-                    may all be ₾0-total orders, which are excluded from printing by design.
+                    Loaded {rows.length} orders, but none belong to the selected store.{" "}
+                    {storeSplit[other] > 0
+                      ? `${storeSplit[other]} of them belong to ${otherLabel} — switch the store above to print them.`
+                      : "They may all be ₾0-total orders, which are excluded from printing by design."}
                   </div>
                 );
               }
