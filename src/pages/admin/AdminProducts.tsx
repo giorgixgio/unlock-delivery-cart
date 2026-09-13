@@ -823,6 +823,9 @@ const AdminProducts = () => {
                     </div>
                   )}
                 </td>
+                <td className="px-3 py-2">
+                  <span className="font-mono text-xs">{row.binLocation || "—"}</span>
+                </td>
                 <td className="px-3 py-2 font-medium">
                   {editingPrice === row.productId ? (
                     <div className="flex items-center gap-1">
