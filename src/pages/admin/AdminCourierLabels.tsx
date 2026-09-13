@@ -843,7 +843,22 @@ export default function AdminCourierLabels() {
 
       <Card>
         <CardContent className="p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Recent uploads</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Recent uploads</h2>
+            <div className="flex items-center gap-1">
+              {(["active", "history"] as const).map((t) => (
+                <Button
+                  key={t}
+                  variant={uploadTab === t ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUploadTab(t)}
+                >
+                  {t === "active" ? "Active" : "History"} (
+                  {t === "active" ? activeBatches.length : historyBatches.length})
+                </Button>
+              ))}
+            </div>
+          </div>
           {visibleBatches.length === 0 ? (
             <p className="text-sm text-muted-foreground">No courier uploads yet.</p>
           ) : (
@@ -855,26 +870,38 @@ export default function AdminCourierLabels() {
               >
                 All tracked orders
               </Button>
-              {visibleBatches.map((b) => (
-                <Button
-                  key={b.id}
-                  variant={activeBatch === b.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveBatch(b.id)}
-                  className="flex-col items-start h-auto py-1.5"
-                >
-                  <span className="text-xs">
-                    {(() => {
-                      const ts = b.applied_at || b.created_at;
-                      return ts ? new Date(ts).toLocaleString() : "—";
-                    })()}
-                  </span>
-                  <span className="text-[11px] opacity-70">
-                    {b.matched ?? 0} orders
-                  </span>
-
-                </Button>
-              ))}
+              {(uploadTab === "active" ? activeBatches : historyBatches).length === 0 ? (
+                <p className="text-sm text-muted-foreground self-center">
+                  {uploadTab === "active"
+                    ? "No uploads with unfinished work."
+                    : "No fully finished uploads yet."}
+                </p>
+              ) : (
+                (uploadTab === "active" ? activeBatches : historyBatches).map((b) => (
+                  <Button
+                    key={b.id}
+                    variant={activeBatch === b.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveBatch(b.id)}
+                    className="flex-col items-start h-auto py-1.5"
+                  >
+                    <span className="flex items-center gap-1.5 text-xs">
+                      {(() => {
+                        const ts = b.applied_at || b.created_at;
+                        return ts ? new Date(ts).toLocaleString() : "—";
+                      })()}
+                      {uploadTab === "active" && isBatchUntouched(b.id) && (
+                        <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                          New
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] opacity-70">
+                      {b.matched ?? 0} orders
+                    </span>
+                  </Button>
+                ))
+              )}
             </div>
           )}
         </CardContent>
