@@ -503,8 +503,11 @@ export default function AdminCourierLabels() {
   // ── Store filter: keep only orders containing an item from the chosen
   //    warehouse. Unmatched/legacy SKUs default to Warehouse B — matching the
   //    admin store-filter / courier-export convention. Empty-item orders = B.
-  const filterByStore = async (list: Row[], store: LabelStore | null): Promise<Row[]> => {
-    if (!store || list.length === 0) return [];
+  const filterByStore = async (
+    list: Row[],
+    store: LabelStore | null
+  ): Promise<{ kept: Row[]; split: { A: number; B: number } }> => {
+    if (!store || list.length === 0) return { kept: [], split: { A: 0, B: 0 } };
     const ids = list.map((r) => r.id);
     const CHUNK = 200;
     const skusByOrder = new Map<string, string[]>();
