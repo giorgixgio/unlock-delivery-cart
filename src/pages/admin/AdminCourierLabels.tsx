@@ -642,6 +642,12 @@ export default function AdminCourierLabels() {
     return !labelStore || effectiveStore === labelStore;
   });
 
+  // History = every logged label group of that upload is finished.
+  // Active = anything else, including never-opened uploads.
+  const historyBatches = visibleBatches.filter((b) => isBatchFinished(b.id));
+  const activeBatches = visibleBatches.filter((b) => !isBatchFinished(b.id));
+
+
   // If the currently opened upload belongs to another store, fall back to all.
   useEffect(() => {
     if (activeBatch && !visibleBatches.some((b) => b.id === activeBatch)) setActiveBatch(null);
