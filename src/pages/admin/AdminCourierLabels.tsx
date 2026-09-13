@@ -468,9 +468,10 @@ export default function AdminCourierLabels() {
       if (Number((r as any).total ?? 0) <= 0) continue;
       singles.push(r);
       const orderSkus = Array.from(skuSet.get(r.id) || []);
-      // Free-gift orders (product + its gift) are single-lane by design — the
-      // slip already prints both SKUs, so don't flag them as missing a round.
-      if (orderSkus.length > 1 && !isGiftPairSkuSet(orderSkus)) bad.push(r);
+      // Orders with 2 or fewer distinct SKUs are single-lane by design (the
+      // slip prints both SKUs), so a missing round code is expected, not an
+      // error. Only 3+ distinct SKUs need a round code.
+      if (orderSkus.length > 2) bad.push(r);
     }
     setUnmatched(bad);
 
