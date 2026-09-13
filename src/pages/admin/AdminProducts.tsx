@@ -696,6 +696,7 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">Product</th>
             <th className="text-left px-3 py-3 font-bold w-8"></th>
             <th className="text-left px-3 py-3 font-bold">SKU</th>
+            <th className="text-left px-3 py-3 font-bold">Bin</th>
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
             <th className="text-left px-3 py-3 font-bold">Stock</th>
