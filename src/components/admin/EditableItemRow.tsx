@@ -30,15 +30,45 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
   const [editing, setEditing] = useState(false);
   const [qty, setQty] = useState(item.quantity);
   const [saving, setSaving] = useState(false);
+  const [basePrice, setBasePrice] = useState<number | null>(null);
+
+  // Catalog base price (1-unit price) so tier pricing matches the storefront.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("price")
+        .eq("sku", item.sku)
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.price != null) {
+        setBasePrice(Number(data.price));
+      } else {
+        // Fallback: reverse the tier currently applied to this line.
+        const current = Number(item.line_total) || Number(item.unit_price) * item.quantity;
+        const perUnitAtOne = getDiscountedTotal(1, item.quantity, item.sku);
+        setBasePrice(perUnitAtOne > 0 ? Math.round((current / perUnitAtOne) * 100) / 100 : Number(item.unit_price));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [item.sku, item.id]);
+
+  const previewTotal =
+    basePrice != null ? getTieredLineTotal(basePrice, qty, item.sku) : qty * Number(item.unit_price);
+  const previewUnit =
+    basePrice != null ? getTieredUnitPrice(basePrice, qty, item.sku) : Number(item.unit_price);
 
   const handleSave = async () => {
     if (qty < 1) return;
     setSaving(true);
     try {
-      const newLineTotal = qty * Number(item.unit_price);
+      const newLineTotal = previewTotal;
+      const newUnitPrice = previewUnit;
       const { error } = await supabase
         .from("order_items")
-        .update({ quantity: qty, line_total: newLineTotal })
+        .update({ quantity: qty, line_total: newLineTotal, unit_price: newUnitPrice })
         .eq("id", item.id);
       if (error) throw error;
 
