@@ -37,7 +37,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
   const item = items[0];
 
   // Infer base unit price: if a discount was previously applied, back it out.
-  const currentPct = getQtyDiscountPct(item.quantity);
+  const currentPct = getQtyDiscountPct(item.quantity, item.sku);
   const basePrice =
     currentPct > 0
       ? Math.round((Number(item.unit_price) / (1 - currentPct / 100)) * 100) / 100
@@ -46,7 +46,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
   const apply = async (qty: 1 | 2 | 3) => {
     setBusy(qty);
     try {
-      const newLineTotal = getDiscountedTotal(basePrice, qty);
+      const newLineTotal = getDiscountedTotal(basePrice, qty, item.sku);
       const newUnitPrice = Math.round((newLineTotal / qty) * 100) / 100;
 
       const { error: itemErr } = await supabase
@@ -86,7 +86,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
           sku: item.sku,
           action: "landing_qty_discount_applied",
           qty,
-          discount_pct: getQtyDiscountPct(qty),
+          discount_pct: getQtyDiscountPct(qty, item.sku),
           base_price: basePrice,
           new_unit_price: newUnitPrice,
           new_line_total: newLineTotal,
@@ -97,7 +97,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
         order_id: orderId,
         actor,
         event_type: "landing_qty_discount",
-        payload: { qty, discount_pct: getQtyDiscountPct(qty), sku: item.sku } as any,
+        payload: { qty, discount_pct: getQtyDiscountPct(qty, item.sku), sku: item.sku } as any,
       });
 
       toast({ title: `${qty} ცალის ფასდაკლება გამოყენებულია`, description: `სულ: ${newLineTotal.toFixed(2)} ₾` });
@@ -123,7 +123,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
       <div className="flex flex-wrap gap-2">
         {options.map((o) => {
           const isActive = item.quantity === o.qty;
-          const total = getDiscountedTotal(basePrice, o.qty);
+          const total = getDiscountedTotal(basePrice, o.qty, item.sku);
           return (
             <Button
               key={o.qty}
