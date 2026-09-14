@@ -14,9 +14,7 @@ const DISCOUNT_MAP: Record<number, number> = {
 };
 
 // Per-SKU discount overrides (softer rates for specific landing pages).
-const SKU_DISCOUNT_OVERRIDES: Record<string, Record<number, number>> = {
-  "002": { 1: 0, 2: 10, 3: 15 },
-};
+const SKU_DISCOUNT_OVERRIDES: Record<string, Record<number, number>> = {};
 
 /** Returns the discount percentage for a given quantity (0, 20, or 35; per-SKU override if set). */
 export function getQtyDiscountPct(qty: number, sku?: string): number {
