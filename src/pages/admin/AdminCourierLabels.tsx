@@ -453,7 +453,7 @@ export default function AdminCourierLabels() {
           new Set(((staged as { matched_order_id: string }[]) || []).map((s) => s.matched_order_id))
         );
         if (ids.length === 0) {
-          setRows([]);
+          applyRows([]);
           return;
         }
         const collected: Row[] = [];
@@ -468,13 +468,13 @@ export default function AdminCourierLabels() {
         collected.sort((a, b) =>
           (b.public_order_number || "").localeCompare(a.public_order_number || "")
         );
-        setRows(collected);
+        applyRows(collected);
       } else {
         // "All tracked orders" = only the uploads still in Active. Archived
         // uploads are finished work and must not come back into the print list.
         const activeIds = batches.filter((b) => !hasMarker(b.id, "_archived")).map((b) => b.id);
         if (activeIds.length === 0) {
-          setRows([]);
+          applyRows([]);
           return;
         }
         const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
@@ -487,7 +487,7 @@ export default function AdminCourierLabels() {
           new Set(((staged as { matched_order_id: string }[]) || []).map((s) => s.matched_order_id))
         );
         if (ids.length === 0) {
-          setRows([]);
+          applyRows([]);
           return;
         }
         const collected: Row[] = [];
@@ -502,12 +502,13 @@ export default function AdminCourierLabels() {
         collected.sort((a, b) =>
           (b.public_order_number || "").localeCompare(a.public_order_number || "")
         );
-        setRows(collected);
+        applyRows(collected);
       }
     } catch (e: any) {
+      if (isStale()) return;
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
   };
 
