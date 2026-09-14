@@ -429,7 +429,16 @@ export default function AdminCourierLabels() {
   const ORDER_COLS =
     "id, public_order_number, customer_phone, tracking_number, courier_zone_id, courier_label_text, courier_label_date, normalized_address, raw_address, normalized_city, raw_city, total";
 
+  // Guards against a slower earlier load (e.g. "All tracked orders") resolving
+  // after a newer one and overwriting the rows of the batch you just clicked.
+  const loadSeqRef = useRef(0);
+
   const load = async (batchId: string | null) => {
+    const seq = ++loadSeqRef.current;
+    const isStale = () => seq !== loadSeqRef.current;
+    const applyRows = (next: Row[]) => {
+      if (!isStale()) setRows(next);
+    };
     setLoading(true);
     try {
       if (batchId) {
