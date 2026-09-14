@@ -110,8 +110,8 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
 
   const options: Array<{ qty: 1 | 2 | 3; label: string }> = [
     { qty: 1, label: "1 ცალი (საბაზო)" },
-    { qty: 2, label: "2 ცალი −20%" },
-    { qty: 3, label: "3 ცალი −35%" },
+    { qty: 2, label: `2 ცალი −${getQtyDiscountPct(2, item.sku)}%` },
+    { qty: 3, label: `3 ცალი −${getQtyDiscountPct(3, item.sku)}%` },
   ];
 
   return (
