@@ -422,6 +422,18 @@ export default function AdminCourierLabels() {
     return true;
   };
 
+  // Once every group of the open upload is finished, move it to History on its
+  // own so packers never have to archive it by hand.
+  useEffect(() => {
+    if (!activeBatch || groups.length === 0) return;
+    if (hasMarker(activeBatch, "_archived")) return;
+    const byKey = batchActions.get(activeBatch);
+    if (!byKey) return;
+    if (!groups.every((g) => byKey.get(g.key)?.has("finish"))) return;
+    archiveBatch(activeBatch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBatch, groups, batchActions]);
+
   const [uploadTab, setUploadTab] = useState<"active" | "history">("active");
 
 
@@ -1074,6 +1086,7 @@ export default function AdminCourierLabels() {
         </CardContent>
       </Card>
 
+      {activeBatch && (
       <Card>
         <CardContent className="p-4 space-y-3">
           <h2 className="text-sm font-semibold">Print by group</h2>
@@ -1266,6 +1279,8 @@ export default function AdminCourierLabels() {
           )}
         </CardContent>
       </Card>
+      )}
+
 
       <Card>
         <CardContent className="p-4 space-y-3">
