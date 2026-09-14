@@ -432,6 +432,7 @@ export default function AdminCourierLabels() {
   // Guards against a slower earlier load (e.g. "All tracked orders") resolving
   // after a newer one and overwriting the rows of the batch you just clicked.
   const loadSeqRef = useRef(0);
+  const filterSeqRef = useRef(0);
 
   const load = async (batchId: string | null) => {
     const seq = ++loadSeqRef.current;
@@ -567,10 +568,18 @@ export default function AdminCourierLabels() {
   //  - courier_label_text starting with "[R##-##]" => that round, that slot
   //  - everything else => "Singles" (sorted by SKU ascending)
   // Multi-SKU orders without a parsable code are flagged as unmatched.
+  // Grouping performs several chunked queries. An older, larger grouping job
+  // must never overwrite the result for a batch selected more recently.
+  const buildGroupsSeqRef = useRef(0);
+
   const buildGroups = async (list: Row[]) => {
+    const seq = ++buildGroupsSeqRef.current;
+    const isStale = () => seq !== buildGroupsSeqRef.current;
     if (list.length === 0) {
-      setGroups([]);
-      setUnmatched([]);
+      if (!isStale()) {
+        setGroups([]);
+        setUnmatched([]);
+      }
       return;
     }
     const ids = list.map((r) => r.id);
@@ -592,8 +601,11 @@ export default function AdminCourierLabels() {
         });
       }
     } catch (e: any) {
+      if (isStale()) return;
       toast({ title: "Failed to group orders", description: e.message, variant: "destructive" });
     }
+
+    if (isStale()) return;
 
     // Representative SKU for singles sorting (alphabetically smallest SKU).
     const repSku = (id: string) => {
@@ -622,6 +634,7 @@ export default function AdminCourierLabels() {
       // error. Only 3+ distinct SKUs need a round code.
       if (orderSkus.length > 2) bad.push(r);
     }
+    if (isStale()) return;
     setUnmatched(bad);
 
     // Singles: cluster 1-distinct-SKU orders first, then 2-distinct-SKU
@@ -649,7 +662,7 @@ export default function AdminCourierLabels() {
         });
       });
 
-    setGroups(next.filter((g) => g.rows.length > 0));
+    if (!isStale()) setGroups(next.filter((g) => g.rows.length > 0));
   };
 
 
@@ -746,6 +759,16 @@ export default function AdminCourierLabels() {
   const activeBatchKey = activeBatches.map((b) => b.id).join(",");
 
   useEffect(() => {
+    // Invalidate every downstream job immediately. Waiting for the new order
+    // query to finish leaves time for the previous filter/group job to repaint
+    // the old batch in between.
+    filterSeqRef.current += 1;
+    buildGroupsSeqRef.current += 1;
+    setRows([]);
+    setStoreRows([]);
+    setStoreSplit({ A: 0, B: 0 });
+    setGroups([]);
+    setUnmatched([]);
     load(activeBatch);
     setSelected(new Set());
     // Viewing an upload counts as "touched" — clears the NEW badge on first open.
@@ -758,22 +781,23 @@ export default function AdminCourierLabels() {
   // Re-apply the store filter whenever the loaded orders or the chosen store
   // changes. Clears any selection so labels can't mix stores by accident.
   useEffect(() => {
-    let cancelled = false;
+    const seq = ++filterSeqRef.current;
+    const isStale = () => seq !== filterSeqRef.current;
     (async () => {
       try {
         const filtered = await filterByStore(rows, labelStore);
-        if (cancelled) return;
+        if (isStale()) return;
         setStoreRows(filtered.kept);
         setStoreSplit(filtered.split);
         setSelected(new Set());
       } catch (e: any) {
-        if (!cancelled) {
+        if (!isStale()) {
           toast({ title: "Store filter failed", description: e.message, variant: "destructive" });
         }
       }
     })();
     return () => {
-      cancelled = true;
+      if (!isStale()) filterSeqRef.current += 1;
     };
   }, [rows, labelStore]);
 
