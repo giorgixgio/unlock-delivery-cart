@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
+import { getTieredLineTotal, getTieredUnitPrice, getDiscountedTotal } from "@/lib/landingDiscounts";
 
 interface ItemData {
   id: string;
