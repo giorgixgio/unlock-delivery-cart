@@ -25,7 +25,7 @@ interface Props {
 
 /**
  * One-click operator buttons that apply the /p/ landing quantity discount
- * (1=0%, 2=20%, 3=35%) to a single-product order. Uses the current item's
+ * (default 1=0%, 2=20%, 3=35%; per-SKU overrides apply) to a single-product order. Uses the current item's
  * unit_price at qty=1 as the base. For qty>1 it rewrites unit_price so
  * line_total matches the landing-page discounted total.
  */
