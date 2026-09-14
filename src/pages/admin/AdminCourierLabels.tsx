@@ -447,6 +447,10 @@ export default function AdminCourierLabels() {
         const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
           .select("matched_order_id")
           .eq("batch_id", batchId)
+          // A courier file can contain orders imported previously. Those rows
+          // are staged as `already_has_tracking` but do not belong to this
+          // batch's printable work. Only rows this batch actually applied do.
+          .eq("applied", true)
           .not("matched_order_id", "is", null)
           .limit(2000);
         if (sErr) throw sErr;
@@ -481,6 +485,7 @@ export default function AdminCourierLabels() {
         const { data: staged, error: sErr } = await (supabase.from("import_staging_rows") as any)
           .select("matched_order_id")
           .in("batch_id", activeIds)
+          .eq("applied", true)
           .not("matched_order_id", "is", null)
           .limit(5000);
         if (sErr) throw sErr;
