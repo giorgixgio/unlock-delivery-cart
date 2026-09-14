@@ -1074,6 +1074,7 @@ export default function AdminCourierLabels() {
         </CardContent>
       </Card>
 
+      {activeBatch && (
       <Card>
         <CardContent className="p-4 space-y-3">
           <h2 className="text-sm font-semibold">Print by group</h2>
