@@ -7,6 +7,8 @@ interface LandingQuantitySelectorProps {
   onSelect: (qty: number) => void;
   /** Dark mode variant for spy-detector style pages */
   dark?: boolean;
+  /** SKU for per-product discount overrides */
+  sku?: string;
 }
 
 const OPTIONS = [

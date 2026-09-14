@@ -13,14 +13,20 @@ const DISCOUNT_MAP: Record<number, number> = {
   3: 35,
 };
 
-/** Returns the discount percentage for a given quantity (0, 20, or 35). */
-export function getQtyDiscountPct(qty: number): number {
-  return DISCOUNT_MAP[qty] ?? 0;
+// Per-SKU discount overrides (softer rates for specific landing pages).
+const SKU_DISCOUNT_OVERRIDES: Record<string, Record<number, number>> = {
+  "002": { 1: 0, 2: 10, 3: 15 },
+};
+
+/** Returns the discount percentage for a given quantity (0, 20, or 35; per-SKU override if set). */
+export function getQtyDiscountPct(qty: number, sku?: string): number {
+  const map = (sku && SKU_DISCOUNT_OVERRIDES[String(sku)]) || DISCOUNT_MAP;
+  return map[qty] ?? 0;
 }
 
 /** Returns the discounted total for a given base price and quantity. */
-export function getDiscountedTotal(basePrice: number, qty: number): number {
-  const pct = getQtyDiscountPct(qty);
+export function getDiscountedTotal(basePrice: number, qty: number, sku?: string): number {
+  const pct = getQtyDiscountPct(qty, sku);
   const raw = basePrice * qty * (1 - pct / 100);
   return Math.round(raw * 100) / 100;
 }
