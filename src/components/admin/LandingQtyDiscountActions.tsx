@@ -25,7 +25,7 @@ interface Props {
 
 /**
  * One-click operator buttons that apply the /p/ landing quantity discount
- * (1=0%, 2=20%, 3=35%) to a single-product order. Uses the current item's
+ * (default 1=0%, 2=20%, 3=35%; per-SKU overrides apply) to a single-product order. Uses the current item's
  * unit_price at qty=1 as the base. For qty>1 it rewrites unit_price so
  * line_total matches the landing-page discounted total.
  */
@@ -37,7 +37,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
   const item = items[0];
 
   // Infer base unit price: if a discount was previously applied, back it out.
-  const currentPct = getQtyDiscountPct(item.quantity);
+  const currentPct = getQtyDiscountPct(item.quantity, item.sku);
   const basePrice =
     currentPct > 0
       ? Math.round((Number(item.unit_price) / (1 - currentPct / 100)) * 100) / 100
@@ -46,7 +46,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
   const apply = async (qty: 1 | 2 | 3) => {
     setBusy(qty);
     try {
-      const newLineTotal = getDiscountedTotal(basePrice, qty);
+      const newLineTotal = getDiscountedTotal(basePrice, qty, item.sku);
       const newUnitPrice = Math.round((newLineTotal / qty) * 100) / 100;
 
       const { error: itemErr } = await supabase
@@ -86,7 +86,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
           sku: item.sku,
           action: "landing_qty_discount_applied",
           qty,
-          discount_pct: getQtyDiscountPct(qty),
+          discount_pct: getQtyDiscountPct(qty, item.sku),
           base_price: basePrice,
           new_unit_price: newUnitPrice,
           new_line_total: newLineTotal,
@@ -97,7 +97,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
         order_id: orderId,
         actor,
         event_type: "landing_qty_discount",
-        payload: { qty, discount_pct: getQtyDiscountPct(qty), sku: item.sku } as any,
+        payload: { qty, discount_pct: getQtyDiscountPct(qty, item.sku), sku: item.sku } as any,
       });
 
       toast({ title: `${qty} ცალის ფასდაკლება გამოყენებულია`, description: `სულ: ${newLineTotal.toFixed(2)} ₾` });
@@ -110,8 +110,8 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
 
   const options: Array<{ qty: 1 | 2 | 3; label: string }> = [
     { qty: 1, label: "1 ცალი (საბაზო)" },
-    { qty: 2, label: "2 ცალი −20%" },
-    { qty: 3, label: "3 ცალი −35%" },
+    { qty: 2, label: `2 ცალი −${getQtyDiscountPct(2, item.sku)}%` },
+    { qty: 3, label: `3 ცალი −${getQtyDiscountPct(3, item.sku)}%` },
   ];
 
   return (
@@ -123,7 +123,7 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
       <div className="flex flex-wrap gap-2">
         {options.map((o) => {
           const isActive = item.quantity === o.qty;
-          const total = getDiscountedTotal(basePrice, o.qty);
+          const total = getDiscountedTotal(basePrice, o.qty, item.sku);
           return (
             <Button
               key={o.qty}

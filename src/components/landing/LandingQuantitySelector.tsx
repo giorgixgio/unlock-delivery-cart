@@ -7,6 +7,8 @@ interface LandingQuantitySelectorProps {
   onSelect: (qty: number) => void;
   /** Dark mode variant for spy-detector style pages */
   dark?: boolean;
+  /** SKU for per-product discount overrides */
+  sku?: string;
 }
 
 const OPTIONS = [
@@ -20,6 +22,7 @@ const LandingQuantitySelector = ({
   selectedQty,
   onSelect,
   dark = false,
+  sku,
 }: LandingQuantitySelectorProps) => {
   return (
     <div className="space-y-2.5">
@@ -29,8 +32,8 @@ const LandingQuantitySelector = ({
       <div className="space-y-2">
         {OPTIONS.map((opt) => {
           const isSelected = selectedQty === opt.qty;
-          const discountPct = getQtyDiscountPct(opt.qty);
-          const discountedTotal = getDiscountedTotal(unitPrice, opt.qty);
+          const discountPct = getQtyDiscountPct(opt.qty, sku);
+          const discountedTotal = getDiscountedTotal(unitPrice, opt.qty, sku);
           const originalTotal = getOriginalTotal(unitPrice, opt.qty);
           const hasDiscount = discountPct > 0;
           const perUnit = opt.qty > 1 ? `${Math.round(discountedTotal / opt.qty)}₾ / ცალი` : undefined;

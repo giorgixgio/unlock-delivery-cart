@@ -180,10 +180,10 @@ const GenericLanding = ({
 
   // 1+1 offer: 2 units for the price of one (50% off the 2-unit total)
   const effectiveQty = onePlusOneEnabled ? 2 : selectedQty;
-  const qtyDiscountPct = onePlusOneEnabled ? 50 : getQtyDiscountPct(selectedQty);
+  const qtyDiscountPct = onePlusOneEnabled ? 50 : getQtyDiscountPct(selectedQty, product.sku);
   const totalPrice = onePlusOneEnabled
     ? product.price
-    : getDiscountedTotal(product.price, selectedQty);
+    : getDiscountedTotal(product.price, selectedQty, product.sku);
 
 
   // Funnel state
@@ -390,11 +390,12 @@ const GenericLanding = ({
 
         {/* Quantity selector (hidden while the 1+1 offer fixes qty at 2) */}
         {!onePlusOneEnabled && (
-          <LandingQuantitySelector
-            unitPrice={product.price}
-            selectedQty={selectedQty}
-            onSelect={setSelectedQty}
-          />
+           <LandingQuantitySelector
+             unitPrice={product.price}
+             selectedQty={selectedQty}
+             onSelect={setSelectedQty}
+             sku={product.sku}
+           />
         )}
 
 
