@@ -656,10 +656,22 @@ export default function OrderQuickReviewModal({
 
   const changeItemQty = async (item: OrderItem, nextQty: number) => {
     if (nextQty < 1 || !order) return;
-    const newLineTotal = nextQty * Number(item.unit_price);
+
+    // Base (1-unit) catalog price so admin edits match the storefront tier pricing.
+    let basePrice = Number(item.unit_price);
+    const { data: prod } = await supabase
+      .from("products")
+      .select("price")
+      .eq("sku", item.sku)
+      .limit(1)
+      .maybeSingle();
+    if (prod?.price != null) basePrice = Number(prod.price);
+
+    const newLineTotal = getTieredLineTotal(basePrice, nextQty, item.sku);
+    const newUnitPrice = getTieredUnitPrice(basePrice, nextQty, item.sku);
     const { error } = await supabase
       .from("order_items")
-      .update({ quantity: nextQty, line_total: newLineTotal })
+      .update({ quantity: nextQty, line_total: newLineTotal, unit_price: newUnitPrice })
       .eq("id", item.id);
     if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
     await supabase.from("order_events").insert({
