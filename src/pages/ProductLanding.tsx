@@ -390,11 +390,12 @@ const GenericLanding = ({
 
         {/* Quantity selector (hidden while the 1+1 offer fixes qty at 2) */}
         {!onePlusOneEnabled && (
-          <LandingQuantitySelector
-            unitPrice={product.price}
-            selectedQty={selectedQty}
-            onSelect={setSelectedQty}
-          />
+           <LandingQuantitySelector
+             unitPrice={product.price}
+             selectedQty={selectedQty}
+             onSelect={setSelectedQty}
+             sku={product.sku}
+           />
         )}
 
 
