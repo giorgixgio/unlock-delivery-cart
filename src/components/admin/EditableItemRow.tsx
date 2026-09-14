@@ -209,6 +209,10 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(false); setQty(item.quantity); }} disabled={saving}>
             <X className="w-4 h-4" />
           </Button>
+          <div className="text-xs text-right whitespace-nowrap">
+            <p className="text-muted-foreground">{previewUnit.toFixed(1)} ₾/ცალი</p>
+            <p className="font-bold">{previewTotal.toFixed(1)} ₾</p>
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-3">
