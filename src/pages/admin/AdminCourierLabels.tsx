@@ -432,6 +432,7 @@ export default function AdminCourierLabels() {
   // Guards against a slower earlier load (e.g. "All tracked orders") resolving
   // after a newer one and overwriting the rows of the batch you just clicked.
   const loadSeqRef = useRef(0);
+  const filterSeqRef = useRef(0);
 
   const load = async (batchId: string | null) => {
     const seq = ++loadSeqRef.current;
@@ -758,6 +759,16 @@ export default function AdminCourierLabels() {
   const activeBatchKey = activeBatches.map((b) => b.id).join(",");
 
   useEffect(() => {
+    // Invalidate every downstream job immediately. Waiting for the new order
+    // query to finish leaves time for the previous filter/group job to repaint
+    // the old batch in between.
+    filterSeqRef.current += 1;
+    buildGroupsSeqRef.current += 1;
+    setRows([]);
+    setStoreRows([]);
+    setStoreSplit({ A: 0, B: 0 });
+    setGroups([]);
+    setUnmatched([]);
     load(activeBatch);
     setSelected(new Set());
     // Viewing an upload counts as "touched" — clears the NEW badge on first open.
@@ -770,22 +781,23 @@ export default function AdminCourierLabels() {
   // Re-apply the store filter whenever the loaded orders or the chosen store
   // changes. Clears any selection so labels can't mix stores by accident.
   useEffect(() => {
-    let cancelled = false;
+    const seq = ++filterSeqRef.current;
+    const isStale = () => seq !== filterSeqRef.current;
     (async () => {
       try {
         const filtered = await filterByStore(rows, labelStore);
-        if (cancelled) return;
+        if (isStale()) return;
         setStoreRows(filtered.kept);
         setStoreSplit(filtered.split);
         setSelected(new Set());
       } catch (e: any) {
-        if (!cancelled) {
+        if (!isStale()) {
           toast({ title: "Store filter failed", description: e.message, variant: "destructive" });
         }
       }
     })();
     return () => {
-      cancelled = true;
+      if (!isStale()) filterSeqRef.current += 1;
     };
   }, [rows, labelStore]);
 
