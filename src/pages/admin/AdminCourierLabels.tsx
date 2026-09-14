@@ -567,10 +567,18 @@ export default function AdminCourierLabels() {
   //  - courier_label_text starting with "[R##-##]" => that round, that slot
   //  - everything else => "Singles" (sorted by SKU ascending)
   // Multi-SKU orders without a parsable code are flagged as unmatched.
+  // Grouping performs several chunked queries. An older, larger grouping job
+  // must never overwrite the result for a batch selected more recently.
+  const buildGroupsSeqRef = useRef(0);
+
   const buildGroups = async (list: Row[]) => {
+    const seq = ++buildGroupsSeqRef.current;
+    const isStale = () => seq !== buildGroupsSeqRef.current;
     if (list.length === 0) {
-      setGroups([]);
-      setUnmatched([]);
+      if (!isStale()) {
+        setGroups([]);
+        setUnmatched([]);
+      }
       return;
     }
     const ids = list.map((r) => r.id);
@@ -592,8 +600,11 @@ export default function AdminCourierLabels() {
         });
       }
     } catch (e: any) {
+      if (isStale()) return;
       toast({ title: "Failed to group orders", description: e.message, variant: "destructive" });
     }
+
+    if (isStale()) return;
 
     // Representative SKU for singles sorting (alphabetically smallest SKU).
     const repSku = (id: string) => {
@@ -622,6 +633,7 @@ export default function AdminCourierLabels() {
       // error. Only 3+ distinct SKUs need a round code.
       if (orderSkus.length > 2) bad.push(r);
     }
+    if (isStale()) return;
     setUnmatched(bad);
 
     // Singles: cluster 1-distinct-SKU orders first, then 2-distinct-SKU
@@ -649,7 +661,7 @@ export default function AdminCourierLabels() {
         });
       });
 
-    setGroups(next.filter((g) => g.rows.length > 0));
+    if (!isStale()) setGroups(next.filter((g) => g.rows.length > 0));
   };
 
 
