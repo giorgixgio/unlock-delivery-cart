@@ -2541,6 +2541,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      deduct_order_stock_once: {
+        Args: { p_actor?: string; p_actor_email?: string; p_order_id: string }
+        Returns: number
+      }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
       mark_stockout_waitlist: {
