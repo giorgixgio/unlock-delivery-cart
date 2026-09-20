@@ -7,6 +7,10 @@ import { getSiteWarehouse } from "@/config/siteConfig";
 
 const CACHE_KEY = "bigmart-products-v9";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const PRODUCT_FETCH_RETRIES = 3;
+
+const wait = (milliseconds: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 
 // Priority-ordered tag-to-category mapping
 const TAG_CATEGORY_RULES: Array<{ keywords: string[]; category: string }> = [
@@ -130,53 +134,64 @@ async function fetchAllProducts(skipCache = false): Promise<Product[]> {
   const cached = skipCache ? null : getFromLocalCache();
   if (cached) return cached;
 
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < PRODUCT_FETCH_RETRIES; attempt++) {
+    try {
+      // PostgREST caps one request at 1000 rows — page through so 500+ SKUs
+      // (and beyond) all land in local state on the very first load.
+      const PAGE = 1000;
+      const rows: DbProduct[] = [];
+      let from = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("title")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        rows.push(...((data || []) as DbProduct[]));
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
 
-  // PostgREST caps one request at 1000 rows — page through so 500+ SKUs
-  // (and beyond) all land in local state on the very first load.
-  const PAGE = 1000;
-  const rows: DbProduct[] = [];
-  let from = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("title")
-      .range(from, from + PAGE - 1);
-    if (error) {
-      console.error("Failed to fetch products from database:", error);
-      return rows.length ? rows.map((r) => mapDbProduct(r)) : [];
+      // An empty response during a backend wake-up must not become a valid
+      // ten-minute catalog cache. The production catalog is never empty.
+      if (rows.length === 0) throw new Error("Product catalog returned no rows");
+
+      const catsRes = await supabase
+        .from("product_categories")
+        .select("product_id, category");
+
+      const catMap = new Map<string, string[]>();
+      for (const row of catsRes.data || []) {
+        const list = catMap.get(row.product_id) || [];
+        list.push(row.category);
+        catMap.set(row.product_id, list);
+      }
+
+      const products = rows.map((p) => mapDbProduct(p, catMap.get(p.id)));
+
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const unique: Product[] = [];
+      for (const p of products) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          unique.push(p);
+        }
+      }
+
+      saveToLocalCache(unique);
+      return unique;
+    } catch (error) {
+      lastError = error;
+      console.warn(`Product catalog attempt ${attempt + 1} failed`, error);
+      if (attempt + 1 < PRODUCT_FETCH_RETRIES) await wait(500 * (attempt + 1));
     }
-    rows.push(...((data || []) as DbProduct[]));
-    if (!data || data.length < PAGE) break;
-    from += PAGE;
   }
 
-  const catsRes = await supabase
-    .from("product_categories")
-    .select("product_id, category");
-
-  const catMap = new Map<string, string[]>();
-  for (const row of catsRes.data || []) {
-    const list = catMap.get(row.product_id) || [];
-    list.push(row.category);
-    catMap.set(row.product_id, list);
-  }
-
-  const products = rows.map((p) => mapDbProduct(p, catMap.get(p.id)));
-
-  // Deduplicate by id
-  const seen = new Set<string>();
-  const unique: Product[] = [];
-  for (const p of products) {
-    if (!seen.has(p.id)) {
-      seen.add(p.id);
-      unique.push(p);
-    }
-  }
-
-  saveToLocalCache(unique);
-  return unique;
+  throw lastError instanceof Error ? lastError : new Error("Product catalog unavailable");
 }
 
 /**
@@ -190,8 +205,12 @@ export function useProducts(options?: { fresh?: boolean }) {
     queryFn: () => fetchAllProducts(fresh),
     staleTime: fresh ? 0 : 10 * 60 * 1000,
     refetchOnMount: fresh ? "always" : undefined,
+    refetchOnReconnect: "always",
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     gcTime: 30 * 60 * 1000,
-    // Paint the last known catalog immediately, refresh it in the background
+    // Paint the last known catalog immediately, even if its freshness window
+    // elapsed while the backend was unavailable.
     placeholderData: () => readCache()?.data,
   });
 
