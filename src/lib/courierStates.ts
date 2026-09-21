@@ -113,10 +113,32 @@ export function itemsKey(items: CommentItem[]): string {
     .join("|");
 }
 
+/** Courier placeholder number (Bigmart itself) — never a customer phone or link key. */
+export const PLACEHOLDER_PHONE = "555555555";
+
 export function normalizePhone(p: string | null | undefined): string | null {
   const d = (p || "").replace(/[^0-9]/g, "");
   if (!d) return null;
-  return d.length > 9 ? d.slice(-9) : d;
+  const n = d.length > 9 ? d.slice(-9) : d;
+  return n === PLACEHOLDER_PHONE ? null : n;
+}
+
+/**
+ * Customer phone for a courier row. On RETURN shipments the receiver is Bigmart
+ * (placeholder 555555555) and the customer sits in the sender columns.
+ * Mirrors the logic in supabase/functions/import-courier.
+ */
+export function pickCustomerPhone(opts: {
+  isReturn: boolean;
+  receiverPhone?: string | null;
+  senderPhone?: string | null;
+  senderName?: string | null;
+}): string | null {
+  const keep = (v: string | null | undefined) => (normalizePhone(v) ? String(v).trim() : null);
+  if (opts.isReturn) {
+    return keep(opts.senderPhone) || keep(opts.senderName) || keep(opts.receiverPhone);
+  }
+  return keep(opts.receiverPhone) || keep(opts.senderPhone);
 }
 
 export function daysSince(iso: string | null | undefined): number | null {

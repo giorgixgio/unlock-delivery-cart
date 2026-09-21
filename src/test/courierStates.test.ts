@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { senderIsCustomer, parseCommentItems, itemsKey, normalizePhone } from "@/lib/courierStates";
+import { senderIsCustomer, parseCommentItems, itemsKey, normalizePhone, pickCustomerPhone } from "@/lib/courierStates";
 import { recoveryOf } from "@/lib/courierAnalytics";
 import type { CourierDataset, Shipment } from "@/hooks/useCourierDataset";
 
@@ -77,5 +77,29 @@ describe("csv parsing", () => {
   it("handles semicolon files, escaped quotes and newlines inside fields", () => {
     const rows = parseCsv('a;b\n"x ""y""";"line1\nline2"\n');
     expect(rows[1]).toEqual(['x "y"', "line1\nline2"]);
+  });
+});
+
+describe("customer phone on return rows", () => {
+  it("uses the sender phone, not the 555555555 placeholder", () => {
+    const phone = pickCustomerPhone({
+      isReturn: true,
+      receiverPhone: "555555555",
+      senderPhone: "574491491",
+      senderName: null,
+    });
+    expect(phone).toBe("574491491");
+    expect(normalizePhone(phone)).toBe("574491491");
+  });
+
+  it("falls back to a Customer-#### sender name's digits", () => {
+    expect(
+      pickCustomerPhone({ isReturn: true, receiverPhone: "555555555", senderPhone: null, senderName: "577172330" }),
+    ).toBe("577172330");
+  });
+
+  it("never returns the placeholder", () => {
+    expect(normalizePhone("555555555")).toBeNull();
+    expect(pickCustomerPhone({ isReturn: false, receiverPhone: "555555555", senderPhone: null })).toBeNull();
   });
 });

@@ -19,12 +19,12 @@ function json(status: number, body: Record<string, any>) {
 // ---------- Field mapping ----------
 type Field =
   | "tracking_number" | "courier_status" | "status_date" | "cod_amount" | "company_receives"
-  | "phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number"
+  | "phone" | "sender_phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number"
   | "sender_name" | "receiver_name" | "order_date" | "pickup_date" | "comment";
 
 const FIELDS: Field[] = [
   "tracking_number", "courier_status", "status_date", "cod_amount", "company_receives",
-  "phone", "customer_name", "city", "address", "sku", "quantity", "order_number",
+  "phone", "sender_phone", "customer_name", "city", "address", "sku", "quantity", "order_number",
   "sender_name", "receiver_name", "order_date", "pickup_date", "comment",
 ];
 
@@ -40,6 +40,7 @@ const FALLBACK_ALIASES: Record<Field, string[]> = {
   cod_amount: ["cod - გადახდა კურიერთან", "cod", "გადასახდელი"],
   company_receives: ["კომპანიას ერიცხება", "კომპანია იღებს", "ჩასარიცხი"],
   phone: ["მიმღ. ტელეფონი", "ტელეფონი", "მობილური", "phone"],
+  sender_phone: ["გამგზ. ტელეფონი", "sender_phone"],
   customer_name: ["მიმღ. სახელი, გვარი", "მიმღები", "name"],
   city: ["მიმღ. ქალაქი", "ქალაქი", "city"],
   address: ["მიმღ. მისამართი", "მისამართი", "address"],
@@ -121,10 +122,34 @@ function parseCommentItems(comment: string | null): { code: string; qty: number 
 const itemsKey = (items: { code: string; qty: number }[]) =>
   items.map((i) => `${i.code}:${i.qty}`).sort().join("|");
 
+/** Courier placeholder number used for Bigmart itself — never a customer phone. */
+const PLACEHOLDER_PHONE = "555555555";
+
 function normPhone(p: string | null): string | null {
   const d = (p || "").replace(/[^0-9]/g, "");
   if (!d) return null;
-  return d.length > 9 ? d.slice(-9) : d;
+  const n = d.length > 9 ? d.slice(-9) : d;
+  return n === PLACEHOLDER_PHONE ? null : n;
+}
+
+/**
+ * Customer phone for a row. On RETURN shipments the receiver is Bigmart
+ * (placeholder 555555555) and the customer sits in the sender columns.
+ */
+export function pickCustomerPhone(opts: {
+  isReturn: boolean;
+  receiverPhone: string | null;
+  senderPhone: string | null;
+  senderName: string | null;
+}): string | null {
+  const clean = (v: string | null) => {
+    const n = normPhone(v);
+    return n ? v!.toString().trim() : null;
+  };
+  if (opts.isReturn) {
+    return clean(opts.senderPhone) || clean(opts.senderName) || clean(opts.receiverPhone);
+  }
+  return clean(opts.receiverPhone) || clean(opts.senderPhone);
 }
 
 function parseNum(v: any): number {
@@ -357,11 +382,20 @@ Deno.serve(async (req) => {
         const courierStatus = String(get(row, "courier_status") ?? "").trim();
         const sender = (get(row, "sender_name") ?? "")?.toString().trim() || null;
         const orderNumber = (get(row, "order_number") ?? "")?.toString().trim() || null;
-        const isReturn = senderIsCustomer(sender) || (!orderNumber && senderIsCustomer(sender));
+        const receiver = (get(row, "receiver_name") ?? "")?.toString().trim() || null;
+        const senderPhone = (get(row, "sender_phone") ?? "")?.toString().trim() || null;
+        const isReturn =
+          senderIsCustomer(sender) ||
+          (!orderNumber && !!receiver && /ბიგმარტი|bigmart/i.test(receiver) && !/ბიგმარტი|bigmart/i.test(sender || ""));
         const sm = statusMap.get(courierStatus);
         const state = sm ? (isReturn ? sm.return_state : sm.outbound_state) : "IN_PROGRESS";
         const isFinal = sm ? (isReturn ? sm.return_is_final : sm.outbound_is_final) : false;
-        const phone = (get(row, "phone") ?? "")?.toString().trim() || (isReturn ? sender : null);
+        const phone = pickCustomerPhone({
+          isReturn,
+          receiverPhone: (get(row, "phone") ?? "")?.toString().trim() || null,
+          senderPhone,
+          senderName: sender,
+        });
         const comment = (get(row, "comment") ?? "")?.toString().trim() || null;
         const rawObj: Record<string, any> = {};
         headerStrs.forEach((h, i) => { rawObj[h || `col_${i}`] = row[i]; });
