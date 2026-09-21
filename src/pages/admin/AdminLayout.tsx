@@ -9,6 +9,7 @@ import { useState } from "react";
 import { canAccessPath } from "@/lib/adminPermissions";
 import ToggleStore from "@/components/admin/ToggleStore";
 import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
+import { useCourierAlertBadge } from "@/hooks/useCourierAlertBadge";
 
 const navGroups = [
   {
@@ -87,6 +88,7 @@ const AdminLayout = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { data: alertCount } = useCourierAlertBadge();
 
   const visibleGroups = navGroups
     .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to)) }))
@@ -120,7 +122,14 @@ const AdminLayout = () => {
           {visibleGroups.map((group) => (
             <AccordionItem key={group.label} value={group.label} className="border-0">
               <AccordionTrigger className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground hover:no-underline hover:text-foreground">
-                {group.label}
+                <span className="flex items-center gap-2">
+                  {group.label}
+                  {group.label === "Courier" && !!alertCount && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300">
+                      {alertCount}
+                    </span>
+                  )}
+                </span>
               </AccordionTrigger>
               <AccordionContent className="pb-1">
                 <div className="space-y-1">
