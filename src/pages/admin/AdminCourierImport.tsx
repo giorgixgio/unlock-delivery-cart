@@ -26,7 +26,41 @@ const FINAL_STATES = new Set([
   "RETURN_COLLECTED", "RETURN_FAILED", "RETURN_CANCELLED",
 ]);
 
-const CHUNK_SIZE = 700;
+const CHUNK_SIZE = 400;
+
+/** RFC4180-style CSV parser: quotes, embedded commas/newlines, ""-escapes, ; and tab delimiters. */
+export function parseCsv(text: string): string[][] {
+  const head = text.slice(0, text.indexOf("\n") >= 0 ? text.indexOf("\n") : text.length);
+  const counts = { ",": 0, ";": 0, "\t": 0 } as Record<string, number>;
+  let inQ0 = false;
+  for (const ch of head) {
+    if (ch === '"') inQ0 = !inQ0;
+    else if (!inQ0 && ch in counts) counts[ch]++;
+  }
+  const delim = (Object.keys(counts) as string[]).sort((a, b) => counts[b] - counts[a])[0] || ",";
+
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += ch;
+      continue;
+    }
+    if (ch === '"') { inQ = true; continue; }
+    if (ch === delim) { row.push(field); field = ""; continue; }
+    if (ch === "\r") continue;
+    if (ch === "\n") { row.push(field); field = ""; rows.push(row); row = []; continue; }
+    field += ch;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+}
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const h = await crypto.subtle.digest("SHA-256", buf);
