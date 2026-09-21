@@ -382,11 +382,20 @@ Deno.serve(async (req) => {
         const courierStatus = String(get(row, "courier_status") ?? "").trim();
         const sender = (get(row, "sender_name") ?? "")?.toString().trim() || null;
         const orderNumber = (get(row, "order_number") ?? "")?.toString().trim() || null;
-        const isReturn = senderIsCustomer(sender) || (!orderNumber && senderIsCustomer(sender));
+        const receiver = (get(row, "receiver_name") ?? "")?.toString().trim() || null;
+        const senderPhone = (get(row, "sender_phone") ?? "")?.toString().trim() || null;
+        const isReturn =
+          senderIsCustomer(sender) ||
+          (!orderNumber && !!receiver && /ბიგმარტი|bigmart/i.test(receiver) && !/ბიგმარტი|bigmart/i.test(sender || ""));
         const sm = statusMap.get(courierStatus);
         const state = sm ? (isReturn ? sm.return_state : sm.outbound_state) : "IN_PROGRESS";
         const isFinal = sm ? (isReturn ? sm.return_is_final : sm.outbound_is_final) : false;
-        const phone = (get(row, "phone") ?? "")?.toString().trim() || (isReturn ? sender : null);
+        const phone = pickCustomerPhone({
+          isReturn,
+          receiverPhone: (get(row, "phone") ?? "")?.toString().trim() || null,
+          senderPhone,
+          senderName: sender,
+        });
         const comment = (get(row, "comment") ?? "")?.toString().trim() || null;
         const rawObj: Record<string, any> = {};
         headerStrs.forEach((h, i) => { rawObj[h || `col_${i}`] = row[i]; });
