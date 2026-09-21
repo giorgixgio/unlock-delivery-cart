@@ -19,12 +19,12 @@ function json(status: number, body: Record<string, any>) {
 // ---------- Field mapping ----------
 type Field =
   | "tracking_number" | "courier_status" | "status_date" | "cod_amount" | "company_receives"
-  | "phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number"
+  | "phone" | "sender_phone" | "customer_name" | "city" | "address" | "sku" | "quantity" | "order_number"
   | "sender_name" | "receiver_name" | "order_date" | "pickup_date" | "comment";
 
 const FIELDS: Field[] = [
   "tracking_number", "courier_status", "status_date", "cod_amount", "company_receives",
-  "phone", "customer_name", "city", "address", "sku", "quantity", "order_number",
+  "phone", "sender_phone", "customer_name", "city", "address", "sku", "quantity", "order_number",
   "sender_name", "receiver_name", "order_date", "pickup_date", "comment",
 ];
 
@@ -40,6 +40,7 @@ const FALLBACK_ALIASES: Record<Field, string[]> = {
   cod_amount: ["cod - გადახდა კურიერთან", "cod", "გადასახდელი"],
   company_receives: ["კომპანიას ერიცხება", "კომპანია იღებს", "ჩასარიცხი"],
   phone: ["მიმღ. ტელეფონი", "ტელეფონი", "მობილური", "phone"],
+  sender_phone: ["გამგზ. ტელეფონი", "sender_phone"],
   customer_name: ["მიმღ. სახელი, გვარი", "მიმღები", "name"],
   city: ["მიმღ. ქალაქი", "ქალაქი", "city"],
   address: ["მიმღ. მისამართი", "მისამართი", "address"],
