@@ -163,12 +163,9 @@ export default function AdminCourierImport() {
       const isCsv = file.name.toLowerCase().endsWith(".csv");
       let ws: any;
       if (isCsv) {
-        const text = new TextDecoder().decode(buf);
+        const text = new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
         const sheet = wb.addWorksheet("csv");
-        for (const line of text.split(/\r?\n/)) {
-          if (!line.trim()) continue;
-          sheet.addRow(line.split(/[,;\t]/).map((c) => c.replace(/^"|"$/g, "")));
-        }
+        for (const cells of parseCsv(text)) sheet.addRow(cells);
         ws = sheet;
       } else {
         await wb.xlsx.load(buf);
