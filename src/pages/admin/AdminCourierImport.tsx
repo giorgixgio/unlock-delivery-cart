@@ -354,24 +354,38 @@ export default function AdminCourierImport() {
     }
   }
 
+  /** Invoke the import function and surface the REAL server error body (invoke() drops it on non-2xx). */
+  async function callImport(body: any): Promise<any> {
+    const { data, error } = await supabase.functions.invoke("import-courier", { body });
+    if (error) {
+      let serverBody: any = null;
+      try { serverBody = await (error as any)?.context?.json?.(); } catch { /* not json */ }
+      const err: any = new Error(serverBody?.message || error.message || "Edge function failed");
+      err.stage = serverBody?.details?.stage;
+      err.details = serverBody?.details;
+      throw err;
+    }
+    if (!data?.success) {
+      const err: any = new Error(data?.message || "Import failed");
+      err.stage = data?.details?.stage;
+      err.details = data?.details;
+      throw err;
+    }
+    return data;
+  }
+
   async function confirmImport() {
     if (!parsed) return;
     setUploading(true); setServerError(null); setProgress(0);
     let batchId: string | null = null;
     try {
-      const start = await supabase.functions.invoke("import-courier", {
-        body: {
-          mode: "start",
-          file_name: parsed.file_name, file_hash: parsed.file_hash, file_size: parsed.file_size,
-          total_rows: parsed.rows.length,
-          covered_from: parsed.minDate ? parsed.minDate.slice(0, 10) : null,
-          covered_to: parsed.maxDate ? parsed.maxDate.slice(0, 10) : null,
-        },
+      const sBody = await callImport({
+        mode: "start",
+        file_name: parsed.file_name, file_hash: parsed.file_hash, file_size: parsed.file_size,
+        total_rows: parsed.rows.length,
+        covered_from: parsed.minDate ? parsed.minDate.slice(0, 10) : null,
+        covered_to: parsed.maxDate ? parsed.maxDate.slice(0, 10) : null,
       });
-      const sBody: any = start.data;
-      if (start.error || !sBody?.success) {
-        throw new Error(sBody?.message || start.error?.message || "Could not start import");
-      }
       if (sBody.details?.deduped) {
         toast({ title: "Already imported", description: sBody.message });
         setParsed(null); setPreview(null); await load();
@@ -384,15 +398,11 @@ export default function AdminCourierImport() {
       for (let i = 0; i < parsed.rows.length; i += CHUNK_SIZE) chunks.push(parsed.rows.slice(i, i + CHUNK_SIZE));
 
       for (let i = 0; i < chunks.length; i++) {
-        const { data, error } = await supabase.functions.invoke("import-courier", {
-          body: {
-            mode: "chunk", batch_id: batchId,
-            headers: parsed.headers, rows: chunks[i],
-            only_from: onlyFrom ? new Date(onlyFrom).toISOString() : null,
-          },
+        const body = await callImport({
+          mode: "chunk", batch_id: batchId,
+          headers: parsed.headers, rows: chunks[i],
+          only_from: onlyFrom ? new Date(onlyFrom).toISOString() : null,
         });
-        const body: any = data;
-        if (error || !body?.success) throw new Error(body?.message || error?.message || "Chunk failed");
         const d = body.details;
         totals.new += d.new; totals.updated += d.updated; totals.unchanged += d.unchanged;
         totals.ignored += d.ignored_final; totals.conflicts += d.conflicts;
@@ -412,13 +422,19 @@ export default function AdminCourierImport() {
       setParsed(null); setPreview(null);
       await load();
     } catch (e: any) {
+      const stage = e?.stage ? ` (stage: ${e.stage})` : "";
+      const msg = `${e?.message || String(e)}${stage}`;
       if (batchId) {
+        // keep_existing_error: never overwrite a specific server-side message with a generic one
         await supabase.functions.invoke("import-courier", {
-          body: { mode: "finalize", batch_id: batchId, failed: true, error_message: e?.message || String(e) },
+          body: {
+            mode: "finalize", batch_id: batchId, failed: true,
+            error_message: msg, keep_existing_error: !e?.stage,
+          },
         });
       }
-      setServerError({ message: e?.message || String(e) });
-      toast({ title: "Import failed", description: e?.message || String(e), variant: "destructive" });
+      setServerError({ message: e?.message || String(e), details: { stage: e?.stage, ...(e?.details || {}) } });
+      toast({ title: "Import failed", description: msg, variant: "destructive" });
       await load();
     } finally {
       setUploading(false);
