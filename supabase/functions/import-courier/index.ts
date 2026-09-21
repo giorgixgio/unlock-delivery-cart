@@ -122,10 +122,34 @@ function parseCommentItems(comment: string | null): { code: string; qty: number 
 const itemsKey = (items: { code: string; qty: number }[]) =>
   items.map((i) => `${i.code}:${i.qty}`).sort().join("|");
 
+/** Courier placeholder number used for Bigmart itself — never a customer phone. */
+const PLACEHOLDER_PHONE = "555555555";
+
 function normPhone(p: string | null): string | null {
   const d = (p || "").replace(/[^0-9]/g, "");
   if (!d) return null;
-  return d.length > 9 ? d.slice(-9) : d;
+  const n = d.length > 9 ? d.slice(-9) : d;
+  return n === PLACEHOLDER_PHONE ? null : n;
+}
+
+/**
+ * Customer phone for a row. On RETURN shipments the receiver is Bigmart
+ * (placeholder 555555555) and the customer sits in the sender columns.
+ */
+export function pickCustomerPhone(opts: {
+  isReturn: boolean;
+  receiverPhone: string | null;
+  senderPhone: string | null;
+  senderName: string | null;
+}): string | null {
+  const clean = (v: string | null) => {
+    const n = normPhone(v);
+    return n ? v!.toString().trim() : null;
+  };
+  if (opts.isReturn) {
+    return clean(opts.senderPhone) || clean(opts.senderName) || clean(opts.receiverPhone);
+  }
+  return clean(opts.receiverPhone) || clean(opts.senderPhone);
 }
 
 function parseNum(v: any): number {
