@@ -232,10 +232,12 @@ Deno.serve(async (req) => {
       if (!batchId) return json(400, { success: false, message: "Missing batch_id", details: { stage } });
       const { data: batch } = await admin
         .from("courier_import_batches").select("*").eq("id", batchId).maybeSingle();
+      // never overwrite a specific server-side error with a generic client message
+      const keepExisting = payload.keep_existing_error && (batch as any)?.error_message;
       const { data: updated } = await admin.from("courier_import_batches").update({
         status: payload.failed ? "failed" : "completed",
         finalized_at: new Date().toISOString(),
-        error_message: payload.error_message || null,
+        error_message: keepExisting ? (batch as any).error_message : (payload.error_message || null),
       }).eq("id", batchId).select().single();
       return json(200, { success: true, message: "Batch finalized", details: { batch: updated || batch } });
     }

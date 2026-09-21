@@ -521,6 +521,11 @@ export default function AdminCourierImport() {
         <Alert variant="destructive">
           <AlertCircle className="w-4 h-4" />
           <AlertTitle>{serverError.message}</AlertTitle>
+          {serverError.details?.stage && (
+            <AlertDescription className="text-xs font-mono">
+              stage: {serverError.details.stage}
+            </AlertDescription>
+          )}
         </Alert>
       )}
 
