@@ -35,15 +35,24 @@ const navGroups = [
     ],
   },
   {
-    label: "Shipping & Courier",
+    label: "Shipping",
     items: [
       { to: "/admin/shipping", label: "Shipping", icon: Truck },
       { to: "/admin/courier-labels", label: "Courier Labels", icon: Printer },
       { to: "/admin/city-qa", label: "City QA", icon: MapPin },
-      { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
+    ],
+  },
+  {
+    label: "Courier",
+    items: [
+      { to: "/admin/courier-import", label: "Import", icon: Upload },
+      { to: "/admin/courier/stats", label: "Statistics", icon: BarChart3 },
+      { to: "/admin/courier/alerts", label: "Alerts", icon: AlertTriangle },
+      { to: "/admin/courier/restock", label: "Restock", icon: PackageCheck },
+      { to: "/admin/courier/statuses", label: "Statuses", icon: ListChecks },
       { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },
       { to: "/admin/courier-import/return-matching", label: "Return Matching", icon: GitMerge },
-      { to: "/admin/courier-import/analytics", label: "Courier Analytics", icon: LineChart },
+      { to: "/admin/courier-import/analytics", label: "Shipment Browser", icon: LineChart },
     ],
   },
   {
