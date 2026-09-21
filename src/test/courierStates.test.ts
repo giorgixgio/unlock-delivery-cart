@@ -62,3 +62,20 @@ describe("physical recovery", () => {
     expect(recoveryOf(ds, base, byTracking)).toBe("not_registered");
   });
 });
+
+import { parseCsv } from "@/pages/admin/AdminCourierImport";
+
+describe("csv parsing", () => {
+  it("keeps commas inside quoted Georgian fields", () => {
+    const csv = 'თრექინგი,სტატუსი,კომენტარი,მიმღ. მისამართი\n' +
+      '"S-1","ჩაბარებული","[S-0059] 170 - 1, 57 - 1","ქ. თბილისი, ვაჟა-ფშაველას 5"\n';
+    const rows = parseCsv(csv);
+    expect(rows.length).toBe(2);
+    expect(rows[1]).toEqual(["S-1", "ჩაბარებული", "[S-0059] 170 - 1, 57 - 1", "ქ. თბილისი, ვაჟა-ფშაველას 5"]);
+  });
+
+  it("handles semicolon files, escaped quotes and newlines inside fields", () => {
+    const rows = parseCsv('a;b\n"x ""y""";"line1\nline2"\n');
+    expect(rows[1]).toEqual(['x "y"', "line1\nline2"]);
+  });
+});
