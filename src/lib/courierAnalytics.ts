@@ -4,19 +4,29 @@ import { RETURN_IN_TRANSIT_STATUSES } from "@/lib/courierStates";
 
 export type Recovery = "collected" | "on_the_way" | "not_registered";
 
-export const isOutbound = (s: Shipment) => !s.is_return;
-export const isDelivered = (s: Shipment) => s.derived_state === "DELIVERED";
-export const isFailedFinal = (s: Shipment) =>
+/** Minimum shape needed for the shared delivery-rate math. */
+export type RateInput = { derived_state: string | null; is_return: boolean | null };
+
+export const isOutbound = (s: RateInput) => !s.is_return;
+export const isDelivered = (s: RateInput) => s.derived_state === "DELIVERED";
+/** Finalized failure: failed-final + parcels that came back on their own tracking. */
+export const isFailedFinal = (s: RateInput) =>
   s.derived_state === "FAILED_FINAL" || s.derived_state === "RETURNED_FAILED";
-export const isExcluded = (s: Shipment) => s.derived_state === "CANCELLED_EXCLUDED";
-export const isInProgress = (s: Shipment) =>
+export const isExcluded = (s: RateInput) => s.derived_state === "CANCELLED_EXCLUDED";
+export const isInProgress = (s: RateInput) =>
   s.derived_state === "IN_PROGRESS" || s.derived_state === "FAILED_ATTEMPT";
 
 /** All outbound shipments that were actually handed to the courier. */
-export const handedToCourier = (list: Shipment[]) =>
+export const handedToCourier = <T extends RateInput>(list: T[]) =>
   list.filter((s) => isOutbound(s) && !isExcluded(s));
 
-export function rateBlock(list: Shipment[]) {
+/**
+ * THE single delivery-rate formula used everywhere:
+ *   deliveryRate = delivered / (delivered + finalized failed)
+ * In-progress, failed-attempt (non-final), cancelled/excluded and return
+ * shipments are never part of the denominator.
+ */
+export function rateBlock(list: RateInput[]) {
   const handed = handedToCourier(list);
   const delivered = handed.filter(isDelivered).length;
   const failed = handed.filter(isFailedFinal).length;
@@ -27,7 +37,7 @@ export function rateBlock(list: Shipment[]) {
     delivered,
     failed,
     resolved,
-    unresolved,
+    unresolved, // still in progress — show next to the percentage, never in it
     deliveryRate: resolved ? delivered / resolved : 0,
     resolvedShare: handed.length ? resolved / handed.length : 0,
   };

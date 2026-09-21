@@ -2622,6 +2622,11 @@ export type Database = {
           unpacked: number
         }[]
       }
+      courier_link_returns: { Args: { p_trackings: string[] }; Returns: Json }
+      courier_sync_orders: {
+        Args: { p_batch_id: string; p_rows: Json }
+        Returns: Json
+      }
       create_packing_wave: {
         Args: { actor: string }
         Returns: {

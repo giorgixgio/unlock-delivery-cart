@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DerivedStatus } from "@/lib/courierStatus";
+import { rateBlock, isDelivered, isFailedFinal, isInProgress, isExcluded } from "@/lib/courierAnalytics";
 
 type Shipment = {
   id: string; tracking_number: string; sku: string | null; city: string | null;
-  derived_status: DerivedStatus | null; shipment_type: string | null;
+  derived_state: string | null; is_return: boolean | null;
+  current_courier_status: string | null;
   cod_amount: number | null; company_receives: number | null;
   first_seen_at: string | null; latest_status_date: string | null;
 };
@@ -17,11 +18,6 @@ function daysBetween(a: string | null, b: string | null): number | null {
   if (!a || !b) return null;
   return (new Date(b).getTime() - new Date(a).getTime()) / 86400000;
 }
-
-// "Customer delivery attempt" = excludes return-to-sender tracking rows.
-// "Finalized" = courier flow is done (delivered or failed). Excludes pending and cancelled-before-courier.
-const isFinalized = (d: DerivedStatus | null) =>
-  d === "DELIVERED_TO_CUSTOMER" || d === "FINAL_NOT_DELIVERED";
 
 export default function AdminCourierAnalytics() {
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -41,7 +37,7 @@ export default function AdminCourierAnalytics() {
       const fromISO = `${from}T00:00:00Z`;
       const toISO = `${to}T23:59:59Z`;
       let q = supabase.from("courier_shipments")
-        .select("id, tracking_number, sku, city, derived_status, shipment_type, cod_amount, company_receives, first_seen_at, latest_status_date")
+        .select("id, tracking_number, sku, city, derived_state, is_return, current_courier_status, cod_amount, company_receives, first_seen_at, latest_status_date")
         .limit(20000);
       if (includeUndated) {
         q = q.or(`and(latest_status_date.gte.${fromISO},latest_status_date.lte.${toISO}),latest_status_date.is.null`);
@@ -57,59 +53,29 @@ export default function AdminCourierAnalytics() {
   }, [from, to, skuFilter, cityFilter, includeUndated]);
 
   const kpis = useMemo(() => {
-    // Only customer-delivery rows count toward the main rate.
-    // Return-to-sender tracking is excluded entirely.
-    const customerRows = ships.filter((s) => s.shipment_type !== "RETURN_TO_SENDER");
-
-    let delivered = 0, failed = 0, cancelledBefore = 0, pending = 0, returned = 0;
+    const r = rateBlock(ships);
     let codSum = 0, compSum = 0;
     const delivDays: number[] = [];
-
-    for (const s of customerRows) {
-      switch (s.derived_status) {
-        case "DELIVERED_TO_CUSTOMER":
-          delivered++;
-          codSum += Number(s.cod_amount || 0);
-          compSum += Number(s.company_receives || 0);
-          const d = daysBetween(s.first_seen_at, s.latest_status_date);
-          if (d != null && d >= 0) delivDays.push(d);
-          break;
-        case "FINAL_NOT_DELIVERED":
-          failed++;
-          break;
-        case "CANCELLED_BEFORE_COURIER":
-          cancelledBefore++;
-          break;
-        case "IN_TRANSIT":
-          pending++;
-          break;
-        case "RETURNED_TO_SENDER":
-          returned++;
-          break;
-        case "CANCELLED_OR_REFUSED": // legacy
-          failed++;
-          break;
-        default:
-          pending++;
-      }
+    for (const s of ships) {
+      if (s.is_return || !isDelivered(s)) continue;
+      codSum += Number(s.cod_amount || 0);
+      compSum += Number(s.company_receives || 0);
+      const d = daysBetween(s.first_seen_at, s.latest_status_date);
+      if (d != null && d >= 0) delivDays.push(d);
     }
-    // Return-to-sender tracking (separate, excluded from main rate)
-    const returnTracking = ships.filter((s) => s.shipment_type === "RETURN_TO_SENDER").length + returned;
-
-    const finalized = delivered + failed;
-    const pct = (n: number) => finalized ? Math.round((n / finalized) * 1000) / 10 : 0;
     const avg = (a: number[]) => a.length ? (a.reduce((s, v) => s + v, 0) / a.length).toFixed(1) : "—";
-
+    const pct1 = (n: number) => Math.round(n * 1000) / 10;
     return {
       totalRows: ships.length,
-      finalized,
-      delivered,
-      failed,
-      pending,
-      cancelledBefore,
-      returnTracking,
-      deliveryRate: pct(delivered),
-      failureRate: pct(failed),
+      finalized: r.resolved,
+      delivered: r.delivered,
+      failed: r.failed,
+      inProgress: ships.filter((s) => !s.is_return && isInProgress(s)).length,
+      cancelledBefore: ships.filter((s) => !s.is_return && isExcluded(s)).length,
+      returnTracking: ships.filter((s) => s.is_return).length,
+      deliveryRate: pct1(r.deliveryRate),
+      failureRate: pct1(r.resolved ? r.failed / r.resolved : 0),
+      resolvedShare: pct1(r.resolvedShare),
       codSum, compSum,
       avgDelivDays: avg(delivDays),
     };
@@ -118,13 +84,12 @@ export default function AdminCourierAnalytics() {
   const skuTable = useMemo(() => {
     const m = new Map<string, any>();
     for (const s of ships) {
-      if (s.shipment_type === "RETURN_TO_SENDER") continue;
-      if (!isFinalized(s.derived_status)) continue;
+      if (s.is_return) continue;
       const k = s.sku || "—";
-      const r = m.get(k) || { sku: k, finalized: 0, delivered: 0, failed: 0, revenue: 0 };
-      r.finalized++;
-      if (s.derived_status === "DELIVERED_TO_CUSTOMER") { r.delivered++; r.revenue += Number(s.company_receives || 0); }
-      else if (s.derived_status === "FINAL_NOT_DELIVERED") r.failed++;
+      const r = m.get(k) || { sku: k, finalized: 0, delivered: 0, failed: 0, inProgress: 0, revenue: 0 };
+      if (isInProgress(s)) r.inProgress++;
+      if (isDelivered(s)) { r.finalized++; r.delivered++; r.revenue += Number(s.company_receives || 0); }
+      else if (isFailedFinal(s)) { r.finalized++; r.failed++; }
       m.set(k, r);
     }
     return Array.from(m.values()).map((r) => ({
@@ -137,13 +102,12 @@ export default function AdminCourierAnalytics() {
   const cityTable = useMemo(() => {
     const m = new Map<string, any>();
     for (const s of ships) {
-      if (s.shipment_type === "RETURN_TO_SENDER") continue;
-      if (!isFinalized(s.derived_status)) continue;
+      if (s.is_return) continue;
       const k = s.city || "—";
-      const r = m.get(k) || { city: k, finalized: 0, delivered: 0, failed: 0 };
-      r.finalized++;
-      if (s.derived_status === "DELIVERED_TO_CUSTOMER") r.delivered++;
-      else if (s.derived_status === "FINAL_NOT_DELIVERED") r.failed++;
+      const r = m.get(k) || { city: k, finalized: 0, delivered: 0, failed: 0, inProgress: 0 };
+      if (isInProgress(s)) r.inProgress++;
+      if (isDelivered(s)) { r.finalized++; r.delivered++; }
+      else if (isFailedFinal(s)) { r.finalized++; r.failed++; }
       m.set(k, r);
     }
     return Array.from(m.values()).map((r) => ({
@@ -156,7 +120,8 @@ export default function AdminCourierAnalytics() {
       <div>
         <h1 className="text-2xl font-extrabold">Courier Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          Main rate = delivered ÷ (delivered + failed). Pending, cancelled-before-courier and return-to-sender rows are excluded.
+          ჩაბარების პროცენტი = ჩაბარებული ÷ (ჩაბარებული + საბოლოოდ ჩაუბარებელი). გზაში მყოფი, გაუქმებული
+          და დაბრუნების გზავნილები არ მონაწილეობენ.
         </p>
       </div>
 
@@ -183,7 +148,12 @@ export default function AdminCourierAnalytics() {
           <Kpi label="Courier Finalized Orders" value={kpis.finalized} accent="border-l-4 border-l-foreground" />
           <Kpi label="Delivered to Client" value={kpis.delivered} sub={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
           <Kpi label="Failed / Refused" value={kpis.failed} sub={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
-          <Kpi label="Successful Delivery Rate" value={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
+          <Kpi
+            label="ჩაბარების პროცენტი"
+            value={`${kpis.deliveryRate}%`}
+            sub={`${kpis.inProgress} გზაში — არ ითვლება • დასრულებულია ${kpis.resolvedShare}%`}
+            accent="border-l-4 border-l-green-600"
+          />
           <Kpi label="Failed / Refused Rate" value={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
         </div>
       </div>
@@ -192,7 +162,7 @@ export default function AdminCourierAnalytics() {
       <div>
         <h2 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Excluded from main rate</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Kpi label="Pending / Active" value={kpis.pending} sub="in transit, warehouse" />
+          <Kpi label="Pending / Active" value={kpis.inProgress} sub="in transit, warehouse" />
           <Kpi label="Cancelled Before Courier" value={kpis.cancelledBefore} sub="მიღების გაუქმება" />
           <Kpi label="Return-to-Sender rows" value={kpis.returnTracking} sub="separate tracking" />
           <Kpi label="Total uploaded rows" value={kpis.totalRows} />
@@ -230,7 +200,14 @@ export default function AdminCourierAnalytics() {
                   <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
                   <TableCell className="text-right text-red-700">{r.failed}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {r.deliveryRate}%
+                    {r.inProgress > 0 && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        +{r.inProgress} გზაში
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">{r.failureRate}%</TableCell>
                   <TableCell className="text-right">{Math.round(r.revenue)}</TableCell>
                 </TableRow>
@@ -259,7 +236,14 @@ export default function AdminCourierAnalytics() {
                   <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
                   <TableCell className="text-right text-red-700">{r.failed}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {r.deliveryRate}%
+                    {r.inProgress > 0 && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        +{r.inProgress} გზაში
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

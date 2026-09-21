@@ -26,7 +26,41 @@ const FINAL_STATES = new Set([
   "RETURN_COLLECTED", "RETURN_FAILED", "RETURN_CANCELLED",
 ]);
 
-const CHUNK_SIZE = 700;
+const CHUNK_SIZE = 400;
+
+/** RFC4180-style CSV parser: quotes, embedded commas/newlines, ""-escapes, ; and tab delimiters. */
+export function parseCsv(text: string): string[][] {
+  const head = text.slice(0, text.indexOf("\n") >= 0 ? text.indexOf("\n") : text.length);
+  const counts = { ",": 0, ";": 0, "\t": 0 } as Record<string, number>;
+  let inQ0 = false;
+  for (const ch of head) {
+    if (ch === '"') inQ0 = !inQ0;
+    else if (!inQ0 && ch in counts) counts[ch]++;
+  }
+  const delim = (Object.keys(counts) as string[]).sort((a, b) => counts[b] - counts[a])[0] || ",";
+
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += ch;
+      continue;
+    }
+    if (ch === '"') { inQ = true; continue; }
+    if (ch === delim) { row.push(field); field = ""; continue; }
+    if (ch === "\r") continue;
+    if (ch === "\n") { row.push(field); field = ""; rows.push(row); row = []; continue; }
+    field += ch;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+}
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const h = await crypto.subtle.digest("SHA-256", buf);
@@ -163,12 +197,9 @@ export default function AdminCourierImport() {
       const isCsv = file.name.toLowerCase().endsWith(".csv");
       let ws: any;
       if (isCsv) {
-        const text = new TextDecoder().decode(buf);
+        const text = new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
         const sheet = wb.addWorksheet("csv");
-        for (const line of text.split(/\r?\n/)) {
-          if (!line.trim()) continue;
-          sheet.addRow(line.split(/[,;\t]/).map((c) => c.replace(/^"|"$/g, "")));
-        }
+        for (const cells of parseCsv(text)) sheet.addRow(cells);
         ws = sheet;
       } else {
         await wb.xlsx.load(buf);
@@ -323,24 +354,38 @@ export default function AdminCourierImport() {
     }
   }
 
+  /** Invoke the import function and surface the REAL server error body (invoke() drops it on non-2xx). */
+  async function callImport(body: any): Promise<any> {
+    const { data, error } = await supabase.functions.invoke("import-courier", { body });
+    if (error) {
+      let serverBody: any = null;
+      try { serverBody = await (error as any)?.context?.json?.(); } catch { /* not json */ }
+      const err: any = new Error(serverBody?.message || error.message || "Edge function failed");
+      err.stage = serverBody?.details?.stage;
+      err.details = serverBody?.details;
+      throw err;
+    }
+    if (!data?.success) {
+      const err: any = new Error(data?.message || "Import failed");
+      err.stage = data?.details?.stage;
+      err.details = data?.details;
+      throw err;
+    }
+    return data;
+  }
+
   async function confirmImport() {
     if (!parsed) return;
     setUploading(true); setServerError(null); setProgress(0);
     let batchId: string | null = null;
     try {
-      const start = await supabase.functions.invoke("import-courier", {
-        body: {
-          mode: "start",
-          file_name: parsed.file_name, file_hash: parsed.file_hash, file_size: parsed.file_size,
-          total_rows: parsed.rows.length,
-          covered_from: parsed.minDate ? parsed.minDate.slice(0, 10) : null,
-          covered_to: parsed.maxDate ? parsed.maxDate.slice(0, 10) : null,
-        },
+      const sBody = await callImport({
+        mode: "start",
+        file_name: parsed.file_name, file_hash: parsed.file_hash, file_size: parsed.file_size,
+        total_rows: parsed.rows.length,
+        covered_from: parsed.minDate ? parsed.minDate.slice(0, 10) : null,
+        covered_to: parsed.maxDate ? parsed.maxDate.slice(0, 10) : null,
       });
-      const sBody: any = start.data;
-      if (start.error || !sBody?.success) {
-        throw new Error(sBody?.message || start.error?.message || "Could not start import");
-      }
       if (sBody.details?.deduped) {
         toast({ title: "Already imported", description: sBody.message });
         setParsed(null); setPreview(null); await load();
@@ -353,15 +398,11 @@ export default function AdminCourierImport() {
       for (let i = 0; i < parsed.rows.length; i += CHUNK_SIZE) chunks.push(parsed.rows.slice(i, i + CHUNK_SIZE));
 
       for (let i = 0; i < chunks.length; i++) {
-        const { data, error } = await supabase.functions.invoke("import-courier", {
-          body: {
-            mode: "chunk", batch_id: batchId,
-            headers: parsed.headers, rows: chunks[i],
-            only_from: onlyFrom ? new Date(onlyFrom).toISOString() : null,
-          },
+        const body = await callImport({
+          mode: "chunk", batch_id: batchId,
+          headers: parsed.headers, rows: chunks[i],
+          only_from: onlyFrom ? new Date(onlyFrom).toISOString() : null,
         });
-        const body: any = data;
-        if (error || !body?.success) throw new Error(body?.message || error?.message || "Chunk failed");
         const d = body.details;
         totals.new += d.new; totals.updated += d.updated; totals.unchanged += d.unchanged;
         totals.ignored += d.ignored_final; totals.conflicts += d.conflicts;
@@ -381,13 +422,19 @@ export default function AdminCourierImport() {
       setParsed(null); setPreview(null);
       await load();
     } catch (e: any) {
+      const stage = e?.stage ? ` (stage: ${e.stage})` : "";
+      const msg = `${e?.message || String(e)}${stage}`;
       if (batchId) {
+        // keep_existing_error: never overwrite a specific server-side message with a generic one
         await supabase.functions.invoke("import-courier", {
-          body: { mode: "finalize", batch_id: batchId, failed: true, error_message: e?.message || String(e) },
+          body: {
+            mode: "finalize", batch_id: batchId, failed: true,
+            error_message: msg, keep_existing_error: !e?.stage,
+          },
         });
       }
-      setServerError({ message: e?.message || String(e) });
-      toast({ title: "Import failed", description: e?.message || String(e), variant: "destructive" });
+      setServerError({ message: e?.message || String(e), details: { stage: e?.stage, ...(e?.details || {}) } });
+      toast({ title: "Import failed", description: msg, variant: "destructive" });
       await load();
     } finally {
       setUploading(false);
@@ -474,6 +521,11 @@ export default function AdminCourierImport() {
         <Alert variant="destructive">
           <AlertCircle className="w-4 h-4" />
           <AlertTitle>{serverError.message}</AlertTitle>
+          {serverError.details?.stage && (
+            <AlertDescription className="text-xs font-mono">
+              stage: {serverError.details.stage}
+            </AlertDescription>
+          )}
         </Alert>
       )}
 

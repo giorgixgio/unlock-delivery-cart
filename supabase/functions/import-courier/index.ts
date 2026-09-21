@@ -205,9 +205,13 @@ Deno.serve(async (req) => {
       if (!file_name || !file_hash) {
         return json(400, { success: false, message: "Missing file_name / file_hash", details: { stage } });
       }
-      const { data: existing } = await admin
-        .from("courier_import_batches").select("*").eq("file_hash", file_hash).maybeSingle();
-      if (existing && existing.status === "completed") {
+      // Only a COMPLETED batch with the same hash blocks a re-upload; failed ones may be retried.
+      const { data: existingRows } = await admin
+        .from("courier_import_batches").select("*")
+        .eq("file_hash", file_hash).eq("status", "completed")
+        .order("uploaded_at", { ascending: false }).limit(1);
+      const existing = (existingRows || [])[0];
+      if (existing) {
         return json(200, {
           success: true,
           message: `This exact file was already imported on ${new Date(existing.uploaded_at).toLocaleString()}.`,
@@ -232,10 +236,12 @@ Deno.serve(async (req) => {
       if (!batchId) return json(400, { success: false, message: "Missing batch_id", details: { stage } });
       const { data: batch } = await admin
         .from("courier_import_batches").select("*").eq("id", batchId).maybeSingle();
+      // never overwrite a specific server-side error with a generic client message
+      const keepExisting = payload.keep_existing_error && (batch as any)?.error_message;
       const { data: updated } = await admin.from("courier_import_batches").update({
         status: payload.failed ? "failed" : "completed",
         finalized_at: new Date().toISOString(),
-        error_message: payload.error_message || null,
+        error_message: keepExisting ? (batch as any).error_message : (payload.error_message || null),
       }).eq("id", batchId).select().single();
       return json(200, { success: true, message: "Batch finalized", details: { batch: updated || batch } });
     }
@@ -408,7 +414,6 @@ Deno.serve(async (req) => {
           tracking_number: p.tracking,
           order_number: p.orderNumber ?? ex.order_number,
           phone: p.phone ?? ex.phone,
-          phone_normalized: p.phoneNorm,
           customer_name: p.customerName ?? ex.customer_name,
           city: p.city ?? ex.city,
           address: p.address ?? ex.address,
@@ -439,7 +444,7 @@ Deno.serve(async (req) => {
         toUpsert.push({
           tracking_number: p.tracking,
           order_number: p.orderNumber,
-          phone: p.phone, phone_normalized: p.phoneNorm,
+          phone: p.phone,
           customer_name: p.customerName, city: p.city, address: p.address,
           sku: p.sku, quantity: p.quantity,
           cod_amount: p.cod, company_receives: p.comp,
@@ -472,83 +477,37 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    // ---- Match outbound rows to orders (order number first, tracking second) ----
+    // ---- Match outbound rows to orders (set-based, one RPC) ----
     stage = "match_orders";
     let ordersUpdated = 0, unmatchedRows = 0;
     const outbound = parsed.filter((p) => !p.isReturn);
-    const byNumber = new Map<string, Parsed>();
-    const byTracking = new Map<string, Parsed>();
-    for (const p of outbound) {
-      if (p.orderNumber) byNumber.set(p.orderNumber, p);
-      byTracking.set(p.tracking, p);
-    }
-    const trackingToOrder = new Map<string, string>();
-    for (const nchunk of chunk([...byNumber.keys()], 300)) {
-      const { data: oRows } = await admin.from("orders")
-        .select("id, public_order_number, tracking_number").in("public_order_number", nchunk);
-      const found = new Set<string>();
-      for (const o of (oRows || []) as any[]) {
-        found.add(o.public_order_number);
-        const p = byNumber.get(o.public_order_number)!;
-        trackingToOrder.set(p.tracking, o.id);
-        const patch: any = { courier_status: p.courierStatus, courier_import_batch_id: batchId };
-        if (!o.tracking_number) patch.tracking_number = p.tracking;
-        const { error } = await admin.from("orders").update(patch).eq("id", o.id);
-        if (!error) ordersUpdated++;
+    if (outbound.length) {
+      const syncRows = outbound.map((p) => ({
+        tracking: p.tracking,
+        order_number: p.orderNumber ?? null,
+        status: p.courierStatus,
+      }));
+      for (const part of chunk(syncRows, 1000)) {
+        const { data: res, error } = await admin.rpc("courier_sync_orders", {
+          p_batch_id: batchId, p_rows: part,
+        });
+        if (error) throw error;
+        ordersUpdated += Number((res as any)?.orders_updated || 0);
+        unmatchedRows += Number((res as any)?.unmatched || 0);
       }
-      unmatchedRows += nchunk.filter((n) => !found.has(n)).length;
-    }
-    // fallback match by tracking number
-    const stillUnmatched = outbound.filter((p) => !trackingToOrder.has(p.tracking)).map((p) => p.tracking);
-    for (const tchunk of chunk(stillUnmatched, 300)) {
-      const { data: oRows } = await admin.from("orders")
-        .select("id, tracking_number").in("tracking_number", tchunk);
-      for (const o of (oRows || []) as any[]) {
-        const p = byTracking.get(o.tracking_number);
-        if (!p) continue;
-        trackingToOrder.set(p.tracking, o.id);
-        await admin.from("orders")
-          .update({ courier_status: p.courierStatus, courier_import_batch_id: batchId }).eq("id", o.id);
-        ordersUpdated++;
-      }
-    }
-    // write original_order_id back onto shipments
-    for (const [tracking, orderId] of trackingToOrder) {
-      const ex = existingMap.get(tracking);
-      if (ex?.original_order_id) continue;
-      await admin.from("courier_shipments")
-        .update({ original_order_id: orderId }).eq("tracking_number", tracking);
     }
 
-    // ---- Link returns to their original outbound shipment ----
+    // ---- Link returns to their original outbound shipment (set-based, one RPC) ----
     stage = "link_returns";
     let linkedReturns = 0, unlinkedReturns = 0;
     const returns = parsed.filter((p) => p.isReturn);
-    for (const r of returns) {
-      if (!r.phoneNorm) { unlinkedReturns++; continue; }
-      const { data: cands } = await admin.from("courier_shipments")
-        .select("tracking_number, order_date, comment_items, original_order_id, latest_status_date")
-        .eq("phone_normalized", r.phoneNorm)
-        .eq("is_return", false)
-        .limit(25);
-      const list = (cands || []) as any[];
-      if (!list.length) { unlinkedReturns++; continue; }
-      const rKey = itemsKey(r.items);
-      const refDate = r.statusDate || r.orderDate;
-      const eligible = list.filter((c) => !refDate || !c.order_date || c.order_date <= refDate);
-      const pool = eligible.length ? eligible : list;
-      const exact = pool.find((c) => itemsKey(c.comment_items || []) === rKey && rKey);
-      const pick = exact || pool.sort((a, b) =>
-        String(b.order_date || "").localeCompare(String(a.order_date || "")))[0];
-      if (!pick) { unlinkedReturns++; continue; }
-      await admin.from("courier_shipments").update({
-        linked_original_tracking_number: pick.tracking_number,
-        original_order_id: pick.original_order_id ?? null,
-      }).eq("tracking_number", r.tracking);
-      await admin.from("courier_shipments").update({
-        linked_return_tracking_number: r.tracking,
-      }).eq("tracking_number", pick.tracking_number);
-      linkedReturns++;
+    if (returns.length) {
+      for (const part of chunk(returns.map((r) => r.tracking), 1000)) {
+        const { data: res, error } = await admin.rpc("courier_link_returns", { p_trackings: part });
+        if (error) throw error;
+        linkedReturns += Number((res as any)?.linked || 0);
+        unlinkedReturns += Number((res as any)?.unlinked || 0);
+      }
     }
 
     // ---- History ----

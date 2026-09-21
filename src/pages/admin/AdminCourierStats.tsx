@@ -204,7 +204,11 @@ export default function AdminCourierStats() {
       </CardContent></Card>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Kpi label="ჩაბარების პროცენტი" value={pct(kpi.deliveryRate)} sub={`${kpi.delivered} / ${kpi.resolved}`} />
+        <Kpi
+          label="ჩაბარების პროცენტი"
+          value={pct(kpi.deliveryRate)}
+          sub={`${kpi.delivered} / ${kpi.resolved} • ${kpi.unresolved} ჯერ გზაშია (არ ითვლება)`}
+        />
         <Kpi label="დასრულებულთა წილი" value={pct(kpi.resolvedShare)} sub={`${kpi.resolved} / ${kpi.handed}`} />
         <Kpi label="ჩაბარდა" value={String(kpi.delivered)} />
         <Kpi label="ვერ ჩაბარდა (საბოლოო)" value={String(kpi.failed)} />
