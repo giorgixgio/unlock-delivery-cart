@@ -205,9 +205,13 @@ Deno.serve(async (req) => {
       if (!file_name || !file_hash) {
         return json(400, { success: false, message: "Missing file_name / file_hash", details: { stage } });
       }
-      const { data: existing } = await admin
-        .from("courier_import_batches").select("*").eq("file_hash", file_hash).maybeSingle();
-      if (existing && existing.status === "completed") {
+      // Only a COMPLETED batch with the same hash blocks a re-upload; failed ones may be retried.
+      const { data: existingRows } = await admin
+        .from("courier_import_batches").select("*")
+        .eq("file_hash", file_hash).eq("status", "completed")
+        .order("uploaded_at", { ascending: false }).limit(1);
+      const existing = (existingRows || [])[0];
+      if (existing) {
         return json(200, {
           success: true,
           message: `This exact file was already imported on ${new Date(existing.uploaded_at).toLocaleString()}.`,
