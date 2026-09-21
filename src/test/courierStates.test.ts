@@ -79,3 +79,27 @@ describe("csv parsing", () => {
     expect(rows[1]).toEqual(['x "y"', "line1\nline2"]);
   });
 });
+
+describe("customer phone on return rows", () => {
+  it("uses the sender phone, not the 555555555 placeholder", () => {
+    const phone = pickCustomerPhone({
+      isReturn: true,
+      receiverPhone: "555555555",
+      senderPhone: "574491491",
+      senderName: null,
+    });
+    expect(phone).toBe("574491491");
+    expect(normalizePhone(phone)).toBe("574491491");
+  });
+
+  it("falls back to a Customer-#### sender name's digits", () => {
+    expect(
+      pickCustomerPhone({ isReturn: true, receiverPhone: "555555555", senderPhone: null, senderName: "577172330" }),
+    ).toBe("577172330");
+  });
+
+  it("never returns the placeholder", () => {
+    expect(normalizePhone("555555555")).toBeNull();
+    expect(pickCustomerPhone({ isReturn: false, receiverPhone: "555555555", senderPhone: null })).toBeNull();
+  });
+});
