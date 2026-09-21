@@ -274,6 +274,33 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_alert_settings: {
+        Row: {
+          is_enabled: boolean
+          label: string
+          rule_key: string
+          sort_order: number
+          threshold_days: number
+          updated_at: string
+        }
+        Insert: {
+          is_enabled?: boolean
+          label: string
+          rule_key: string
+          sort_order?: number
+          threshold_days?: number
+          updated_at?: string
+        }
+        Update: {
+          is_enabled?: boolean
+          label?: string
+          rule_key?: string
+          sort_order?: number
+          threshold_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       courier_export_settings: {
         Row: {
           created_at: string
@@ -313,12 +340,19 @@ export type Database = {
       courier_import_batches: {
         Row: {
           auto_linked_returns: number
+          conflict_rows: number
+          conflicts: Json
+          covered_from: string | null
+          covered_to: string | null
           created_at: string
+          error_message: string | null
           error_rows: number
           errors: Json
           file_hash: string | null
           file_name: string
+          finalized_at: string | null
           id: string
+          linked_returns: number
           new_history_rows: number
           new_shipments: number
           order_count: number
@@ -327,6 +361,7 @@ export type Database = {
           status: string
           successful_rows: number
           total_rows: number
+          unlinked_returns: number
           updated_at: string
           updated_shipments: number
           uploaded_at: string
@@ -334,12 +369,19 @@ export type Database = {
         }
         Insert: {
           auto_linked_returns?: number
+          conflict_rows?: number
+          conflicts?: Json
+          covered_from?: string | null
+          covered_to?: string | null
           created_at?: string
+          error_message?: string | null
           error_rows?: number
           errors?: Json
           file_hash?: string | null
           file_name: string
+          finalized_at?: string | null
           id?: string
+          linked_returns?: number
           new_history_rows?: number
           new_shipments?: number
           order_count?: number
@@ -348,6 +390,7 @@ export type Database = {
           status?: string
           successful_rows?: number
           total_rows?: number
+          unlinked_returns?: number
           updated_at?: string
           updated_shipments?: number
           uploaded_at?: string
@@ -355,12 +398,19 @@ export type Database = {
         }
         Update: {
           auto_linked_returns?: number
+          conflict_rows?: number
+          conflicts?: Json
+          covered_from?: string | null
+          covered_to?: string | null
           created_at?: string
+          error_message?: string | null
           error_rows?: number
           errors?: Json
           file_hash?: string | null
           file_name?: string
+          finalized_at?: string | null
           id?: string
+          linked_returns?: number
           new_history_rows?: number
           new_shipments?: number
           order_count?: number
@@ -369,6 +419,7 @@ export type Database = {
           status?: string
           successful_rows?: number
           total_rows?: number
+          unlinked_returns?: number
           updated_at?: string
           updated_shipments?: number
           uploaded_at?: string
@@ -444,24 +495,34 @@ export type Database = {
           address: string | null
           city: string | null
           cod_amount: number | null
+          comment_items: Json
+          comment_raw: string | null
           company_receives: number | null
           created_at: string
           current_courier_status: string | null
           customer_name: string | null
+          derived_state: string | null
           derived_status: string | null
+          final_status_date: string | null
           first_seen_at: string | null
           id: string
+          is_return: boolean
           last_seen_at: string | null
           latest_status_date: string | null
           linked_original_tracking_number: string | null
           linked_return_tracking_number: string | null
+          order_date: string | null
           order_number: string | null
           original_order_id: string | null
           phone: string | null
           phone_normalized: string | null
+          pickup_date: string | null
           quantity: number | null
+          receiver_name: string | null
+          sender_name: string | null
           shipment_type: string | null
           sku: string | null
+          status_changed_at: string | null
           tracking_number: string
           updated_at: string
         }
@@ -469,24 +530,34 @@ export type Database = {
           address?: string | null
           city?: string | null
           cod_amount?: number | null
+          comment_items?: Json
+          comment_raw?: string | null
           company_receives?: number | null
           created_at?: string
           current_courier_status?: string | null
           customer_name?: string | null
+          derived_state?: string | null
           derived_status?: string | null
+          final_status_date?: string | null
           first_seen_at?: string | null
           id?: string
+          is_return?: boolean
           last_seen_at?: string | null
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null
           phone?: string | null
           phone_normalized?: string | null
+          pickup_date?: string | null
           quantity?: number | null
+          receiver_name?: string | null
+          sender_name?: string | null
           shipment_type?: string | null
           sku?: string | null
+          status_changed_at?: string | null
           tracking_number: string
           updated_at?: string
         }
@@ -494,24 +565,34 @@ export type Database = {
           address?: string | null
           city?: string | null
           cod_amount?: number | null
+          comment_items?: Json
+          comment_raw?: string | null
           company_receives?: number | null
           created_at?: string
           current_courier_status?: string | null
           customer_name?: string | null
+          derived_state?: string | null
           derived_status?: string | null
+          final_status_date?: string | null
           first_seen_at?: string | null
           id?: string
+          is_return?: boolean
           last_seen_at?: string | null
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null
           phone?: string | null
           phone_normalized?: string | null
+          pickup_date?: string | null
           quantity?: number | null
+          receiver_name?: string | null
+          sender_name?: string | null
           shipment_type?: string | null
           sku?: string | null
+          status_changed_at?: string | null
           tracking_number?: string
           updated_at?: string
         }
@@ -581,6 +662,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      courier_status_map: {
+        Row: {
+          counts_as_collected_outbound: boolean
+          courier_status: string
+          is_return_collected: boolean
+          is_return_in_transit: boolean
+          label_en: string | null
+          label_ka: string | null
+          outbound_counts_as: string
+          outbound_is_final: boolean
+          outbound_state: string
+          return_counts_as: string
+          return_is_final: boolean
+          return_state: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          counts_as_collected_outbound?: boolean
+          courier_status: string
+          is_return_collected?: boolean
+          is_return_in_transit?: boolean
+          label_en?: string | null
+          label_ka?: string | null
+          outbound_counts_as?: string
+          outbound_is_final?: boolean
+          outbound_state?: string
+          return_counts_as?: string
+          return_is_final?: boolean
+          return_state?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          counts_as_collected_outbound?: boolean
+          courier_status?: string
+          is_return_collected?: boolean
+          is_return_in_transit?: boolean
+          label_en?: string | null
+          label_ka?: string | null
+          outbound_counts_as?: string
+          outbound_is_final?: boolean
+          outbound_state?: string
+          return_counts_as?: string
+          return_is_final?: boolean
+          return_state?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       courier_zone_codes: {
         Row: {

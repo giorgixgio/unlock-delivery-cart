@@ -15,6 +15,13 @@
       "when": 1789594509292,
       "tag": "0001_enforce_stock_deduction_on_fulfillment",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790014566871,
+      "tag": "0002_courier_hub_states_and_config",
+      "breakpoints": true
     }
   ]
 }
