@@ -120,7 +120,8 @@ export default function AdminCourierAnalytics() {
       <div>
         <h1 className="text-2xl font-extrabold">Courier Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          Main rate = delivered ÷ (delivered + failed). Pending, cancelled-before-courier and return-to-sender rows are excluded.
+          ჩაბარების პროცენტი = ჩაბარებული ÷ (ჩაბარებული + საბოლოოდ ჩაუბარებელი). გზაში მყოფი, გაუქმებული
+          და დაბრუნების გზავნილები არ მონაწილეობენ.
         </p>
       </div>
 
@@ -147,7 +148,12 @@ export default function AdminCourierAnalytics() {
           <Kpi label="Courier Finalized Orders" value={kpis.finalized} accent="border-l-4 border-l-foreground" />
           <Kpi label="Delivered to Client" value={kpis.delivered} sub={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
           <Kpi label="Failed / Refused" value={kpis.failed} sub={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
-          <Kpi label="Successful Delivery Rate" value={`${kpis.deliveryRate}%`} accent="border-l-4 border-l-green-600" />
+          <Kpi
+            label="ჩაბარების პროცენტი"
+            value={`${kpis.deliveryRate}%`}
+            sub={`${kpis.inProgress} გზაში — არ ითვლება • დასრულებულია ${kpis.resolvedShare}%`}
+            accent="border-l-4 border-l-green-600"
+          />
           <Kpi label="Failed / Refused Rate" value={`${kpis.failureRate}%`} accent="border-l-4 border-l-red-600" />
         </div>
       </div>
@@ -156,7 +162,7 @@ export default function AdminCourierAnalytics() {
       <div>
         <h2 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Excluded from main rate</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Kpi label="Pending / Active" value={kpis.pending} sub="in transit, warehouse" />
+          <Kpi label="Pending / Active" value={kpis.inProgress} sub="in transit, warehouse" />
           <Kpi label="Cancelled Before Courier" value={kpis.cancelledBefore} sub="მიღების გაუქმება" />
           <Kpi label="Return-to-Sender rows" value={kpis.returnTracking} sub="separate tracking" />
           <Kpi label="Total uploaded rows" value={kpis.totalRows} />
