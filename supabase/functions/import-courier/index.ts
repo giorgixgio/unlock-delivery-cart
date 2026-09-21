@@ -218,15 +218,41 @@ Deno.serve(async (req) => {
           details: { deduped: true, batch: existing },
         });
       }
-      const { data: batch, error } = await admin.from("courier_import_batches").insert({
+      // A previous failed/processing attempt with the same hash is reused (file_hash is unique).
+      const { data: retryRows } = await admin
+        .from("courier_import_batches").select("id")
+        .eq("file_hash", file_hash).neq("status", "completed")
+        .order("uploaded_at", { ascending: false }).limit(1);
+      const retryId = (retryRows || [])[0]?.id as string | undefined;
+      const baseFields = {
         file_name, file_hash,
         uploaded_by: userEmail || userId,
         total_rows: total_rows || 0,
         covered_from: covered_from || null,
         covered_to: covered_to || null,
         status: "processing",
-      }).select().single();
-      if (error) return json(500, { success: false, message: `Failed to create batch: ${error.message}`, details: { stage } });
+      };
+      let batch: any = null;
+      let error: any = null;
+      if (retryId) {
+        // clear anything the failed attempt left behind so counters start from zero
+        await admin.from("courier_status_history").delete().eq("import_batch_id", retryId);
+        const res = await admin.from("courier_import_batches").update({
+          ...baseFields,
+          uploaded_at: new Date().toISOString(),
+          successful_rows: 0, error_rows: 0, skipped_rows: 0,
+          new_shipments: 0, updated_shipments: 0, new_history_rows: 0,
+          possible_returns: 0, auto_linked_returns: 0,
+          linked_returns: 0, unlinked_returns: 0, conflict_rows: 0,
+          order_count: 0, errors: [], conflicts: [],
+          finalized_at: null, error_message: null,
+        }).eq("id", retryId).select().single();
+        batch = res.data; error = res.error;
+      } else {
+        const res = await admin.from("courier_import_batches").insert(baseFields).select().single();
+        batch = res.data; error = res.error;
+      }
+      if (error || !batch) return json(500, { success: false, message: `Failed to create batch: ${error?.message || "unknown"}`, details: { stage } });
       return json(200, { success: true, message: "Batch created", details: { batch_id: batch.id, batch } });
     }
 
