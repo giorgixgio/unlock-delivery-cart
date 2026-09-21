@@ -200,7 +200,14 @@ export default function AdminCourierAnalytics() {
                   <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
                   <TableCell className="text-right text-red-700">{r.failed}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {r.deliveryRate}%
+                    {r.inProgress > 0 && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        +{r.inProgress} გზაში
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">{r.failureRate}%</TableCell>
                   <TableCell className="text-right">{Math.round(r.revenue)}</TableCell>
                 </TableRow>
@@ -229,7 +236,14 @@ export default function AdminCourierAnalytics() {
                   <TableCell className="text-right">{r.finalized}</TableCell>
                   <TableCell className="text-right text-green-700">{r.delivered}</TableCell>
                   <TableCell className="text-right text-red-700">{r.failed}</TableCell>
-                  <TableCell className="text-right font-semibold">{r.deliveryRate}%</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {r.deliveryRate}%
+                    {r.inProgress > 0 && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        +{r.inProgress} გზაში
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
