@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, LayoutTemplate, Wand2, BarChart3, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Printer, Boxes, FileText } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, LayoutTemplate, Wand2, BarChart3, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Printer, Boxes, FileText, AlertTriangle, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -9,6 +9,7 @@ import { useState } from "react";
 import { canAccessPath } from "@/lib/adminPermissions";
 import ToggleStore from "@/components/admin/ToggleStore";
 import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
+import { useCourierAlertBadge } from "@/hooks/useCourierAlertBadge";
 
 const navGroups = [
   {
@@ -35,15 +36,24 @@ const navGroups = [
     ],
   },
   {
-    label: "Shipping & Courier",
+    label: "Shipping",
     items: [
       { to: "/admin/shipping", label: "Shipping", icon: Truck },
       { to: "/admin/courier-labels", label: "Courier Labels", icon: Printer },
       { to: "/admin/city-qa", label: "City QA", icon: MapPin },
-      { to: "/admin/courier-import", label: "Courier Import", icon: Upload },
+    ],
+  },
+  {
+    label: "Courier",
+    items: [
+      { to: "/admin/courier-import", label: "Import", icon: Upload },
+      { to: "/admin/courier/stats", label: "Statistics", icon: BarChart3 },
+      { to: "/admin/courier/alerts", label: "Alerts", icon: AlertTriangle },
+      { to: "/admin/courier/restock", label: "Restock", icon: PackageCheck },
+      { to: "/admin/courier/statuses", label: "Statuses", icon: ListChecks },
       { to: "/admin/courier-import/mapping", label: "Import Mapping", icon: Columns3 },
       { to: "/admin/courier-import/return-matching", label: "Return Matching", icon: GitMerge },
-      { to: "/admin/courier-import/analytics", label: "Courier Analytics", icon: LineChart },
+      { to: "/admin/courier-import/analytics", label: "Shipment Browser", icon: LineChart },
     ],
   },
   {
@@ -78,6 +88,7 @@ const AdminLayout = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { data: alertCount } = useCourierAlertBadge();
 
   const visibleGroups = navGroups
     .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to)) }))
@@ -111,7 +122,14 @@ const AdminLayout = () => {
           {visibleGroups.map((group) => (
             <AccordionItem key={group.label} value={group.label} className="border-0">
               <AccordionTrigger className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground hover:no-underline hover:text-foreground">
-                {group.label}
+                <span className="flex items-center gap-2">
+                  {group.label}
+                  {group.label === "Courier" && !!alertCount && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300">
+                      {alertCount}
+                    </span>
+                  )}
+                </span>
               </AccordionTrigger>
               <AccordionContent className="pb-1">
                 <div className="space-y-1">

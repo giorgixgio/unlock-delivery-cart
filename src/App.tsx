@@ -59,6 +59,10 @@ import AdminSkuHealth from "./pages/admin/AdminSkuHealth";
 import AdminWholesaleOrders from "./pages/admin/AdminWholesaleOrders";
 import AdminWholesaleCustoms from "./pages/admin/AdminWholesaleCustoms";
 import AdminFastInventoryCheck from "./pages/admin/AdminFastInventoryCheck";
+import AdminCourierStats from "./pages/admin/AdminCourierStats";
+import AdminCourierAlerts from "./pages/admin/AdminCourierAlerts";
+import AdminCourierStatuses from "./pages/admin/AdminCourierStatuses";
+import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -198,6 +202,10 @@ const App = () => (
                       <Route path="courier-import/return-matching" element={<AdminCourierReturnMatching />} />
                       <Route path="courier-import/analytics" element={<AdminCourierAnalytics />} />
                       <Route path="courier-import/mapping" element={<AdminCourierImportMapping />} />
+                      <Route path="courier/statuses" element={<AdminCourierStatuses />} />
+                      <Route path="courier/stats" element={<AdminCourierStats />} />
+                      <Route path="courier/alerts" element={<AdminCourierAlerts />} />
+                      <Route path="courier/restock" element={<AdminCourierRestock />} />
                       <Route path="packing" element={<AdminPacking />} />
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
