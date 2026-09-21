@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { senderIsCustomer, parseCommentItems, itemsKey, normalizePhone } from "@/lib/courierStates";
+import { senderIsCustomer, parseCommentItems, itemsKey, normalizePhone, pickCustomerPhone } from "@/lib/courierStates";
 import { recoveryOf } from "@/lib/courierAnalytics";
 import type { CourierDataset, Shipment } from "@/hooks/useCourierDataset";
 
