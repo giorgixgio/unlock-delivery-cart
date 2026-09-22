@@ -29,6 +29,7 @@ import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
 import { triggerFulfillmentSms } from "@/lib/smsService";
 import { isTbilisiCity, hasDistrict } from "@/lib/tbilisiDistricts";
+import { logCallOutcome } from "@/lib/callAttemptService";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
@@ -263,6 +264,7 @@ const AdminOrderDetail = () => {
       await applyOrderConfirmStock(id);
       await recordIdempotency(idemKey, "ORDER_CONFIRM", id, { version: newVersion, status: "confirmed" });
       await logEvent("manual_confirm", { previous_status: order.status, previous_risk: order.risk_level });
+      await logCallOutcome(id, actor, "confirmed", { source: "order_detail" });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_CONFIRM", actorId: actor,
         payload: { before: { status: order.status, risk_level: order.risk_level, version: order.version }, after: { status: "confirmed", version: newVersion } },
@@ -322,6 +324,7 @@ const AdminOrderDetail = () => {
         tags: newTags,
       });
       await logEvent("canceled_duplicate", { previous_status: order.status });
+      await logCallOutcome(id, actor, "cancelled", { source: "order_detail", cancel_reason: "duplicate_order" });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_CANCEL", actorId: actor,
         payload: { before: { status: order.status }, after: { status: "canceled" }, reason: "duplicate" },
