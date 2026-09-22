@@ -356,7 +356,23 @@ export default function AdminCourierImport() {
 
   /** Invoke the import function and surface the REAL server error body (invoke() drops it on non-2xx). */
   async function callImport(body: any): Promise<any> {
-    const { data, error } = await supabase.functions.invoke("import-courier", { body });
+    // Attach the session token explicitly — on mobile the stored session can be
+    // stale/missing, and invoke() then sends only the anon key → 401 "Unauthorized".
+    let { data: sess } = await supabase.auth.getSession();
+    if (!sess.session) {
+      const refreshed = await supabase.auth.refreshSession();
+      sess = refreshed.data;
+    }
+    const token = sess.session?.access_token;
+    if (!token) {
+      const err: any = new Error("სესია ამოიწურა — გთხოვ თავიდან შედი ადმინში და სცადე ხელახლა.");
+      err.stage = "auth";
+      throw err;
+    }
+    const { data, error } = await supabase.functions.invoke("import-courier", {
+      body,
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (error) {
       let serverBody: any = null;
       try { serverBody = await (error as any)?.context?.json?.(); } catch { /* not json */ }
@@ -411,7 +427,7 @@ export default function AdminCourierImport() {
         setProgress(Math.round(((i + 1) / chunks.length) * 100));
       }
 
-      await supabase.functions.invoke("import-courier", { body: { mode: "finalize", batch_id: batchId } });
+      await callImport({ mode: "finalize", batch_id: batchId });
 
       const summary =
         `${totals.new} new, ${totals.updated} updated, ${totals.unchanged} unchanged, ` +
@@ -426,12 +442,12 @@ export default function AdminCourierImport() {
       const msg = `${e?.message || String(e)}${stage}`;
       if (batchId) {
         // keep_existing_error: never overwrite a specific server-side message with a generic one
-        await supabase.functions.invoke("import-courier", {
-          body: {
+        try {
+          await callImport({
             mode: "finalize", batch_id: batchId, failed: true,
             error_message: msg, keep_existing_error: !e?.stage,
-          },
-        });
+          });
+        } catch { /* best effort — don't mask the original error */ }
       }
       setServerError({ message: e?.message || String(e), details: { stage: e?.stage, ...(e?.details || {}) } });
       toast({ title: "Import failed", description: msg, variant: "destructive" });
