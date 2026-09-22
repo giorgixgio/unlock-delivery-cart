@@ -24,7 +24,7 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourierDataset } from "@/hooks/useCourierDataset";
-import { recoveryBySku, recoveryTotals, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
+import { recoveryBySku, recoveryTotals, unattributedShipments, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
 
 interface VariantRow {
   productId: string;
@@ -262,6 +262,10 @@ const AdminProducts = () => {
     [courierDs, recFrom, recTo],
   );
   const recTotals = useMemo(() => recoveryTotals(recMap), [recMap]);
+  const recUnattributed = useMemo(
+    () => unattributedShipments(courierDs, { from: recFrom || undefined, to: recTo || undefined }),
+    [courierDs, recFrom, recTo],
+  );
 
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
