@@ -73,6 +73,7 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVariant }: SpyDetectorLandingProps) => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;

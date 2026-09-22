@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
  *   - Max ~60px height
  */
 const ShopMissionHeader = () => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const { itemCount, remaining, isUnlocked, threshold } = useCart();
   const { openCart } = useCartOverlay();
 

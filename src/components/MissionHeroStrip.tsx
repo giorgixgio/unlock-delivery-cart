@@ -263,6 +263,7 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, aovMax }: {
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════
 const MissionHeroStrip = () => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const { itemCount, threshold, isUnlocked } = useCart();
   const { openCart } = useCartOverlay();
 

@@ -149,6 +149,7 @@ const GenericLanding = ({
   offerTimerMinutes: number;
 }) => {
 
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
   const { data: storefrontProducts = [] } = useStorefrontProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();

@@ -38,6 +38,7 @@ interface TailoredLandingProps {
 }
 
 const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }: TailoredLandingProps) => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
   const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
