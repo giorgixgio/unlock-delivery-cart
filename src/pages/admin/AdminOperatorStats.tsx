@@ -79,11 +79,13 @@ export default function AdminOperatorStats(){
   },[activeStore,range.from,range.to,previousRange.from,previousRange.to,reload]);
   useEffect(()=>{void load();},[load]);
 
-  const callEvents=useMemo(()=>events.filter(e=>e.event_type==="call_outcome"),[events]);
-  const prevCalls=useMemo(()=>previousEvents.filter(e=>e.event_type==="call_outcome"),[previousEvents]);
-  const operators=useMemo(()=>Array.from(new Set([...callEvents.map(e=>e.actor),...sessions.map(s=>s.operator)].filter(Boolean))).sort(),[callEvents,sessions]);
+  const EXCLUDED_OPERATORS=useMemo(()=>new Set(["info@bigmart.ge"]),[]);
+  const callEvents=useMemo(()=>events.filter(e=>e.event_type==="call_outcome"&&!EXCLUDED_OPERATORS.has(e.actor??"")),[events,EXCLUDED_OPERATORS]);
+  const prevCalls=useMemo(()=>previousEvents.filter(e=>e.event_type==="call_outcome"&&!EXCLUDED_OPERATORS.has(e.actor??"")),[previousEvents,EXCLUDED_OPERATORS]);
+  const staffSessions=useMemo(()=>sessions.filter(s=>!EXCLUDED_OPERATORS.has(s.operator??"")),[sessions,EXCLUDED_OPERATORS]);
+  const operators=useMemo(()=>Array.from(new Set([...callEvents.map(e=>e.actor),...staffSessions.map(s=>s.operator)].filter(Boolean))).sort(),[callEvents,staffSessions]);
   const visibleCalls=useMemo(()=>operator==="all"?callEvents:callEvents.filter(e=>e.actor===operator),[callEvents,operator]);
-  const visibleSessions=useMemo(()=>operator==="all"?sessions:sessions.filter(s=>s.operator===operator),[sessions,operator]);
+  const visibleSessions=useMemo(()=>operator==="all"?staffSessions:staffSessions.filter(s=>s.operator===operator),[staffSessions,operator]);
   const operatorOrderIds=useMemo(()=>new Set(visibleCalls.map(e=>e.order_id)),[visibleCalls]);
   const visibleOrders=useMemo(()=>operator==="all"?orders:orders.filter(o=>operatorOrderIds.has(o.id)),[orders,operator,operatorOrderIds]);
   const visiblePrevCalls=useMemo(()=>operator==="all"?prevCalls:prevCalls.filter(e=>e.actor===operator),[prevCalls,operator]);
