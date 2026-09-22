@@ -18,7 +18,7 @@ export function workedSeconds(actions: TimedAction[], breakMinutes = WORK_BREAK_
   for (const action of actions) {
     const time = new Date(action.at).getTime();
     if (!Number.isFinite(time)) continue;
-    const day = action.at.slice(0, 10);
+    const day = new Date(time + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const list = byDay.get(day) ?? [];
     list.push(time);
     byDay.set(day, list);

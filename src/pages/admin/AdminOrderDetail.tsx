@@ -259,6 +259,10 @@ const AdminOrderDetail = () => {
         is_confirmed: true,
         status: "confirmed",
         review_required: false,
+        call_outcome: "confirmed",
+        call_outcome_updated_at: new Date().toISOString(),
+        call_outcome_updated_by: actor,
+        operator_review_status: "confirmed",
       });
 
       await applyOrderConfirmStock(id);
@@ -322,6 +326,11 @@ const AdminOrderDetail = () => {
         status: "canceled",
         review_required: false,
         tags: newTags,
+        call_outcome: "cancelled",
+        call_outcome_updated_at: new Date().toISOString(),
+        call_outcome_updated_by: actor,
+        operator_review_status: "cancelled",
+        final_cancel_reason: "duplicate_order",
       });
       await logEvent("canceled_duplicate", { previous_status: order.status });
       await logCallOutcome(id, actor, "cancelled", { source: "order_detail", cancel_reason: "duplicate_order" });

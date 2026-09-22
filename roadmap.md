@@ -19,8 +19,8 @@
 
 # Roadmap — Operator Stats rebuild
 
-- [ ] Add unified operator call-outcome event tracking across quick review, order detail, and bulk actions
-- [ ] Backfill historical call-outcome events idempotently
-- [ ] Build paginated Tbilisi-time stats data layer and pure calculation engine with tests
-- [ ] Rebuild Operator Stats into Overview, Operators, Capacity planner, and Day performance tabs
+- [x] Add unified operator call-outcome event tracking across quick review, order detail, and bulk actions
+- [x] Backfill historical call-outcome events idempotently
+- [x] Build paginated Tbilisi-time stats data layer and pure calculation engine with tests
+- [x] Rebuild Operator Stats into Overview, Operators, Capacity planner, and Day performance tabs
 - [ ] Verify Dashboard-aligned day performance, store/operator filters, and mobile layout

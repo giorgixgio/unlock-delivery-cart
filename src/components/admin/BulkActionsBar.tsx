@@ -41,6 +41,10 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
           is_confirmed: true,
           status: "confirmed",
           review_required: false,
+          call_outcome: "confirmed",
+          call_outcome_updated_at: new Date().toISOString(),
+          call_outcome_updated_by: actor,
+          operator_review_status: "confirmed",
         });
         await supabase.from("order_events").insert({
           order_id: order.id,
@@ -68,6 +72,11 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
         await versionedOrderUpdate(order.id, order.version, {
           status: "canceled",
           review_required: false,
+          call_outcome: "cancelled",
+          call_outcome_updated_at: new Date().toISOString(),
+          call_outcome_updated_by: actor,
+          operator_review_status: "cancelled",
+          final_cancel_reason: "other",
         });
         await supabase.from("order_events").insert({
           order_id: order.id,
