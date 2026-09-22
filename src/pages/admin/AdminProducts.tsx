@@ -24,7 +24,7 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourierDataset } from "@/hooks/useCourierDataset";
-import { recoveryBySku, recoveryTotals, unattributedShipments, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
+import { recoveryBySku, recoveryTotals, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
 
 interface VariantRow {
   productId: string;
@@ -262,10 +262,6 @@ const AdminProducts = () => {
     [courierDs, recFrom, recTo],
   );
   const recTotals = useMemo(() => recoveryTotals(recMap), [recMap]);
-  const recUnattributed = useMemo(
-    () => unattributedShipments(courierDs, { from: recFrom || undefined, to: recTo || undefined }),
-    [courierDs, recFrom, recTo],
-  );
 
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
@@ -1255,7 +1251,7 @@ const AdminProducts = () => {
             </span>
           ) : (
             <span className="font-medium">
-              ჯამში (ცალი):{" "}
+              ყველა SKU-ს ჯამი — თითოეული პროდუქტის რიცხვი ქვემოთ, თავის მწკრივშია:{" "}
               <span className="text-emerald-700 font-bold">{recTotals.collectedUnits}</span> უკვე დაგვიბრუნდა ·{" "}
               <span className="text-amber-700 font-bold">{recTotals.inTransitUnits + recTotals.notRegisteredUnits}</span>{" "}
               დასაბრუნებელია ({recTotals.inTransitUnits} გზაშია, {recTotals.notRegisteredUnits} ჯერ არ გამოგზავნილა) ·{" "}
@@ -1288,11 +1284,6 @@ const AdminProducts = () => {
             </TooltipContent>
           </Tooltip>
         </div>
-        {!courierLoading && recUnattributed > 0 && (
-          <div className="text-[11px] text-muted-foreground">
-            ⚠ {recUnattributed} კურიერის შეკვეთა ვერ დაუკავშირდა ჩვენს შეკვეთას (არ ჩანს პროდუქტის სვეტებში).
-          </div>
-        )}
       </div>
 
 

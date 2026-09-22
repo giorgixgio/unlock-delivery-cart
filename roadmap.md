@@ -14,3 +14,4 @@
 - [ ] End-to-end double-upload test — needs a real courier file uploaded through the admin (no admin session available to the agent)
 - [x] Shared per-SKU recovery module (src/lib/courierRecovery.ts) used by Restock + admin Products
 - [x] Products page: received back / on the way / in progress columns, sorting, totals, tooltips
+- [ ] Repair legacy courier-to-order links by normalized order number + customer phone; verify Products totals
