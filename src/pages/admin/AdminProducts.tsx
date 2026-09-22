@@ -381,22 +381,31 @@ const AdminProducts = () => {
       : baseRows;
 
     const q = search.trim().toLowerCase();
-    if (!q) return source;
 
-    if (looksLikeSku(q)) {
-      const exact = source.filter((r) => r.sku.toLowerCase() === q);
-      if (exact.length > 0) return exact;
-      const partial = source.filter((r) => r.sku.toLowerCase().includes(q));
-      if (partial.length > 0) return partial;
-    }
+    const searched = !q ? source
+      : (() => {
+          if (looksLikeSku(q)) {
+            const exact = source.filter((r) => r.sku.toLowerCase() === q);
+            if (exact.length > 0) return exact;
+            const partial = source.filter((r) => r.sku.toLowerCase().includes(q));
+            if (partial.length > 0) return partial;
+          }
+          return source.filter(
+            (r) =>
+              r.title.toLowerCase().includes(q) ||
+              r.sku.toLowerCase().includes(q) ||
+              r.vendor.toLowerCase().includes(q)
+          );
+        })();
 
-    return source.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.sku.toLowerCase().includes(q) ||
-        r.vendor.toLowerCase().includes(q)
-    );
-  }, [baseRows, conflictRows, oosRows, unverifiedRows, verifiedRows, search, activeTab]);
+    if (!recSort) return searched;
+    const val = (sku: string) => {
+      const r = recMap.get(sku);
+      if (!r) return 0;
+      return recSort === "received" ? r.collectedUnits : r.inTransitUnits + r.notRegisteredUnits;
+    };
+    return [...searched].sort((a, b) => val(b.sku) - val(a.sku));
+  }, [baseRows, conflictRows, oosRows, unverifiedRows, verifiedRows, search, activeTab, recSort, recMap]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
