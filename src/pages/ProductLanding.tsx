@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState, lazy, Suspense } from "react";
 import logoSrc from "@/assets/logo.png";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts, useStorefrontProducts } from "@/hooks/useProducts";
 import { useLandingPage } from "@/contexts/LandingPageContext";
@@ -293,7 +294,7 @@ const GenericLanding = ({
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </a>
-          <img src={logoSrc} alt="BigMart" className="h-7 w-auto mx-auto" />
+          <img src={siteLogo || logoSrc} alt={siteName} className="h-7 w-auto mx-auto" />
           <div className="w-8" />
         </div>
       </header>
