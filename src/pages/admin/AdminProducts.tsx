@@ -1242,6 +1242,45 @@ const AdminProducts = () => {
         </div>
       )}
 
+      {/* Courier returns summary + period filter (same calculation as Courier > Restock) */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+        {courierLoading ? (
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" /> კურიერის მონაცემები იტვირთება...
+          </span>
+        ) : (
+          <span className="font-medium">
+            ყველა პროდუქტზე:{" "}
+            <span className="text-emerald-700 font-bold">{recTotals.collectedUnits}</span> მიღებული ·{" "}
+            <span className="text-amber-700 font-bold">{recTotals.inTransitUnits + recTotals.notRegisteredUnits}</span> მოსალოდნელი ·{" "}
+            <span className="text-muted-foreground font-bold">{recTotals.inProgressUnits}</span> პროცესში
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">დან</span>
+          <Input type="date" value={recFrom} onChange={(e) => setRecFrom(e.target.value)} className="h-7 w-36 text-xs" />
+          <span className="text-muted-foreground">მდე</span>
+          <Input type="date" value={recTo} onChange={(e) => setRecTo(e.target.value)} className="h-7 w-36 text-xs" />
+          {(recFrom || recTo) && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setRecFrom(""); setRecTo(""); }}>
+              გასუფთავება
+            </Button>
+          )}
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 text-muted-foreground cursor-default">
+              <Info className="w-3.5 h-3.5" /> რას ნიშნავს?
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[300px] text-[11px]">
+            ციფრები მხოლოდ იმ შეკვეთებს ითვლის, რომლებიც კურიერის ატვირთულ ფაილში მოხვდა.
+            მიღებული = ფიზიკურად დაბრუნებული და გასაყიდად მზადაა; მოსალოდნელი = უარი თქვეს, ჯერ არ მიგვიღია;
+            პროცესში = ჯერ არ არის დასრულებული.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
       {/* Tabs: All Products / Conflicting SKUs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(0); }}>
         <div className="flex flex-wrap items-center gap-3">
