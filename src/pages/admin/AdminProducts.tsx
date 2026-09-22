@@ -24,7 +24,7 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourierDataset } from "@/hooks/useCourierDataset";
-import { recoveryBySku, recoveryTotals, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
+import { recoveryBySku, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
 
 interface VariantRow {
   productId: string;
@@ -261,7 +261,6 @@ const AdminProducts = () => {
     () => recoveryBySku(courierDs, { from: recFrom || undefined, to: recTo || undefined }),
     [courierDs, recFrom, recTo],
   );
-  const recTotals = useMemo(() => recoveryTotals(recMap), [recMap]);
 
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
@@ -409,6 +408,23 @@ const AdminProducts = () => {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // This summary intentionally adds the exact cells rendered on the current
+  // page. Using the whole courier map here made the headline include hidden
+  // stores, hidden out-of-stock products and products on other pages.
+  const visibleRecoveryTotals = useMemo(() => {
+    return pageRows.reduce(
+      (totals, row) => {
+        const rec = recMap.get(row.sku);
+        if (!rec) return totals;
+        totals.collectedUnits += rec.collectedUnits;
+        totals.inTransitUnits += rec.inTransitUnits;
+        totals.notRegisteredUnits += rec.notRegisteredUnits;
+        totals.inProgressUnits += rec.inProgressUnits;
+        return totals;
+      },
+      { collectedUnits: 0, inTransitUnits: 0, notRegisteredUnits: 0, inProgressUnits: 0 },
+    );
+  }, [pageRows, recMap]);
 
   const handleSkuEdit = (productId: string, currentSku: string) => {
     setEditingSku(productId);
@@ -1251,11 +1267,11 @@ const AdminProducts = () => {
             </span>
           ) : (
             <span className="font-medium">
-              ყველა SKU-ს ჯამი — თითოეული პროდუქტის რიცხვი ქვემოთ, თავის მწკრივშია:{" "}
-              <span className="text-emerald-700 font-bold">{recTotals.collectedUnits}</span> უკვე დაგვიბრუნდა ·{" "}
-              <span className="text-amber-700 font-bold">{recTotals.inTransitUnits + recTotals.notRegisteredUnits}</span>{" "}
-              დასაბრუნებელია ({recTotals.inTransitUnits} გზაშია, {recTotals.notRegisteredUnits} ჯერ არ გამოგზავნილა) ·{" "}
-              <span className="text-muted-foreground font-bold">{recTotals.inProgressUnits}</span> ჯერ კურიერთანაა
+              ქვემოთ ნაჩვენები {pageRows.length} პროდუქტის ზუსტი ჯამი:{" "}
+              <span className="text-emerald-700 font-bold">{visibleRecoveryTotals.collectedUnits}</span> უკვე დაგვიბრუნდა ·{" "}
+              <span className="text-amber-700 font-bold">{visibleRecoveryTotals.inTransitUnits + visibleRecoveryTotals.notRegisteredUnits}</span>{" "}
+              დასაბრუნებელია ({visibleRecoveryTotals.inTransitUnits} გზაშია, {visibleRecoveryTotals.notRegisteredUnits} ჯერ არ გამოგზავნილა) ·{" "}
+              <span className="text-muted-foreground font-bold">{visibleRecoveryTotals.inProgressUnits}</span> ჯერ კურიერთანაა
             </span>
           )}
           <div className="flex items-center gap-1">
