@@ -137,14 +137,10 @@ const AdminDashboard = () => {
       const rawConfirmedAll = all.filter((o) => o.is_confirmed).length;
       const confirmedValid = active.filter((o) => o.is_confirmed).length;
 
-      // Split confirmed orders into system-confirmed vs operator-confirmed.
-      // An order counts as operator-confirmed when an operator explicitly set
-      // call_outcome = 'confirmed'; everything else confirmed is automatic.
+      // Split confirmed orders by the authoritative auto_confirmed flag.
       const confirmedActive = active.filter((o) => o.is_confirmed);
-      const operatorConfirmed = confirmedActive.filter(
-        (o) => (o as any).call_outcome === "confirmed" && (o as any).call_outcome_updated_by
-      ).length;
-      const autoConfirmed = confirmedActive.length - operatorConfirmed;
+      const autoConfirmed = confirmedActive.filter((o) => o.auto_confirmed === true).length;
+      const operatorConfirmed = confirmedActive.length - autoConfirmed;
 
 
       // Revenue = active orders only (excludes canceled + merged).

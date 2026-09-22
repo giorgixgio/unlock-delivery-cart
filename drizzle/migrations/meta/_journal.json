@@ -43,6 +43,13 @@
       "when": 1790041934328,
       "tag": "0005_repair_legacy_courier_order_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790113241407,
+      "tag": "0006_operator_call_outcome_backfill",
+      "breakpoints": true
     }
   ]
 }

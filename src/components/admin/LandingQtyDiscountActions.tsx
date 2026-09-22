@@ -97,7 +97,11 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
         order_id: orderId,
         actor,
         event_type: "landing_qty_discount",
-        payload: { qty, discount_pct: getQtyDiscountPct(qty, item.sku), sku: item.sku } as any,
+        payload: {
+          qty, from: item.quantity, to: qty, discount_pct: getQtyDiscountPct(qty, item.sku), sku: item.sku,
+          before_total: Number(item.line_total), after_total: newLineTotal,
+          delta_total: newLineTotal - Number(item.line_total),
+        } as any,
       });
 
       toast({ title: `${qty} ცალის ფასდაკლება გამოყენებულია`, description: `სულ: ${newLineTotal.toFixed(2)} ₾` });

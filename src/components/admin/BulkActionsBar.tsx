@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent } from "@/lib/systemEventService";
 import { versionedOrderUpdate } from "@/lib/idempotencyService";
+import { logCallOutcome } from "@/lib/callAttemptService";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface BulkActionsBarProps {
   selectedIds: string[];
@@ -22,6 +24,8 @@ interface BulkActionsBarProps {
 
 const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onMergeRequest }: BulkActionsBarProps) => {
   const { toast } = useToast();
+  const { user } = useAdminAuth();
+  const actor = user?.email || "admin";
   const [loading, setLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"confirm" | "cancel" | "delete" | null>(null);
   const [restoreStock, setRestoreStock] = useState(true);
@@ -37,13 +41,18 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
           is_confirmed: true,
           status: "confirmed",
           review_required: false,
+          call_outcome: "confirmed",
+          call_outcome_updated_at: new Date().toISOString(),
+          call_outcome_updated_by: actor,
+          operator_review_status: "confirmed",
         });
         await supabase.from("order_events").insert({
           order_id: order.id,
-          actor: "admin",
+          actor,
           event_type: "bulk_confirm",
           payload: { previous_status: order.status } as any,
         });
+        await logCallOutcome(order.id, actor, "confirmed", { source: "bulk" });
         await applyOrderConfirmStock(order.id);
         success++;
       } catch { /* skip conflicts */ }
@@ -63,13 +72,19 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
         await versionedOrderUpdate(order.id, order.version, {
           status: "canceled",
           review_required: false,
+          call_outcome: "cancelled",
+          call_outcome_updated_at: new Date().toISOString(),
+          call_outcome_updated_by: actor,
+          operator_review_status: "cancelled",
+          final_cancel_reason: "other",
         });
         await supabase.from("order_events").insert({
           order_id: order.id,
-          actor: "admin",
+          actor,
           event_type: "bulk_cancel",
           payload: { previous_status: order.status } as any,
         });
+        await logCallOutcome(order.id, actor, "cancelled", { source: "bulk", cancel_reason: "bulk_cancel" });
         await applyOrderCancelStock(order.id, restoreStock);
         success++;
       } catch { /* skip */ }
