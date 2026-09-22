@@ -41,13 +41,19 @@ export type ItemLite = { order_id: string; sku: string; title: string; quantity:
 const SHIPMENT_COLS =
   "id, tracking_number, order_number, original_order_id, current_courier_status, derived_state, is_return, phone, phone_normalized, customer_name, city, cod_amount, order_date, latest_status_date, status_changed_at, final_status_date, comment_items, linked_original_tracking_number, linked_return_tracking_number";
 
-async function pageAll<T>(fetcher: (from: number, to: number) => Promise<T[]>, size = 1000): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += size) {
-    const batch = await fetcher(from, from + size - 1);
-    out.push(...batch);
-    if (batch.length < size) break;
-  }
+/** Run async jobs with bounded concurrency (keeps requests parallel but polite). */
+async function pooled<T, R>(items: T[], limit: number, job: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= items.length) return;
+        out[i] = await job(items[i]);
+      }
+    }),
+  );
   return out;
 }
 
@@ -56,6 +62,7 @@ function chunk<T>(a: T[], n: number): T[][] {
   for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n));
   return out;
 }
+
 
 export type CourierDataset = {
   shipments: Shipment[];
@@ -67,46 +74,68 @@ export type CourierDataset = {
 export function useCourierDataset() {
   return useQuery<CourierDataset>({
     queryKey: ["courier-dataset"],
-    staleTime: 2 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
-      const shipments = await pageAll<Shipment>(async (from, to) => {
-        const { data, error } = await supabase
-          .from("courier_shipments")
-          .select(SHIPMENT_COLS)
-          .order("tracking_number")
-          .range(from, to);
-        if (error) throw error;
-        return (data as any) || [];
-      });
+      const PAGE = 1000;
 
-      const { data: smRows } = await supabase.from("courier_status_map").select("*").order("sort_order");
+      // How many shipment rows exist -> fetch all pages in parallel instead of one by one.
+      const { count } = await supabase
+        .from("courier_shipments")
+        .select("id", { count: "exact", head: true });
+      const total = count || 0;
+      const pages = Array.from({ length: Math.max(1, Math.ceil(total / PAGE)) }, (_, i) => i);
+
+      const [shipmentPages, smRes] = await Promise.all([
+        pooled(pages, 6, async (p) => {
+          const { data, error } = await supabase
+            .from("courier_shipments")
+            .select(SHIPMENT_COLS)
+            .order("tracking_number")
+            .range(p * PAGE, p * PAGE + PAGE - 1);
+          if (error) throw error;
+          return (data as any as Shipment[]) || [];
+        }),
+        supabase.from("courier_status_map").select("*").order("sort_order"),
+      ]);
+      const shipments = shipmentPages.flat();
+
       const statusMap = new Map<string, StatusMapRow>();
-      for (const r of (smRows as any as StatusMapRow[]) || []) statusMap.set(r.courier_status.trim(), r);
+      for (const r of (smRes.data as any as StatusMapRow[]) || []) statusMap.set(r.courier_status.trim(), r);
 
       const orderIds = [...new Set(shipments.map((s) => s.original_order_id).filter(Boolean) as string[])];
-      const orders = new Map<string, OrderLite>();
-      for (const ids of chunk(orderIds, 400)) {
-        const { data } = await supabase
-          .from("orders")
-          .select("id, public_order_number, created_at, auto_confirmed, is_return, city, normalized_city, region, total")
-          .in("id", ids);
-        for (const o of (data as any as OrderLite[]) || []) orders.set(o.id, o);
-      }
+      const idChunks = chunk(orderIds, 500);
 
+      const orders = new Map<string, OrderLite>();
       const itemsByOrder = new Map<string, ItemLite[]>();
-      for (const ids of chunk(orderIds, 400)) {
-        const { data } = await supabase
-          .from("order_items")
-          .select("order_id, sku, title, quantity")
-          .in("order_id", ids);
-        for (const it of (data as any as ItemLite[]) || []) {
-          const arr = itemsByOrder.get(it.order_id) || [];
-          arr.push(it);
-          itemsByOrder.set(it.order_id, arr);
-        }
+
+      const [orderRes, itemRes] = await Promise.all([
+        pooled(idChunks, 6, async (ids) => {
+          const { data } = await supabase
+            .from("orders")
+            .select("id, public_order_number, created_at, auto_confirmed, is_return, city, normalized_city, region, total")
+            .in("id", ids);
+          return (data as any as OrderLite[]) || [];
+        }),
+        pooled(idChunks, 6, async (ids) => {
+          const { data } = await supabase
+            .from("order_items")
+            .select("order_id, sku, title, quantity")
+            .in("order_id", ids);
+          return (data as any as ItemLite[]) || [];
+        }),
+      ]);
+
+      for (const o of orderRes.flat()) orders.set(o.id, o);
+      for (const it of itemRes.flat()) {
+        const arr = itemsByOrder.get(it.order_id) || [];
+        arr.push(it);
+        itemsByOrder.set(it.order_id, arr);
       }
 
       return { shipments, orders, itemsByOrder, statusMap };
+
     },
   });
 }
