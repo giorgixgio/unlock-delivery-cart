@@ -41,13 +41,19 @@ export type ItemLite = { order_id: string; sku: string; title: string; quantity:
 const SHIPMENT_COLS =
   "id, tracking_number, order_number, original_order_id, current_courier_status, derived_state, is_return, phone, phone_normalized, customer_name, city, cod_amount, order_date, latest_status_date, status_changed_at, final_status_date, comment_items, linked_original_tracking_number, linked_return_tracking_number";
 
-async function pageAll<T>(fetcher: (from: number, to: number) => Promise<T[]>, size = 1000): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += size) {
-    const batch = await fetcher(from, from + size - 1);
-    out.push(...batch);
-    if (batch.length < size) break;
-  }
+/** Run async jobs with bounded concurrency (keeps requests parallel but polite). */
+async function pooled<T, R>(items: T[], limit: number, job: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= items.length) return;
+        out[i] = await job(items[i]);
+      }
+    }),
+  );
   return out;
 }
 
@@ -56,6 +62,7 @@ function chunk<T>(a: T[], n: number): T[][] {
   for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n));
   return out;
 }
+
 
 export type CourierDataset = {
   shipments: Shipment[];
