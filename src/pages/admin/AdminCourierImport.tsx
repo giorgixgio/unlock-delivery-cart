@@ -427,7 +427,7 @@ export default function AdminCourierImport() {
         setProgress(Math.round(((i + 1) / chunks.length) * 100));
       }
 
-      await supabase.functions.invoke("import-courier", { body: { mode: "finalize", batch_id: batchId } });
+      await callImport({ mode: "finalize", batch_id: batchId });
 
       const summary =
         `${totals.new} new, ${totals.updated} updated, ${totals.unchanged} unchanged, ` +
