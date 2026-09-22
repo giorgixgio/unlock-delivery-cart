@@ -163,6 +163,55 @@ const ClassifyButton = () => {
   );
 };
 
+/** Compact courier-return badge with an order/tracking breakdown on hover. */
+const ReturnCell = ({
+  value, sub, tone, rec, buckets, emptyLabel = "—",
+}: {
+  value: number;
+  sub?: React.ReactNode;
+  tone: "green" | "amber" | "muted";
+  rec?: SkuRecovery;
+  buckets: RecoveryBucket[];
+  emptyLabel?: string;
+}) => {
+  const cls =
+    tone === "green" ? "bg-emerald-100 text-emerald-800"
+    : tone === "amber" ? "bg-amber-100 text-amber-800"
+    : "bg-muted text-muted-foreground";
+
+  if (!rec || value === 0) {
+    return <span className="text-xs text-muted-foreground/50">{emptyLabel}</span>;
+  }
+
+  const details = rec.details.filter((d) => buckets.includes(d.bucket));
+  const shown = details.slice(0, 15);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="inline-flex flex-col items-start gap-0.5 cursor-default">
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${cls}`}>{value}</span>
+          {sub}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[320px]">
+        <div className="space-y-0.5 text-[11px]">
+          {shown.map((d, i) => (
+            <div key={`${d.tracking}-${i}`} className="flex justify-between gap-3">
+              <span className="font-mono">{d.orderNumber || d.tracking}</span>
+              <span className="text-muted-foreground truncate max-w-[150px]">{d.status || "—"}</span>
+              <span className="font-bold">{d.units}</span>
+            </div>
+          ))}
+          {details.length > shown.length && (
+            <div className="pt-1 text-muted-foreground">+{details.length - shown.length} more</div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts({ fresh: true });
   const [stockMap, setStockMap] = useState<Record<string, number>>({});
