@@ -356,7 +356,23 @@ export default function AdminCourierImport() {
 
   /** Invoke the import function and surface the REAL server error body (invoke() drops it on non-2xx). */
   async function callImport(body: any): Promise<any> {
-    const { data, error } = await supabase.functions.invoke("import-courier", { body });
+    // Attach the session token explicitly — on mobile the stored session can be
+    // stale/missing, and invoke() then sends only the anon key → 401 "Unauthorized".
+    let { data: sess } = await supabase.auth.getSession();
+    if (!sess.session) {
+      const refreshed = await supabase.auth.refreshSession();
+      sess = refreshed.data;
+    }
+    const token = sess.session?.access_token;
+    if (!token) {
+      const err: any = new Error("სესია ამოიწურა — გთხოვ თავიდან შედი ადმინში და სცადე ხელახლა.");
+      err.stage = "auth";
+      throw err;
+    }
+    const { data, error } = await supabase.functions.invoke("import-courier", {
+      body,
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (error) {
       let serverBody: any = null;
       try { serverBody = await (error as any)?.context?.json?.(); } catch { /* not json */ }
