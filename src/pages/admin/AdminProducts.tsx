@@ -773,6 +773,27 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
             <th className="text-left px-3 py-3 font-bold">Stock</th>
+            <th className="text-left px-3 py-3 font-bold">
+              <button
+                className="inline-flex items-center gap-1 hover:text-emerald-700"
+                onClick={() => setRecSort(recSort === "received" ? null : "received")}
+                title="დახარისხება მიღებულის მიხედვით"
+              >
+                დაბრუნებით მიღებული
+                {recSort === "received" && <ArrowDown className="w-3 h-3" />}
+              </button>
+            </th>
+            <th className="text-left px-3 py-3 font-bold">
+              <button
+                className="inline-flex items-center gap-1 hover:text-amber-700"
+                onClick={() => setRecSort(recSort === "onway" ? null : "onway")}
+                title="დახარისხება მოსალოდნელის მიხედვით"
+              >
+                მოსალოდნელი დაბრუნება
+                {recSort === "onway" && <ArrowDown className="w-3 h-3" />}
+              </button>
+            </th>
+            <th className="text-left px-3 py-3 font-bold text-muted-foreground">პროცესში</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
             <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
