@@ -127,7 +127,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </a>
-          <img src={siteLogo || logoSrc} alt={siteName} className="h-7 w-auto mx-auto" />
+          <img src={siteLogo || logoSrc} alt={siteName} className="h-11 sm:h-12 w-auto max-w-[70vw] object-contain mx-auto" />
           <div className="w-8" />
         </div>
       </header>

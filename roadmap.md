@@ -16,3 +16,11 @@
 - [x] Products page: received back / on the way / in progress columns, sorting, totals, tooltips
 - [x] Repair legacy courier-to-order links by normalized order number + customer phone; verify Products totals
 - [x] Products recovery summary equals the exact return columns on the currently visible product page
+
+# Roadmap — Operator Stats rebuild
+
+- [ ] Add unified operator call-outcome event tracking across quick review, order detail, and bulk actions
+- [ ] Backfill historical call-outcome events idempotently
+- [ ] Build paginated Tbilisi-time stats data layer and pure calculation engine with tests
+- [ ] Rebuild Operator Stats into Overview, Operators, Capacity planner, and Day performance tabs
+- [ ] Verify Dashboard-aligned day performance, store/operator filters, and mobile layout
