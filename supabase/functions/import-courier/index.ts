@@ -209,15 +209,39 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !anonKey || !serviceKey) {
       return json(500, { success: false, message: "Server configuration error", details: { stage } });
     }
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims) return json(401, { success: false, message: "Unauthorized", details: { stage } });
-    const userId = claims.claims.sub;
-    const userEmail = claims.claims.email as string | undefined;
-    admin = createClient(supabaseUrl, serviceKey);
-    const { data: isAdmin } = await admin.rpc("is_active_admin", { user_id: userId });
-    if (!isAdmin) return json(403, { success: false, message: "Forbidden", details: { stage } });
+    // Validate the caller against Auth, then check the same active staff record
+    // used by the admin UI. Looking up by verified Auth email avoids mobile JWT
+    // claim/version differences while still rejecting restricted staff roles.
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    const userId = userData?.user?.id ?? null;
+    const userEmail = userData?.user?.email?.trim().toLowerCase() ?? null;
+    if (userErr || !userId || !userEmail) {
+      console.warn("[import-courier] auth validation failed", { hasUser: Boolean(userId), error: userErr?.message });
+      return json(401, { success: false, message: "Unauthorized", details: { stage } });
+    }
+
+    admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    const { data: staffRow, error: staffErr } = await admin
+      .from("admin_users")
+      .select("is_active, role")
+      .ilike("email", userEmail)
+      .maybeSingle();
+    const role = String(staffRow?.role ?? "").toLowerCase();
+    const canImport = !staffErr && staffRow?.is_active === true && role !== "warehouse" && role !== "scanner";
+    if (!canImport) {
+      console.warn("[import-courier] staff authorization denied", {
+        userId,
+        hasStaffRow: Boolean(staffRow),
+        active: staffRow?.is_active === true,
+        role: role || null,
+        error: staffErr?.message,
+      });
+      return json(403, { success: false, message: "Forbidden", details: { stage } });
+    }
 
     stage = "parse_payload";
     const payload = await req.json().catch(() => null);
