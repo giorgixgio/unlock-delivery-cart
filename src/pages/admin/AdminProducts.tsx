@@ -804,6 +804,7 @@ const AdminProducts = () => {
         <tbody>
           {rows.map((row) => {
             const displayCompare = getDisplayCompareAtPrice(row.price, row.compareAtPrice);
+            const rec = recMap.get(row.sku);
             const hasRealCompare = row.compareAtPrice && row.compareAtPrice > row.price;
             return (
               <tr key={row.productId} className={`border-t border-border hover:bg-muted/30 transition-colors ${row.skuConflict ? "bg-orange-50/50" : ""}`}>
@@ -1004,6 +1005,27 @@ const AdminProducts = () => {
                       </span>
                     )}
                   </button>
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell value={rec?.collectedUnits || 0} tone="green" rec={rec} buckets={["collected"]} />
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell
+                    value={(rec?.inTransitUnits || 0) + (rec?.notRegisteredUnits || 0)}
+                    tone="amber"
+                    rec={rec}
+                    buckets={["in_transit", "not_registered"]}
+                    sub={
+                      rec && (rec.inTransitUnits || rec.notRegisteredUnits) ? (
+                        <span className="text-[10px] text-muted-foreground">
+                          {rec.inTransitUnits} გზაში · {rec.notRegisteredUnits} დაურეგისტრირებელი
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell value={rec?.inProgressUnits || 0} tone="muted" rec={rec} buckets={["in_progress"]} />
                 </td>
                 <td className="px-3 py-2">
                   <button
