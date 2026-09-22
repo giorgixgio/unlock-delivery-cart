@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState, useRef, useCallback } from "react";
 import logoSrc from "@/assets/logo.png";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
@@ -262,6 +263,7 @@ const UpgradeLayer = ({ itemCount, threshold, lastFilled, aovMax }: {
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════
 const MissionHeroStrip = () => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const { itemCount, threshold, isUnlocked } = useCart();
   const { openCart } = useCartOverlay();
 
@@ -354,7 +356,7 @@ const MissionHeroStrip = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex-shrink-0"
             >
-              <img src={logoSrc} alt="BigMart" className="h-7 w-auto" />
+              <img src={siteLogo || logoSrc} alt={siteName} className="h-7 w-auto" />
             </button>
           <div className="flex-1" />
           <button

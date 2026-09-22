@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import logoSrc from "@/assets/logo.png";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { Product } from "@/lib/constants";
 import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 import { LandingConfig } from "@/hooks/useLandingConfig";
@@ -37,6 +38,7 @@ interface TailoredLandingProps {
 }
 
 const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }: TailoredLandingProps) => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
   const upsellsActive = resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
@@ -125,7 +127,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </a>
-          <img src={logoSrc} alt="BigMart" className="h-7 w-auto mx-auto" />
+          <img src={siteLogo || logoSrc} alt={siteName} className="h-7 w-auto mx-auto" />
           <div className="w-8" />
         </div>
       </header>

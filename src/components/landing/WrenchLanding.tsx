@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import logoSrc from "@/assets/logo.png";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, ShoppingCart, ArrowLeft } from "lucide-react";
@@ -67,6 +68,7 @@ const LastOrderBadge = memo(() => {
 LastOrderBadge.displayName = "LastOrderBadge";
 
 const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingProps) => {
+  const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
 
   const UNIT_PRICE = product.price;
@@ -145,7 +147,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
           <a href="/" className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white" />
           </a>
-          <img src={logoSrc} alt="BigMart" className="h-7 w-auto mx-auto brightness-0 invert" />
+          <img src={siteLogo || logoSrc} alt={siteName} className="h-7 w-auto mx-auto brightness-0 invert" />
           <div className="w-8" />
         </div>
       </header>
