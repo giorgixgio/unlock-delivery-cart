@@ -251,6 +251,18 @@ const AdminProducts = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [showOOS, setShowOOS] = useState(false);
 
+  // ---- Courier returns (shared calculation with the Courier > Restock page) ----
+  const { data: courierDs, isLoading: courierLoading } = useCourierDataset();
+  const [recFrom, setRecFrom] = useState("");
+  const [recTo, setRecTo] = useState("");
+  const [recSort, setRecSort] = useState<null | "received" | "onway">(null);
+
+  const recMap = useMemo(
+    () => recoveryBySku(courierDs, { from: recFrom || undefined, to: recTo || undefined }),
+    [courierDs, recFrom, recTo],
+  );
+  const recTotals = useMemo(() => recoveryTotals(recMap), [recMap]);
+
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
   // SKU reassignment state
