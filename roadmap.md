@@ -12,3 +12,5 @@
 - [x] Statuses config page + nav group + routes
 - [x] Unit tests for return detection, comment parsing, recovery rules
 - [ ] End-to-end double-upload test — needs a real courier file uploaded through the admin (no admin session available to the agent)
+- [x] Shared per-SKU recovery module (src/lib/courierRecovery.ts) used by Restock + admin Products
+- [x] Products page: received back / on the way / in progress columns, sorting, totals, tooltips

@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus, Zap,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus, Zap, Info, ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
@@ -22,6 +22,9 @@ import { fetchStockQuantities, fetchReservedQuantities } from "@/lib/stockServic
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCourierDataset } from "@/hooks/useCourierDataset";
+import { recoveryBySku, recoveryTotals, type SkuRecovery, type RecoveryBucket } from "@/lib/courierRecovery";
 
 interface VariantRow {
   productId: string;
@@ -160,6 +163,55 @@ const ClassifyButton = () => {
   );
 };
 
+/** Compact courier-return badge with an order/tracking breakdown on hover. */
+const ReturnCell = ({
+  value, sub, tone, rec, buckets, emptyLabel = "—",
+}: {
+  value: number;
+  sub?: React.ReactNode;
+  tone: "green" | "amber" | "muted";
+  rec?: SkuRecovery;
+  buckets: RecoveryBucket[];
+  emptyLabel?: string;
+}) => {
+  const cls =
+    tone === "green" ? "bg-emerald-100 text-emerald-800"
+    : tone === "amber" ? "bg-amber-100 text-amber-800"
+    : "bg-muted text-muted-foreground";
+
+  if (!rec || value === 0) {
+    return <span className="text-xs text-muted-foreground/50">{emptyLabel}</span>;
+  }
+
+  const details = rec.details.filter((d) => buckets.includes(d.bucket));
+  const shown = details.slice(0, 15);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="inline-flex flex-col items-start gap-0.5 cursor-default">
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${cls}`}>{value}</span>
+          {sub}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[320px]">
+        <div className="space-y-0.5 text-[11px]">
+          {shown.map((d, i) => (
+            <div key={`${d.tracking}-${i}`} className="flex justify-between gap-3">
+              <span className="font-mono">{d.orderNumber || d.tracking}</span>
+              <span className="text-muted-foreground truncate max-w-[150px]">{d.status || "—"}</span>
+              <span className="font-bold">{d.units}</span>
+            </div>
+          ))}
+          {details.length > shown.length && (
+            <div className="pt-1 text-muted-foreground">+{details.length - shown.length} more</div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 const AdminProducts = () => {
   const { data: products, isLoading } = useProducts({ fresh: true });
   const [stockMap, setStockMap] = useState<Record<string, number>>({});
@@ -198,6 +250,18 @@ const AdminProducts = () => {
   const [bulkFileName, setBulkFileName] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [showOOS, setShowOOS] = useState(false);
+
+  // ---- Courier returns (shared calculation with the Courier > Restock page) ----
+  const { data: courierDs, isLoading: courierLoading } = useCourierDataset();
+  const [recFrom, setRecFrom] = useState("");
+  const [recTo, setRecTo] = useState("");
+  const [recSort, setRecSort] = useState<null | "received" | "onway">(null);
+
+  const recMap = useMemo(
+    () => recoveryBySku(courierDs, { from: recFrom || undefined, to: recTo || undefined }),
+    [courierDs, recFrom, recTo],
+  );
+  const recTotals = useMemo(() => recoveryTotals(recMap), [recMap]);
 
   const [skuConflicts, setSkuConflicts] = useState<Record<string, VariantRow["skuConflict"]>>(loadConflicts);
 
@@ -317,22 +381,31 @@ const AdminProducts = () => {
       : baseRows;
 
     const q = search.trim().toLowerCase();
-    if (!q) return source;
 
-    if (looksLikeSku(q)) {
-      const exact = source.filter((r) => r.sku.toLowerCase() === q);
-      if (exact.length > 0) return exact;
-      const partial = source.filter((r) => r.sku.toLowerCase().includes(q));
-      if (partial.length > 0) return partial;
-    }
+    const searched = !q ? source
+      : (() => {
+          if (looksLikeSku(q)) {
+            const exact = source.filter((r) => r.sku.toLowerCase() === q);
+            if (exact.length > 0) return exact;
+            const partial = source.filter((r) => r.sku.toLowerCase().includes(q));
+            if (partial.length > 0) return partial;
+          }
+          return source.filter(
+            (r) =>
+              r.title.toLowerCase().includes(q) ||
+              r.sku.toLowerCase().includes(q) ||
+              r.vendor.toLowerCase().includes(q)
+          );
+        })();
 
-    return source.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.sku.toLowerCase().includes(q) ||
-        r.vendor.toLowerCase().includes(q)
-    );
-  }, [baseRows, conflictRows, oosRows, unverifiedRows, verifiedRows, search, activeTab]);
+    if (!recSort) return searched;
+    const val = (sku: string) => {
+      const r = recMap.get(sku);
+      if (!r) return 0;
+      return recSort === "received" ? r.collectedUnits : r.inTransitUnits + r.notRegisteredUnits;
+    };
+    return [...searched].sort((a, b) => val(b.sku) - val(a.sku));
+  }, [baseRows, conflictRows, oosRows, unverifiedRows, verifiedRows, search, activeTab, recSort, recMap]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageRows = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -700,6 +773,27 @@ const AdminProducts = () => {
             <th className="text-left px-3 py-3 font-bold">Price</th>
             <th className="text-left px-3 py-3 font-bold">Compare</th>
             <th className="text-left px-3 py-3 font-bold">Stock</th>
+            <th className="text-left px-3 py-3 font-bold">
+              <button
+                className="inline-flex items-center gap-1 hover:text-emerald-700"
+                onClick={() => setRecSort(recSort === "received" ? null : "received")}
+                title="დახარისხება მიღებულის მიხედვით"
+              >
+                დაბრუნებით მიღებული
+                {recSort === "received" && <ArrowDown className="w-3 h-3" />}
+              </button>
+            </th>
+            <th className="text-left px-3 py-3 font-bold">
+              <button
+                className="inline-flex items-center gap-1 hover:text-amber-700"
+                onClick={() => setRecSort(recSort === "onway" ? null : "onway")}
+                title="დახარისხება მოსალოდნელის მიხედვით"
+              >
+                მოსალოდნელი დაბრუნება
+                {recSort === "onway" && <ArrowDown className="w-3 h-3" />}
+              </button>
+            </th>
+            <th className="text-left px-3 py-3 font-bold text-muted-foreground">პროცესში</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
             <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
@@ -710,6 +804,7 @@ const AdminProducts = () => {
         <tbody>
           {rows.map((row) => {
             const displayCompare = getDisplayCompareAtPrice(row.price, row.compareAtPrice);
+            const rec = recMap.get(row.sku);
             const hasRealCompare = row.compareAtPrice && row.compareAtPrice > row.price;
             return (
               <tr key={row.productId} className={`border-t border-border hover:bg-muted/30 transition-colors ${row.skuConflict ? "bg-orange-50/50" : ""}`}>
@@ -910,6 +1005,27 @@ const AdminProducts = () => {
                       </span>
                     )}
                   </button>
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell value={rec?.collectedUnits || 0} tone="green" rec={rec} buckets={["collected"]} />
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell
+                    value={(rec?.inTransitUnits || 0) + (rec?.notRegisteredUnits || 0)}
+                    tone="amber"
+                    rec={rec}
+                    buckets={["in_transit", "not_registered"]}
+                    sub={
+                      rec && (rec.inTransitUnits || rec.notRegisteredUnits) ? (
+                        <span className="text-[10px] text-muted-foreground">
+                          {rec.inTransitUnits} გზაში · {rec.notRegisteredUnits} დაურეგისტრირებელი
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <ReturnCell value={rec?.inProgressUnits || 0} tone="muted" rec={rec} buckets={["in_progress"]} />
                 </td>
                 <td className="px-3 py-2">
                   <button
@@ -1125,6 +1241,45 @@ const AdminProducts = () => {
           )}
         </div>
       )}
+
+      {/* Courier returns summary + period filter (same calculation as Courier > Restock) */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+        {courierLoading ? (
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" /> კურიერის მონაცემები იტვირთება...
+          </span>
+        ) : (
+          <span className="font-medium">
+            ყველა პროდუქტზე:{" "}
+            <span className="text-emerald-700 font-bold">{recTotals.collectedUnits}</span> მიღებული ·{" "}
+            <span className="text-amber-700 font-bold">{recTotals.inTransitUnits + recTotals.notRegisteredUnits}</span> მოსალოდნელი ·{" "}
+            <span className="text-muted-foreground font-bold">{recTotals.inProgressUnits}</span> პროცესში
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground">დან</span>
+          <Input type="date" value={recFrom} onChange={(e) => setRecFrom(e.target.value)} className="h-7 w-36 text-xs" />
+          <span className="text-muted-foreground">მდე</span>
+          <Input type="date" value={recTo} onChange={(e) => setRecTo(e.target.value)} className="h-7 w-36 text-xs" />
+          {(recFrom || recTo) && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setRecFrom(""); setRecTo(""); }}>
+              გასუფთავება
+            </Button>
+          )}
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 text-muted-foreground cursor-default">
+              <Info className="w-3.5 h-3.5" /> რას ნიშნავს?
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[300px] text-[11px]">
+            ციფრები მხოლოდ იმ შეკვეთებს ითვლის, რომლებიც კურიერის ატვირთულ ფაილში მოხვდა.
+            მიღებული = ფიზიკურად დაბრუნებული და გასაყიდად მზადაა; მოსალოდნელი = უარი თქვეს, ჯერ არ მიგვიღია;
+            პროცესში = ჯერ არ არის დასრულებული.
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       {/* Tabs: All Products / Conflicting SKUs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(0); }}>
