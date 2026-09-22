@@ -1,6 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
+export type CallOutcomeSource = "quick_review" | "order_detail" | "bulk" | "duplicate_cleanup";
+
+export async function logCallOutcome(
+  orderId: string,
+  actor: string,
+  outcome: "confirmed" | "no_answer" | "callback" | "cancelled",
+  payload: Record<string, unknown> = {},
+): Promise<void> {
+  const { data: order } = await supabase.from("orders").select("created_at").eq("id", orderId).maybeSingle();
+  await supabase.from("order_events").insert({
+    order_id: orderId,
+    actor,
+    event_type: "call_outcome",
+    payload: { outcome, order_created_at: order?.created_at ?? null, ...payload } as any,
+  });
+}
+
 export interface CallAttemptEntry {
   at: string;
   by: string;
@@ -12,6 +29,8 @@ export interface CallAttemptEntry {
 export async function recordNoAnswerAttempt(
   orderId: string,
   actor: string,
+  source: CallOutcomeSource = "quick_review",
+  sessionId?: string | null,
 ): Promise<{ count: number } | null> {
   const { data: row, error: fetchErr } = await supabase
     .from("orders")
@@ -43,6 +62,8 @@ export async function recordNoAnswerAttempt(
       // Keep status; just flag review state for the queue
       operator_review_status: "no_answer",
       call_outcome: "no_answer",
+      call_outcome_updated_at: nowIso,
+      call_outcome_updated_by: actor,
     } as any)
     .eq("id", orderId);
   if (error) return null;
@@ -53,6 +74,7 @@ export async function recordNoAnswerAttempt(
     event_type: "call_attempt",
     payload: { attempt_number: nextCount, outcome: "no_answer" } as any,
   });
+  await logCallOutcome(orderId, actor, "no_answer", { attempt_number: nextCount, source, session_id: sessionId ?? null });
 
   return { count: nextCount };
 }
@@ -65,6 +87,8 @@ export async function cancelOrderWithReason(
   note: string | null,
   attemptCount: number,
   maxAttempts: number = DEFAULT_MAX_CALL_ATTEMPTS,
+  source: CallOutcomeSource = "quick_review",
+  sessionId?: string | null,
 ): Promise<boolean> {
   const canceledAfterAttempts =
     reason === "no_answer_after_attempts" && attemptCount >= maxAttempts;
@@ -91,6 +115,12 @@ export async function cancelOrderWithReason(
     event_type: "order_canceled",
     payload: { reason, note, attempt_count: attemptCount } as any,
   });
+  await logCallOutcome(orderId, actor, "cancelled", {
+    attempt_number: attemptCount,
+    cancel_reason: reason,
+    source,
+    session_id: sessionId ?? null,
+  });
   return true;
 }
 
@@ -99,6 +129,8 @@ export async function scheduleCallback(
   orderId: string,
   actor: string,
   whenIso: string,
+  source: CallOutcomeSource = "quick_review",
+  sessionId?: string | null,
 ): Promise<boolean> {
   const { error } = await supabase
     .from("orders")
@@ -118,6 +150,7 @@ export async function scheduleCallback(
     event_type: "callback_scheduled",
     payload: { next_call_after: whenIso } as any,
   });
+  await logCallOutcome(orderId, actor, "callback", { next_call_after: whenIso, source, session_id: sessionId ?? null });
   return true;
 }
 

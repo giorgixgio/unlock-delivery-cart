@@ -164,3 +164,7 @@ export async function endSession(
 export function currentSessionOrderId(): string | null {
   return current?.orderId ?? null;
 }
+
+export function currentSessionId(): string | null {
+  return current?.id ?? null;
+}

@@ -19,7 +19,7 @@ import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
 import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
-import { startSession, markAction, endSession } from "@/lib/operatorSession";
+import { startSession, markAction, endSession, currentSessionId } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
@@ -27,6 +27,7 @@ import {
   recordNoAnswerAttempt,
   cancelOrderWithReason,
   scheduleCallback,
+  logCallOutcome,
 } from "@/lib/callAttemptService";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
@@ -345,7 +346,7 @@ export default function OrderQuickReviewModal({
     for (const p of cancellablePrev) {
       const success = await cancelOrderWithReason(
         p.id, actor, "duplicate_order", "Bulk-canceled as duplicate from quick review",
-        Number(p.call_attempt_count || 0),
+        Number(p.call_attempt_count || 0), undefined, "duplicate_cleanup", currentSessionId(),
       );
       if (success) ok++; else fail++;
     }
@@ -381,7 +382,7 @@ export default function OrderQuickReviewModal({
     setCancelingPrevId(p.id);
     const ok = await cancelOrderWithReason(
       p.id, actor, "duplicate_order", "Canceled as duplicate from quick review",
-      Number(p.call_attempt_count || 0),
+      Number(p.call_attempt_count || 0), undefined, "duplicate_cleanup", currentSessionId(),
     );
     setCancelingPrevId(null);
     if (ok) {
@@ -505,7 +506,7 @@ export default function OrderQuickReviewModal({
     // No-Answer = retry counter, not a final status.
     if (outcome === "no_answer") {
       setSaving(true);
-      const result = await recordNoAnswerAttempt(order.id, actor);
+      const result = await recordNoAnswerAttempt(order.id, actor, "quick_review", currentSessionId());
       setSaving(false);
       if (!result) {
         toast({ title: "ვერ შეინახა", variant: "destructive" });
@@ -564,6 +565,11 @@ export default function OrderQuickReviewModal({
     if (!ok) { setSaving(false); return; }
 
     if (def.isConfirmed === true) await applyOrderConfirmStock(order.id);
+    await logCallOutcome(order.id, actor, "confirmed", {
+      attempt_number: Number(order.call_attempt_count || 0) + 1,
+      source: "quick_review",
+      session_id: currentSessionId(),
+    });
 
     markAction("outcome");
     await logSystemEvent({
@@ -586,7 +592,7 @@ export default function OrderQuickReviewModal({
 
     const ok = await cancelOrderWithReason(
       order.id, actor, reason, note,
-      Number(order.call_attempt_count || 0),
+      Number(order.call_attempt_count || 0), undefined, "quick_review", currentSessionId(),
     );
     setSaving(false);
     if (!ok) { toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" }); return; }
@@ -612,7 +618,7 @@ export default function OrderQuickReviewModal({
   const handleCallbackConfirm = async (whenIso: string) => {
     if (!order) return;
     setSaving(true);
-    const ok = await scheduleCallback(order.id, actor, whenIso);
+    const ok = await scheduleCallback(order.id, actor, whenIso, "quick_review", currentSessionId());
     setSaving(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
     markAction("callback");

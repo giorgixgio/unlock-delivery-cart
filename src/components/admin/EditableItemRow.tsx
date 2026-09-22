@@ -113,7 +113,11 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
         order_id: orderId,
         actor,
         event_type: "item_quantity_change",
-        payload: { item_id: item.id, sku: item.sku, from: item.quantity, to: qty } as any,
+        payload: {
+          item_id: item.id, sku: item.sku, from: item.quantity, to: qty,
+          before_total: Number(item.line_total), after_total: newLineTotal,
+          delta_total: newLineTotal - Number(item.line_total),
+        } as any,
       });
 
       setEditing(false);
