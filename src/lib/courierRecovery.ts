@@ -119,3 +119,24 @@ export function recoveryTotals(map: Map<string, SkuRecovery>): RecoveryGrandTota
   }
   return t;
 }
+
+/**
+ * Courier rows in scope that carry no item list at all (no matched Lovable order
+ * and no parsable comment). They cannot be attributed to a SKU, so they are
+ * missing from every per-product number — surface the count instead of hiding it.
+ */
+export function unattributedShipments(
+  ds: CourierDataset | undefined,
+  opts: { from?: string; to?: string } = {},
+): number {
+  if (!ds) return 0;
+  let n = 0;
+  for (const s of ds.shipments) {
+    if (!isOutbound(s)) continue;
+    if (!inRange(s, opts.from, opts.to)) continue;
+    if (!isFailedFinal(s) && !isInProgress(s)) continue;
+    if (unitsFor(ds, s).length === 0) n++;
+  }
+  return n;
+}
+
