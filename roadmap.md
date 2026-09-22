@@ -15,3 +15,4 @@
 - [x] Shared per-SKU recovery module (src/lib/courierRecovery.ts) used by Restock + admin Products
 - [x] Products page: received back / on the way / in progress columns, sorting, totals, tooltips
 - [x] Repair legacy courier-to-order links by normalized order number + customer phone; verify Products totals
+- [x] Products recovery summary equals the exact return columns on the currently visible product page
