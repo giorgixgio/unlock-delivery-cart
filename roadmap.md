@@ -23,4 +23,4 @@
 - [x] Backfill historical call-outcome events idempotently
 - [x] Build paginated Tbilisi-time stats data layer and pure calculation engine with tests
 - [x] Rebuild Operator Stats into Overview, Operators, Capacity planner, and Day performance tabs
-- [ ] Verify Dashboard-aligned day performance, store/operator filters, and mobile layout
+- [x] Verify Dashboard-aligned day performance, store/operator filters, and mobile layout (typecheck/tests passed; authenticated preview unavailable)
