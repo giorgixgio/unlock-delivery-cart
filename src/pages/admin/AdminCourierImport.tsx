@@ -442,12 +442,12 @@ export default function AdminCourierImport() {
       const msg = `${e?.message || String(e)}${stage}`;
       if (batchId) {
         // keep_existing_error: never overwrite a specific server-side message with a generic one
-        await supabase.functions.invoke("import-courier", {
-          body: {
+        try {
+          await callImport({
             mode: "finalize", batch_id: batchId, failed: true,
             error_message: msg, keep_existing_error: !e?.stage,
-          },
-        });
+          });
+        } catch { /* best effort — don't mask the original error */ }
       }
       setServerError({ message: e?.message || String(e), details: { stage: e?.stage, ...(e?.details || {}) } });
       toast({ title: "Import failed", description: msg, variant: "destructive" });
