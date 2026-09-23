@@ -29,12 +29,11 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
     eyebrow: "როგორ მუშაობს",
     caption: "უბრალოდ ჩაუდეთ სარეცხ მანქანაში — თმა და ბუსუსი თავად შემოიყრება",
   },
-  // High-pressure washing nozzle
-  "0019": NOZZLE_DEMO,
-  "19": NOZZLE_DEMO,
+  // High-pressure washing nozzle (TrendMart)
+  "g888-t4656-0019": NOZZLE_DEMO,
 };
 
 export function getProductDemoMedia(sku: string | number | undefined | null): ProductDemoMedia | null {
   if (!sku) return null;
-  return DEMO_MEDIA[String(sku)] ?? null;
+  return DEMO_MEDIA[String(sku).trim().toLowerCase()] ?? null;
 }
