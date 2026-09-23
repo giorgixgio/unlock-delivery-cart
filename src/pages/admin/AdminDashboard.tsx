@@ -19,6 +19,7 @@ import { DashboardStyles, CountUp } from "@/components/admin/DashboardVisuals";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { filterOrdersForStore } from "@/lib/adminStoreFilter";
+import ProductLeadsSection from "@/components/admin/ProductLeadsSection";
 
 const DELIVERY_FEE = 6.5;
 /** What WE pay the courier per shipped order, regardless of what the customer paid. */
@@ -74,11 +75,11 @@ const AdminDashboard = () => {
   const fetchStats = useCallback(async () => {
     setSpinning(true);
     try {
+      const buildQuery = () => {
       let query = supabase
         .from("orders")
         .select("id, total, shipping_fee, status, is_confirmed, auto_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_outcome, call_outcome_updated_by, call_attempt_count, next_call_after, final_cancel_reason")
         .or("is_return.is.null,is_return.eq.false");
-
 
       if (dateMode === "today" || dateMode === "yesterday" || dateMode === "custom") {
         const day =
@@ -96,14 +97,21 @@ const AdminDashboard = () => {
           .lte("created_at", tbilisiEndOfDay(range.to || range.from).toISOString());
       }
 
-
       // Hidden history cutoff for restricted accounts (e.g. data-masked admins)
       if (hideBeforeDate) {
         query = query.gte("created_at", hideBeforeDate.toISOString());
       }
+      return query.order("id");
+      };
 
-      const { data: orders, error } = await query;
-      if (error) throw error;
+      // Paginate: the backend returns at most 1000 rows per request.
+      const orders: any[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await buildQuery().range(from, from + 999);
+        if (error) throw error;
+        orders.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
       const all = await filterOrdersForStore(orders || [], activeStore);
 
       // Mutually-exclusive main status buckets
@@ -388,6 +396,18 @@ const AdminDashboard = () => {
           <MetricCard icon={DollarSign} label="Revenue After Shipping" numeric={applyToRevenue(stats.netRevenue)} format={gel} accent="text-amber-400" />
         </div>
       </section>
+
+      <div className="dg-sep" />
+
+      <ProductLeadsSection
+        dateMode={dateMode}
+        selectedDate={selectedDate}
+        range={range}
+        hideBeforeDate={hideBeforeDate}
+        activeStore={activeStore}
+        applyToCount={applyToCount}
+        applyToRevenue={applyToRevenue}
+      />
 
       <div className="dg-sep" />
 
