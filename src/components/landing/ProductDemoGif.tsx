@@ -27,11 +27,11 @@ const ProductDemoGif = ({ sku }: ProductDemoGifProps) => {
           </span>
         </div>
 
-        <div className="relative aspect-square w-full max-w-[340px] overflow-hidden rounded-xl bg-muted shadow-md ring-1 ring-border">
+        <div className="relative aspect-square w-full max-w-[280px] overflow-hidden rounded-xl bg-muted shadow-md ring-1 ring-border">
           <img
             src={media.src}
             alt={media.caption}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             loading="lazy"
             // Animated WebP loops automatically; no controls needed.
           />
