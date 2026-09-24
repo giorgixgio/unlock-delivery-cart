@@ -15,11 +15,18 @@ export interface ProductDemoMedia {
 }
 
 import sku0019Demo from "@/assets/sku0019-demo.webp.asset.json";
+import sku0017Demo from "@/assets/sku0017-demo.webp.asset.json";
 
 const NOZZLE_DEMO: ProductDemoMedia = {
   src: sku0019Demo.url,
   eyebrow: "როგორ მუშაობს",
   caption: "მაღალი წნევის ჭავლი — ერთი გადასმით ჩამორეცხავს ჭუჭყს ბეტონიდან და ეზოდან",
+};
+
+const SHOWERHEAD_DEMO: ProductDemoMedia = {
+  src: sku0017Demo.url,
+  eyebrow: "როგორ მუშაობს",
+  caption: "ძლიერი წნევა და ერთგვაროვანი ჭავლი — ჩვეულებრივ შხაპთან შედარებით 3× უკეთესი მოცულობა",
 };
 
 const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
@@ -31,6 +38,8 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
   },
   // High-pressure washing nozzle (TrendMart)
   "g888-t4656-0019": NOZZLE_DEMO,
+  // High-pressure showerhead (TrendMart)
+  "g888-t4656-0017": SHOWERHEAD_DEMO,
 };
 
 export function getProductDemoMedia(sku: string | number | undefined | null): ProductDemoMedia | null {
