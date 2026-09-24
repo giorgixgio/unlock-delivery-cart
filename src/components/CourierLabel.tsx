@@ -98,10 +98,12 @@ function LabelMarkup({ order, qrDataUrl }: { order: CourierLabelOrder; qrDataUrl
       <div style={{ borderTop: "1px dashed #000", margin: "4px 0" }} />
       <div style={{ lineHeight: 1.35 }}><b>გამგზავნი:</b> ბიგმართი</div>
       <div style={{ borderTop: "1px dashed #000", margin: "4px 0" }} />
-      <div style={{ lineHeight: 1.35 }}>
-        <b>მიმღები:</b> {order.customer_phone}, {order.address}, {order.city}, {order.customer_phone}
+      <div style={{ padding: "4px 0", borderBottom: "1px dashed #000" }}>
+        <div style={{ fontSize: "8.5px", fontWeight: 700 }}>მიმღები:</div>
+        <div style={{ fontSize: "12px", fontWeight: 700, marginTop: 2 }}>{order.customer_phone}</div>
+        <div style={{ fontSize: "14px", fontWeight: 700, marginTop: 3 }}>{order.city}</div>
+        <div style={{ fontSize: "11px", lineHeight: 1.35, marginTop: 3 }}>{order.address}</div>
       </div>
-      <div style={{ borderTop: "1px dashed #000", margin: "4px 0" }} />
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <img src={qrDataUrl} width={96} height={96} alt="" />
         <div style={{ flex: 1, fontSize: "12px" }}>
@@ -149,23 +151,29 @@ export function drawLabel(pdf: jsPDF, order: CourierLabelOrder, qrDataUrl: strin
   rule();
 
   pdf.setFont("NotoGeo", "bold");
+  pdf.setFontSize(8.5);
   pdf.text("მიმღები:", M, y);
-  const recW = pdf.getTextWidth("მიმღები: ");
+  y += 4;
+
+  // Phone — printed exactly once, on its own line.
+  pdf.setFontSize(11);
+  pdf.text(order.customer_phone || "", M, y);
+  y += 5;
+
+  // City — large, the thing the courier scans for.
+  pdf.setFontSize(13.5);
+  pdf.text(order.city || "", M, y);
+  y += 5.5;
+
+  // Address — own readable lines, wrapped within the label.
   pdf.setFont("NotoGeo", "normal");
-  const recipient = [order.customer_phone, order.address, order.city, order.customer_phone]
-    .filter(Boolean)
-    .join(", ");
-  const firstLine = pdf.splitTextToSize(recipient, right - M - recW)[0] ?? "";
-  pdf.text(firstLine, M + recW, y);
-  const rest = recipient.slice(firstLine.length).trim();
-  if (rest) {
-    const lines = pdf.splitTextToSize(rest, right - M);
-    for (const line of lines) {
-      y += 4;
-      pdf.text(line, M, y);
-    }
+  pdf.setFontSize(10.5);
+  const addrLines = pdf.splitTextToSize(order.address || "", right - M);
+  for (const line of addrLines) {
+    pdf.text(line, M, y);
+    y += 4.5;
   }
-  y += 2.5;
+  y += 1.5;
   rule();
 
   // QR + meta
