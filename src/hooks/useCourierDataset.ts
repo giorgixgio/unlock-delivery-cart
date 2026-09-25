@@ -16,6 +16,7 @@ export type Shipment = {
   city: string | null;
   cod_amount: number | null;
   order_date: string | null;
+  pickup_date: string | null;
   latest_status_date: string | null;
   status_changed_at: string | null;
   final_status_date: string | null;
