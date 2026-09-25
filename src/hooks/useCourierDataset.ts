@@ -40,7 +40,7 @@ export type OrderLite = {
 export type ItemLite = { order_id: string; sku: string; title: string; quantity: number };
 
 const SHIPMENT_COLS =
-  "id, tracking_number, order_number, original_order_id, current_courier_status, derived_state, is_return, phone, phone_normalized, customer_name, city, cod_amount, order_date, latest_status_date, status_changed_at, final_status_date, comment_items, linked_original_tracking_number, linked_return_tracking_number";
+  "id, tracking_number, order_number, original_order_id, current_courier_status, derived_state, is_return, phone, phone_normalized, customer_name, city, cod_amount, order_date, pickup_date, latest_status_date, status_changed_at, final_status_date, comment_items, linked_original_tracking_number, linked_return_tracking_number";
 
 /** Run async jobs with bounded concurrency (keeps requests parallel but polite). */
 async function pooled<T, R>(items: T[], limit: number, job: (item: T) => Promise<R>): Promise<R[]> {
