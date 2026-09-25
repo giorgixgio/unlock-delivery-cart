@@ -147,7 +147,7 @@ export default function AdminCourierStats() {
     const m = new Map<string, Shipment[]>();
     for (const s of filtered) {
       if (!isOutbound(s)) continue;
-      const d = shipmentDate(s);
+      const d = dateOf(s);
       if (!d) continue;
       const k = weekKey(d);
       const arr = m.get(k) || []; arr.push(s); m.set(k, arr);
@@ -208,6 +208,16 @@ export default function AdminCourierStats() {
               {d === "outbound" ? "გასული" : d === "return" ? "დაბრუნება" : "ყველა"}
             </Button>
           ))}
+        </div>
+        <div>
+          <Label className="text-xs">თარიღი</Label>
+          <div className="flex gap-1">
+            {(["order", "pickup"] as DateMode[]).map((m) => (
+              <Button key={m} size="sm" variant={dateMode === m ? "default" : "outline"} onClick={() => setDateMode(m)}>
+                {m === "order" ? "შეკვ. თარიღი" : "აღების თარიღი"}
+              </Button>
+            ))}
+          </div>
         </div>
         <div><Label className="text-xs">მინ. ნიმუში</Label>
           <Input type="number" value={minSample} onChange={(e) => setMinSample(parseInt(e.target.value) || 0)} className="w-24" /></div>
