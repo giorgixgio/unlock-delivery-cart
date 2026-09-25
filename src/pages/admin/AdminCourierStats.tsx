@@ -15,41 +15,79 @@ import {
 import { STATE_LABEL, STATE_BADGE } from "@/lib/courierStates";
 
 type Dir = "all" | "outbound" | "return";
-type DateMode = "order" | "pickup";
+type DateMode = "lead" | "delivered";
+
+const tbilisiDay = (iso: string): string =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tbilisi" }).format(new Date(iso));
 
 export default function AdminCourierStats() {
   const { data: ds, isLoading } = useCourierDataset();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [dir, setDir] = useState<Dir>("outbound");
-  const [dateMode, setDateMode] = useState<DateMode>("order");
+  const [dateMode, setDateMode] = useState<DateMode>("lead");
   const [minSample, setMinSample] = useState(5);
-
-  // Which courier-file date column the period filter counts by
-  const dateOf = (s: Shipment): string | null =>
-    dateMode === "pickup"
-      ? s.pickup_date || shipmentDate(s)
-      : shipmentDate(s);
-
-  const filtered = useMemo<Shipment[]>(() => {
-    if (!ds) return [];
-    return ds.shipments.filter((s) => {
-      if (dir === "outbound" && s.is_return) return false;
-      if (dir === "return" && !s.is_return) return false;
-      // Courier dates are calendar days (stored as midnight) — compare by YYYY-MM-DD only
-      const d = dateOf(s)?.slice(0, 10) ?? null;
-      if (from && (!d || d < from)) return false;
-      if (to && (!d || d > to)) return false;
-      return true;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ds, from, to, dir, dateMode]);
 
   const byTracking = useMemo(() => {
     const m = new Map<string, Shipment>();
     for (const s of ds?.shipments || []) m.set(s.tracking_number, s);
     return m;
   }, [ds]);
+
+  // Returns carry no order number — take the lead date from their linked original shipment.
+  const leadDay = (s: Shipment): string | null => {
+    let orderId = s.original_order_id;
+    if (s.is_return && s.linked_original_tracking_number) {
+      orderId = byTracking.get(s.linked_original_tracking_number)?.original_order_id || orderId;
+    }
+    const o = orderId ? ds?.orders.get(orderId) : null;
+    return o?.created_at ? tbilisiDay(o.created_at) : null;
+  };
+
+  // Delivery date exists only once the shipment is finished (delivered or finally failed).
+  const deliveredDay = (s: Shipment): string | null => {
+    if (!(isDelivered(s) || isFailedFinal(s))) return null;
+    const d = s.final_status_date || s.latest_status_date;
+    return d ? d.slice(0, 10) : null;
+  };
+
+  const dayOf = (s: Shipment): string | null => (dateMode === "lead" ? leadDay(s) : deliveredDay(s));
+
+  const filtered = useMemo<Shipment[]>(() => {
+    if (!ds) return [];
+    return ds.shipments.filter((s) => {
+      if (dir === "outbound" && s.is_return) return false;
+      if (dir === "return" && !s.is_return) return false;
+      if (!from && !to) return true;
+      const d = dayOf(s);
+      if (from && (!d || d < from)) return false;
+      if (to && (!d || d > to)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ds, from, to, dir, dateMode, byTracking]);
+
+  const noLeadDate = useMemo(
+    () => (dateMode === "lead" && ds ? ds.shipments.filter((s) => (dir === "all" || (dir === "return") === s.is_return) && !leadDay(s)).length : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ds, dateMode, dir, byTracking],
+  );
+
+  const inProgress = useMemo(() => {
+    const base = filtered.filter((s) => !isExcluded(s));
+    const list = base.filter((s) => !isDelivered(s) && !isFailedFinal(s));
+    const m = new Map<string, number>();
+    for (const s of list) {
+      const k = s.current_courier_status || "—";
+      m.set(k, (m.get(k) || 0) + 1);
+    }
+    return {
+      count: list.length,
+      share: base.length ? list.length / base.length : 0,
+      rows: [...m.entries()].map(([status, count]) => ({ status, count, share: list.length ? count / list.length : 0 }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }, [filtered]);
 
   const kpi = useMemo(() => rateBlock(filtered), [filtered]);
 
@@ -147,7 +185,7 @@ export default function AdminCourierStats() {
     const m = new Map<string, Shipment[]>();
     for (const s of filtered) {
       if (!isOutbound(s)) continue;
-      const d = dateOf(s);
+      const d = dayOf(s);
       if (!d) continue;
       const k = weekKey(d);
       const arr = m.get(k) || []; arr.push(s); m.set(k, arr);
@@ -212,9 +250,9 @@ export default function AdminCourierStats() {
         <div>
           <Label className="text-xs">თარიღი</Label>
           <div className="flex gap-1">
-            {(["order", "pickup"] as DateMode[]).map((m) => (
+            {(["lead", "delivered"] as DateMode[]).map((m) => (
               <Button key={m} size="sm" variant={dateMode === m ? "default" : "outline"} onClick={() => setDateMode(m)}>
-                {m === "order" ? "შეკვ. თარიღი" : "აღების თარიღი"}
+                {m === "lead" ? "ლიდის თარიღი" : "ჩაბარების თარიღი"}
               </Button>
             ))}
           </div>
@@ -232,8 +270,30 @@ export default function AdminCourierStats() {
         <Kpi label="დასრულებულთა წილი" value={pct(kpi.resolvedShare)} sub={`${kpi.resolved} / ${kpi.handed}`} />
         <Kpi label="ჩაბარდა" value={String(kpi.delivered)} />
         <Kpi label="ვერ ჩაბარდა (საბოლოო)" value={String(kpi.failed)} />
-        <Kpi label="ჯერ მიმდინარე" value={String(kpi.unresolved)} />
+        <Kpi label="ჯერ მიმდინარე" value={String(kpi.unresolved)} sub={`${pct(inProgress.share)} ყველა გზავნილიდან`} />
       </div>
+
+      {dateMode === "lead" && noLeadDate > 0 && (
+        <div className="text-xs text-muted-foreground">{noLeadDate} გზავნილი ვერ დავუკავშირეთ ჩვენს შეკვეთას (ლიდის თარიღი უცნობია) — თარიღის ფილტრისას არ ითვლება.</div>
+      )}
+      {dateMode === "delivered" && (
+        <div className="text-xs text-muted-foreground">ჩაბარების თარიღით მხოლოდ დასრულებული გზავნილები ჩანს — მიმდინარეებს ჯერ თარიღი არ აქვთ.</div>
+      )}
+
+      {inProgress.count > 0 && (
+        <Card><CardHeader className="pb-2"><CardTitle className="text-base">
+          მიმდინარე: {inProgress.count} ({pct(inProgress.share)}) — სტატუსების მიხედვით
+        </CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {inProgress.rows.map((r) => (
+            <div key={r.status} className="flex items-center gap-3 text-sm">
+              <span className="w-48 truncate">{r.status}</span>
+              <div className="flex-1 h-2 rounded bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${r.share * 100}%` }} /></div>
+              <span className="w-24 text-right tabular-nums">{r.count} · {pct(r.share)}</span>
+            </div>
+          ))}
+        </CardContent></Card>
+      )}
 
       <Tabs defaultValue="status">
         <TabsList className="flex-wrap h-auto">
