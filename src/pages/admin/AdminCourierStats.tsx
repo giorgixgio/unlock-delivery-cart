@@ -15,13 +15,21 @@ import {
 import { STATE_LABEL, STATE_BADGE } from "@/lib/courierStates";
 
 type Dir = "all" | "outbound" | "return";
+type DateMode = "order" | "pickup";
 
 export default function AdminCourierStats() {
   const { data: ds, isLoading } = useCourierDataset();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [dir, setDir] = useState<Dir>("outbound");
+  const [dateMode, setDateMode] = useState<DateMode>("order");
   const [minSample, setMinSample] = useState(5);
+
+  // Which courier-file date column the period filter counts by
+  const dateOf = (s: Shipment): string | null =>
+    dateMode === "pickup"
+      ? s.pickup_date || shipmentDate(s)
+      : shipmentDate(s);
 
   const filtered = useMemo<Shipment[]>(() => {
     if (!ds) return [];
@@ -29,12 +37,13 @@ export default function AdminCourierStats() {
       if (dir === "outbound" && s.is_return) return false;
       if (dir === "return" && !s.is_return) return false;
       // Courier dates are calendar days (stored as midnight) — compare by YYYY-MM-DD only
-      const d = shipmentDate(s)?.slice(0, 10) ?? null;
+      const d = dateOf(s)?.slice(0, 10) ?? null;
       if (from && (!d || d < from)) return false;
       if (to && (!d || d > to)) return false;
       return true;
     });
-  }, [ds, from, to, dir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ds, from, to, dir, dateMode]);
 
   const byTracking = useMemo(() => {
     const m = new Map<string, Shipment>();
@@ -138,7 +147,7 @@ export default function AdminCourierStats() {
     const m = new Map<string, Shipment[]>();
     for (const s of filtered) {
       if (!isOutbound(s)) continue;
-      const d = shipmentDate(s);
+      const d = dateOf(s);
       if (!d) continue;
       const k = weekKey(d);
       const arr = m.get(k) || []; arr.push(s); m.set(k, arr);
@@ -199,6 +208,16 @@ export default function AdminCourierStats() {
               {d === "outbound" ? "გასული" : d === "return" ? "დაბრუნება" : "ყველა"}
             </Button>
           ))}
+        </div>
+        <div>
+          <Label className="text-xs">თარიღი</Label>
+          <div className="flex gap-1">
+            {(["order", "pickup"] as DateMode[]).map((m) => (
+              <Button key={m} size="sm" variant={dateMode === m ? "default" : "outline"} onClick={() => setDateMode(m)}>
+                {m === "order" ? "შეკვ. თარიღი" : "აღების თარიღი"}
+              </Button>
+            ))}
+          </div>
         </div>
         <div><Label className="text-xs">მინ. ნიმუში</Label>
           <Input type="number" value={minSample} onChange={(e) => setMinSample(parseInt(e.target.value) || 0)} className="w-24" /></div>
