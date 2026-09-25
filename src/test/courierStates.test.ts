@@ -7,7 +7,7 @@ const base: Shipment = {
   id: "1", tracking_number: "T1", order_number: "BM-1", original_order_id: null,
   current_courier_status: "არ ჩაბარდა/დასრულებული", derived_state: "FAILED_FINAL", is_return: false,
   phone: "599112233", phone_normalized: "599112233", customer_name: "x", city: "თბილისი",
-  cod_amount: 29, order_date: "2026-09-01T00:00:00Z", latest_status_date: "2026-09-05T00:00:00Z",
+  cod_amount: 29, order_date: "2026-09-01T00:00:00Z", pickup_date: "2026-09-02T00:00:00Z", latest_status_date: "2026-09-05T00:00:00Z",
   status_changed_at: null, final_status_date: null, comment_items: [{ code: "170", qty: 1 }],
   linked_original_tracking_number: null, linked_return_tracking_number: null,
 };
