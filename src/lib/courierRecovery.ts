@@ -57,10 +57,10 @@ function emptySku(sku: string, title: string): SkuRecovery {
 
 function inRange(s: Shipment, from?: string, to?: string): boolean {
   if (!from && !to) return true;
-  const d = shipmentDate(s);
+  const d = shipmentDate(s)?.slice(0, 10);
   if (!d) return false;
-  if (from && d < new Date(from).toISOString()) return false;
-  if (to && d > new Date(to + "T23:59:59").toISOString()) return false;
+  if (from && d < from) return false;
+  if (to && d > to) return false;
   return true;
 }
 

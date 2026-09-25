@@ -28,9 +28,10 @@ export default function AdminCourierStats() {
     return ds.shipments.filter((s) => {
       if (dir === "outbound" && s.is_return) return false;
       if (dir === "return" && !s.is_return) return false;
-      const d = shipmentDate(s);
-      if (from && (!d || d < new Date(from).toISOString())) return false;
-      if (to && (!d || d > new Date(to + "T23:59:59").toISOString())) return false;
+      // Courier dates are calendar days (stored as midnight) — compare by YYYY-MM-DD only
+      const d = shipmentDate(s)?.slice(0, 10) ?? null;
+      if (from && (!d || d < from)) return false;
+      if (to && (!d || d > to)) return false;
       return true;
     });
   }, [ds, from, to, dir]);
