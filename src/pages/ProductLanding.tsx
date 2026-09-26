@@ -12,6 +12,7 @@ import { ShoppingCart, ArrowLeft, Gift, Truck } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import LandingDealStrip from "@/components/landing/LandingDealStrip";
 import StickyAnnouncementBar from "@/components/landing/StickyAnnouncementBar";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";

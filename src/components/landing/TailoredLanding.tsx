@@ -15,6 +15,7 @@ import LandingBulletDescription from "@/components/landing/LandingBulletDescript
 import LandingSections from "@/components/landing/LandingSections";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import LandingDealStrip from "@/components/landing/LandingDealStrip";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
