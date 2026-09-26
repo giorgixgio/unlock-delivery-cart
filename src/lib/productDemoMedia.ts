@@ -19,6 +19,7 @@ export interface ProductDemoMedia {
 import sku0019Demo from "@/assets/sku0019-demo.webp.asset.json";
 import sku0017Demo from "@/assets/sku0017-demo.webp.asset.json";
 import sku0012Demo from "@/assets/sku0012-2-demo.webm.asset.json";
+import sku0012BottleDemo from "@/assets/sku0012-bottle-cutter-demo.webp.asset.json";
 
 const NOZZLE_DEMO: ProductDemoMedia = {
   src: sku0019Demo.url,
@@ -41,6 +42,12 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
   },
   // High-pressure washing nozzle (TrendMart)
   "g888-t4656-0019": NOZZLE_DEMO,
+  // Glass bottle cutter (TrendMart)
+  "g888-t4656-0012": {
+    src: sku0012BottleDemo.url,
+    eyebrow: "როგორ მუშაობს",
+    caption: "მიამაგრეთ ბოთლი, მოატრიალეთ და მიიღეთ თანაბარი ზღვარი — ნახეთ პროცესი ვიდეოში",
+  },
   // High-pressure showerhead (TrendMart)
   "g888-t4656-0017": SHOWERHEAD_DEMO,
   "g888-t4656-0012_2": {
