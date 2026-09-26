@@ -28,13 +28,26 @@ const ProductDemoGif = ({ sku }: ProductDemoGifProps) => {
         </div>
 
         <div className="relative aspect-square w-full max-w-[280px] overflow-hidden rounded-xl bg-muted shadow-md ring-1 ring-border">
-          <img
-            src={media.src}
-            alt={media.caption}
-            className="h-full w-full object-contain"
-            loading="lazy"
-            // Animated WebP loops automatically; no controls needed.
-          />
+          {media.type === "video" ? (
+            <video
+              src={media.src}
+              aria-label={media.caption}
+              className="h-full w-full object-contain"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
+            />
+          ) : (
+            <img
+              src={media.src}
+              alt={media.caption}
+              className="h-full w-full object-contain"
+              loading="lazy"
+            />
+          )}
         </div>
 
         <p className="text-center text-sm font-semibold leading-snug text-foreground">

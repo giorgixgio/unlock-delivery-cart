@@ -6,8 +6,10 @@
  */
 
 export interface ProductDemoMedia {
-  /** Animated demo image URL (animated WebP / GIF). */
+  /** Animated demo image or video URL. */
   src: string;
+  /** Use the native video player for WebM clips. */
+  type?: "video";
   /** Short Georgian caption shown under the clip. */
   caption: string;
   /** Optional small eyebrow label above the caption. */
@@ -16,6 +18,7 @@ export interface ProductDemoMedia {
 
 import sku0019Demo from "@/assets/sku0019-demo.webp.asset.json";
 import sku0017Demo from "@/assets/sku0017-demo.webp.asset.json";
+import sku0012Demo from "@/assets/sku0012-2-demo.webm.asset.json";
 
 const NOZZLE_DEMO: ProductDemoMedia = {
   src: sku0019Demo.url,
@@ -40,6 +43,12 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
   "g888-t4656-0019": NOZZLE_DEMO,
   // High-pressure showerhead (TrendMart)
   "g888-t4656-0017": SHOWERHEAD_DEMO,
+  "g888-t4656-0012_2": {
+    src: sku0012Demo.url,
+    type: "video",
+    eyebrow: "როგორ მუშაობს",
+    caption: "ნახეთ პროდუქტის გამოყენება ვიდეოში",
+  },
 };
 
 export function getProductDemoMedia(sku: string | number | undefined | null): ProductDemoMedia | null {

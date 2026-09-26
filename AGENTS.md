@@ -1,0 +1,1 @@
+Keep per-SKU demo media in `src/lib/productDemoMedia.ts` and render image/video variants in the shared `ProductDemoGif` panel, so landing pages maintain a consistent placement and style.
