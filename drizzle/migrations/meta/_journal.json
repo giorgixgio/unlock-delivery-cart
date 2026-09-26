@@ -64,6 +64,13 @@
       "when": 1790358167124,
       "tag": "0008_courier_sync_orders_fast",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790467018823,
+      "tag": "0009_meta_ad_product_map",
+      "breakpoints": true
     }
   ]
 }

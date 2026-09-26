@@ -1018,6 +1018,30 @@ export type Database = {
           },
         ]
       }
+      meta_ad_product_map: {
+        Row: {
+          ad_id: string
+          ad_name: string | null
+          product_sku: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ad_id: string
+          ad_name?: string | null
+          product_sku: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ad_id?: string
+          ad_name?: string | null
+          product_sku?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       operator_order_sessions: {
         Row: {
           actions_count: number
