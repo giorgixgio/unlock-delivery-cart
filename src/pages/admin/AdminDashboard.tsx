@@ -20,6 +20,7 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { filterOrdersForStore } from "@/lib/adminStoreFilter";
 import ProductLeadsSection from "@/components/admin/ProductLeadsSection";
+import MetaAdsSection from "@/components/admin/MetaAdsSection";
 
 const DELIVERY_FEE = 6.5;
 /** What WE pay the courier per shipped order, regardless of what the customer paid. */
@@ -407,6 +408,11 @@ const AdminDashboard = () => {
         activeStore={activeStore}
         applyToCount={applyToCount}
         applyToRevenue={applyToRevenue}
+      />
+      <MetaAdsSection
+        dateMode={dateMode}
+        selectedDate={selectedDate}
+        range={range}
       />
 
       <div className="dg-sep" />
