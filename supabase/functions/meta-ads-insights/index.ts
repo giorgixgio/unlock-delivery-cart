@@ -31,13 +31,11 @@ function skuCodeFromAdName(name: string): string | null {
 
 function purchasesFrom(actions: any[] | undefined): number {
   if (!Array.isArray(actions)) return 0;
-  let n = 0;
-  for (const a of actions) {
-    if (a?.action_type === "purchase" || a?.action_type === "omni_purchase") {
-      n += Number(a.value) || 0;
-    }
-  }
-  return n;
+  // "purchase" and "omni_purchase" report the SAME events — never sum both.
+  const purchase = actions.find((a) => a?.action_type === "purchase");
+  if (purchase) return Number(purchase.value) || 0;
+  const omni = actions.find((a) => a?.action_type === "omni_purchase");
+  return omni ? Number(omni.value) || 0 : 0;
 }
 
 Deno.serve(async (req) => {
