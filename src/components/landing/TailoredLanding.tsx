@@ -15,6 +15,7 @@ import LandingBulletDescription from "@/components/landing/LandingBulletDescript
 import LandingSections from "@/components/landing/LandingSections";
 import CountdownTimer from "@/components/landing/CountdownTimer";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
+import LandingDealStrip from "@/components/landing/LandingDealStrip";
 import ProductPhotoGallery from "@/components/landing/ProductPhotoGallery";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
@@ -147,13 +148,10 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
         )}
 
         {/* Product image */}
-        <ProductImageSlider images={product.images || [product.image]} alt={product.title}>
-          {discount > 0 && (
-            <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-3 py-1.5 rounded-br-xl">
-              ↓ {discount}% OFF
-            </div>
-          )}
-        </ProductImageSlider>
+        <ProductImageSlider images={product.images || [product.image]} alt={product.title} />
+
+        {/* Deal badge moved BELOW the image so it never covers text baked into product photos */}
+        <LandingDealStrip discount={discount} />
 
         {/* Title + price */}
         <div>
