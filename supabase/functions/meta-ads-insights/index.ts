@@ -22,10 +22,10 @@ const GATEWAY = "https://connector-gateway.lovable.dev/meta_ads";
 // Extract a SKU code from an ad name: "0012_keramiko" -> "0012",
 // "G888-T4656-0019 ..." -> "0019", "0009_აბაზანის" -> "0009".
 function skuCodeFromAdName(name: string): string | null {
-  const g = name.match(/G888-T\d+-(\d{3,4})/i);
-  if (g) return g[1];
-  const lead = name.match(/^0*(\d{3,4})[_\s-]/);
-  if (lead) return lead[1].padStart(4, "0");
+  const g = name.match(/G888-T\d+-(\d{3,4}(?:_\d+)?)/i);
+  if (g) return g[1].toLowerCase();
+  const lead = name.match(/^0*(\d{3,4})(_\d{1,2}(?=[_\s-]|$))?[_\s-]?/);
+  if (lead) return lead[1].padStart(4, "0") + (lead[2] ?? "");
   return null;
 }
 
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     stage = "meta_insights";
     const params = new URLSearchParams({
       level: "ad",
-      fields: "ad_name,spend,impressions,clicks,actions",
+      fields: "ad_id,ad_name,spend,impressions,clicks,actions",
       time_range: JSON.stringify({ since, until }),
       limit: "500",
     });
@@ -136,8 +136,18 @@ Deno.serve(async (req) => {
       .map((x) => ({ ...x, spend: Math.round(x.spend * 100) / 100, cpa: x.purchases > 0 ? Math.round((x.spend / x.purchases) * 100) / 100 : null }))
       .sort((a, b) => b.spend - a.spend);
 
+    const ads = rows.map((r) => ({
+      adId: String(r.ad_id ?? ""),
+      adName: String(r.ad_name ?? ""),
+      autoCode: skuCodeFromAdName(String(r.ad_name ?? "")),
+      spend: Number(r.spend) || 0,
+      purchases: purchasesFrom(r.actions),
+      clicks: Number(r.clicks) || 0,
+      impressions: Number(r.impressions) || 0,
+    }));
     return json(200, {
       success: true,
+      ads,
       since,
       until,
       items,
