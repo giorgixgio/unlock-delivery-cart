@@ -318,22 +318,10 @@ const GenericLanding = ({
 
         {/* Product image slider */}
 
-        <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title}>
-          {discount > 0 && (
-            <div className="absolute top-0 left-0 z-10 bg-deal text-deal-foreground text-xs font-extrabold px-2.5 py-1 rounded-br-lg">
-              ↓ {discount}% ფასდაკლება
-            </div>
-          )}
-          {badges.length > 0 && (
-            <div className="absolute top-8 left-2 z-10 flex flex-col gap-1">
-              {badges.map((b) => (
-                <span key={b} className="bg-badge text-badge-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                  {b}
-                </span>
-              ))}
-            </div>
-          )}
-        </ProductImageSlider>
+        <ProductImageSlider images={product.images?.length > 0 ? product.images : [product.image]} alt={product.title} />
+
+        {/* Deal badges moved BELOW the image so they never cover text baked into product photos */}
+        <LandingDealStrip discount={discount} badges={badges} />
 
 
         <div>
