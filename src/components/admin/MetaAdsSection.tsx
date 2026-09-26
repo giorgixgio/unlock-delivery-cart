@@ -25,7 +25,6 @@ interface MetaSkuRow {
 interface ProductLite {
   sku: string | null;
   title: string | null;
-  image_url: string | null;
 }
 
 const fmtGel = (n: number) => `${n.toFixed(2)} ₾`;
@@ -66,7 +65,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("products").select("sku, title, image_url").limit(1000);
+      const { data } = await supabase.from("products").select("sku, title").limit(1000);
       if (!cancelled) setProducts(data ?? []);
     })();
     return () => { cancelled = true; };
@@ -161,9 +160,6 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
               const p = productByCode.get(r.skuCode);
               return (
                 <div key={r.skuCode} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, display: "flex", gap: 10 }}>
-                  {p?.image_url && (
-                    <img src={p.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
-                  )}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {p?.title ?? `SKU ${r.skuCode}`}
