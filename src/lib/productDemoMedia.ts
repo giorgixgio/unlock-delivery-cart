@@ -19,6 +19,7 @@ export interface ProductDemoMedia {
 import sku0019Demo from "@/assets/sku0019-demo.webp.asset.json";
 import sku0017Demo from "@/assets/sku0017-demo.webp.asset.json";
 import sku0012Demo from "@/assets/sku0012-2-demo.webm.asset.json";
+import sku0012BottleDemo from "@/assets/sku0012-bottle-cutter-demo.webp.asset.json";
 
 const NOZZLE_DEMO: ProductDemoMedia = {
   src: sku0019Demo.url,
