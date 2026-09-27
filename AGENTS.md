@@ -1,1 +1,2 @@
 Keep per-SKU demo media in `src/lib/productDemoMedia.ts` and render image/video variants in the shared `ProductDemoGif` panel, so landing pages maintain a consistent placement and style.
+Meta dashboard performance rows must require the parent ad set's Meta `effective_status` to be `ACTIVE`; ad-level status or period spend alone is insufficient.

@@ -27,6 +27,7 @@ interface MetaAd {
   adName: string;
   autoCode: string | null;
   status?: string;
+  adSetStatus?: string;
   spend: number;
   purchases: number;
   clicks: number;
@@ -196,8 +197,10 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
     const productOf = new Map<string, ProductLite | null>();
     let uAds = 0, uSpend = 0;
     for (const a of ads) {
-      // Count every ad that actually ran in the period (so totals match Ads Manager);
-      // ads with no delivery in the period are skipped.
+      // Main dashboard is intentionally limited to currently active ad sets.
+      // Unknown status is excluded so a failed metadata lookup cannot leak old
+      // or paused products into the active-performance totals.
+      if (a.adSetStatus !== "ACTIVE") continue;
       if (!(a.spend > 0 || a.purchases > 0)) continue;
       const r = resolve(a);
       if (!r) { uAds++; uSpend += a.spend; continue; }
@@ -250,7 +253,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
         </button>
       </div>
       <p className="dg-muted" style={{ fontSize: 11, margin: "6px 0 12px" }}>
-        ხარჯი ({currency}) და შენაძენი Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი · ROAS = ჩვენი შემოსავალი (₾) ÷ ხარჯი (₾-ში)
+        მხოლოდ აქტიური სარეკლამო ჯგუფები · ხარჯი ({currency}) და შენაძენი Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი · ROAS = ჩვენი შემოსავალი (₾) ÷ ხარჯი (₾-ში)
       </p>
       {currency !== "GEL" && (
         <div className="dg-muted" style={{ fontSize: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
