@@ -113,9 +113,10 @@ Deno.serve(async (req) => {
     }
 
     stage = "meta_ads_list";
-    // Every ad in the account (not only ones with spend in the period) so all can be mapped.
+    // Every ad in the account, including its parent ad set status. Dashboard
+    // statistics must be scoped by the ad set's status, not the ad's own status.
     const allAds: any[] = [];
-    let aurl: string | null = `${GATEWAY}/v26.0/${AD_ACCOUNT}/ads?${new URLSearchParams({ fields: "id,name,effective_status,adset{name}", limit: "500" })}`;
+    let aurl: string | null = `${GATEWAY}/v26.0/${AD_ACCOUNT}/ads?${new URLSearchParams({ fields: "id,name,effective_status,adset{id,name,effective_status,status}", limit: "500" })}`;
     for (let page = 0; page < 20 && aurl; page++) {
       const res = await fetch(aurl, { headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": metaKey } });
       if (!res.ok) { console.error("[meta-ads-insights] ads list failed", res.status, await res.text()); break; }
@@ -153,12 +154,19 @@ Deno.serve(async (req) => {
       .map((x) => ({ ...x, spend: Math.round(x.spend * 100) / 100, cpa: x.purchases > 0 ? Math.round((x.spend / x.purchases) * 100) / 100 : null }))
       .sort((a, b) => b.spend - a.spend);
 
-    const statusById = new Map<string, string>(allAds.map((a: any) => [String(a.id), String(a.effective_status ?? "")]));
+    const metadataById = new Map<string, { status: string; adSetStatus: string }>(allAds.map((a: any) => [
+      String(a.id),
+      {
+        status: String(a.effective_status ?? ""),
+        adSetStatus: String(a.adset?.effective_status ?? a.adset?.status ?? ""),
+      },
+    ]));
     const ads = rows.map((r) => ({
       adId: String(r.ad_id ?? ""),
       adName: String(r.ad_name ?? ""),
       autoCode: skuCodeFromAdName(String(r.ad_name ?? "")),
-      status: statusById.get(String(r.ad_id ?? "")) ?? "ACTIVE",
+      status: metadataById.get(String(r.ad_id ?? ""))?.status ?? "UNKNOWN",
+      adSetStatus: metadataById.get(String(r.ad_id ?? ""))?.adSetStatus ?? "UNKNOWN",
       spend: Number(r.spend) || 0,
       purchases: purchasesFrom(r.actions),
       clicks: Number(r.clicks) || 0,
@@ -167,7 +175,17 @@ Deno.serve(async (req) => {
     const seenIds = new Set(ads.map((a) => a.adId));
     for (const a of allAds) {
       if (seenIds.has(String(a.id))) continue;
-      ads.push({ adId: String(a.id), adName: String(a.name ?? ""), autoCode: skuCodeFromAdName(String(a.name ?? "")), status: String(a.effective_status ?? ""), spend: 0, purchases: 0, clicks: 0, impressions: 0 });
+      ads.push({
+        adId: String(a.id),
+        adName: String(a.name ?? ""),
+        autoCode: skuCodeFromAdName(String(a.name ?? "")),
+        status: String(a.effective_status ?? "UNKNOWN"),
+        adSetStatus: String(a.adset?.effective_status ?? a.adset?.status ?? "UNKNOWN"),
+        spend: 0,
+        purchases: 0,
+        clicks: 0,
+        impressions: 0,
+      });
     }
     return json(200, {
       success: true,
