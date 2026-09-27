@@ -314,7 +314,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
 
           {unmatched && unmatched.ads > 0 && (
             <p className="dg-muted" style={{ fontSize: 11, marginTop: 10 }}>
-              {unmatched.ads} რეკლამა ({fmtGel(unmatched.spend)}) ვერ დაერთა პროდუქტს — მიაბით ხელით ქვემოთ.
+              {unmatched.ads} რეკლამა ({fmtSpend(unmatched.spend)}) ვერ დაერთა პროდუქტს — მიაბით ხელით ქვემოთ.
             </p>
           )}
 
@@ -337,7 +337,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
                       <div key={a.adId} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 6 }}>
                         <div style={{ flex: "1 1 180px", minWidth: 0, fontSize: 12 }}>
                           <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: r ? undefined : "#fbbf24" }}>{a.adName}</div>
-                          <div className="dg-muted" style={{ fontSize: 10 }}>{fmtGel(a.spend)} · {r ? (r.manual ? "ხელით" : "ავტომატური") : "არ არის მიბმული"}</div>
+                          <div className="dg-muted" style={{ fontSize: 10 }}>{fmtSpend(a.spend)} · {r ? (r.manual ? "ხელით" : "ავტომატური") : "არ არის მიბმული"}</div>
                         </div>
                         <select value={manual[a.adId] ?? ""} onChange={(e) => saveMap(a, e.target.value)}
                           style={{ flex: "1 1 160px", fontSize: 16, padding: 6, borderRadius: 8, background: "#111", color: "inherit", border: "1px solid rgba(255,255,255,0.15)" }}>
