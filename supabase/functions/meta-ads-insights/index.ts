@@ -112,6 +112,23 @@ Deno.serve(async (req) => {
       url = data?.paging?.next ?? null;
     }
 
+    stage = "meta_ads_list";
+    // Every ad in the account (not only ones with spend in the period) so all can be mapped.
+    const allAds: any[] = [];
+    let aurl: string | null = `${GATEWAY}/v26.0/${AD_ACCOUNT}/ads?${new URLSearchParams({ fields: "id,name,effective_status,adset{name}", limit: "500" })}`;
+    for (let page = 0; page < 20 && aurl; page++) {
+      const res = await fetch(aurl, { headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": metaKey } });
+      if (!res.ok) { console.error("[meta-ads-insights] ads list failed", res.status, await res.text()); break; }
+      const d = await res.json();
+      allAds.push(...(d?.data ?? []));
+      aurl = d?.paging?.next ?? null;
+    }
+    let currency = "USD";
+    try {
+      const cr = await fetch(`${GATEWAY}/v26.0/${AD_ACCOUNT}?fields=currency`, { headers: { Authorization: `Bearer ${lovableKey}`, "X-Connection-Api-Key": metaKey } });
+      if (cr.ok) currency = (await cr.json())?.currency ?? currency;
+    } catch { /* keep default */ }
+
     stage = "aggregate";
     const bySku = new Map<string, { skuCode: string; spend: number; purchases: number; clicks: number; impressions: number; ads: number }>();
     let unmatchedSpend = 0;
@@ -145,8 +162,14 @@ Deno.serve(async (req) => {
       clicks: Number(r.clicks) || 0,
       impressions: Number(r.impressions) || 0,
     }));
+    const seenIds = new Set(ads.map((a) => a.adId));
+    for (const a of allAds) {
+      if (seenIds.has(String(a.id))) continue;
+      ads.push({ adId: String(a.id), adName: String(a.name ?? ""), autoCode: skuCodeFromAdName(String(a.name ?? "")), spend: 0, purchases: 0, clicks: 0, impressions: 0 });
+    }
     return json(200, {
       success: true,
+      currency,
       ads,
       since,
       until,
