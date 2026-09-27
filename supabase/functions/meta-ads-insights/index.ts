@@ -153,10 +153,12 @@ Deno.serve(async (req) => {
       .map((x) => ({ ...x, spend: Math.round(x.spend * 100) / 100, cpa: x.purchases > 0 ? Math.round((x.spend / x.purchases) * 100) / 100 : null }))
       .sort((a, b) => b.spend - a.spend);
 
+    const statusById = new Map<string, string>(allAds.map((a: any) => [String(a.id), String(a.effective_status ?? "")]));
     const ads = rows.map((r) => ({
       adId: String(r.ad_id ?? ""),
       adName: String(r.ad_name ?? ""),
       autoCode: skuCodeFromAdName(String(r.ad_name ?? "")),
+      status: statusById.get(String(r.ad_id ?? "")) ?? "ACTIVE",
       spend: Number(r.spend) || 0,
       purchases: purchasesFrom(r.actions),
       clicks: Number(r.clicks) || 0,
@@ -165,7 +167,7 @@ Deno.serve(async (req) => {
     const seenIds = new Set(ads.map((a) => a.adId));
     for (const a of allAds) {
       if (seenIds.has(String(a.id))) continue;
-      ads.push({ adId: String(a.id), adName: String(a.name ?? ""), autoCode: skuCodeFromAdName(String(a.name ?? "")), spend: 0, purchases: 0, clicks: 0, impressions: 0 });
+      ads.push({ adId: String(a.id), adName: String(a.name ?? ""), autoCode: skuCodeFromAdName(String(a.name ?? "")), status: String(a.effective_status ?? ""), spend: 0, purchases: 0, clicks: 0, impressions: 0 });
     }
     return json(200, {
       success: true,
