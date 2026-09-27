@@ -38,6 +38,19 @@ interface ProductLite {
 }
 
 const fmtGel = (n: number) => `${n.toFixed(2)} ₾`;
+const CUR_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GEL: "₾" };
+const PAGE = 1000;
+async function allPages<T>(fn: (from: number, to: number) => any): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await fn(from, from + PAGE - 1);
+    if (error) throw error;
+    out.push(...((data ?? []) as T[]));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+const roasColor = (r: number | null) => (r == null ? undefined : r >= 3 ? "#4ade80" : r >= 2 ? "#fbbf24" : "#f87171");
 
 export default function MetaAdsSection({ dateMode, selectedDate, range }: Props) {
   const [ads, setAds] = useState<MetaAd[] | null>(null);
@@ -47,6 +60,11 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
+  const [rate, setRate] = useState<number>(() => Number(localStorage.getItem("meta_usd_gel_rate")) || 2.7);
+  const [revenue, setRevenue] = useState<Map<string, { gross: number; net: number }>>(new Map());
+  const fmtSpend = (n: number) => (currency === "GEL" ? fmtGel(n) : `${CUR_SYMBOL[currency] ?? currency + " "}${n.toFixed(2)}`);
+  const toGel = (n: number) => (currency === "GEL" ? n : n * rate);
 
   // Resolve the dashboard date selection into Tbilisi-day since/until.
   const { since, until } = useMemo(() => {
@@ -78,7 +96,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
     let cancelled = false;
     (async () => {
       const [{ data }, { data: mp }] = await Promise.all([
-        supabase.from("products").select("sku, title").limit(1000),
+        supabase.from("products").select("sku, title").eq("warehouse", "B").limit(1000),
         supabase.from("meta_ad_product_map").select("ad_id, product_sku"),
       ]);
       if (cancelled) return;
@@ -109,6 +127,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
         throw new Error(msg);
       }
       setAds(data?.ads ?? []);
+      setCurrency(data?.currency ?? "USD");
     } catch (e: any) {
       setError(e?.message ?? "ჩატვირთვა ვერ მოხერხდა");
       setAds(null);
@@ -116,6 +135,37 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
       setLoading(false);
     }
   };
+
+  // Our own revenue per SKU for orders created in the same Tbilisi days (for ROAS).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const s0 = new Date(`${since}T00:00:00+04:00`).toISOString();
+        const e0 = new Date(`${until}T23:59:59.999+04:00`).toISOString();
+        const orders = await allPages<{ id: string; status: string }>((f, t) =>
+          supabase.from("orders").select("id, status").gte("created_at", s0).lte("created_at", e0)
+            .or("is_return.is.null,is_return.eq.false").neq("status", "merged").order("id").range(f, t));
+        const canceled = new Set(orders.filter((o) => o.status === "canceled" || o.status === "cancelled" || o.status === "returned").map((o) => o.id));
+        const ids = orders.map((o) => o.id);
+        const chunks = Array.from({ length: Math.ceil(ids.length / 300) }, (_, i) => ids.slice(i * 300, i * 300 + 300));
+        const items = (await Promise.all(chunks.map((c) => allPages<{ order_id: string; sku: string | null; line_total: number | null }>((f, t) =>
+          supabase.from("order_items").select("order_id, sku, line_total").in("order_id", c).order("id").range(f, t))))).flat();
+        const m = new Map<string, { gross: number; net: number }>();
+        for (const it of items) {
+          const k = (it.sku ?? "").toLowerCase().trim();
+          if (!k) continue;
+          const cur = m.get(k) ?? { gross: 0, net: 0 };
+          const v = Number(it.line_total) || 0;
+          cur.gross += v;
+          if (!canceled.has(it.order_id)) cur.net += v;
+          m.set(k, cur);
+        }
+        if (!cancelled) setRevenue(m);
+      } catch (e) { console.error("[MetaAdsSection] revenue load failed", e); }
+    })();
+    return () => { cancelled = true; };
+  }, [since, until]);
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [since, until]);
 
@@ -173,8 +223,12 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
     if (!rows) return null;
     const spend = rows.reduce((s, r) => s + r.spend, 0);
     const purchases = rows.reduce((s, r) => s + r.purchases, 0);
-    return { spend, purchases, cpa: purchases > 0 ? spend / purchases : null };
-  }, [rows]);
+    let gross = 0, net = 0;
+    for (const r of rows) { const v = revenue.get(r.skuCode); if (v) { gross += v.gross; net += v.net; } }
+    const sg = toGel(spend);
+    return { spend, purchases, cpa: purchases > 0 ? spend / purchases : null, gross, net, roas: sg > 0 ? gross / sg : null, roasNet: sg > 0 ? net / sg : null };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, revenue, rate, currency]);
 
   return (
     <div className="dg-card" style={{ marginTop: 16 }}>
@@ -192,8 +246,17 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
         </button>
       </div>
       <p className="dg-muted" style={{ fontSize: 11, margin: "6px 0 12px" }}>
-        ხარჯი და შენაძენი (Purchase) Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი
+        ხარჯი ({currency}) და შენაძენი Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი · ROAS = ჩვენი შემოსავალი (₾) ÷ ხარჯი (₾-ში)
       </p>
+      {currency !== "GEL" && (
+        <div className="dg-muted" style={{ fontSize: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          კურსი: 1 {currency} =
+          <input type="number" step="0.01" value={rate}
+            onChange={(e) => { const v = Number(e.target.value); if (v > 0) { setRate(v); localStorage.setItem("meta_usd_gel_rate", String(v)); } }}
+            style={{ width: 80, fontSize: 16, padding: "2px 6px", borderRadius: 6, background: "transparent", color: "inherit", border: "1px solid rgba(255,255,255,0.15)" }} />
+          ₾
+        </div>
+      )}
 
       {error && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#f87171", fontSize: 13, padding: "10px 0" }}>
@@ -204,9 +267,11 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
       {!error && rows && totals && (
         <>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, fontSize: 13 }}>
-            <span>სულ ხარჯი: <b>{fmtGel(totals.spend)}</b></span>
+            <span>სულ ხარჯი: <b>{fmtSpend(totals.spend)}</b> <span className="dg-muted">(≈{fmtGel(toGel(totals.spend))})</span></span>
             <span>შენაძენი: <b>{totals.purchases}</b></span>
-            <span>საშ. CPA: <b>{totals.cpa != null ? fmtGel(totals.cpa) : "—"}</b></span>
+            <span>საშ. CPA: <b>{totals.cpa != null ? fmtSpend(totals.cpa) : "—"}</b></span>
+            <span title="ყველა ლიდის შემოსავალი ÷ ხარჯი">ROAS: <b style={{ color: roasColor(totals.roas) }}>{totals.roas != null ? totals.roas.toFixed(2) + "x" : "—"}</b></span>
+            <span title="გაუქმებული/დაბრუნებული შეკვეთები გამოკლებულია">ROAS გაუქმ. გარეშე: <b style={{ color: roasColor(totals.roasNet) }}>{totals.roasNet != null ? totals.roasNet.toFixed(2) + "x" : "—"}</b></span>
           </div>
 
           {rows.length === 0 && <p className="dg-muted" style={{ fontSize: 13 }}>ამ პერიოდში ხარჯი არ არის.</p>}
@@ -214,6 +279,11 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
             {rows.map((r) => {
               const p = r.product;
+              const rev = revenue.get(r.skuCode);
+              const sg = toGel(r.spend);
+              const roas = rev && sg > 0 ? rev.gross / sg : null;
+              const roasNet = rev && sg > 0 ? rev.net / sg : null;
+              const cpaGel = r.cpa != null ? toGel(r.cpa) : null;
               return (
                 <div key={r.skuCode} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, display: "flex", gap: 10 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -222,14 +292,19 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
                     </div>
                     <div className="dg-muted" style={{ fontSize: 10 }}>{p?.sku ?? r.skuCode} · {r.ads} რეკლამა</div>
                     <div style={{ display: "flex", gap: 10, marginTop: 6, fontSize: 12, flexWrap: "wrap" }}>
-                      <span>ხარჯი <b>{fmtGel(r.spend)}</b></span>
+                      <span>ხარჯი <b>{fmtSpend(r.spend)}</b></span>
                       <span>შენ. <b>{r.purchases}</b></span>
                       <span>
                         CPA{" "}
-                        <b style={{ color: r.cpa == null ? undefined : r.cpa <= 5 ? "#4ade80" : r.cpa <= 10 ? "#fbbf24" : "#f87171" }}>
-                          {r.cpa != null ? fmtGel(r.cpa) : "—"}
+                        <b style={{ color: cpaGel == null ? undefined : cpaGel <= 5 ? "#4ade80" : cpaGel <= 10 ? "#fbbf24" : "#f87171" }}>
+                          {r.cpa != null ? fmtSpend(r.cpa) : "—"}
                         </b>
                       </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 12, flexWrap: "wrap" }}>
+                      <span>ROAS <b style={{ color: roasColor(roas) }}>{roas != null ? roas.toFixed(2) + "x" : "—"}</b></span>
+                      <span>გაუქმ. გარეშე <b style={{ color: roasColor(roasNet) }}>{roasNet != null ? roasNet.toFixed(2) + "x" : "—"}</b></span>
+                      <span className="dg-muted">{rev ? fmtGel(rev.net) : "0 ₾"}</span>
                     </div>
                   </div>
                 </div>
@@ -239,7 +314,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
 
           {unmatched && unmatched.ads > 0 && (
             <p className="dg-muted" style={{ fontSize: 11, marginTop: 10 }}>
-              {unmatched.ads} რეკლამა ({fmtGel(unmatched.spend)}) ვერ დაერთა პროდუქტს — მიაბით ხელით ქვემოთ.
+              {unmatched.ads} რეკლამა ({fmtSpend(unmatched.spend)}) ვერ დაერთა პროდუქტს — მიაბით ხელით ქვემოთ.
             </p>
           )}
 
@@ -262,7 +337,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
                       <div key={a.adId} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 6 }}>
                         <div style={{ flex: "1 1 180px", minWidth: 0, fontSize: 12 }}>
                           <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: r ? undefined : "#fbbf24" }}>{a.adName}</div>
-                          <div className="dg-muted" style={{ fontSize: 10 }}>{fmtGel(a.spend)} · {r ? (r.manual ? "ხელით" : "ავტომატური") : "არ არის მიბმული"}</div>
+                          <div className="dg-muted" style={{ fontSize: 10 }}>{fmtSpend(a.spend)} · {r ? (r.manual ? "ხელით" : "ავტომატური") : "არ არის მიბმული"}</div>
                         </div>
                         <select value={manual[a.adId] ?? ""} onChange={(e) => saveMap(a, e.target.value)}
                           style={{ flex: "1 1 160px", fontSize: 16, padding: 6, borderRadius: 8, background: "#111", color: "inherit", border: "1px solid rgba(255,255,255,0.15)" }}>
