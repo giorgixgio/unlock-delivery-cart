@@ -246,8 +246,17 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
         </button>
       </div>
       <p className="dg-muted" style={{ fontSize: 11, margin: "6px 0 12px" }}>
-        ხარჯი და შენაძენი (Purchase) Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი
+        ხარჯი ({currency}) და შენაძენი Meta-დან · {since} → {until} · CPA = ხარჯი ÷ შენაძენი · ROAS = ჩვენი შემოსავალი (₾) ÷ ხარჯი (₾-ში)
       </p>
+      {currency !== "GEL" && (
+        <div className="dg-muted" style={{ fontSize: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          კურსი: 1 {currency} =
+          <input type="number" step="0.01" value={rate}
+            onChange={(e) => { const v = Number(e.target.value); if (v > 0) { setRate(v); localStorage.setItem("meta_usd_gel_rate", String(v)); } }}
+            style={{ width: 80, fontSize: 16, padding: "2px 6px", borderRadius: 6, background: "transparent", color: "inherit", border: "1px solid rgba(255,255,255,0.15)" }} />
+          ₾
+        </div>
+      )}
 
       {error && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#f87171", fontSize: 13, padding: "10px 0" }}>
@@ -258,9 +267,11 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
       {!error && rows && totals && (
         <>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, fontSize: 13 }}>
-            <span>სულ ხარჯი: <b>{fmtGel(totals.spend)}</b></span>
+            <span>სულ ხარჯი: <b>{fmtSpend(totals.spend)}</b> <span className="dg-muted">(≈{fmtGel(toGel(totals.spend))})</span></span>
             <span>შენაძენი: <b>{totals.purchases}</b></span>
-            <span>საშ. CPA: <b>{totals.cpa != null ? fmtGel(totals.cpa) : "—"}</b></span>
+            <span>საშ. CPA: <b>{totals.cpa != null ? fmtSpend(totals.cpa) : "—"}</b></span>
+            <span title="ყველა ლიდის შემოსავალი ÷ ხარჯი">ROAS: <b style={{ color: roasColor(totals.roas) }}>{totals.roas != null ? totals.roas.toFixed(2) + "x" : "—"}</b></span>
+            <span title="გაუქმებული/დაბრუნებული შეკვეთები გამოკლებულია">ROAS გაუქმ. გარეშე: <b style={{ color: roasColor(totals.roasNet) }}>{totals.roasNet != null ? totals.roasNet.toFixed(2) + "x" : "—"}</b></span>
           </div>
 
           {rows.length === 0 && <p className="dg-muted" style={{ fontSize: 13 }}>ამ პერიოდში ხარჯი არ არის.</p>}
@@ -268,6 +279,11 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
             {rows.map((r) => {
               const p = r.product;
+              const rev = revenue.get(r.skuCode);
+              const sg = toGel(r.spend);
+              const roas = rev && sg > 0 ? rev.gross / sg : null;
+              const roasNet = rev && sg > 0 ? rev.net / sg : null;
+              const cpaGel = r.cpa != null ? toGel(r.cpa) : null;
               return (
                 <div key={r.skuCode} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, display: "flex", gap: 10 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -276,14 +292,19 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
                     </div>
                     <div className="dg-muted" style={{ fontSize: 10 }}>{p?.sku ?? r.skuCode} · {r.ads} რეკლამა</div>
                     <div style={{ display: "flex", gap: 10, marginTop: 6, fontSize: 12, flexWrap: "wrap" }}>
-                      <span>ხარჯი <b>{fmtGel(r.spend)}</b></span>
+                      <span>ხარჯი <b>{fmtSpend(r.spend)}</b></span>
                       <span>შენ. <b>{r.purchases}</b></span>
                       <span>
                         CPA{" "}
-                        <b style={{ color: r.cpa == null ? undefined : r.cpa <= 5 ? "#4ade80" : r.cpa <= 10 ? "#fbbf24" : "#f87171" }}>
-                          {r.cpa != null ? fmtGel(r.cpa) : "—"}
+                        <b style={{ color: cpaGel == null ? undefined : cpaGel <= 5 ? "#4ade80" : cpaGel <= 10 ? "#fbbf24" : "#f87171" }}>
+                          {r.cpa != null ? fmtSpend(r.cpa) : "—"}
                         </b>
                       </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 12, flexWrap: "wrap" }}>
+                      <span>ROAS <b style={{ color: roasColor(roas) }}>{roas != null ? roas.toFixed(2) + "x" : "—"}</b></span>
+                      <span>გაუქმ. გარეშე <b style={{ color: roasColor(roasNet) }}>{roasNet != null ? roasNet.toFixed(2) + "x" : "—"}</b></span>
+                      <span className="dg-muted">{rev ? fmtGel(rev.net) : "0 ₾"}</span>
                     </div>
                   </div>
                 </div>
