@@ -196,7 +196,9 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
     const productOf = new Map<string, ProductLite | null>();
     let uAds = 0, uSpend = 0;
     for (const a of ads) {
-      if ((a.status ?? "ACTIVE") !== "ACTIVE") continue; // only active ads count in the stats
+      // Count every ad that actually ran in the period (so totals match Ads Manager);
+      // ads with no delivery in the period are skipped.
+      if (!(a.spend > 0 || a.purchases > 0)) continue;
       const r = resolve(a);
       if (!r) { uAds++; uSpend += a.spend; continue; }
       const cur = by.get(r.key) ?? { skuCode: r.key, spend: 0, purchases: 0, clicks: 0, impressions: 0, ads: 0, cpa: null, product: r.product };
