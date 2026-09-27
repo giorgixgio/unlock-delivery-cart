@@ -26,6 +26,7 @@ interface MetaAd {
   adId: string;
   adName: string;
   autoCode: string | null;
+  status?: string;
   spend: number;
   purchases: number;
   clicks: number;
@@ -329,6 +330,7 @@ export default function MetaAdsSection({ dateMode, selectedDate, range }: Props)
                 style={{ width: "100%", fontSize: 16, padding: 8, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "inherit", marginBottom: 8 }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[...ads]
+                  .filter((a) => (a.status ?? "ACTIVE") === "ACTIVE")
                   .filter((a) => a.adName.toLowerCase().includes(mapFilter.toLowerCase()))
                   .sort((a, b) => Number(!!resolve(a)) - Number(!!resolve(b)) || b.spend - a.spend)
                   .map((a) => {
