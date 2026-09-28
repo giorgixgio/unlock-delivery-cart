@@ -78,18 +78,26 @@ export async function fetchStockQuantities(): Promise<Record<string, number>> {
 
 async function sumQuantitiesForOrders(orderIds: string[]): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
-  const CHUNK = 200;
-  for (let i = 0; i < orderIds.length; i += CHUNK) {
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("product_id, quantity")
-      .in("order_id", orderIds.slice(i, i + CHUNK));
-    for (const it of items || []) {
-      const pid = (it as any).product_id as string;
-      if (!pid) continue;
-      result[pid] = (result[pid] || 0) + Number((it as any).quantity || 0);
+  const CHUNK = 150;
+  const chunks: string[][] = [];
+  for (let i = 0; i < orderIds.length; i += CHUNK) chunks.push(orderIds.slice(i, i + CHUNK));
+  let next = 0;
+  const worker = async () => {
+    while (next < chunks.length) {
+      const chunk = chunks[next++];
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("product_id, quantity")
+        .in("order_id", chunk)
+        .limit(5000);
+      for (const it of items || []) {
+        const pid = (it as any).product_id as string;
+        if (!pid) continue;
+        result[pid] = (result[pid] || 0) + Number((it as any).quantity || 0);
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
   return result;
 }
 
