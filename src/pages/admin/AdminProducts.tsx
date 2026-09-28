@@ -221,13 +221,11 @@ const AdminProducts = () => {
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
-      const [stock, reserved, pending] = await Promise.all([fetchStockQuantities(), fetchReservedQuantities(), fetchPendingQuantities()]);
-      if (!alive) return;
-      setStockMap(stock);
-      setReservedMap(reserved);
-      setPendingMap(pending);
-    })();
+    // Load each independently so stock shows immediately, even if the slower
+    // reserved/pending sums take longer or fail.
+    fetchStockQuantities().then(m => { if (alive) setStockMap(m); }).catch(console.error);
+    fetchReservedQuantities().then(m => { if (alive) setReservedMap(m); }).catch(console.error);
+    fetchPendingQuantities().then(m => { if (alive) setPendingMap(m); }).catch(console.error);
     return () => { alive = false; };
   }, []);
   const queryClient = useQueryClient();
