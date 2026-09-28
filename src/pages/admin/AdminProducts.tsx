@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus, Zap, Info, ArrowDown,
+  Search, Loader2, Package, Upload, Download, Check, X, Pencil, AlertTriangle, ImageIcon, Link2, RefreshCw, ArrowRight, Images, Plus, Zap, Info, ArrowDown, Lock, Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
@@ -1013,23 +1013,46 @@ const AdminProducts = () => {
                     title="Adjust stock"
                     onClick={() => setStockTarget({ id: row.productId, title: row.title })}
                   >
-                    {(() => {
-                      const confirmed = reservedMap[row.productId] || 0;
-                      const review = pendingMap[row.productId] || 0;
-                      // Stock is deducted on confirm, so add back confirmed-not-shipped for what's physically on the shelf.
-                      const onHand = Math.max(0, (stockMap[row.productId] ?? 0)) + confirmed;
-                      return (
-                        <>
-                          <span className="font-bold">{onHand}</span>
-                          <span className="text-muted-foreground"> საწყობში</span>
-                          {confirmed + review > 0 && (
-                            <span className="block text-[11px] text-amber-500">
-                              დაჯავშნილი {confirmed + review} ({confirmed} დადასტ. · {review} განიხილება)
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
+                      {(() => {
+                        const confirmed = reservedMap[row.productId] || 0;
+                        const review = pendingMap[row.productId] || 0;
+                        // Stock is deducted on confirm, so add back confirmed-not-shipped for what's physically on the shelf.
+                        const onHand = Math.max(0, (stockMap[row.productId] ?? 0)) + confirmed;
+                        const shortage = review - (stockMap[row.productId] ?? 0); // >0 → will run out if everything gets confirmed
+                        return (
+                          <>
+                            <span className={`font-bold ${shortage > 0 ? "text-red-500" : ""}`}>{onHand}</span>
+                            {confirmed + review > 0 && (
+                              <span className="flex items-center gap-1 mt-0.5">
+                                {confirmed > 0 && (
+                                  <span
+                                    title="🔒 დაჯავშნილი — დადასტურებული, ჯერ გაუგზავნელი შეკვეთები"
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 text-amber-600 px-1.5 py-px text-[10px] font-bold leading-4"
+                                  >
+                                    <Lock className="w-2.5 h-2.5" />{confirmed}
+                                  </span>
+                                )}
+                                {review > 0 && (
+                                  <span
+                                    title="👁 განიხილება — ჯერ დაუდასტურებელი შეკვეთები (შესაძლო დაჯავშნა)"
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 text-sky-600 px-1.5 py-px text-[10px] font-bold leading-4"
+                                  >
+                                    <Eye className="w-2.5 h-2.5" />{review}
+                                  </span>
+                                )}
+                                {shortage > 0 && (
+                                  <span
+                                    title={`⚠ თუ ყველა განიხილება დადასტურდება, ${shortage} ცალი აკლდება`}
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-red-500/15 text-red-600 px-1.5 py-px text-[10px] font-bold leading-4"
+                                  >
+                                    −{shortage}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                   </button>
                 </td>
                 <td className="px-3 py-2">
