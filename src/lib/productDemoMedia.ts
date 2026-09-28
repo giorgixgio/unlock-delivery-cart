@@ -21,6 +21,7 @@ import sku0017Demo from "@/assets/sku0017-demo.webp.asset.json";
 import sku0012Demo from "@/assets/sku0012-2-demo.webm.asset.json";
 import sku0012BottleDemo from "@/assets/sku0012-bottle-cutter-demo.webp.asset.json";
 import sku0009GrabBarDemo from "@/assets/sku0009-grab-bar-demo.webp.asset.json";
+import sku0008FabricShaverDemo from "@/assets/sku0008-fabric-shaver-demo.webp.asset.json";
 
 const NOZZLE_DEMO: ProductDemoMedia = {
   src: sku0019Demo.url,
@@ -56,6 +57,12 @@ const DEMO_MEDIA: Record<string, ProductDemoMedia> = {
     src: sku0009GrabBarDemo.url,
     eyebrow: "როგორ მუშაობს",
     caption: "მიამაგრეთ კედელზე ერთი მოძრაობით — საიმედო საყრდენი ხელისთვის შხაპის ან აბაზანის მიღებისას",
+  },
+  // Portable fabric shaver (TrendMart)
+  "g888-t4656-0008": {
+    src: sku0008FabricShaverDemo.url,
+    eyebrow: "როგორ მუშაობს",
+    caption: "ნახეთ, როგორ აშორებს ბუსუსებს ტანსაცმელს",
   },
   "g888-t4656-0012_2": {
     src: sku0012Demo.url,
