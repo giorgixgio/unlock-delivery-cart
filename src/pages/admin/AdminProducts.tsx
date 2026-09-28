@@ -18,7 +18,7 @@ import * as XLSX from "xlsx";
 import NewProductModal from "@/components/admin/NewProductModal";
 import { clearProductsCache } from "@/hooks/useProducts";
 import StockAdjustModal from "@/components/admin/StockAdjustModal";
-import { fetchStockQuantities, fetchReservedQuantities } from "@/lib/stockService";
+import { fetchStockQuantities, fetchReservedQuantities, fetchPendingQuantities } from "@/lib/stockService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
@@ -216,15 +216,17 @@ const AdminProducts = () => {
   const { data: products, isLoading } = useProducts({ fresh: true });
   const [stockMap, setStockMap] = useState<Record<string, number>>({});
   const [reservedMap, setReservedMap] = useState<Record<string, number>>({});
+  const [pendingMap, setPendingMap] = useState<Record<string, number>>({});
   const [stockTarget, setStockTarget] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const [stock, reserved] = await Promise.all([fetchStockQuantities(), fetchReservedQuantities()]);
+      const [stock, reserved, pending] = await Promise.all([fetchStockQuantities(), fetchReservedQuantities(), fetchPendingQuantities()]);
       if (!alive) return;
       setStockMap(stock);
       setReservedMap(reserved);
+      setPendingMap(pending);
     })();
     return () => { alive = false; };
   }, []);
@@ -1017,7 +1019,12 @@ const AdminProducts = () => {
                     <span className="text-muted-foreground"> in stock</span>
                     {(reservedMap[row.productId] || 0) > 0 && (
                       <span className="block text-[11px] text-muted-foreground">
-                        · {reservedMap[row.productId]} reserved (confirmed, not yet shipped)
+                        · {reservedMap[row.productId]} დაჯავშნილი (დადასტ. + გაგზავნილი)
+                      </span>
+                    )}
+                    {(pendingMap[row.productId] || 0) > 0 && (
+                      <span className="block text-[11px] text-amber-500">
+                        · {pendingMap[row.productId]} განიხილება (ჯერ დაუდასტურებელი)
                       </span>
                     )}
                   </button>
