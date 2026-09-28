@@ -71,6 +71,13 @@
       "when": 1790467018823,
       "tag": "0009_meta_ad_product_map",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790621689551,
+      "tag": "0010_deduct_stock_on_confirm_trigger",
+      "breakpoints": true
     }
   ]
 }
