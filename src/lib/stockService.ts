@@ -147,20 +147,6 @@ export async function fetchPendingQuantities(): Promise<Record<string, number>> 
   if (!ids.length) return {};
   return sumQuantitiesForOrders(ids);
 }
-  const CHUNK = 200;
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("product_id, quantity")
-      .in("order_id", ids.slice(i, i + CHUNK));
-    for (const it of items || []) {
-      const pid = (it as any).product_id as string;
-      if (!pid) continue;
-      reserved[pid] = (reserved[pid] || 0) + Number((it as any).quantity || 0);
-    }
-  }
-  return reserved;
-}
 
 export async function fetchStockLog(productId: string, limit = 50): Promise<StockLogEntry[]> {
   const { data, error } = await (supabase as any)
