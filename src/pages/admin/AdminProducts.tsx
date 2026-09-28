@@ -1013,18 +1013,23 @@ const AdminProducts = () => {
                     title="Adjust stock"
                     onClick={() => setStockTarget({ id: row.productId, title: row.title })}
                   >
-                    <span className="font-bold">{stockMap[row.productId] ?? 0}</span>
-                    <span className="text-muted-foreground"> in stock</span>
-                    {(reservedMap[row.productId] || 0) > 0 && (
-                      <span className="block text-[11px] text-muted-foreground">
-                        · {reservedMap[row.productId]} დაჯავშნილი (დადასტ. + გაგზავნილი)
-                      </span>
-                    )}
-                    {(pendingMap[row.productId] || 0) > 0 && (
-                      <span className="block text-[11px] text-amber-500">
-                        · {pendingMap[row.productId]} განიხილება (ჯერ დაუდასტურებელი)
-                      </span>
-                    )}
+                    {(() => {
+                      const confirmed = reservedMap[row.productId] || 0;
+                      const review = pendingMap[row.productId] || 0;
+                      // Stock is deducted on confirm, so add back confirmed-not-shipped for what's physically on the shelf.
+                      const onHand = Math.max(0, (stockMap[row.productId] ?? 0)) + confirmed;
+                      return (
+                        <>
+                          <span className="font-bold">{onHand}</span>
+                          <span className="text-muted-foreground"> საწყობში</span>
+                          {confirmed + review > 0 && (
+                            <span className="block text-[11px] text-amber-500">
+                              დაჯავშნილი {confirmed + review} ({confirmed} დადასტ. · {review} განიხილება)
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </button>
                 </td>
                 <td className="px-3 py-2">

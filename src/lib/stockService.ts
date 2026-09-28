@@ -117,8 +117,9 @@ export async function fetchReservedQuantities(): Promise<Record<string, number>>
       .from("orders")
       .select("id")
       .eq("is_return", false)
-      .not("status", "in", '("canceled","cancelled","merged","delivered")')
-      .or("and(is_confirmed.eq.true,is_fulfilled.eq.false),status.eq.shipped")
+      .not("status", "in", '("canceled","cancelled","merged","delivered","shipped")')
+      .eq("is_confirmed", true)
+      .eq("is_fulfilled", false)
       .range(from, from + PAGE - 1);
     if (error || !data?.length) break;
     ids.push(...data.map((o: any) => o.id));
