@@ -76,20 +76,77 @@ export async function fetchStockQuantities(): Promise<Record<string, number>> {
   return map;
 }
 
+async function sumQuantitiesForOrders(orderIds: string[]): Promise<Record<string, number>> {
+  const result: Record<string, number> = {};
+  const CHUNK = 200;
+  for (let i = 0; i < orderIds.length; i += CHUNK) {
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("product_id, quantity")
+      .in("order_id", orderIds.slice(i, i + CHUNK));
+    for (const it of items || []) {
+      const pid = (it as any).product_id as string;
+      if (!pid) continue;
+      result[pid] = (result[pid] || 0) + Number((it as any).quantity || 0);
+    }
+  }
+  return result;
+}
+
 /**
- * Quantities committed to orders that are confirmed but not yet fulfilled —
- * "reserved" stock. Computed live, never stored.
+ * Quantities committed to orders that are confirmed (not yet fulfilled) OR
+ * already shipped but not yet delivered — stock that is spoken for.
+ * Computed live, never stored.
  */
 export async function fetchReservedQuantities(): Promise<Record<string, number>> {
   const reserved: Record<string, number> = {};
-  const { data: orders, error } = await supabase
-    .from("orders")
-    .select("id")
-    .eq("is_confirmed", true)
-    .eq("is_fulfilled", false);
-  if (error || !orders?.length) return reserved;
+  const PAGE = 1000;
+  const ids: string[] = [];
+  let from = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("is_return", false)
+      .not("status", "in", '("canceled","cancelled","merged","delivered")')
+      .or("and(is_confirmed.eq.true,is_fulfilled.eq.false),status.eq.shipped")
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    ids.push(...data.map((o: any) => o.id));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  if (!ids.length) return reserved;
+  return sumQuantitiesForOrders(ids);
+}
 
-  const ids = orders.map((o: any) => o.id);
+/**
+ * Quantities in orders still under review: not confirmed, not canceled,
+ * not merged — the pipeline an operator may still confirm.
+ */
+export async function fetchPendingQuantities(): Promise<Record<string, number>> {
+  const PAGE = 1000;
+  const ids: string[] = [];
+  let from = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("is_confirmed", false)
+      .eq("is_fulfilled", false)
+      .eq("is_return", false)
+      .not("status", "in", '("canceled","cancelled","merged","delivered","shipped")')
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    ids.push(...data.map((o: any) => o.id));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  if (!ids.length) return {};
+  return sumQuantitiesForOrders(ids);
+}
   const CHUNK = 200;
   for (let i = 0; i < ids.length; i += CHUNK) {
     const { data: items } = await supabase
