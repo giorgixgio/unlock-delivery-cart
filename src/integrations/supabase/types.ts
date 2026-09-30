@@ -1042,6 +1042,45 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_adset_caps: {
+        Row: {
+          adset_id: string
+          adset_name: string
+          cap_qty: number
+          count_from: string
+          is_enabled: boolean
+          last_checked_at: string | null
+          last_error: string | null
+          last_qty: number | null
+          paused_at: string | null
+          sku: string
+        }
+        Insert: {
+          adset_id: string
+          adset_name: string
+          cap_qty: number
+          count_from: string
+          is_enabled?: boolean
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_qty?: number | null
+          paused_at?: string | null
+          sku: string
+        }
+        Update: {
+          adset_id?: string
+          adset_name?: string
+          cap_qty?: number
+          count_from?: string
+          is_enabled?: boolean
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_qty?: number | null
+          paused_at?: string | null
+          sku?: string
+        }
+        Relationships: []
+      }
       operator_order_sessions: {
         Row: {
           actions_count: number

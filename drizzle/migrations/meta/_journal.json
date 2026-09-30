@@ -78,6 +78,13 @@
       "when": 1790621689551,
       "tag": "0010_deduct_stock_on_confirm_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790802902851,
+      "tag": "0011_meta_adset_caps",
+      "breakpoints": true
     }
   ]
 }
