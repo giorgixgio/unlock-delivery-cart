@@ -63,6 +63,7 @@ const navGroups = [
       { to: "/admin/landing-pages", label: "Landing Pages", icon: LayoutTemplate },
       { to: "/admin/products-import", label: "AI Import", icon: Wand2 },
       { to: "/admin/stockout-demand", label: "Stockout Demand", icon: PackageX },
+      { to: "/admin/test-sku", label: "Test SKU 999999", icon: Zap },
     ],
   },
   {

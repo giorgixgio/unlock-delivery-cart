@@ -63,6 +63,7 @@ import AdminCourierStats from "./pages/admin/AdminCourierStats";
 import AdminCourierAlerts from "./pages/admin/AdminCourierAlerts";
 import AdminCourierStatuses from "./pages/admin/AdminCourierStatuses";
 import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
+import AdminTestSku from "./pages/admin/AdminTestSku";
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -206,6 +207,7 @@ const App = () => (
                       <Route path="courier/stats" element={<AdminCourierStats />} />
                       <Route path="courier/alerts" element={<AdminCourierAlerts />} />
                       <Route path="courier/restock" element={<AdminCourierRestock />} />
+                      <Route path="test-sku" element={<AdminTestSku />} />
                       <Route path="packing" element={<AdminPacking />} />
                       <Route path="bin-locations" element={<AdminBinLocations />} />
                       <Route path="product-scan" element={<AdminProductScan />} />
