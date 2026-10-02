@@ -24,10 +24,11 @@ const LandingQuantitySelector = ({
   dark = false,
   sku,
 }: LandingQuantitySelectorProps) => {
+  const isFivePieceSet = sku === "999999";
   return (
     <div className="space-y-2.5">
       <p className={`text-base font-extrabold ${dark ? "text-white" : "text-foreground"}`}>
-        აირჩიე რაოდენობა
+        {isFivePieceSet ? "აირჩიე ნაკრებების რაოდენობა" : "აირჩიე რაოდენობა"}
       </p>
       <div className="space-y-2">
         {OPTIONS.map((opt) => {
@@ -36,7 +37,7 @@ const LandingQuantitySelector = ({
           const discountedTotal = getDiscountedTotal(unitPrice, opt.qty, sku);
           const originalTotal = getOriginalTotal(unitPrice, opt.qty);
           const hasDiscount = discountPct > 0;
-          const perUnit = opt.qty > 1 ? `${Math.round(discountedTotal / opt.qty)}₾ / ცალი` : undefined;
+          const perUnit = opt.qty > 1 ? `${Math.round(discountedTotal / opt.qty)}₾ / ${isFivePieceSet ? "ნაკრები" : "ცალი"}` : undefined;
 
           return (
             <button
@@ -79,8 +80,13 @@ const LandingQuantitySelector = ({
                       dark ? "text-white" : "text-foreground"
                     }`}
                   >
-                    {opt.label}
+                    {isFivePieceSet ? `${opt.qty} ნაკრები` : opt.label}
                   </span>
+                  {isFivePieceSet && (
+                    <p className={`text-sm font-medium mt-0.5 ${dark ? "text-white/70" : "text-muted-foreground"}`}>
+                      {opt.qty} × 5 = {opt.qty * 5} ცალი
+                    </p>
+                  )}
                   {perUnit && (
                     <p
                       className={`text-xs mt-0.5 ${
