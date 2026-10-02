@@ -54,7 +54,7 @@ function periodBounds(p: Props): { cur: [Date, Date] | null; prev: [Date, Date] 
 async function loadPeriod(bounds: [Date, Date] | null, hideBefore: Date | null, store: AdminStore) {
   const orders = await allPages<PdsOrder>((f, t) => {
     let q = supabase.from("orders").select("id, status, is_confirmed, is_fulfilled, auto_confirmed, is_return, created_at")
-      .or("is_return.is.null,is_return.eq.false").neq("status", "merged");
+      .or("is_return.is.null,is_return.eq.false").neq("status", "merged").not("tags", "cs", "{test_sku}");
     if (bounds) q = q.gte("created_at", bounds[0].toISOString()).lte("created_at", bounds[1].toISOString());
     if (hideBefore) q = q.gte("created_at", hideBefore.toISOString());
     return q.order("id").range(f, t);
