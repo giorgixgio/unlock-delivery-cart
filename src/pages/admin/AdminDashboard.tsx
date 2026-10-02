@@ -80,7 +80,8 @@ const AdminDashboard = () => {
       let query = supabase
         .from("orders")
         .select("id, total, shipping_fee, status, is_confirmed, auto_confirmed, review_required, is_fulfilled, is_tbilisi, created_at, call_outcome, call_outcome_updated_by, call_attempt_count, next_call_after, final_cancel_reason")
-        .or("is_return.is.null,is_return.eq.false");
+        .or("is_return.is.null,is_return.eq.false")
+        .not("tags", "cs", "{test_sku}");
 
       if (dateMode === "today" || dateMode === "yesterday" || dateMode === "custom") {
         const day =

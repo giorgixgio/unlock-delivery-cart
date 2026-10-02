@@ -140,7 +140,7 @@ const AdminOrders = () => {
     const [reviewRes, readyRes, fulfilledRes, returnsRes] = await Promise.all([
       supabase
         .from("orders")
-        .select("id")
+        .select("id").not("tags", "cs", "{test_sku}")
         .neq("status", "merged")
         .neq("status", "canceled")
         .neq("status", "returned")
@@ -148,7 +148,7 @@ const AdminOrders = () => {
         .or("status.in.(new,on_hold,pending_bump),is_confirmed.eq.false,review_required.eq.true"),
       supabase
         .from("orders")
-        .select("id")
+        .select("id").not("tags", "cs", "{test_sku}")
         .eq("status", "confirmed")
         .eq("is_confirmed", true)
         .eq("review_required", false)
@@ -156,7 +156,7 @@ const AdminOrders = () => {
         .neq("status", "merged"),
       supabase
         .from("orders")
-        .select("id")
+        .select("id").not("tags", "cs", "{test_sku}")
         .eq("is_fulfilled", true)
         .not("status", "in", "(canceled,returned,merged)"),
       supabase
@@ -183,7 +183,8 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, is_return, original_order_id, return_reason, order_items(image_url, quantity)");
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, is_return, original_order_id, return_reason, order_items(image_url, quantity)")
+      .not("tags", "cs", "{test_sku}");
 
     // Tab-based filtering
     if (activeTab === "review") {

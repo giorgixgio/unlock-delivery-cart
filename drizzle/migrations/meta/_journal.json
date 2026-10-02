@@ -85,6 +85,13 @@
       "when": 1790802902851,
       "tag": "0011_meta_adset_caps",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790966309747,
+      "tag": "0012_tag_test_sku_orders",
+      "breakpoints": true
     }
   ]
 }
