@@ -1157,13 +1157,13 @@ function WholesaleItemModal({
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={onPublish} disabled={publishing || !!item.shipping_mark} title={item.shipping_mark ? "Already linked to an existing product" : undefined}>
+          <Button onClick={onPublish} disabled={publishing || !!(item.storefront_product_id && item.listing_status !== "published")} title={item.storefront_product_id && item.listing_status !== "published" ? "Already linked to an existing product" : undefined}>
             {publishing ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
             ) : (
               <Upload className="h-4 w-4 mr-1" />
             )}
-            {item.shipping_mark ? "Linked to existing product" : item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
+            {item.storefront_product_id && item.listing_status !== "published" ? "Linked to existing product" : item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1620,20 +1620,20 @@ const AdminWholesaleOrders = () => {
 
   /** Idempotent upsert of one wholesale item into the storefront products table. */
   const publishItem = async (item: Item): Promise<string> => {
-    if (item.shipping_mark || (item.storefront_product_id && item.listing_status !== "published")) throw new Error(`${shippingMark(item)}: reorder is already linked to a storefront product; publishing would overwrite it`);
+    if (item.storefront_product_id && item.listing_status !== "published") throw new Error(`${shippingMark(item)}: reorder is already linked to a storefront product; publishing would overwrite it`);
     const price = Number(item.selling_price);
     if (!item.title?.trim()) throw new Error(`${item.sku}: title is required`);
     if (!item.selling_price || Number.isNaN(price) || price <= 0)
       throw new Error(`${item.sku}: selling price is required`);
 
-    const imageUrl = await copyImageToProductBucket(item.image_url, item.sku);
+    const imageUrl = await copyImageToProductBucket(item.image_url, shippingMark(item));
     const productId = item.storefront_product_id || `wholesale-${item.id}`;
 
     const payload: Record<string, unknown> = {
       id: productId,
       title: item.title.trim(),
-      handle: `${slugify(item.title)}-${item.sku.toLowerCase()}`,
-      sku: item.sku,
+      handle: `${slugify(item.title)}-${shippingMark(item).toLowerCase()}`,
+      sku: shippingMark(item),
       price,
       compare_at_price:
         item.old_price != null && Number(item.old_price) > 0 ? Number(item.old_price) : null,
@@ -2213,15 +2213,15 @@ const AdminWholesaleOrders = () => {
                       size="sm"
                       variant={it.storefront_product_id ? "outline" : "secondary"}
                       onClick={() => handlePublish(it)}
-                      disabled={publishingId === it.id || !!it.shipping_mark}
-                      title={it.shipping_mark ? "Already linked to an existing product" : undefined}
+                      disabled={publishingId === it.id || !!(it.storefront_product_id && it.listing_status !== "published")}
+                      title={it.storefront_product_id && it.listing_status !== "published" ? "Already linked to an existing product" : undefined}
                     >
                       {publishingId === it.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Upload className="h-4 w-4 mr-1" />
                       )}
-                      {it.shipping_mark ? "Linked" : it.storefront_product_id ? "Update" : "Publish"}
+                      {it.storefront_product_id && it.listing_status !== "published" ? "Linked" : it.storefront_product_id ? "Update" : "Publish"}
                     </Button>
                   </td>
                 </tr>
