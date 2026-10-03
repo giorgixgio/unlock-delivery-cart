@@ -2,6 +2,7 @@
 
 - [x] Wholesale CRM: select an existing catalog product for a reorder without overwriting its listing
 - [x] Both warehouses' shipping marks and copied supplier text use `G888-T4656-####` product identifiers, including existing legacy rows
+- [x] Warehouse B copied supplier message contains bilingual warehouse address, contacts, carton mark, and packing instructions
 
 - [x] Migration: shipment columns, batch coverage+conflicts, courier_status_map, courier_alert_settings, RLS+grants
 - [x] Retro-remap existing 3,846 shipments into derived_state
