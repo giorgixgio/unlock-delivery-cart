@@ -2243,28 +2243,6 @@ const AdminWholesaleOrders = () => {
                   <td className="px-4 py-3">
                     <DualPrice amountUsd={lineValueUsd(it)} />
                   </td>
-                  <td className="px-4 py-3">
-                    <Select
-                      value={it.logistics_stage}
-                      onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
-                      disabled={!!batches.find((b) => b.id === it.batch_id)?.shipping_stage}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue>
-                          <Badge variant="outline" className={stageMeta(it.logistics_stage).className}>
-                            {stageMeta(it.logistics_stage).label}
-                          </Badge>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
 
                   <td className="px-4 py-3">
                     <EditableCell
@@ -2281,18 +2259,6 @@ const AdminWholesaleOrders = () => {
                       onGenerate={() => generateHs(it)}
                       onPatch={(patch) => patchItem(it.id, patch)}
                     />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        it.listing_status === "published"
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                          : "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {it.listing_status === "published" ? "Published" : "Not Listed"}
-                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Button
