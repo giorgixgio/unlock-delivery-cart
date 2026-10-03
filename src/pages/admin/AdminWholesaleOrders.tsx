@@ -310,6 +310,11 @@ function useSignedUrl(path: string | null) {
       setUrl(null);
       return;
     }
+    // Reorder rows reuse the live product's public image URL.
+    if (/^https?:\/\//i.test(path)) {
+      setUrl(path);
+      return;
+    }
     const cached = signedCache.get(path);
     if (cached) {
       setUrl(cached);
@@ -1491,7 +1496,8 @@ const AdminWholesaleOrders = () => {
       const row = (Array.isArray(data) ? data[0] : data) as Item;
       const patch: Partial<Item> = {
         storefront_product_id: product.id,
-        shipping_mark: /^G888-T4656-\d{4}$/.test(product.sku) ? product.sku : row.sku,
+        // Reorders always keep the existing product's own SKU as the carton mark.
+        shipping_mark: product.sku || row.sku,
         title: product.title,
         image_url: product.image || null,
         selling_price: Number(product.price),
