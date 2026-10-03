@@ -1157,13 +1157,13 @@ function WholesaleItemModal({
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={onPublish} disabled={publishing}>
+          <Button onClick={onPublish} disabled={publishing || !!item.shipping_mark} title={item.shipping_mark ? "Already linked to an existing product" : undefined}>
             {publishing ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
             ) : (
               <Upload className="h-4 w-4 mr-1" />
             )}
-            {item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
+            {item.shipping_mark ? "Linked to existing product" : item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
           </Button>
         </DialogFooter>
       </DialogContent>
