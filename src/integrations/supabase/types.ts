@@ -1044,6 +1044,7 @@ export type Database = {
       }
       meta_adset_caps: {
         Row: {
+          activated_at: string | null
           adset_id: string
           adset_name: string
           cap_qty: number
@@ -1054,8 +1055,10 @@ export type Database = {
           last_qty: number | null
           paused_at: string | null
           sku: string
+          start_at: string | null
         }
         Insert: {
+          activated_at?: string | null
           adset_id: string
           adset_name: string
           cap_qty: number
@@ -1066,8 +1069,10 @@ export type Database = {
           last_qty?: number | null
           paused_at?: string | null
           sku: string
+          start_at?: string | null
         }
         Update: {
+          activated_at?: string | null
           adset_id?: string
           adset_name?: string
           cap_qty?: number
@@ -1078,6 +1083,7 @@ export type Database = {
           last_qty?: number | null
           paused_at?: string | null
           sku?: string
+          start_at?: string | null
         }
         Relationships: []
       }
