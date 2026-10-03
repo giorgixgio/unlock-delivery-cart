@@ -176,10 +176,17 @@ const COMPLETENESS_FIELDS: { key: string; label: string; get: (i: Item) => unkno
 
 const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && !v.trim());
 
-const missingFields = (i: Item) =>
-  COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.label);
+// Linked (reorder) rows inherit the storefront product's own description,
+// so the Description completeness check does not apply to them.
+const fieldsFor = (i: Item) =>
+  i.storefront_product_id
+    ? COMPLETENESS_FIELDS.filter((f) => f.key !== "description")
+    : COMPLETENESS_FIELDS;
 
-const missingKeys = (i: Item) => new Set(COMPLETENESS_FIELDS.filter((f) => isBlank(f.get(i))).map((f) => f.key));
+const missingFields = (i: Item) =>
+  fieldsFor(i).filter((f) => isBlank(f.get(i))).map((f) => f.label);
+
+const missingKeys = (i: Item) => new Set(fieldsFor(i).filter((f) => isBlank(f.get(i))).map((f) => f.key));
 
 
 
@@ -259,7 +266,7 @@ function IncompleteBadge({ item }: { item: Item }) {
 
 const STAGES = [
   { value: "to_be_ordered", label: "To Be Ordered", className: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
-  { value: "ordered", label: "Ordered", className: "bg-muted text-muted-foreground" },
+  { value: "ordered", label: "Ordered", className: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
   { value: "at_freight_forwarder", label: "At Forwarder", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
   { value: "in_transit", label: "In Transit", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
   { value: "arrived", label: "Arrived", className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
@@ -927,10 +934,12 @@ function WholesaleItemModal({
               className={
                 item.listing_status === "published"
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                  : "bg-muted text-muted-foreground"
+                  : item.storefront_product_id
+                    ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30"
+                    : "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30"
               }
             >
-              {item.listing_status === "published" ? "Published" : "Not Listed"}
+              {item.listing_status === "published" ? "Published" : item.storefront_product_id ? "Linked" : "Not Listed"}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -1985,6 +1994,8 @@ const AdminWholesaleOrders = () => {
               </th>
               <th className="px-4 py-3 text-left w-20">Image</th>
               <th className="px-4 py-3 text-left w-36">Shipping mark</th>
+              <th className="px-4 py-3 text-left w-44">Stage</th>
+              <th className="px-4 py-3 text-left w-32">Listing</th>
               <th className="px-4 py-3 text-left w-20">WH</th>
               <th className="px-4 py-3 text-left w-40">Batch</th>
               <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
@@ -1996,10 +2007,8 @@ const AdminWholesaleOrders = () => {
               <th className="px-4 py-3 text-left min-w-[110px]">Quantity</th>
               <th className="px-4 py-3 text-left min-w-[110px]">Cartons</th>
               <th className="px-4 py-3 text-left min-w-[120px]">Line Total</th>
-              <th className="px-4 py-3 text-left w-44">Stage</th>
               <th className="px-4 py-3 text-left min-w-[180px]">Notes</th>
               <th className="px-4 py-3 text-left min-w-[220px]">HS Code</th>
-              <th className="px-4 py-3 text-left w-32">Listing</th>
               <th className="px-4 py-3 text-left w-32">Storefront</th>
             </tr>
           </thead>
@@ -2070,6 +2079,43 @@ const AdminWholesaleOrders = () => {
                       />
                       <IncompleteBadge item={it} />
                     </div>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <Select
+                      value={it.logistics_stage}
+                      onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
+                      disabled={!!batches.find((b) => b.id === it.batch_id)?.shipping_stage}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue>
+                          <Badge variant="outline" className={stageMeta(it.logistics_stage).className}>
+                            {stageMeta(it.logistics_stage).label}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        it.listing_status === "published"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : it.storefront_product_id
+                            ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30"
+                            : "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30"
+                      }
+                    >
+                      {it.listing_status === "published" ? "Published" : it.storefront_product_id ? "Linked" : "Not Listed"}
+                    </Badge>
                   </td>
 
                   <td className="px-4 py-3">
@@ -2197,28 +2243,6 @@ const AdminWholesaleOrders = () => {
                   <td className="px-4 py-3">
                     <DualPrice amountUsd={lineValueUsd(it)} />
                   </td>
-                  <td className="px-4 py-3">
-                    <Select
-                      value={it.logistics_stage}
-                      onValueChange={(v) => patchItem(it.id, { logistics_stage: v })}
-                      disabled={!!batches.find((b) => b.id === it.batch_id)?.shipping_stage}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue>
-                          <Badge variant="outline" className={stageMeta(it.logistics_stage).className}>
-                            {stageMeta(it.logistics_stage).label}
-                          </Badge>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STAGES.filter((s) => !SHIPPING_STAGES.includes(s.value)).map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
 
                   <td className="px-4 py-3">
                     <EditableCell
@@ -2235,18 +2259,6 @@ const AdminWholesaleOrders = () => {
                       onGenerate={() => generateHs(it)}
                       onPatch={(patch) => patchItem(it.id, patch)}
                     />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        it.listing_status === "published"
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                          : "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {it.listing_status === "published" ? "Published" : "Not Listed"}
-                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Button
