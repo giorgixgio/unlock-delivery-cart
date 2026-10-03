@@ -242,9 +242,22 @@ const AdminOrderDetail = () => {
       });
       return;
     }
+    if (saving) return; // ignore repeated taps while a confirm is in flight (iPad double-tap)
     const idemKey = crypto.randomUUID();
     setSaving(true);
     try {
+      // Re-read the live row: if it's already confirmed (another tap/device), do nothing.
+      const { data: live } = await supabase
+        .from("orders")
+        .select("is_confirmed,status")
+        .eq("id", id)
+        .maybeSingle();
+      if (live?.is_confirmed && live.status !== "canceled") {
+        toast({ title: "შეკვეთა უკვე დადასტურებულია" });
+        await refreshOrder();
+        setSaving(false);
+        return;
+      }
       // Check idempotency
       const idemCheck = await checkIdempotency(idemKey);
       if (idemCheck.exists) {
