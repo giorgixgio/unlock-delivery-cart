@@ -47,7 +47,7 @@ import type { BumpConfig } from "@/hooks/useLandingConfig";
 
 const ProductLanding = () => {
   const { slug } = useParams();
-  const { data: products = [], isLoading } = useProducts();
+  const { data: products = [], isLoading, isFetching, isPlaceholderData } = useProducts();
   const { landingSlug } = useLandingPage();
 
   const product = useMemo(() => {
@@ -59,7 +59,10 @@ const ProductLanding = () => {
     product?.handle || slug
   );
 
-  if (isLoading || configLoading) {
+  // A cached (possibly older) catalog may not contain a newly added product yet —
+  // keep showing the skeleton until the fresh catalog arrives before saying "not found".
+  const awaitingFresh = !product && (isPlaceholderData || isFetching);
+  if (isLoading || configLoading || awaitingFresh) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container max-w-lg mx-auto px-4 pt-8 space-y-4">

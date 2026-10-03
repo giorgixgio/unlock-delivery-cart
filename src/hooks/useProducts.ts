@@ -200,7 +200,7 @@ async function fetchAllProducts(skipCache = false): Promise<Product[]> {
  */
 export function useProducts(options?: { fresh?: boolean }) {
   const fresh = options?.fresh ?? false;
-  const { data: rawProducts, isLoading, error } = useQuery({
+  const { data: rawProducts, isLoading, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: ["bigmart-products"],
     queryFn: () => fetchAllProducts(fresh),
     staleTime: fresh ? 0 : 10 * 60 * 1000,
@@ -227,7 +227,7 @@ export function useProducts(options?: { fresh?: boolean }) {
     );
   }, [rawProducts, overrides]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, isFetching, isPlaceholderData, error };
 }
 
 /**
