@@ -1451,13 +1451,13 @@ const AdminWholesaleOrders = () => {
     if (!selectedBatch || !product || product.warehouse !== selectedBatch.warehouse) return;
     setAddingReorder(true);
     try {
-      // Allocate a unique row identifier first; the shipping mark retains the existing product SKU.
+      // Preserve the selected catalog link while allocating a current-format carton mark.
       const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: selectedBatch.id });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as Item;
       const patch: Partial<Item> = {
         storefront_product_id: product.id,
-        shipping_mark: product.sku,
+        shipping_mark: /^G888-T4656-\d{4}$/.test(product.sku) ? product.sku : row.sku,
         title: product.title,
         image_url: product.image || null,
         selling_price: Number(product.price),
@@ -1468,7 +1468,7 @@ const AdminWholesaleOrders = () => {
       if (saveError) throw saveError;
       setItems((rows) => [...rows, saved as Item]);
       setReorderOpen(false);
-      toast.success(`Reorder added — ${product.sku}`);
+      toast.success(`Reorder added — ${saved.shipping_mark}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not add reorder");
       void load();
@@ -1620,7 +1620,7 @@ const AdminWholesaleOrders = () => {
 
   /** Idempotent upsert of one wholesale item into the storefront products table. */
   const publishItem = async (item: Item): Promise<string> => {
-    if (item.shipping_mark) throw new Error(`${item.shipping_mark}: reorder is already linked to a storefront product; publishing would overwrite it`);
+    if (item.shipping_mark || (item.storefront_product_id && item.listing_status !== "published")) throw new Error(`${shippingMark(item)}: reorder is already linked to a storefront product; publishing would overwrite it`);
     const price = Number(item.selling_price);
     if (!item.title?.trim()) throw new Error(`${item.sku}: title is required`);
     if (!item.selling_price || Number.isNaN(price) || price <= 0)
@@ -2305,7 +2305,7 @@ const AdminWholesaleOrders = () => {
               </Select>
             </div>
             <p className="text-xs text-muted-foreground">
-              New shipping marks: {newBatchWarehouse === "B" ? "G888-T4656-#### (next available identifier)" : `${newBatchWarehouse}-${newBatchNumber || "BATCH"}-001`}
+              New shipping marks: G888-T4656-#### (next available identifier)
             </p>
           </div>
           <DialogFooter>
