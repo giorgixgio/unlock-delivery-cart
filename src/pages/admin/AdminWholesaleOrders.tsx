@@ -2305,7 +2305,7 @@ const AdminWholesaleOrders = () => {
               </Select>
             </div>
             <p className="text-xs text-muted-foreground">
-              New shipping marks: {newBatchWarehouse === "B" ? "G888-T4656-0012 (next available identifier)" : `${newBatchWarehouse}-${newBatchNumber || "BATCH"}-001`}
+              New shipping marks: {newBatchWarehouse === "B" ? "G888-T4656-#### (next available identifier)" : `${newBatchWarehouse}-${newBatchNumber || "BATCH"}-001`}
             </p>
           </div>
           <DialogFooter>

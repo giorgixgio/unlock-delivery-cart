@@ -249,7 +249,7 @@ export default function AdminWholesaleCustoms() {
     const [{ data: it, error: e1 }, { data: dc, error: e2 }] = await Promise.all([
       supabase
         .from("wholesale_items")
-        .select("id,sku,title,title_ru,hs_code,quantity,unit_price,weight_kg,carton_count")
+        .select("id,sku,shipping_mark,title,title_ru,hs_code,quantity,unit_price,weight_kg,carton_count")
         .eq("batch_id", id)
         .order("sku"),
       supabase
