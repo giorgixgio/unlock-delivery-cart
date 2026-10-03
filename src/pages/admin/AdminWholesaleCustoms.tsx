@@ -39,7 +39,7 @@ type Warehouse = "A" | "B";
 
 type Batch = { id: string; batch_number: string; warehouse: Warehouse; created_at: string };
 
-type Item = DocItem & { id: string; title_ru: string | null; hs_code: string | null };
+type Item = DocItem & { id: string; title_ru: string | null; hs_code: string | null; shipping_mark: string | null };
 
 
 type Doc = {
@@ -249,7 +249,7 @@ export default function AdminWholesaleCustoms() {
     const [{ data: it, error: e1 }, { data: dc, error: e2 }] = await Promise.all([
       supabase
         .from("wholesale_items")
-        .select("id,sku,title,title_ru,hs_code,quantity,unit_price,weight_kg,carton_count")
+        .select("id,sku,shipping_mark,title,title_ru,hs_code,quantity,unit_price,weight_kg,carton_count")
         .eq("batch_id", id)
         .order("sku"),
       supabase
@@ -350,14 +350,14 @@ export default function AdminWholesaleCustoms() {
       let contentType: string;
 
       if (kind === "invoice") {
-        const pdf = await buildWholesaleInvoice(items, meta);
+        const pdf = await buildWholesaleInvoice(items.map((i) => ({ ...i, sku: i.shipping_mark || i.sku })), meta);
         fileName = `invoice-${batch.batch_number}-${Date.now()}.pdf`;
         blob = pdf.output("blob");
         contentType = "application/pdf";
       } else {
         const withRu = await ensureRussianNames(items);
         const xlsxItems: XlsxItem[] = withRu.map((i) => ({
-          sku: i.sku,
+          sku: i.shipping_mark || i.sku,
           title: i.title,
           title_ru: i.title_ru,
           quantity: i.quantity,
@@ -598,7 +598,7 @@ export default function AdminWholesaleCustoms() {
               <tbody>
                 {items.map((i) => (
                   <tr key={i.id} className="border-t border-border">
-                    <td className="px-3 py-2 font-mono text-xs">{i.sku}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{i.shipping_mark || i.sku}</td>
                     <td className="px-3 py-2">{i.title || "—"}</td>
                     <td className="px-3 py-2 text-right">
                       <Input

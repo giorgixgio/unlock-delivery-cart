@@ -42,6 +42,7 @@ type Item = {
   batch_id: string | null;
   warehouse: Warehouse;
   sku: string;
+  shipping_mark: string | null;
   title: string | null;
   image_url: string | null;
   images: string[] | null;
@@ -72,8 +73,8 @@ type Item = {
   updated_at: string;
 };
 
-const MARK_PREFIX = "G888-T1482";
 const INTRO = "Please prepare a draft order. I'll pay once I finish collecting all items. Please include an estimated delivery date.";
+const shippingMark = (item: Item) => item.shipping_mark || item.sku;
 
 const productLabel = (it: Pick<Item, "title" | "alibaba_title" | "sku">) => {
   const base = it.title || it.sku;
@@ -84,11 +85,11 @@ const productLabel = (it: Pick<Item, "title" | "alibaba_title" | "sku">) => {
 const buildShippingMarkText = (item: Item, groupItems: Item[]) => {
   if (item.supplier_group_id && groupItems.length > 1) {
     const lines = groupItems
-      .map((g, i) => `${i + 1}. ${productLabel(g)} → ${MARK_PREFIX}-${g.sku}`)
+      .map((g, i) => `${i + 1}. ${productLabel(g)} → ${shippingMark(g)}`)
       .join("\n");
     return `${INTRO}\n\nCarton shipping marks (one per product):\n${lines}`;
   }
-  return `${INTRO}\n\nCarton shipping mark: ${MARK_PREFIX}-${item.sku}\nProduct: ${productLabel(item)}`;
+  return `${INTRO}\n\nCarton shipping mark: ${shippingMark(item)}\nProduct: ${productLabel(item)}`;
 };
 
 const GROUP_COLORS = [
@@ -190,7 +191,7 @@ function SkuCell({
         title="Click to copy supplier message"
         className="group inline-flex items-center gap-1 font-mono text-xs font-semibold hover:text-primary transition-colors"
       >
-        {item.sku}
+        {shippingMark(item)}
         {copied ? (
           <Check className="h-3 w-3 text-emerald-500" />
         ) : (
@@ -896,7 +897,7 @@ function WholesaleItemModal({
         </DialogHeader>
 
         <div className="space-y-5">
-          <Field label="SKU (click to copy supplier message)">
+          <Field label="Shipping mark (click to copy supplier message)">
             <SkuCell item={item} groupItems={groupItems} onUngroup={() => onPatch({ supplier_group_id: null })} />
           </Field>
 
@@ -1156,13 +1157,13 @@ function WholesaleItemModal({
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={onPublish} disabled={publishing}>
+          <Button onClick={onPublish} disabled={publishing || !!item.shipping_mark} title={item.shipping_mark ? "Already linked to an existing product" : undefined}>
             {publishing ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
             ) : (
               <Upload className="h-4 w-4 mr-1" />
             )}
-            {item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
+            {item.shipping_mark ? "Linked to existing product" : item.storefront_product_id ? "Update storefront" : "Publish to storefront"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1179,6 +1180,7 @@ const AdminWholesaleOrders = () => {
 
   const [batches, setBatches] = useState<Batch[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<{ id: string; sku: string; title: string; warehouse: string | null; image: string; price: number; compare_at_price: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -1194,6 +1196,10 @@ const AdminWholesaleOrders = () => {
   const [newBatchWarehouse, setNewBatchWarehouse] = useState<Warehouse>("A");
   const [creatingBatch, setCreatingBatch] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderSearch, setReorderSearch] = useState("");
+  const [reorderProductId, setReorderProductId] = useState("");
+  const [addingReorder, setAddingReorder] = useState(false);
   const [bulkStage, setBulkStage] = useState<string>("");
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1220,6 +1226,19 @@ const AdminWholesaleOrders = () => {
     setBatches((b.data as Batch[]) ?? []);
     setItems((i.data as Item[]) ?? []);
     setLoading(false);
+  }, []);
+
+  const loadCatalog = useCallback(async () => {
+    const rows: typeof catalogProducts = [];
+    for (let start = 0; ; start += 1000) {
+      const { data, error } = await supabase.from("products")
+        .select("id,sku,title,warehouse,image,price,compare_at_price")
+        .order("sku").range(start, start + 999);
+      if (error) { toast.error(error.message); return; }
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+    setCatalogProducts(rows);
   }, []);
 
   useEffect(() => {
@@ -1420,6 +1439,44 @@ const AdminWholesaleOrders = () => {
     toast.success(`Row added — ${row.sku}`);
   };
 
+  const openReorder = () => {
+    setReorderSearch("");
+    setReorderProductId("");
+    setReorderOpen(true);
+    void loadCatalog();
+  };
+
+  const addReorder = async () => {
+    const product = catalogProducts.find((p) => p.id === reorderProductId);
+    if (!selectedBatch || !product || product.warehouse !== selectedBatch.warehouse) return;
+    setAddingReorder(true);
+    try {
+      // Allocate a unique row identifier first; the shipping mark retains the existing product SKU.
+      const { data, error } = await supabase.rpc("create_wholesale_item", { p_batch_id: selectedBatch.id });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as Item;
+      const patch: Partial<Item> = {
+        storefront_product_id: product.id,
+        shipping_mark: product.sku,
+        title: product.title,
+        image_url: product.image || null,
+        selling_price: Number(product.price),
+        old_price: product.compare_at_price == null ? null : Number(product.compare_at_price),
+      };
+      const { data: saved, error: saveError } = await supabase.from("wholesale_items")
+        .update(patch).eq("id", row.id).select().single();
+      if (saveError) throw saveError;
+      setItems((rows) => [...rows, saved as Item]);
+      setReorderOpen(false);
+      toast.success(`Reorder added — ${product.sku}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add reorder");
+      void load();
+    } finally {
+      setAddingReorder(false);
+    }
+  };
+
   /** Detach an item, or move it into another batch — adopting that batch's shipping stage. */
   const assignBatch = async (item: Item, batchId: string | null) => {
     const target = batchId ? batches.find((b) => b.id === batchId) ?? null : null;
@@ -1563,6 +1620,7 @@ const AdminWholesaleOrders = () => {
 
   /** Idempotent upsert of one wholesale item into the storefront products table. */
   const publishItem = async (item: Item): Promise<string> => {
+    if (item.shipping_mark) throw new Error(`${item.shipping_mark}: reorder is already linked to a storefront product; publishing would overwrite it`);
     const price = Number(item.selling_price);
     if (!item.title?.trim()) throw new Error(`${item.sku}: title is required`);
     if (!item.selling_price || Number.isNaN(price) || price <= 0)
@@ -1760,6 +1818,9 @@ const AdminWholesaleOrders = () => {
           {addingRow ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
           Add Row
         </Button>
+        <Button onClick={openReorder} variant="outline" size="sm" disabled={!selectedBatch}>
+          <Package className="h-4 w-4 mr-1" /> Reorder product
+        </Button>
 
         <div className="mx-2 h-6 w-px bg-border" />
 
@@ -1883,7 +1944,7 @@ const AdminWholesaleOrders = () => {
                 />
               </th>
               <th className="px-4 py-3 text-left w-20">Image</th>
-              <th className="px-4 py-3 text-left w-36">SKU</th>
+              <th className="px-4 py-3 text-left w-36">Shipping mark</th>
               <th className="px-4 py-3 text-left w-20">WH</th>
               <th className="px-4 py-3 text-left w-40">Batch</th>
               <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
@@ -2152,14 +2213,15 @@ const AdminWholesaleOrders = () => {
                       size="sm"
                       variant={it.storefront_product_id ? "outline" : "secondary"}
                       onClick={() => handlePublish(it)}
-                      disabled={publishingId === it.id}
+                      disabled={publishingId === it.id || !!it.shipping_mark}
+                      title={it.shipping_mark ? "Already linked to an existing product" : undefined}
                     >
                       {publishingId === it.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Upload className="h-4 w-4 mr-1" />
                       )}
-                      {it.storefront_product_id ? "Update" : "Publish"}
+                      {it.shipping_mark ? "Linked" : it.storefront_product_id ? "Update" : "Publish"}
                     </Button>
                   </td>
                 </tr>
@@ -2197,6 +2259,29 @@ const AdminWholesaleOrders = () => {
         />
       )}
 
+      <Dialog open={reorderOpen} onOpenChange={setReorderOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Reorder existing product</DialogTitle></DialogHeader>
+          <Input value={reorderSearch} onChange={(e) => setReorderSearch(e.target.value)} placeholder="Search SKU or product name" aria-label="Search existing products" />
+          <div className="max-h-72 overflow-y-auto border border-border rounded-md" role="listbox" aria-label="Existing products">
+            {catalogProducts.filter((p) => p.warehouse === selectedBatch?.warehouse && `${p.sku} ${p.title}`.toLowerCase().includes(reorderSearch.toLowerCase())).slice(0, 100).map((p) => (
+              <Button key={p.id} type="button" variant={reorderProductId === p.id ? "secondary" : "ghost"}
+                className="w-full h-auto justify-start gap-3 rounded-none px-3 py-2 text-left"
+                onClick={() => setReorderProductId(p.id)}>
+                {p.image && <img src={p.image} alt="" className="h-10 w-10 shrink-0 object-contain" />}
+                <span className="min-w-0 whitespace-normal"><strong className="block font-mono text-xs">{p.sku}</strong><span className="text-sm">{p.title}</span></span>
+              </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReorderOpen(false)}>Cancel</Button>
+            <Button disabled={!reorderProductId || addingReorder} onClick={addReorder}>
+              {addingReorder && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add reorder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={newBatchOpen} onOpenChange={setNewBatchOpen}>
         <DialogContent>
           <DialogHeader>
@@ -2220,7 +2305,7 @@ const AdminWholesaleOrders = () => {
               </Select>
             </div>
             <p className="text-xs text-muted-foreground">
-              SKUs will be generated as {newBatchWarehouse}-{newBatchNumber || "BATCH"}-001
+              New shipping marks: {newBatchWarehouse === "B" ? "G888-T4656-#### (next available identifier)" : `${newBatchWarehouse}-${newBatchNumber || "BATCH"}-001`}
             </p>
           </div>
           <DialogFooter>

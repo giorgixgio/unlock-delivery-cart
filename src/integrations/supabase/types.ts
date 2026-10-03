@@ -2542,6 +2542,7 @@ export type Database = {
           old_price: number | null
           quantity: number | null
           selling_price: number | null
+          shipping_mark: string | null
           sku: string
           storefront_product_id: string | null
           supplier_group_id: string | null
@@ -2574,6 +2575,7 @@ export type Database = {
           old_price?: number | null
           quantity?: number | null
           selling_price?: number | null
+          shipping_mark?: string | null
           sku: string
           storefront_product_id?: string | null
           supplier_group_id?: string | null
@@ -2606,6 +2608,7 @@ export type Database = {
           old_price?: number | null
           quantity?: number | null
           selling_price?: number | null
+          shipping_mark?: string | null
           sku?: string
           storefront_product_id?: string | null
           supplier_group_id?: string | null
@@ -2725,6 +2728,7 @@ export type Database = {
           old_price: number | null
           quantity: number | null
           selling_price: number | null
+          shipping_mark: string | null
           sku: string
           storefront_product_id: string | null
           supplier_group_id: string | null
