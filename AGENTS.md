@@ -1,4 +1,4 @@
 Keep per-SKU demo media in `src/lib/productDemoMedia.ts` and render image/video variants in the shared `ProductDemoGif` panel, so landing pages maintain a consistent placement and style.
 Meta dashboard performance rows must require the parent ad set's Meta `effective_status` to be `ACTIVE`; ad-level status or period spend alone is insufficient.
-Wholesale reorders keep a unique wholesale row SKU and store the existing product SKU in `shipping_mark`; never publish a reorder row over a live product, because repeat purchases must not overwrite catalog data.
-New Warehouse B wholesale SKUs allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.
+Wholesale reorders keep a unique wholesale row SKU and a link to the existing product; use its SKU as shipping mark only when already in the current mark format, and never publish a reorder over the live product, because repeat purchases must not overwrite catalog data.
+New wholesale SKUs in both warehouses allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.

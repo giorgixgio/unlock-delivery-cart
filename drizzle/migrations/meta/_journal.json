@@ -99,6 +99,13 @@
       "when": 1791019538765,
       "tag": "0013_wholesale_shipping_mark_and_global_trendmart_sku",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791020090752,
+      "tag": "0014_global_wholesale_shipping_mark_identifiers",
+      "breakpoints": true
     }
   ]
 }
