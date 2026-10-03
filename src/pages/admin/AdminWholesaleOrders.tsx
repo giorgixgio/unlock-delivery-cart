@@ -76,8 +76,8 @@ type Item = {
 const INTRO = "Please prepare a draft order. I'll pay once I finish collecting all items. Please include an estimated delivery date.";
 const shippingMark = (item: Item) => item.shipping_mark || item.sku;
 
-const productLabel = (it: Pick<Item, "title" | "alibaba_title" | "sku">) => {
-  const base = it.title || it.sku;
+const productLabel = (it: Item) => {
+  const base = it.title || shippingMark(it);
   return it.alibaba_title ? `${base} (your listing: ${it.alibaba_title})` : base;
 };
 
