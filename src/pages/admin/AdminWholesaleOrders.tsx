@@ -83,13 +83,47 @@ const productLabel = (it: Item) => {
 
 /** Build the supplier message for a standalone item or a whole supplier group. */
 const buildShippingMarkText = (item: Item, groupItems: Item[]) => {
-  if (item.supplier_group_id && groupItems.length > 1) {
-    const lines = groupItems
-      .map((g, i) => `${i + 1}. ${productLabel(g)} → ${shippingMark(g)}`)
-      .join("\n");
-    return `${INTRO}\n\nCarton shipping marks (one per product):\n${lines}`;
+  if (item.warehouse !== "B") {
+    if (item.supplier_group_id && groupItems.length > 1) {
+      const lines = groupItems.map((g, i) => `${i + 1}. ${productLabel(g)} → ${shippingMark(g)}`).join("\n");
+      return `${INTRO}\n\nCarton shipping marks (one per product):\n${lines}`;
+    }
+    return `${INTRO}\n\nCarton shipping mark: ${shippingMark(item)}\nProduct: ${productLabel(item)}`;
   }
-  return `${INTRO}\n\nCarton shipping mark: ${shippingMark(item)}\nProduct: ${productLabel(item)}`;
+  const marks = item.supplier_group_id && groupItems.length > 1
+    ? groupItems.map((g) => shippingMark(g))
+    : [shippingMark(item)];
+  const markText = marks.join("\n");
+  const attachInstruction = marks.length === 1
+    ? `Attach shipping mark ${markText} to every carton / 每箱贴好唛头${markText}`
+    : "Attach the corresponding shipping mark above to every carton / 每箱贴好对应唛头";
+  const markNotice = marks.length === 1
+    ? "This mark MUST be on every single carton. No exceptions.\n每一箱外箱上必须贴此唛头，一箱都不能少，否则仓库拒收。"
+    : "The corresponding mark MUST be on every single carton. No exceptions.\n每一箱外箱上必须贴对应唛头，一箱都不能少，否则仓库拒收。";
+
+  return `SHIPPING INSTRUCTIONS / 发货要求
+
+Please follow exactly. Share with your packing/shipping team.
+请严格按照以下要求操作，并转发给您的打包和发货人员。
+
+Warehouse Address / 收货地址:
+广东省佛山市南海区大沥镇黄歧浔峰路后海段东31号
+收货人：G888库房
+
+Contacts / 联系方式:
+13810209627
+19860830401（微信同步）
+13928750809
+
+SHIPPING MARK — EVERY CARTON / 唛头——每箱必贴:
+${markText}
+
+${markNotice}
+
+Before shipping / 发货前必做:
+
+1. ${attachInstruction}
+2. Attach a Chinese packing list on the outside of each box (must be removable) / 每箱外侧贴一份中文装箱单（可撕下）`;
 };
 
 const GROUP_COLORS = [
