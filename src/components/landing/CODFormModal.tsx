@@ -30,6 +30,8 @@ interface CODFormModalProps {
   onDuplicateBlocked?: (orderNumber: string, createdAt: string) => void;
   /** Free gift added to the order at 0 ₾ (one per order). */
   giftProduct?: Product | null;
+  /** When true, delivery is free for this product's own landing orders (0 ₾ fee). */
+  freeShipping?: boolean;
 }
 
 
@@ -43,6 +45,7 @@ const CODFormModal = ({
   onPhoneOrderCreated,
   onDuplicateBlocked,
   giftProduct,
+  freeShipping = false,
 }: CODFormModalProps) => {
 
   const [phone, setPhone] = useState("");
