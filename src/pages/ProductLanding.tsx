@@ -431,6 +431,12 @@ const GenericLanding = ({
                 <span className="whitespace-normal">
                   {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
                 </span>
+                {isFreeShipping && (
+                  <span className="ml-1 inline-flex flex-shrink-0 items-center gap-0.5 rounded-full bg-success-foreground/20 px-2 py-0.5 text-[10px] font-extrabold leading-none text-success-foreground">
+                    <Truck className="h-3 w-3" />
+                    უფასო მიტანა
+                  </span>
+                )}
               </Button>
 
             </div>
