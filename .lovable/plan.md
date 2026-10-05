@@ -1,7 +1,7 @@
-# 0016 wrench + 001_solar per-ad report — read-only (no changes)
+# 001_solar original vs copy — read-only report (no changes)
 
 Read-only request; report delivered in chat. No code, data, or Meta settings changed.
 
 Optional follow-ups, only if you ask:
-- Check why 0016_wrench360 shows paused right after spending (stock rule or manual).
-- Investigate why 0016 video traffic doesn't convert (offer/creative vs solar baseline).
+- Same original-vs-copy history for another product's ad sets.
+- Investigate 0016_wrench360's non-converting traffic against the solar copy baseline.
