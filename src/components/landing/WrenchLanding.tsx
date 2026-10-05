@@ -5,6 +5,7 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, ShoppingCart, ArrowLeft } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
+import FreeDeliveryBadge from "@/components/landing/FreeDeliveryBadge";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
@@ -88,7 +89,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(5);
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
@@ -123,8 +124,8 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       phone: phone || "",
       createdAt: Date.now(),
     });
-    // NEW ORDER: address first, upsell second.
-    setDeliveryFee(5);
+    // NEW ORDER: address first, upsell second. 0016 ships free from its own page.
+    setDeliveryFee(0);
     setAddressOpen(true);
   };
 
@@ -210,6 +211,9 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
               <p className="text-xs text-muted-foreground">{selectedQty} ცალი × {UNIT_PRICE}₾</p>
             )}
           </div>
+
+          {/* Free delivery + daily countdown */}
+          <FreeDeliveryBadge />
 
           {/* Social proof */}
           <div className="flex flex-col gap-1">
