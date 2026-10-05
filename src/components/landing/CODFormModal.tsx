@@ -139,8 +139,8 @@ const CODFormModal = ({
               : []),
           ],
           subtotal: totalAfter,
-          total: totalAfter + 5,
-          shippingFee: 5,
+          total: totalAfter + (freeShipping ? 0 : 5),
+          shippingFee: freeShipping ? 0 : 5,
           source: "landing_cod",
           landingSlug,
           status: "pending_details",
@@ -303,6 +303,19 @@ const CODFormModal = ({
             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 mb-4">
               <Phone className="w-4 h-4 text-primary" />
               <span className="text-xs font-semibold text-foreground">გადახდა მიტანისას — კურიერთან</span>
+            </div>
+
+            {/* Delivery line — struck-through when free */}
+            <div className="flex items-center justify-between text-sm mb-4 px-1">
+              <span className="text-muted-foreground font-semibold">მიწოდება</span>
+              {freeShipping ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-muted-foreground line-through">5 ₾</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400">უფასო</span>
+                </span>
+              ) : (
+                <span className="font-semibold text-foreground">5 ₾</span>
+              )}
             </div>
 
             <Button
