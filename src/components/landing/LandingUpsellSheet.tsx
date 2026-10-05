@@ -92,7 +92,7 @@ const LandingUpsellSheet = ({
     return selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   }, [selectedItems]);
 
-  const deliveryFee = complete ? 0 : 5;
+  const deliveryFee = complete ? 0 : baseDeliveryFee;
   const upsellTotal = complete ? BUNDLE_PRICE : selectedProductsTotal;
   const total = basePrice + upsellTotal + deliveryFee;
 
@@ -121,11 +121,11 @@ const LandingUpsellSheet = ({
         });
         onComplete(0, total);
       } else {
-        // 1 selected: add at regular price, keep 5 GEL shipping
-        const newTotal = basePrice + selectedProductsTotal + 5;
-        await addUpsellItems(orderId, selectedItems, 5, newTotal);
+        // 1 selected: add at regular price, keep the base order's shipping fee
+        const newTotal = basePrice + selectedProductsTotal + baseDeliveryFee;
+        await addUpsellItems(orderId, selectedItems, baseDeliveryFee, newTotal);
         trackUpsellSkipped(orderId, filled);
-        onComplete(5, newTotal);
+        onComplete(baseDeliveryFee, newTotal);
       }
     } catch (err) {
       console.error("Upsell failed:", err);
