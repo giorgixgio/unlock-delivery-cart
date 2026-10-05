@@ -20,6 +20,8 @@ interface LandingUpsellSheetProps {
   orderNumber?: string;
   baseProduct: Product;
   basePrice: number;
+  /** Delivery fee of the base order (0 when the base product ships free). */
+  baseDeliveryFee?: number;
   onComplete: (deliveryFee: number, newTotal: number) => void;
   onSkip: () => void;
 }
@@ -36,6 +38,7 @@ const LandingUpsellSheet = ({
   orderNumber,
   baseProduct,
   basePrice,
+  baseDeliveryFee = 5,
   onComplete,
   onSkip,
 }: LandingUpsellSheetProps) => {
