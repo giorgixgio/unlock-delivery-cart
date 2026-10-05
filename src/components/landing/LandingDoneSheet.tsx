@@ -174,9 +174,14 @@ const LandingDoneSheet = ({
                 </div>
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-muted-foreground">მიწოდება</span>
-                  <span className="font-semibold text-foreground">
-                    {shipping > 0 ? `${shipping.toFixed(0)}₾` : "უფასო"}
-                  </span>
+                  {shipping > 0 ? (
+                    <span className="font-semibold text-foreground">{shipping.toFixed(0)}₾</span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <span className="text-muted-foreground line-through">5₾</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400">უფასო</span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <span className="text-[14px] font-bold text-foreground">ჯამი</span>
