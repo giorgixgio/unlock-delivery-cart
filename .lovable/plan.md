@@ -1,7 +1,7 @@
-# 0016 wrench ads — read-only report (no changes)
+# 0016 wrench + 001_solar per-ad report — read-only (no changes)
 
-This was a read-only request. The report was delivered in chat; no code, data, or Meta settings are changed.
+Read-only request; report delivered in chat. No code, data, or Meta settings changed.
 
 Optional follow-ups, only if you ask:
-- Investigate why 0016 visitors don't submit a phone number (landing page price/offer/creative).
-- Fix the browser-tab title on product pages (currently "Lovable App").
+- Check why 0016_wrench360 shows paused right after spending (stock rule or manual).
+- Investigate why 0016 video traffic doesn't convert (offer/creative vs solar baseline).
