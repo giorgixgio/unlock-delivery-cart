@@ -350,6 +350,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="wrench"
+        freeShipping
         onPhoneOrderCreated={handlePhoneOrderCreated}
         onDuplicateBlocked={(orderNumber, createdAt) => {
           const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
@@ -366,6 +367,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
+        baseDeliveryFee={0}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />
