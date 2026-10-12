@@ -5,7 +5,7 @@ import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Wrench, Check, Star, ChevronDown, ChevronUp, Eye, Clock, ShoppingCart, ArrowLeft } from "lucide-react";
 import CountdownTimer from "@/components/landing/CountdownTimer";
-import FreeDeliveryBadge from "@/components/landing/FreeDeliveryBadge";
+import StockLimitedPriceBadge from "@/components/landing/StockLimitedPriceBadge";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
@@ -89,7 +89,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(5);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
@@ -124,8 +124,8 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       phone: phone || "",
       createdAt: Date.now(),
     });
-    // NEW ORDER: address first, upsell second. 0016 ships free from its own page.
-    setDeliveryFee(0);
+    // NEW ORDER: address first, upsell second, with standard delivery.
+    setDeliveryFee(5);
     setAddressOpen(true);
   };
 
@@ -212,8 +212,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
             )}
           </div>
 
-          {/* Free delivery + daily countdown */}
-          <FreeDeliveryBadge />
+          {product.sku === "G888-T4656-0016" && <StockLimitedPriceBadge />}
 
           {/* Social proof */}
           <div className="flex flex-col gap-1">
@@ -350,7 +349,6 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="wrench"
-        freeShipping
         onPhoneOrderCreated={handlePhoneOrderCreated}
         onDuplicateBlocked={(orderNumber, createdAt) => {
           const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
@@ -367,7 +365,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
-        baseDeliveryFee={0}
+        baseDeliveryFee={5}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />

@@ -39,7 +39,7 @@ import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
 import ProductDemoGif from "@/components/landing/ProductDemoGif";
 import ProductPromoImage from "@/components/landing/ProductPromoImage";
 import SkuUrgencyTimer from "@/components/landing/SkuUrgencyTimer";
-import FreeDeliveryBadge from "@/components/landing/FreeDeliveryBadge";
+import StockLimitedPriceBadge from "@/components/landing/StockLimitedPriceBadge";
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
@@ -206,8 +206,7 @@ const GenericLanding = ({
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(5);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
-  // 0016 (360° wrench) ships free when ordered from its own page.
-  const isFreeShipping = product.sku === "G888-T4656-0016";
+  const hasStockLimitedPrice = product.sku === "G888-T4656-0016";
   const landingMedia = getProductLandingMedia(product.sku);
   const hasSku002QuantityOffer = String(product.sku) === "002";
   const sku002BumpConfig: BumpConfig = {
@@ -253,7 +252,7 @@ const GenericLanding = ({
       createdAt: Date.now(),
     });
     // NEW ORDER: single offer (if configured) → address → done.
-    setDeliveryFee(isFreeShipping ? 0 : 5);
+    setDeliveryFee(5);
     if (hasSku002QuantityOffer && effectiveQty < 2) setBumpOpen(true);
     else if (hasSku002QuantityOffer) setAddressOpen(true);
     else if (singleOfferActive) setSingleUpsellOpen(true);
@@ -351,8 +350,7 @@ const GenericLanding = ({
 
         </div>
 
-        {/* Free delivery badge + daily countdown (0016 only) */}
-        {isFreeShipping && <FreeDeliveryBadge />}
+        {hasStockLimitedPrice && <StockLimitedPriceBadge />}
 
         {/* Pre-selected free gift */}
         {giftOffer && giftProduct && (
@@ -431,12 +429,6 @@ const GenericLanding = ({
                 <span className="whitespace-normal">
                   {onePlusOneEnabled ? "შეუკვეთე 2 ცალი ერთი ფასად" : "შეუკვეთე ახლა"}
                 </span>
-                {isFreeShipping && (
-                  <span className="ml-1 inline-flex flex-shrink-0 items-center gap-0.5 rounded-full bg-success-foreground/20 px-2 py-0.5 text-[10px] font-extrabold leading-none text-success-foreground">
-                    <Truck className="h-3 w-3" />
-                    უფასო მიტანა
-                  </span>
-                )}
               </Button>
 
             </div>
@@ -454,7 +446,6 @@ const GenericLanding = ({
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
         landingVariant="generic"
-        freeShipping={isFreeShipping}
         onPhoneOrderCreated={handlePhoneOrderCreated}
         onDuplicateBlocked={(orderNumber, createdAt) => {
           const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
@@ -497,7 +488,7 @@ const GenericLanding = ({
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
-        baseDeliveryFee={isFreeShipping ? 0 : 5}
+        baseDeliveryFee={5}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />
