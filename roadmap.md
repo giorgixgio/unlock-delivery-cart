@@ -29,7 +29,10 @@
 - [x] Rebuild Operator Stats into Overview, Operators, Capacity planner, and Day performance tabs
 - [x] Verify Dashboard-aligned day performance, store/operator filters, and mobile layout (typecheck/tests passed; authenticated preview unavailable)
 
-# Roadmap — 0016 wrench free-shipping offer
+# Roadmap — 0016 wrench current offer
+- [ ] Set catalog price to 19 GEL, restore default 5 GEL shipping, and replace free-delivery badges with stock-limited urgency copy; verify checkout.
+
+# Roadmap — 0016 wrench previous free-shipping offer (superseded)
 - [x] Free shipping (0₾) for orders where SKU G888-T4656-0016 is the main product (own landing page); upsell add-ons keep other product's shipping
 - [x] Georgian free-delivery badge + live countdown to midnight Tbilisi next to price on 0016 page (emerald pill, tabular digits, reduced-motion safe)
 - [x] Checkout/order summary: struck-through delivery price → "უფასო" in green for 0016
