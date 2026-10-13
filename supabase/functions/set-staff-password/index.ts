@@ -76,7 +76,15 @@ Deno.serve(async (req) => {
     const { error: updErr } = await admin.auth.admin.updateUserById(targetId, { password });
     if (updErr) return json({ error: updErr.message }, 500);
 
-    return json({ ok: true, created: false });
+    // Changing your own password logs out every device using this account.
+    let signedOutAll = false;
+    if (targetId === userData.user.id) {
+      const jwt = authHeader.slice("Bearer ".length);
+      const { error: soErr } = await admin.auth.admin.signOut(jwt, "global");
+      signedOutAll = !soErr;
+    }
+
+    return json({ ok: true, created: false, signedOutAll });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
   }

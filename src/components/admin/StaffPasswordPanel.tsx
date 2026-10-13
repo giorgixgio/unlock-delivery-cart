@@ -31,6 +31,11 @@ const StaffPasswordPanel = ({ emails }: { emails: string[] }) => {
       toast.error((data as any)?.error ?? error?.message ?? "Failed");
       return;
     }
+    if ((data as any)?.signedOutAll) {
+      toast.success("Password updated — all devices logged out. Sign in with the new password.");
+      setTimeout(() => { void supabase.auth.signOut().then(() => window.location.assign("/admin/login")); }, 1500);
+      return;
+    }
     toast.success((data as any)?.created ? "Account created with this password" : "Password updated");
   };
 
