@@ -15,7 +15,7 @@ export const SCANNER_PATHS = [
 ];
 
 export const ROLE_ALLOWED_PATHS: Record<string, string[]> = {
-  warehouse: ["/admin/products", ...SCANNER_PATHS],
+  warehouse: ["/admin/products", "/admin/shipping", ...SCANNER_PATHS],
   scanner: SCANNER_PATHS,
 };
 
