@@ -1,6 +1,6 @@
 # Roadmap — Courier section
 
-- [ ] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA, verify gift order line and unchanged delivery.
+- [x] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA; browser verified uploaded photo and 0 GEL checkout gift with unchanged 5 GEL delivery, no real order submitted.
 
 - [x] Wholesale CRM: select an existing catalog product for a reorder without overwriting its listing
 - [x] Both warehouses' shipping marks and copied supplier text use `G888-T4656-####` product identifiers, including existing legacy rows
