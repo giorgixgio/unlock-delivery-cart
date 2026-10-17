@@ -1,5 +1,3 @@
-import ringShowerHeadGift from "@/assets/ring_shower_head_gift.jpg.asset.json";
-
 /**
  * Pre-selected free gift attached to every order of a given base SKU
  * (landing funnel only). The gift is added to the order as a real
@@ -17,14 +15,14 @@ export interface FreeGiftOffer {
   bullets: string[];
   /** Highlight limited-time gifts without inventing an expiry date. */
   limitedTime?: boolean;
-  /** Uploaded gift image resolved through the app asset import. */
+  /** Canonical uploaded gift image shared by the landing and checkout. */
   image?: string;
 }
 
 export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
   "G888-T4656-0017": {
     giftSku: "17GIFT",
-    image: ringShowerHeadGift.url,
+    image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/17GIFT%2Fring_shower_head.jpg",
     valueGel: 0,
     limitedTime: true,
     label: "საჩუქარი",
