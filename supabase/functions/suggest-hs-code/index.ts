@@ -13,7 +13,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const MODEL = "google/gemini-3.6-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 const SYSTEM = `You are a customs classification assistant supporting a freight forwarder review process for goods imported into Georgia (the country).
 

@@ -24,7 +24,7 @@ const corsHeaders = {
 };
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3.8-flash";
 const MATCH_THRESHOLD = 65; // lower bar: catalog refs are Temu/AliExpress supplier photos, not warehouse photos
 
 // Same prompt/format as generate-product-fingerprints, so the worker's photo is

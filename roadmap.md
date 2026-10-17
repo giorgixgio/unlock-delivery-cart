@@ -1,5 +1,7 @@
 # Roadmap — Courier section
 
+- [x] Approved retiring AI model migration: replaced deprecated models in nine functions only, preserved request behavior, validated nine direct gateway sample responses and exact Georgian address prompt, deployed functions without publishing; no real order or inventory mutations used for verification.
+
 - [x] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA; browser verified uploaded photo and 0 GEL checkout gift with unchanged 5 GEL delivery, no real order submitted.
 
 - [x] Wholesale CRM: select an existing catalog product for a reorder without overwriting its listing

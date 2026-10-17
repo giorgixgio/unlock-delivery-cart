@@ -21,7 +21,7 @@ const corsHeaders = {
 };
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 // Same prompt as generate-product-fingerprints / scan-product, so the photo is
 // described in the same "language" as the stored visual_fingerprint column.
