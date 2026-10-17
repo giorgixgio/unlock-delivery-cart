@@ -13,9 +13,25 @@ export interface FreeGiftOffer {
   label: string;
   headline: string;
   bullets: string[];
+  /** Highlight limited-time gifts without inventing an expiry date. */
+  limitedTime?: boolean;
+  /** Canonical uploaded gift image shared by the landing and checkout. */
+  image?: string;
 }
 
 export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
+  "G888-T4656-0017": {
+    giftSku: "17GIFT",
+    image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/17GIFT%2Fring_shower_head.jpg",
+    valueGel: 0,
+    limitedTime: true,
+    label: "საჩუქარი",
+    headline: "შეზღუდული დროით — საჩუქარი უფასოდ!",
+    bullets: [
+      "შეუკვეთე და მიიღე მეორე საშხაპე თავი საჩუქრად",
+      "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+    ],
+  },
   // შინაური ცხოველების თმის კოლექტორი → ჩანთა გასარეცხი ტანსაცმლისთვის
   "316": {
     giftSku: "147",

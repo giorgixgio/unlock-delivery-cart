@@ -3,3 +3,4 @@ Use the shared StockLimitedPriceBadge for stock-limited price messaging on gener
 Meta dashboard performance rows must require the parent ad set's Meta `effective_status` to be `ACTIVE`; ad-level status or period spend alone is insufficient.
 Wholesale reorders keep a unique wholesale row SKU and a link to the existing product; always use the existing product SKU as the shipping mark, and never publish a reorder over the live product, because repeat purchases must not overwrite catalog data.
 New wholesale SKUs in both warehouses allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.
+Resolve landing gifts from the full catalog, including unverified gift-only products, while storefront sale lists remain verified-only; gifts must be real zero-price order lines for warehouse picking.
