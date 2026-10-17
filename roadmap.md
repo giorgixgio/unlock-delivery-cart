@@ -1,6 +1,6 @@
 # Roadmap — Courier section
 
-- [ ] Approved retiring AI model migration: update nine affected functions, preserve request behavior, verify responses and deploy functions without publishing.
+- [x] Approved retiring AI model migration: replaced deprecated models in nine functions only, preserved request behavior, validated nine direct gateway sample responses and exact Georgian address prompt, deployed functions without publishing; no real order or inventory mutations used for verification.
 
 - [x] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA; browser verified uploaded photo and 0 GEL checkout gift with unchanged 5 GEL delivery, no real order submitted.
 
