@@ -1,4 +1,4 @@
-import { Gift, Check, Sparkles } from "lucide-react";
+import { Gift, Check, Sparkles, Clock } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { FreeGiftOffer } from "@/lib/freeGiftOffers";
 
@@ -24,11 +24,18 @@ const FreeGiftCard = ({
       {/* ribbon */}
       <div className="relative flex items-center gap-1.5 bg-success px-3 py-1.5 text-success-foreground">
         <Gift className="h-4 w-4 flex-shrink-0" />
-        <span className="text-xs font-extrabold uppercase tracking-wide">
+        <span className="text-sm font-extrabold leading-snug">
           {offer.headline}
         </span>
         <Sparkles className="ml-auto h-4 w-4 opacity-90" />
       </div>
+
+      {offer.limitedTime && (
+        <div className="relative flex items-center justify-center gap-2 bg-destructive px-3 py-2 text-destructive-foreground">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span className="text-sm font-bold">არ გამოტოვო შეზღუდული დროის შეთავაზება</span>
+        </div>
+      )}
 
       <div className="relative flex items-center gap-3 p-3">
         <div className="relative flex-shrink-0">
@@ -36,7 +43,7 @@ const FreeGiftCard = ({
             src={giftProduct.image}
             alt={giftProduct.title}
             loading="lazy"
-            className="h-20 w-20 rounded-xl border border-border object-cover bg-muted"
+            className={offer.limitedTime ? "h-28 w-28 rounded-xl border border-border object-contain bg-muted" : "h-20 w-20 rounded-xl border border-border object-cover bg-muted"}
           />
           <span className="absolute -left-1 -top-1 rounded-full bg-deal px-1.5 py-0.5 text-[10px] font-extrabold text-deal-foreground shadow">
             {offer.label}
@@ -49,15 +56,16 @@ const FreeGiftCard = ({
           </p>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-xl font-extrabold text-success">0 ₾</span>
-            <span className="text-sm text-muted-foreground line-through">
+            {value > 0 && <span className="text-sm text-muted-foreground line-through">
               {value.toFixed(0)} ₾
-            </span>
+            </span>}
+            {offer.limitedTime && <span className="text-sm font-bold text-success">უფასოდ</span>}
           </div>
           <ul className="mt-1.5 space-y-0.5">
             {offer.bullets.map((b) => (
               <li
                 key={b}
-                className="flex items-start gap-1 text-[11px] font-medium text-muted-foreground"
+                className={`flex items-start gap-1 font-medium text-muted-foreground ${offer.limitedTime ? "text-sm" : "text-[11px]"}`}
               >
                 <Check className="mt-[2px] h-3 w-3 flex-shrink-0 text-success" />
                 <span className="leading-snug">{b}</span>

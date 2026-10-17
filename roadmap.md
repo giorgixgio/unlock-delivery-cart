@@ -1,5 +1,7 @@
 # Roadmap — Courier section
 
+- [ ] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA, verify gift order line and unchanged delivery.
+
 - [x] Wholesale CRM: select an existing catalog product for a reorder without overwriting its listing
 - [x] Both warehouses' shipping marks and copied supplier text use `G888-T4656-####` product identifiers, including existing legacy rows
 - [x] Warehouse B copied supplier message contains bilingual warehouse address, contacts, carton mark, and packing instructions; Warehouse A copy remains unchanged

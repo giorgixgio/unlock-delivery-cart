@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 import { getSiteWarehouse } from "@/config/siteConfig";
 
-const CACHE_KEY = "bigmart-products-v10";
+const CACHE_KEY = "bigmart-products-v11";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 const PRODUCT_FETCH_RETRIES = 3;
 

@@ -157,6 +157,7 @@ const GenericLanding = ({
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
   const { data: storefrontProducts = [] } = useStorefrontProducts();
+  const { data: catalogProducts = [] } = useProducts();
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
 
   // Per-product single-item offer (shown right after phone submit)
@@ -170,8 +171,8 @@ const GenericLanding = ({
   // Pre-selected free gift for every order of this SKU
   const giftOffer = getFreeGiftOffer(product.sku);
   const giftProduct = useMemo(
-    () => (giftOffer ? storefrontProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
-    [giftOffer, storefrontProducts]
+    () => (giftOffer ? catalogProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
+    [giftOffer, catalogProducts]
   );
 
   // When a single offer is configured, the generic multi-product upsell is disabled.
@@ -409,8 +410,8 @@ const GenericLanding = ({
           ) : (
             <>
             {giftOffer && giftProduct && (
-              <p className="mb-1.5 flex items-center justify-center gap-1 text-[11px] font-extrabold text-success">
-                <Gift className="h-3.5 w-3.5" /> საჩუქარი შეკვეთაზე — უფასოდ
+              <p className="mb-1.5 flex items-center justify-center gap-1 text-sm font-extrabold text-success">
+                <Gift className="h-4 w-4 shrink-0" /> {giftOffer.limitedTime ? "შეზღუდული დროით + საშხაპე თავი უფასოდ" : "საჩუქარი შეკვეთაზე — უფასოდ"}
               </p>
             )}
             <div className="flex items-center gap-3">
