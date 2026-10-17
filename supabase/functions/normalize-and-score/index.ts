@@ -320,7 +320,7 @@ Common Georgian cities: თბილისი, ბათუმი, ქუთა�
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
+          model: "google/gemini-3.1-flash-lite",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.1,
         }),

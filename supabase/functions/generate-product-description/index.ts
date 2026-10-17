@@ -69,7 +69,7 @@ ${existing ? `არსებული აღწერა (გადააკე
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
+        model: "google/gemini-3.8-flash",
         messages: [
           { role: "system", content: "You are an expert Georgian direct-response e-commerce copywriter." },
           { role: "user", content: prompt },

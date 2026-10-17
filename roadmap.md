@@ -1,5 +1,7 @@
 # Roadmap — Courier section
 
+- [ ] Approved retiring AI model migration: update nine affected functions, preserve request behavior, verify responses and deploy functions without publishing.
+
 - [x] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA; browser verified uploaded photo and 0 GEL checkout gift with unchanged 5 GEL delivery, no real order submitted.
 
 - [x] Wholesale CRM: select an existing catalog product for a reorder without overwriting its listing
