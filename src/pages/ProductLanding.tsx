@@ -171,7 +171,12 @@ const GenericLanding = ({
   // Pre-selected free gift for every order of this SKU
   const giftOffer = getFreeGiftOffer(product.sku);
   const giftProduct = useMemo(
-    () => (giftOffer ? catalogProducts.find((p) => String(p.sku) === giftOffer.giftSku) ?? null : null),
+    () => {
+      if (!giftOffer) return null;
+      const gift = catalogProducts.find((p) => String(p.sku) === giftOffer.giftSku);
+      if (!gift) return null;
+      return giftOffer.image ? { ...gift, image: giftOffer.image } : gift;
+    },
     [giftOffer, catalogProducts]
   );
 
