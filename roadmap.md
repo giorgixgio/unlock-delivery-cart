@@ -1,5 +1,12 @@
 # Roadmap — Courier section
 
+# Roadmap — October 20 shelf stock
+- [ ] Reset nine products from reported physical shelf counts; waiting for confirmation of restart timing and treatment of existing reservations.
+- [ ] Replace their ad caps with the previous +20% cancellation buffer and restart selected ad sets; waiting for restart timing confirmation.
+- [x] Calculate remaining-stock selling value using reported quantities and current catalog prices, excluding delivery.
+
+# Courier tasks
+
 - [x] Approved retiring AI model migration: replaced deprecated models in nine functions only, preserved request behavior, validated nine direct gateway sample responses and exact Georgian address prompt, deployed functions without publishing; no real order or inventory mutations used for verification.
 
 - [x] SKU 0017: add ring-shaped shower-head gift 17GIFT, limited-time gift card and CTA; browser verified uploaded photo and 0 GEL checkout gift with unchanged 5 GEL delivery, no real order submitted.
