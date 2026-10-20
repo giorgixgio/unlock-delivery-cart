@@ -1,8 +1,8 @@
 # Roadmap — Courier section
 
 # Roadmap — October 20 shelf stock
-- [ ] Reset nine products from reported physical shelf counts; waiting for confirmation of restart timing and treatment of existing reservations.
-- [ ] Replace their ad caps with the previous +20% cancellation buffer and restart selected ad sets; waiting for restart timing confirmation.
+- [x] Reset nine products from reported physical shelf counts with audit records, preserving the mini drill's one reserved piece; all nine catalog and override availability flags verified true through public shop reads.
+- [x] Replace their ad caps with the previous +20% cancellation buffer and restart selected ad sets immediately; all nine verified ACTIVE with unchanged budgets, fresh counting, enabled order-item trigger and successful live cap-check response.
 - [x] Calculate remaining-stock selling value using reported quantities and current catalog prices, excluding delivery.
 
 # Courier tasks
