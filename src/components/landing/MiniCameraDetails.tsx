@@ -7,7 +7,7 @@ import CameraReviewList from './CameraReviewList';
 import { Reveal } from './cameraVisuals';
 const stepLabels=['ნაბიჯი პირველი','ნაბიჯი მეორე','ნაბიჯი მესამე'];
 const stepStats=[['10 წამი','ჩართვა'],['1 წუთი','დაკავშირება'],['24/7','კონტროლი']];
-export default function MiniCameraDetails({config:c,reviews}:{config:MiniCameraConfig;reviews:CameraReview[]}) {
+export default function MiniCameraDetails({config:c,reviews,countOverride}:{config:MiniCameraConfig;reviews:CameraReview[];countOverride?:number}) {
  const [split,setSplit]=useState(50);const useIcons=[Baby,Cat,Heart,Plane,Store,Home];
  const blocks:{key:string;dark?:boolean;node:ReactNode}[]=[];
  const heading=(key:string)=><h2 className="text-[28px] mb-6">{c.headings[key]}</h2>;
@@ -20,7 +20,7 @@ export default function MiniCameraDetails({config:c,reviews}:{config:MiniCameraC
  if(c.sections.comparison) blocks.push({key:'comparison',node:<>{heading('comparison')}<div className="cam-card overflow-hidden"><table className="w-full text-sm"><thead><tr><th className="text-left p-3"></th><th className="p-3 cam-offer-head font-extrabold">მინი კამერა</th><th className="p-3 text-muted-foreground">CCTV</th></tr></thead><tbody>{c.comparison.map((r,i)=><tr key={i} className="border-t border-border"><th className="text-left font-semibold py-4 px-3">{r.label}</th><td className="text-center font-extrabold cam-blue px-2"><span className="inline-flex items-center gap-1"><Check className="w-4 h-4 text-success"/>{r.camera}</span></td><td className="text-center text-muted-foreground px-2"><span className="inline-flex items-center gap-1"><X className="w-4 h-4 text-destructive"/>{r.cctv}</span></td></tr>)}</tbody></table></div></>});
  if(sizeBlock && sizeBlock.dark && hasDayNight) blocks.push(sizeBlock);
  if(c.sections.specs) blocks.push({key:'specs',node:<>{heading('specs')}<div className="grid grid-cols-2 gap-3">{c.specs.map((s,i)=><article key={i} className="cam-card p-4"><p className="text-xs font-semibold text-muted-foreground">{s.label}</p><p className="font-extrabold mt-1.5">{s.value}</p></article>)}</div></>});
- if(c.sections.reviews) blocks.push({key:'reviews',node:<>{heading('reviews')}<CameraReviewList reviews={reviews}/></>});
+ if(c.sections.reviews) blocks.push({key:'reviews',node:<>{heading('reviews')}<CameraReviewList reviews={reviews} countOverride={countOverride}/></>});
  if(c.sections.box && c.box_contents.length>0) blocks.push({key:'box',node:<>{heading('box')}<ul className="cam-card p-5 space-y-3">{c.box_contents.map((text,i)=><li key={i} className="flex gap-3 font-medium"><Check className="w-5 h-5 text-success shrink-0"/>{text}</li>)}</ul></>});
  if(c.sections.faq && c.faq.some(f=>f.answer)) blocks.push({key:'faq',node:<>{heading('faq')}<Accordion type="single" collapsible className="cam-card px-5">{c.faq.filter(f=>f.answer).map((f,i)=><AccordionItem key={i} value={String(i)}><AccordionTrigger className="text-left text-base font-bold">{f.question}</AccordionTrigger><AccordionContent className="text-base">{f.answer}</AccordionContent></AccordionItem>)}</Accordion></>});
  let light=0;
