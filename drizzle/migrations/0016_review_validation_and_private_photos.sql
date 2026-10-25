@@ -1,0 +1,8 @@
+CREATE OR REPLACE FUNCTION public.validate_product_review() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN IF NEW.source='demo' AND NEW.status<>'demo' THEN RAISE EXCEPTION 'Demo reviews cannot be published'; END IF; IF NEW.source='order_link' AND (NEW.order_id IS NULL OR NOT public.camera_order_delivered(NEW.order_id)) THEN RAISE EXCEPTION 'Verified reviews require delivered orders'; END IF; IF NEW.source<>'order_link' AND NEW.order_id IS NOT NULL THEN RAISE EXCEPTION 'External reviews cannot be verified'; END IF; IF length(NEW.customer_display_name)>80 OR length(NEW.city)>100 OR length(NEW.text)>2000 OR jsonb_typeof(NEW.photo_urls)<>'array' OR jsonb_array_length(NEW.photo_urls)>3 THEN RAISE EXCEPTION 'Invalid review fields'; END IF; RETURN NEW; END; $$;
+CREATE TRIGGER validate_product_review BEFORE INSERT OR UPDATE ON public.product_reviews FOR EACH ROW EXECUTE FUNCTION public.validate_product_review();
+ALTER POLICY review_photos_read ON storage.objects USING(bucket_id='review-photos' AND public.is_active_admin(auth.uid()));
+REVOKE SELECT ON public.product_reviews FROM anon;
+GRANT SELECT(id,product_sku,customer_display_name,city,rating,text,photo_urls,source,status,created_at) ON public.product_reviews TO anon;
+REVOKE EXECUTE ON FUNCTION public.camera_review_feed(boolean) FROM anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.camera_order_delivered(uuid) TO authenticated;
+COMMENT ON TABLE public.product_review_requests IS 'Private single-use review tokens; no anonymous reads. SMS attempts claimed before external sending.';
