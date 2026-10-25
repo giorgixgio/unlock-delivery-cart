@@ -9,7 +9,7 @@ export interface MiniCameraConfig {
  comparison: {label:string;camera:string;cctv:string}[]; size_text: string; trust: string[]; headings: Record<string,string>; sections: Record<string,boolean>; stock_bar_max: number;
 }
 export const CAMERA_DEFAULTS: MiniCameraConfig = {
- title:'მინი Wi-Fi კამერა', subtitle:'ღამის ხედვა · შენი სახლი, შენს ტელეფონში', gallery:[1,2,3].map(n=>`/images/mini-camera-${n}_800x.webp`), video_url:'', day_image:'', night_image:'', size_image:sizeAsset.url,
+ title:'მინი Wi-Fi კამერა', subtitle:'ღამის ხედვა · შენი სახლი, შენს ტელეფონში', gallery:['/images/mini-camera-hero_800x.webp',...[1,2,3].map(n=>`/images/mini-camera-${n}_800x.webp`)], video_url:'', day_image:'', night_image:'', size_image:sizeAsset.url,
  steps:['ჩართე USB-ით','დააკავშირე აპლიკაციას Wi-Fi-ით','უყურე ტელეფონიდან, სადაც არ უნდა იყო'],
  use_cases:['ბავშვის ოთახი','შინაური ცხოველი','მშობლები / ბებია-ბაბუა','სახლი როცა მოგზაურობ','მაღაზია / ოფისი','აგარაკი / ავტოფარეხი'],
  specs:[{label:'აპლიკაცია',value:'Android / iOS'},{label:'კავშირი',value:'Wi-Fi'},{label:'კვება',value:'USB'},{label:'ღამის ხედვა',value:'კი'},{label:'ზომა',value:'4.2 × 3.3 სმ'}],
