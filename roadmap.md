@@ -1,5 +1,10 @@
 # Roadmap — Courier section
 
+# Roadmap — Store policy footer
+- [ ] Audit existing policy pages and Meta disclosure guidance.
+- [ ] Add public Georgian policy pages and shared storefront footer links without changing checkout/tracking.
+- [ ] Verify footer navigation and list missing business details for the user.
+
 # Roadmap — Mini camera landing and reviews
 - [x] Audit persisted camera bump charge: 19 GEL; running subtotal aligned without changing charges.
 - [x] Build isolated /p/mini-camera premium variant with shared existing funnel, editable content and real social proof; original URL stays GenericLanding.
