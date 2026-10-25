@@ -26,6 +26,7 @@ export interface LandingSection {
 }
 
 export interface LandingConfig {
+  mini_camera?: import('@/lib/miniCameraConfig').MiniCameraConfig;
   hero_title?: string;
   hero_subtitle?: string;
   sections?: LandingSection[];

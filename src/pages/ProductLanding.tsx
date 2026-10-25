@@ -43,6 +43,8 @@ import StockLimitedPriceBadge from "@/components/landing/StockLimitedPriceBadge"
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
+import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT } from '@/lib/miniCameraConfig';
+const MiniCameraLanding = lazy(() => import('@/components/landing/MiniCameraLanding'));
 
 
 
@@ -53,7 +55,7 @@ const ProductLanding = () => {
 
   const product = useMemo(() => {
     if (!slug || products.length === 0) return null;
-    return products.find((p) => p.handle === slug || p.id === slug) ?? null;
+    return products.find((p) => p.handle === (slug === 'mini-camera' ? CAMERA_HANDLE : slug) || p.id === slug) ?? null;
   }, [slug, products]);
 
   const { data: landingConfig, isLoading: configLoading } = useLandingConfig(
@@ -85,6 +87,9 @@ const ProductLanding = () => {
   }
 
   // Custom spy detector landing
+  if (slug === 'mini-camera' && product.sku === '002') {
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug="mini-camera" upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={false} offerTimerMinutes={59} cameraConfig={landingConfig?.landing_config?.mini_camera} /></Suspense>;
+  }
   if (landingConfig && landingConfig.landing_variant === "custom-spy-detector") {
     const SpyDetectorLanding = lazy(() => import("@/components/landing/SpyDetectorLanding"));
     return (
@@ -146,12 +151,14 @@ const GenericLanding = ({
   upsellOverride,
   onePlusOneEnabled,
   offerTimerMinutes,
+  cameraConfig,
 }: {
   product: Product;
   landingSlug: string;
   upsellOverride: boolean | null;
   onePlusOneEnabled: boolean;
   offerTimerMinutes: number;
+  cameraConfig?: import('@/lib/miniCameraConfig').MiniCameraConfig;
 }) => {
 
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
@@ -266,7 +273,7 @@ const GenericLanding = ({
   };
 
   const handleBumpDone = (accepted: boolean) => {
-    if (accepted) setPendingOrderTotal((current) => current + 15);
+    if (accepted) setPendingOrderTotal((current) => current + (sku002BumpConfig.fixed_price ?? CAMERA_BUMP.fixed_price ?? 19));
     setBumpOpen(false);
     if (hasSku002QuantityOffer) setAddressOpen(true);
     else if (singleOfferActive) setSingleUpsellOpen(true);
@@ -301,6 +308,7 @@ const GenericLanding = ({
 
   return (
     <div className="min-h-screen bg-background pb-36">
+      {landingSlug === 'mini-camera' ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
@@ -443,6 +451,7 @@ const GenericLanding = ({
         </div>
       </div>
 
+      </>}
       {/* Modals */}
       <CODFormModal
         open={codOpen}
@@ -451,7 +460,7 @@ const GenericLanding = ({
         quantity={effectiveQty}
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
-        landingVariant="generic"
+        landingVariant={landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic'}
         onPhoneOrderCreated={handlePhoneOrderCreated}
         onDuplicateBlocked={(orderNumber, createdAt) => {
           const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
