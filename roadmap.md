@@ -8,6 +8,7 @@
 - [ ] Complete legal/privacy review — user must supply a customer-support phone and confirm non-damaged return logistics/costs; no tracking-consent controls were added or verified by this footer-only task.
 
 # Roadmap — Mini camera landing and reviews
+- [x] Match the original camera URL to the complete preview content for partner review, including existing demo reviews, count and AI summary; preserve the URL, real usage overlay and checkout.
 - [x] Audit persisted camera bump charge: 19 GEL; running subtotal aligned without changing charges.
 - [x] Build isolated /p/mini-camera premium variant with shared existing funnel, editable content and real social proof; original URL stays GenericLanding.
 - [x] Add secure review tokens, private photo submission, moderation, manual imports and 15 preview-only demo fixtures. Delivered test review submitted once, approved/read publicly with verified badge, hidden, then fixture removed.
