@@ -25,7 +25,7 @@ The catalog camera SKU is `002` (not `G888-T4656-002`), price **29₾**. The cur
 
 ## Real reviews and review requests
 
-- Add `product_reviews` and protected single-use review-request tokens linked to delivered orders. Public ordinary reads return approved reviews only; moderation and request management require authorized admins, not warehouse/scanner roles.
+- Add `product_reviews` and protected single-use review-request tokens linked to delivered orders. Treat an order as delivered when its status is delivered or its linked courier shipment has the established normalized DELIVERED state; shipped alone is insufficient. Public ordinary reads return approved reviews only; moderation and request management require authorized admins, not warehouse/scanner roles.
 - Add `/r/:token` with rating, text and optional photo upload. Validate the delivered-order relationship and consume the token atomically to prevent duplicate submissions. Token-linked reviews enter moderation, and their verified badge is derived from the real delivered order, never a user-controlled flag.
 - Add Admin → Reviews: filtering, approval/hiding, real external review imports with required source and optional screenshot, and delete-demo action. Facebook imports carry the Facebook label, not the verified badge.
 - Seed 15 clearly marked demo reviews. A narrowly scoped read endpoint returns only safe demo review fields when requested in preview mode; normal page queries and public table policies exclude demos. Preview ratings/bars/cards include demos, without publishing them as real reviews.
