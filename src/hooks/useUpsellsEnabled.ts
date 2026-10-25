@@ -26,12 +26,17 @@ export function useGlobalUpsellsEnabled() {
   });
 }
 
-/** Compute whether the upsell should be shown for a given landing. */
+/** Compute whether the upsell should be shown for a given landing.
+ *  `blocked` (e.g. the camera presentation, which runs no post-phone upsell)
+ *  suppresses the sheet unless the product row explicitly turns it on. */
 export function resolveUpsellEnabled(
   globalEnabled: boolean | undefined,
   perProductEnabled: boolean | null | undefined,
+  blocked = false,
 ): boolean {
-  // Per-product TRUE always wins (overrides global OFF).
+  // Per-product TRUE always wins (overrides global OFF and the block).
   if (perProductEnabled === true) return true;
+  if (blocked) return false;
   return globalEnabled !== false; // default ON until we know otherwise
 }
+

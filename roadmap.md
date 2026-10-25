@@ -14,7 +14,9 @@
 - [x] Build isolated /p/mini-camera premium variant with shared existing funnel, editable content and real social proof; original URL stays GenericLanding.
 - [x] Add secure review tokens, private photo submission, moderation, manual imports and 15 preview-only demo fixtures. Delivered test review submitted once, approved/read publicly with verified badge, hidden, then fixture removed.
 - [x] Add manually confirmed batched review-request SMS for delivered camera orders. Authorized count/message preview verified; no messages sent.
-- [x] Verify 390px/desktop camera layout, original URL, exact quantity prices, public/demo privacy and both bump transitions through address/GPS/completion with intercepted writes. Twelve unit tests pass.
+- [x] Remove the GPS tracker (0011) post-phone upsell from the SKU 002 camera funnel; the camera presentation now ends at the address step with no upsell sheet, verified at 390px on the ad URL with stubbed writes; other products keep their upsells. Fifteen unit tests pass.
+- [x] Verify 390px/desktop camera layout, original URL, exact quantity prices, public/demo privacy and both bump transitions through address/completion with intercepted writes.
+
 - [ ] Populate optional video/day-night images, FAQ answers and box contents — requires user-supplied content; sections remain hidden until filled.
 
 # Roadmap — October 20 shelf stock

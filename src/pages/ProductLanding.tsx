@@ -170,11 +170,10 @@ const GenericLanding = ({
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
 
   // Per-product single-item offer (shown right after phone submit)
-  const singleOffer = getSingleUpsellOffer(product.sku) ?? (landingSlug === 'mini-camera' ? {
-    offerSku:'0011',offerPrice:29,compareAtPrice:29,timerSeconds:180,
-    headline:'დაამატე მინი GPS ტრეკერი',subline:'იგივე მიტანა — დამატებითი გადასახადის გარეშე',
-    bullets:['აკონტროლე მდებარეობა რეალურ დროში','გადახდა კურიერთან მიღებისას'],
-  } : null);
+  // Per-product single-item offer. SKU 002 (camera) has none: its funnel ends at
+  // the address step — the GPS-tracker (0011) offer was removed on request.
+  const singleOffer = getSingleUpsellOffer(product.sku);
+
   const singleOfferProduct = useMemo(
     () => (singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
     [singleOffer, storefrontProducts]
@@ -194,8 +193,10 @@ const GenericLanding = ({
   );
 
   // When a single offer is configured, the generic multi-product upsell is disabled.
+  // The camera presentation passes `blocked`, so its funnel ends at the address step.
   const upsellsActive =
-    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride);
+    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride, cameraPresentation);
+
 
 
   const oldPrice = getFakeOldPrice(product.id, product.price);
