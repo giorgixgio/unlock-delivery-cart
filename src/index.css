@@ -820,3 +820,45 @@
 .camera-progress::-moz-progress-bar { background:hsl(var(--success)); }
 .camera-bottom { padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -4px 24px hsl(var(--foreground) / .06); }
 @media (prefers-reduced-motion:reduce) { .mini-camera-page * { animation:none!important; scroll-behavior:auto!important; } }
+
+/* ---- Mini camera premium visuals (scoped) ---- */
+.mini-camera-page { --cam-blue: 220 100% 56%; --cam-blue-deep: 222 90% 44%; --cam-grey: 220 33% 97%; --cam-ink: 222 25% 7%; --cam-body: 222 13% 26%; --cam-line: 220 20% 93%; --cam-amber: 39 91% 55%; --foreground: 222 25% 7%; --muted-foreground: 222 13% 26%; --border: 220 20% 93%; --background: 0 0% 100%; }
+.mini-camera-page h1, .mini-camera-page h2 { font-weight: 900; letter-spacing: -0.01em; line-height: 1.12; color: hsl(var(--cam-ink)); }
+.mini-camera-page p { color: hsl(var(--cam-body)); }
+.cam-blue { color: hsl(var(--cam-blue)); }
+.cam-amber { color: hsl(var(--cam-amber)); }
+.cam-band-grey { background-color: hsl(var(--cam-grey)); background-image: radial-gradient(hsl(var(--cam-blue) / .09) 1px, transparent 1px); background-size: 16px 16px; }
+.cam-band-dark { background: hsl(var(--cam-ink)); }
+.cam-band-dark h2, .cam-band-dark p, .cam-band-dark strong { color: hsl(0 0% 100%); }
+.cam-band-dark p { opacity: .78; }
+.cam-card { background: hsl(0 0% 100%); border: 1px solid hsl(var(--cam-line)); border-radius: 24px; box-shadow: 0 1px 2px hsl(var(--cam-ink) / .05), 0 8px 24px hsl(var(--cam-ink) / .06); }
+.cam-hero-card { border-radius: 24px; background: linear-gradient(180deg, hsl(var(--cam-blue) / .14), hsl(0 0% 100%)); border: 1px solid hsl(var(--cam-line)); }
+.cam-pill-dark { background: hsl(var(--cam-ink) / .88); color: hsl(0 0% 100%); backdrop-filter: blur(6px); }
+.cam-avatar { width: 22px; height: 22px; border-radius: 999px; border: 2px solid hsl(var(--cam-ink)); margin-left: -7px; font-size: 10px; font-weight: 800; display: grid; place-items: center; color: hsl(0 0% 100%); }
+.cam-thumb { border-radius: 14px; border: 1px solid hsl(var(--cam-line)); background: hsl(0 0% 100%); }
+.cam-thumb[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--cam-blue)); border-color: transparent; }
+.cam-dot { width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--cam-ink) / .18); transition: width .25s; }
+.cam-dot.on { width: 18px; background: hsl(var(--cam-blue)); }
+.cam-seg { background: hsl(var(--cam-grey)); border: 1px solid hsl(var(--cam-line)); border-radius: 18px; padding: 4px; }
+.cam-seg button { border-radius: 14px; border: 2px solid transparent; transition: background .2s, border-color .2s; }
+.cam-seg button[aria-pressed="true"] { background: linear-gradient(180deg, hsl(0 0% 100%), hsl(var(--cam-blue) / .07)); border-color: hsl(var(--cam-blue)); box-shadow: 0 4px 12px hsl(var(--cam-blue) / .18); }
+.cam-offer-head { background: linear-gradient(90deg, hsl(var(--cam-blue)), hsl(var(--cam-blue-deep))); color: hsl(0 0% 100%); }
+.cam-free { background: hsl(var(--cam-ink)); color: hsl(0 0% 100%); }
+.cam-step-dot { background: hsl(var(--cam-blue)); color: hsl(0 0% 100%); box-shadow: 0 0 0 6px hsl(var(--cam-blue) / .15); }
+.cam-step-line { background: hsl(var(--cam-blue) / .35); }
+.cam-watermark { color: hsl(var(--cam-blue) / .07); font-weight: 900; line-height: 1; }
+.cam-announce { background: linear-gradient(90deg, hsl(var(--cam-blue-deep)), hsl(var(--cam-blue))); color: hsl(0 0% 100%); }
+.cam-announce-badge { background: hsl(0 0% 100% / .2); border: 1px solid hsl(0 0% 100% / .35); }
+.cam-clock { background: hsl(var(--cam-ink) / .45); box-shadow: inset 0 2px 4px hsl(var(--cam-ink) / .4); }
+.cam-buy { position: relative; overflow: hidden; isolation: isolate; width: 100%; min-height: 56px; padding: 0 22px; border-radius: 9999px; font-weight: 800; font-size: 16px; color: hsl(var(--success-foreground)); background: linear-gradient(180deg, hsl(var(--success) / .82), hsl(var(--success))); box-shadow: 0 10px 24px -6px hsl(var(--success) / .35), inset 0 1px 0 hsl(0 0% 100% / .25); transition: transform .12s; }
+.cam-buy:active { transform: scale(.97); }
+.cam-buy::after { content: ""; position: absolute; top: -20%; bottom: -20%; left: 0; width: 40%; background: linear-gradient(90deg, transparent, hsl(0 0% 100% / .2), transparent); filter: blur(4px); transform: translateX(-160%) skewX(-20deg); animation: cam-shine 3.5s ease-in-out infinite; will-change: transform; }
+@keyframes cam-shine { 0% { transform: translateX(-160%) skewX(-20deg); } 25.7%, 100% { transform: translateX(360%) skewX(-20deg); } }
+.cam-bottom-white { background: hsl(0 0% 100%); box-shadow: 0 -8px 28px hsl(var(--cam-ink) / .1); padding-bottom: env(safe-area-inset-bottom); }
+.cam-reveal { opacity: 0; transform: translateY(12px); transition: opacity .6s ease, transform .6s ease; }
+.cam-reveal.is-seen { opacity: 1; transform: none; }
+.mini-camera-page .camera-progress::-webkit-progress-value { background: hsl(var(--cam-blue)); }
+.mini-camera-page .camera-progress::-moz-progress-bar { background: hsl(var(--cam-blue)); }
+.cam-amber-bar::-webkit-progress-value { background: hsl(var(--cam-amber)) !important; }
+.cam-amber-bar::-moz-progress-bar { background: hsl(var(--cam-amber)) !important; }
+@media (prefers-reduced-motion: reduce) { .cam-buy::after { display: none; } .cam-reveal { opacity: 1; transform: none; transition: none; } }
