@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 
-const StickyAnnouncementBar = memo(() => {
+const StickyAnnouncementBar = memo(({ variant }: { variant?: "camera" }) => {
   const [secondsLeft, setSecondsLeft] = useState(() => {
     const stored = sessionStorage.getItem("announcement_countdown_end");
     if (stored) {
@@ -28,6 +28,32 @@ const StickyAnnouncementBar = memo(() => {
 
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const secs = String(secondsLeft % 60).padStart(2, "0");
+
+  if (variant === "camera") {
+    const parts = [
+      [String(Math.floor(secondsLeft / 3600)).padStart(2, "0"), "საათი"],
+      [String(Math.floor((secondsLeft % 3600) / 60)).padStart(2, "0"), "წუთი"],
+      [secs, "წამი"],
+    ];
+    return (
+      <div className="cam-announce sticky top-0 z-[60] w-full">
+        <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-between gap-3">
+          <span className="cam-announce-badge rounded-full px-3 py-1 text-xs font-extrabold whitespace-nowrap">⚡ ფლეშ ფასი</span>
+          <div className="cam-clock rounded-xl px-2.5 py-1 flex items-start gap-1.5 font-mono">
+            {parts.map(([v, l], i) => (
+              <div key={l} className="flex items-start gap-1.5">
+                {i > 0 && <span className="text-base font-bold leading-5 opacity-70">:</span>}
+                <div className="text-center leading-none">
+                  <div className="text-base font-extrabold tabular-nums leading-5">{v}</div>
+                  <div className="text-[8px] font-sans opacity-75">{l}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
