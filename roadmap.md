@@ -1,7 +1,7 @@
 # Roadmap — Courier section
 
 # Roadmap — Store policy footer
-- [ ] Compact the footer and verify policy back arrows return to the originating page, including ad-link parameters.
+- [x] Compact the footer with subtle two-column links; verified all six policy back arrows return to the camera page with ad-link parameters intact, no overflow or browser errors.
 - [x] Audit existing policy pages and Meta disclosure guidance: no public policy pages/footer exist; Meta requires accurate privacy disclosures and lawful, nonmisleading offers, not a guaranteed anti-ban footer checklist.
 - [x] Add six public Georgian policy pages and shared TrendMart-only footer with supplied seller identity and email, 14-day free damaged-on-arrival returns and bank refunds; preserve statutory withdrawal rights rather than forbid all other refunds.
 - [x] Verify all six links at 390px without overflow or browser errors; BigMart excluded, checkout/tracking unchanged, 12 targeted tests passed.
