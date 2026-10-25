@@ -222,19 +222,11 @@ const GenericLanding = ({
   const hasStockLimitedPrice = product.sku === "G888-T4656-0016";
   const landingMedia = getProductLandingMedia(product.sku);
   const hasSku002QuantityOffer = String(product.sku) === "002";
-  const sku002BumpConfig: BumpConfig = {
-    enabled: true,
-    type: "additional_item",
-    discount_pct: 34,
-    bump_qty: 1,
-    fixed_price: 19,
-    title: "დაამატე და დაზოგე",
-    subtitle: "დაამატე კიდევ ერთი კამერა მხოლოდ 19₾-ად",
-  };
+  const sku002BumpConfig: BumpConfig = CAMERA_BUMP;
 
   useEffect(() => {
     trackViewContent(product);
-    trackLandingView({ productId: product.id, productName: product.title, landingType: "generic" });
+    trackLandingView({ productId: product.id, productName: product.title, landingType: landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic' });
     const last = readLastOrder(product.sku || product.id);
     if (last) {
       setRepeatBlocked(last);
