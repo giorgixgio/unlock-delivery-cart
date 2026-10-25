@@ -865,3 +865,9 @@
 .cam-size-img { box-shadow: 0 20px 60px hsl(var(--cam-blue) / .25); }
 .cam-ai-card { border-radius: 20px; background: linear-gradient(135deg, hsl(var(--cam-blue) / .12), hsl(var(--cam-violet) / .16)); border: 1px solid hsl(var(--cam-violet) / .25); box-shadow: 0 8px 24px hsl(var(--cam-violet) / .10); }
 .cam-ai-card { color: hsl(var(--cam-ink)); }
+.cam-demo-stock { background: hsl(var(--destructive) / .04); border: 1px solid hsl(var(--destructive) / .18); border-radius: 16px; }
+.cam-stock-track { background: hsl(var(--destructive) / .12); }
+.cam-stock-fill { background: linear-gradient(90deg, hsl(var(--cam-amber)), hsl(var(--destructive))); transform-origin: left; transition: transform 1000ms ease; }
+.cam-stock-number { animation: cam-stock-tick .45s ease; }
+@keyframes cam-stock-tick { from { transform: translateY(-4px); opacity: .45; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cam-stock-fill { transition: none; } .cam-stock-number { animation: none; } }
