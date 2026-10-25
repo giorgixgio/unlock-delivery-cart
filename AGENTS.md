@@ -5,6 +5,7 @@ Wholesale reorders keep a unique wholesale row SKU and a link to the existing pr
 New wholesale SKUs in both warehouses allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.
 Resolve landing gifts from the full catalog, including unverified gift-only products, while storefront sale lists remain verified-only; gifts must be real zero-price order lines for warehouse picking.
 Keep the lazy mini-camera presentation inside the existing GenericLanding checkout owner and select it for the camera alias and original camera handle; preserve the actual landing slug and generic catalog variant so ad URLs and attribution remain stable without duplicating checkout logic.
+Resolve camera preview content centrally by pathname and query so the original camera URL can show the complete partner-preview presentation without redirects or checkout changes.
 Serve camera review photos through scoped signed URLs from private storage, and derive verified badges from delivered-order links; public review responses expose no order IDs or customer contact data.
 Keep store policy content and business rules in storePolicies, with a shared storefront-only footer hidden during cart overlays and outside the configured brand; this keeps legal navigation consistent without altering checkout or tracking.
 Policy-page back controls use router history with a homepage fallback for direct visits, so landing URLs and ad parameters survive legal-page navigation.

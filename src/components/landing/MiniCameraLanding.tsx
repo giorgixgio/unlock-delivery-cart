@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ShieldCheck, Wifi, Moon, BookOpen, Star } from 'lucide-react';
 import { Product } from '@/lib/constants';
 import { getDiscountedTotal } from '@/lib/landingDiscounts';
-import { cameraRating, cameraSoldLabel, resolveCameraConfig, type MiniCameraConfig } from '@/lib/miniCameraConfig';
+import { cameraRating, cameraSoldLabel, resolveCameraConfig, usesCameraPreviewContent, type MiniCameraConfig } from '@/lib/miniCameraConfig';
 import { useCameraReviews, useCameraStats } from '@/hooks/useCameraReviews';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -22,7 +22,7 @@ const money=(n:number)=>new Intl.NumberFormat('ka-GE',{maximumFractionDigits:2})
 const avatars=[['ნ','bg-success'],['გ','cam-offer-head'],['მ','bg-destructive'],['ლ','bg-foreground']];
 export default function MiniCameraLanding({product,config,selectedQty,onSelect,onBuy,repeatBlocked,onReorder}:{product:Product;config?:MiniCameraConfig;selectedQty:number;onSelect:(n:number)=>void;onBuy:()=>void;repeatBlocked:LastOrderRecord|null;onReorder:()=>void}) {
  const c=resolveCameraConfig(config);const {logoUrl,siteName}=useSiteBranding();const [active,setActive]=useState(0);const gallery=useRef<HTMLDivElement>(null);const lower=useRef<HTMLDivElement>(null);const [showDetails,setShowDetails]=useState(false);const [toast,setToast]=useState('');const [videoFailed,setVideoFailed]=useState(false);
- const preview=new URLSearchParams(window.location.search).get('preview')==='1';const {data:reviews=[]}=useCameraReviews(preview);const {data:stats}=useCameraStats();const rating=cameraRating(reviews);
+ const preview=usesCameraPreviewContent(window.location.pathname,window.location.search);const {data:reviews=[]}=useCameraReviews(preview);const {data:stats}=useCameraStats();const rating=cameraRating(reviews);
  const {data:stock}=useQuery({queryKey:['camera-live-stock',product.id],queryFn:async()=>{const {data,error}=await supabase.from('products').select('stock_quantity').eq('id',product.id).single();if(error)throw error;return data.stock_quantity;},staleTime:60000});
  const images=c.gallery.filter(Boolean).length?c.gallery.filter(Boolean):(product.images.length?product.images:[product.image]);const total=getDiscountedTotal(product.price,selectedQty,product.sku);const slots=images.length+(c.video_url?1:0);
  const oldUnit=getFakeOldPrice(product.id,product.price);const compare=oldUnit>product.price?oldUnit*selectedQty:null;const shownCount=preview&&rating.count>0?756:rating.count;
