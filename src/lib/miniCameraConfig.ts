@@ -3,12 +3,12 @@ export const CAMERA_HANDLE = 'პორტატიული-მინი-wifi-�
 export const CAMERA_VARIANT = 'custom-mini-camera';
 export const CAMERA_BUMP: BumpConfig = { enabled: true, type: 'additional_item', discount_pct: 34, bump_qty: 1, fixed_price: 19, title: 'დაამატე და დაზოგე', subtitle: 'დაამატე კიდევ ერთი კამერა მხოლოდ 19₾-ად' };
 export interface MiniCameraConfig {
- title: string; subtitle: string; gallery: string[]; video_url: string; day_image: string; night_image: string;
+ title: string; subtitle: string; gallery: string[]; video_url: string; day_image: string; night_image: string; size_image: string;
  steps: string[]; use_cases: string[]; specs: {label:string;value:string}[]; box_contents: string[]; faq: {question:string;answer:string}[];
  comparison: {label:string;camera:string;cctv:string}[]; size_text: string; trust: string[]; headings: Record<string,string>; sections: Record<string,boolean>; stock_bar_max: number;
 }
 export const CAMERA_DEFAULTS: MiniCameraConfig = {
- title:'მინი Wi-Fi კამერა', subtitle:'ღამის ხედვა · შენი სახლი, შენს ტელეფონში', gallery:[1,2,3].map(n=>`/images/mini-camera-${n}_800x.webp`), video_url:'', day_image:'', night_image:'',
+ title:'მინი Wi-Fi კამერა', subtitle:'ღამის ხედვა · შენი სახლი, შენს ტელეფონში', gallery:[1,2,3].map(n=>`/images/mini-camera-${n}_800x.webp`), video_url:'', day_image:'', night_image:'', size_image:'',
  steps:['ჩართე USB-ით','დააკავშირე აპლიკაციას Wi-Fi-ით','უყურე ტელეფონიდან, სადაც არ უნდა იყო'],
  use_cases:['ბავშვის ოთახი','შინაური ცხოველი','მშობლები / ბებია-ბაბუა','სახლი როცა მოგზაურობ','მაღაზია / ოფისი','აგარაკი / ავტოფარეხი'],
  specs:[{label:'აპლიკაცია',value:'Android / iOS'},{label:'კავშირი',value:'Wi-Fi'},{label:'კვება',value:'USB'},{label:'ღამის ხედვა',value:'კი'},{label:'ზომა',value:'4.2 × 3.3 სმ'}],

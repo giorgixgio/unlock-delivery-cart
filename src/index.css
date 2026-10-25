@@ -862,3 +862,4 @@
 .cam-amber-bar::-webkit-progress-value { background: hsl(var(--cam-amber)) !important; }
 .cam-amber-bar::-moz-progress-bar { background: hsl(var(--cam-amber)) !important; }
 @media (prefers-reduced-motion: reduce) { .cam-buy::after { display: none; } .cam-reveal { opacity: 1; transform: none; transition: none; } }
+.cam-size-img { box-shadow: 0 20px 60px hsl(var(--cam-blue) / .25); }
