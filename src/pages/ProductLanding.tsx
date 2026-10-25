@@ -168,7 +168,11 @@ const GenericLanding = ({
   const { data: globalUpsellsEnabled } = useGlobalUpsellsEnabled();
 
   // Per-product single-item offer (shown right after phone submit)
-  const singleOffer = getSingleUpsellOffer(product.sku);
+  const singleOffer = getSingleUpsellOffer(product.sku) ?? (landingSlug === 'mini-camera' ? {
+    offerSku:'0011',offerPrice:29,compareAtPrice:29,timerSeconds:180,
+    headline:'დაამატე მინი GPS ტრეკერი',subline:'იგივე მიტანა — დამატებითი გადასახადის გარეშე',
+    bullets:['აკონტროლე მდებარეობა რეალურ დროში','გადახდა კურიერთან მიღებისას'],
+  } : null);
   const singleOfferProduct = useMemo(
     () => (singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
     [singleOffer, storefrontProducts]
