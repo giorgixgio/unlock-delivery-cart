@@ -5,6 +5,8 @@ Wholesale reorders keep a unique wholesale row SKU and a link to the existing pr
 New wholesale SKUs in both warehouses allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.
 Resolve landing gifts from the full catalog, including unverified gift-only products, while storefront sale lists remain verified-only; gifts must be real zero-price order lines for warehouse picking.
 Keep the lazy mini-camera presentation inside the existing GenericLanding checkout owner and select it for the camera alias and original camera handle; preserve the actual landing slug and generic catalog variant so ad URLs and attribution remain stable without duplicating checkout logic.
+Gate the camera funnel's post-phone upsell through the shared upsell resolver's blocked flag rather than a product-specific sheet, so the camera ends at the address step while every other product keeps its upsells.
+
 Resolve camera preview content centrally by pathname and query so the original camera URL can show the complete partner-preview presentation without redirects or checkout changes.
 Keep camera scarcity simulation in presentation-only page state that resets on mount or refresh, without browser storage; simulated stock must never change inventory or order eligibility.
 Serve camera review photos through scoped signed URLs from private storage, and derive verified badges from delivered-order links; public review responses expose no order IDs or customer contact data.
