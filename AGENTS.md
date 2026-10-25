@@ -7,3 +7,4 @@ Resolve landing gifts from the full catalog, including unverified gift-only prod
 Keep the lazy mini-camera presentation inside the existing GenericLanding checkout owner and select it for the camera alias and original camera handle; preserve the actual landing slug and generic catalog variant so ad URLs and attribution remain stable without duplicating checkout logic.
 Serve camera review photos through scoped signed URLs from private storage, and derive verified badges from delivered-order links; public review responses expose no order IDs or customer contact data.
 Keep store policy content and business rules in storePolicies, with a shared storefront-only footer hidden during cart overlays and outside the configured brand; this keeps legal navigation consistent without altering checkout or tracking.
+Policy-page back controls use router history with a homepage fallback for direct visits, so landing URLs and ad parameters survive legal-page navigation.
