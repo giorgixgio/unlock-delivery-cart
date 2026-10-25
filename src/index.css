@@ -822,7 +822,7 @@
 @media (prefers-reduced-motion:reduce) { .mini-camera-page * { animation:none!important; scroll-behavior:auto!important; } }
 
 /* ---- Mini camera premium visuals (scoped) ---- */
-.mini-camera-page { --cam-blue: 220 100% 56%; --cam-blue-deep: 222 90% 44%; --cam-grey: 220 33% 97%; --cam-ink: 222 25% 7%; --cam-body: 222 13% 26%; --cam-line: 220 20% 93%; --cam-amber: 39 91% 55%; --foreground: 222 25% 7%; --muted-foreground: 222 13% 26%; --border: 220 20% 93%; --background: 0 0% 100%; }
+.mini-camera-page { --cam-blue: 220 100% 56%; --cam-blue-deep: 222 90% 44%; --cam-violet: 262 83% 62%; --cam-grey: 220 33% 97%; --cam-ink: 222 25% 7%; --cam-body: 222 13% 26%; --cam-line: 220 20% 93%; --cam-amber: 39 91% 55%; --foreground: 222 25% 7%; --muted-foreground: 222 13% 26%; --border: 220 20% 93%; --background: 0 0% 100%; }
 .mini-camera-page h1, .mini-camera-page h2 { font-weight: 900; letter-spacing: -0.01em; line-height: 1.12; color: hsl(var(--cam-ink)); }
 .mini-camera-page p { color: hsl(var(--cam-body)); }
 .cam-blue { color: hsl(var(--cam-blue)); }
@@ -863,3 +863,5 @@
 .cam-amber-bar::-moz-progress-bar { background: hsl(var(--cam-amber)) !important; }
 @media (prefers-reduced-motion: reduce) { .cam-buy::after { display: none; } .cam-reveal { opacity: 1; transform: none; transition: none; } }
 .cam-size-img { box-shadow: 0 20px 60px hsl(var(--cam-blue) / .25); }
+.cam-ai-card { border-radius: 20px; background: linear-gradient(135deg, hsl(var(--cam-blue) / .12), hsl(var(--cam-violet) / .16)); border: 1px solid hsl(var(--cam-violet) / .25); box-shadow: 0 8px 24px hsl(var(--cam-violet) / .10); }
+.cam-ai-card { color: hsl(var(--cam-ink)); }
