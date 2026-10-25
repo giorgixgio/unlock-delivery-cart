@@ -1,9 +1,9 @@
 # Roadmap — Courier section
 
 # Roadmap — Store policy footer
-- [ ] Audit existing policy pages and Meta disclosure guidance.
-- [ ] Add public Georgian policy pages and shared storefront footer links without changing checkout/tracking.
-- [ ] Verify footer navigation and list missing business details for the user.
+- [x] Audit existing policy pages and Meta disclosure guidance: no public policy pages/footer exist; Meta requires accurate privacy disclosures and lawful, nonmisleading offers, not a guaranteed anti-ban footer checklist.
+- [ ] Add public Georgian privacy/cookies, terms, returns, delivery and contact/about pages and shared storefront footer — awaiting actual legal seller identity, support contact and returns details.
+- [ ] Verify footer navigation after policy content is supplied; leave checkout/tracking unchanged.
 
 # Roadmap — Mini camera landing and reviews
 - [x] Audit persisted camera bump charge: 19 GEL; running subtotal aligned without changing charges.
