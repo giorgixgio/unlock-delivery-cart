@@ -1,5 +1,12 @@
 # Roadmap — Courier section
 
+# Roadmap — Mini camera landing and reviews
+- [ ] Audit persisted camera bump charge and align display/running total without changing charges.
+- [ ] Build isolated /p/mini-camera premium variant with shared existing funnel, editable content and real social proof.
+- [ ] Add secure review tokens, photo submission, moderation, manual imports and demo preview fixtures.
+- [ ] Add manually confirmed batched review-request SMS for delivered camera orders.
+- [ ] Verify camera mobile layout, original URL regression, pricing, reviews permissions and checkout transitions.
+
 # Roadmap — October 20 shelf stock
 - [x] Reset nine products from reported physical shelf counts with audit records, preserving the mini drill's one reserved piece; all nine catalog and override availability flags verified true through public shop reads.
 - [x] Replace their ad caps with the previous +20% cancellation buffer and restart selected ad sets immediately; all nine verified ACTIVE with unchanged budgets, fresh counting, enabled order-item trigger and successful live cap-check response.
