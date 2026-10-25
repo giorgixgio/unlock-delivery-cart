@@ -1856,6 +1856,94 @@ export type Database = {
         }
         Relationships: []
       }
+      product_review_requests: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          id: string
+          order_id: string
+          product_sku: string
+          sent_at: string | null
+          token: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          product_sku?: string
+          sent_at?: string | null
+          token?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          product_sku?: string
+          sent_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_review_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_reviews: {
+        Row: {
+          city: string
+          created_at: string
+          customer_display_name: string
+          id: string
+          order_id: string | null
+          photo_urls: Json
+          product_sku: string
+          rating: number
+          source: string
+          status: string
+          text: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          customer_display_name: string
+          id?: string
+          order_id?: string | null
+          photo_urls?: Json
+          product_sku: string
+          rating: number
+          source: string
+          status?: string
+          text?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          customer_display_name?: string
+          id?: string
+          order_id?: string | null
+          photo_urls?: Json
+          product_sku?: string
+          rating?: number
+          source?: string
+          status?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_scan_history: {
         Row: {
           actor: string | null
@@ -2687,6 +2775,27 @@ export type Database = {
           updated_count: number
         }[]
       }
+      camera_landing_stats: { Args: never; Returns: Json }
+      camera_order_delivered: { Args: { p_order: string }; Returns: boolean }
+      camera_review_feed: { Args: { p_preview?: boolean }; Returns: Json }
+      camera_review_sms_candidates: {
+        Args: never
+        Returns: {
+          order_id: string
+          order_number: string
+          phone: string
+        }[]
+      }
+      camera_review_token_info: { Args: { p_token: string }; Returns: Json }
+      camera_submit_review: {
+        Args: {
+          p_photos?: Json
+          p_rating: number
+          p_text: string
+          p_token: string
+        }
+        Returns: string
+      }
       complete_packing_wave: {
         Args: { actor: string; p_force: boolean; p_wave_id: string }
         Returns: {
@@ -2787,6 +2896,10 @@ export type Database = {
           deduped: boolean
           id: string
         }[]
+      }
+      review_photo_upload_allowed: {
+        Args: { p_path: string }
+        Returns: boolean
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

@@ -1,0 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+export interface CameraReview {id:string;customer_display_name:string;city:string;rating:number;text:string;photo_urls:string[];source:string;status:string;created_at:string;verified:boolean;}
+export function useCameraReviews(preview=false) {return useQuery({queryKey:['camera-reviews',preview],queryFn:async()=>{const {data,error}=await supabase.functions.invoke('camera-reviews',{body:{action:'feed',preview}});if(error)throw error;return (data.reviews ?? []) as CameraReview[];},staleTime:60000});}
+export function useCameraStats() {return useQuery({queryKey:['camera-stats'],queryFn:async()=>{const {data,error}=await supabase.rpc('camera_landing_stats');if(error)throw error;return data as {sold_units:number;today_orders:number;recent_cities:string[]};},staleTime:60000});}

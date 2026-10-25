@@ -64,6 +64,8 @@ import AdminCourierAlerts from "./pages/admin/AdminCourierAlerts";
 import AdminCourierStatuses from "./pages/admin/AdminCourierStatuses";
 import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
 import AdminTestSku from "./pages/admin/AdminTestSku";
+import AdminReviews from './pages/admin/AdminReviews';
+import ReviewForm from './pages/ReviewForm';
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -161,6 +163,7 @@ const App = () => (
                     <Route path="/shop" element={<Shop />} />
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
+                    <Route path="/r/:token" element={<ReviewForm />} />
                     {/* 5-for-49 bundle builder */}
                     <Route path="/5for39" element={<BundleLanding />} />
                     <Route path="/bundle" element={<BundleLanding />} />
@@ -196,6 +199,7 @@ const App = () => (
                       <Route path="city-qa" element={<AdminCityQA />} />
                       <Route path="products" element={<AdminProducts />} />
                       <Route path="landing-pages" element={<AdminLandingPages />} />
+                      <Route path="reviews" element={<AdminReviews />} />
                       <Route path="products-import" element={<AdminProductsImport />} />
                       <Route path="system-events" element={<AdminSystemEvents />} />
                       <Route path="stockout-demand" element={<AdminStockoutDemand />} />

@@ -1,0 +1,13 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Star, CheckCircle2 } from 'lucide-react';
+import type { CameraReview } from '@/hooks/useCameraReviews';
+import { cameraRating } from '@/lib/miniCameraConfig';
+export default function CameraReviewList({reviews}:{reviews:CameraReview[]}) {
+ const [limit,setLimit]=useState(4);const summary=cameraRating(reviews);
+ if(!reviews.length)return <p className="text-muted-foreground">ჯერ არ არის შეფასებები.</p>;
+ return <div className="space-y-5"><div className="flex gap-6 items-center"><div><strong className="text-4xl">{summary.average.toFixed(1)}</strong><div className="flex text-success my-2">{Array.from({length:5},(_,i)=><Star key={i} className="w-4 h-4 fill-current"/>)}</div><p className="text-sm text-muted-foreground">{summary.count} შეფასება</p></div><div className="flex-1 space-y-2">{[5,4,3,2,1].map(n=><div key={n} className="flex items-center gap-2 text-sm"><span>{n} ★</span><progress className="camera-progress flex-1 h-2" max={summary.count} value={reviews.filter(r=>r.rating===n).length}/><span className="w-5 text-right">{reviews.filter(r=>r.rating===n).length}</span></div>)}</div></div>
+ <div className="flex gap-2 overflow-x-auto">{reviews.flatMap(r=>r.photo_urls).slice(0,10).map((url,i)=><img key={i} src={url} alt="მომხმარებლის ფოტო" loading="lazy" className="w-20 h-20 object-cover rounded-xl"/>)}</div>
+ {reviews.slice(0,limit).map(r=><article key={r.id} className="bg-card border border-border rounded-2xl p-5 space-y-3"><div className="flex items-center justify-between gap-3"><strong>{r.customer_display_name}</strong><span className="text-sm text-muted-foreground">{r.city}</span></div><div className="flex gap-0.5 text-success">{Array.from({length:r.rating},(_,i)=><Star key={i} className="w-4 h-4 fill-current"/>)}</div><p className="leading-relaxed">{r.text}</p>{r.verified && <p className="text-success text-sm flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/>დადასტურებული შეკვეთა</p>}{r.source==='facebook_comment' && <p className="text-sm text-muted-foreground">Facebook-იდან</p>}{r.source==='demo' && <p className="text-sm text-muted-foreground">სატესტო შეფასება</p>}{!!r.photo_urls.length && <div className="flex gap-2">{r.photo_urls.map((url,i)=><img key={i} src={url} alt="შეფასების ფოტო" loading="lazy" className="w-20 h-20 object-cover rounded-lg"/>)}</div>}</article>)}
+ {limit<reviews.length && <Button variant="outline" className="w-full h-12 rounded-xl" onClick={()=>setLimit(n=>n+6)}>მეტი შეფასება</Button>}</div>;
+}

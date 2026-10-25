@@ -808,3 +808,15 @@
 @media (prefers-reduced-motion: reduce) {
   .gift-sheen { animation: none; }
 }
+
+.mini-camera-page { --background: 150 15% 98%; --foreground: 160 12% 9%; --card: 0 0% 100%; --muted: 150 12% 94%; --muted-foreground: 155 5% 43%; --border: 150 10% 89%; --primary: 145 63% 34%; --accent: 145 30% 94%; }
+.camera-gallery { scrollbar-width: none; }
+.mini-camera-page main > div:first-child { padding-top:1rem; }
+@media(max-width:480px) { .mini-camera-page .camera-gallery { aspect-ratio:1.2; } }
+.camera-gallery::-webkit-scrollbar { display: none; }
+.camera-progress { appearance:none; border:0; overflow:hidden; border-radius:999px; background:hsl(var(--muted)); }
+.camera-progress::-webkit-progress-bar { background:hsl(var(--muted)); }
+.camera-progress::-webkit-progress-value { background:hsl(var(--success)); border-radius:999px; }
+.camera-progress::-moz-progress-bar { background:hsl(var(--success)); }
+.camera-bottom { padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -4px 24px hsl(var(--foreground) / .06); }
+@media (prefers-reduced-motion:reduce) { .mini-camera-page * { animation:none!important; scroll-behavior:auto!important; } }
