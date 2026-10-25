@@ -1,7 +1,8 @@
 import { describe,it,expect } from 'vitest';
-import { CAMERA_BUMP, cameraRating, cameraSoldLabel, resolveCameraConfig } from '@/lib/miniCameraConfig';
+import { CAMERA_BUMP, cameraRating, cameraSoldLabel, resolveCameraConfig, usesCameraPresentation } from '@/lib/miniCameraConfig';
 import { getDiscountedTotal,getQtyDiscountPct } from '@/lib/landingDiscounts';
 describe('camera offer rules',()=>{
+ it('shows the new camera presentation on the existing ad URL without affecting other products',()=>{expect(usesCameraPresentation('პორტატიული-მინი-wifi-კამერა-2ც','002')).toBe(true);expect(usesCameraPresentation('mini-camera','002')).toBe(true);expect(usesCameraPresentation('პორტატიული-მინი-wifi-კამერა-2ც','0011')).toBe(false);expect(usesCameraPresentation('another-product','002')).toBe(false);});
  it('preserves exact existing quantity prices',()=>{expect([1,2,3].map(q=>getDiscountedTotal(29,q,'002'))).toEqual([29,46.4,56.55]);expect([1,2,3].map(q=>getQtyDiscountPct(q,'002'))).toEqual([0,20,35]);});
  it('adds the actual 19 GEL bump without changing delivery',()=>{expect(CAMERA_BUMP.fixed_price).toBe(19);expect(CAMERA_BUMP.bump_qty).toBe(1);expect(29+(CAMERA_BUMP.fixed_price??0)+5).toBe(53);});
  it('rounds real sold units down to hundreds',()=>{expect(cameraSoldLabel(3499)).toBe(3400);expect(cameraSoldLabel(99)).toBe(0);});
