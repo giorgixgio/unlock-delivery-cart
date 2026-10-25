@@ -43,7 +43,7 @@ import StockLimitedPriceBadge from "@/components/landing/StockLimitedPriceBadge"
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
-import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT } from '@/lib/miniCameraConfig';
+import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } from '@/lib/miniCameraConfig';
 const MiniCameraLanding = lazy(() => import('@/components/landing/MiniCameraLanding'));
 
 
@@ -87,8 +87,8 @@ const ProductLanding = () => {
   }
 
   // Custom spy detector landing
-  if (slug === 'mini-camera' && product.sku === '002') {
-    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug="mini-camera" upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={false} offerTimerMinutes={59} cameraConfig={landingConfig?.landing_config?.mini_camera} /></Suspense>;
+  if (usesCameraPresentation(slug, product.sku)) {
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={slug === 'mini-camera' ? false : landingConfig?.offer_1plus1_enabled ?? false} offerTimerMinutes={slug === 'mini-camera' ? 59 : landingConfig?.offer_timer_minutes ?? 59} cameraConfig={landingConfig?.landing_config?.mini_camera} cameraPresentation /></Suspense>;
   }
   if (landingConfig && landingConfig.landing_variant === "custom-spy-detector") {
     const SpyDetectorLanding = lazy(() => import("@/components/landing/SpyDetectorLanding"));
@@ -152,6 +152,7 @@ const GenericLanding = ({
   onePlusOneEnabled,
   offerTimerMinutes,
   cameraConfig,
+  cameraPresentation = false,
 }: {
   product: Product;
   landingSlug: string;
@@ -159,6 +160,7 @@ const GenericLanding = ({
   onePlusOneEnabled: boolean;
   offerTimerMinutes: number;
   cameraConfig?: import('@/lib/miniCameraConfig').MiniCameraConfig;
+  cameraPresentation?: boolean;
 }) => {
 
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
@@ -304,7 +306,7 @@ const GenericLanding = ({
 
   return (
     <div className="min-h-screen bg-background pb-36">
-      {landingSlug === 'mini-camera' ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
+      {cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">

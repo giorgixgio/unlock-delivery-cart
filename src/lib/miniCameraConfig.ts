@@ -2,6 +2,9 @@ import sizeAsset from '@/assets/mini-camera-size.webp.asset.json';
 import type { BumpConfig } from '@/hooks/useLandingConfig';
 export const CAMERA_HANDLE = 'პორტატიული-მინი-wifi-კამერა-2ც';
 export const CAMERA_VARIANT = 'custom-mini-camera';
+export function usesCameraPresentation(slug: string | undefined, sku: string | undefined) {
+ return sku === '002' && (slug === 'mini-camera' || slug === CAMERA_HANDLE);
+}
 export const CAMERA_BUMP: BumpConfig = { enabled: true, type: 'additional_item', discount_pct: 34, bump_qty: 1, fixed_price: 19, title: 'დაამატე და დაზოგე', subtitle: 'დაამატე კიდევ ერთი კამერა მხოლოდ 19₾-ად' };
 export interface CameraBenefit { title: string; text: string; }
 export interface MiniCameraConfig {
