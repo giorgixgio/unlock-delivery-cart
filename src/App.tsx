@@ -66,6 +66,9 @@ import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
 import AdminTestSku from "./pages/admin/AdminTestSku";
 import AdminReviews from './pages/admin/AdminReviews';
 import ReviewForm from './pages/ReviewForm';
+import StorePolicy from './pages/StorePolicy';
+import StorePolicyFooter from './components/StorePolicyFooter';
+import { STORE_POLICY_LINKS } from '@/lib/storePolicies';
 
 /** Landing page wrapper — provides LandingPageContext */
 const LandingPageRoute = () => {
@@ -161,6 +164,7 @@ const App = () => (
                     <Route path="/cart" element={<LegacyCartRedirect />} />
                     <Route path="/success" element={<OrderSuccess />} />
                     <Route path="/shop" element={<Shop />} />
+                    {STORE_POLICY_LINKS.map(link=><Route key={link.path} path={link.path} element={<StorePolicy />} />)}
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
                     <Route path="/r/:token" element={<ReviewForm />} />
@@ -234,6 +238,7 @@ const App = () => (
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>
+                  <StorePolicyFooter />
                   <StickyCartHUD />
                   <CartOverlayRenderer />
                 </CheckoutGateProvider>
