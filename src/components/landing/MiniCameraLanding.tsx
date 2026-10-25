@@ -17,6 +17,7 @@ import MiniCameraOfferCard from './MiniCameraOfferCard';
 import type { LastOrderRecord } from '@/lib/lastOrderStore';
 import { getFakeOldPrice } from '@/lib/demoData';
 import { CountUp, ShineButton } from './cameraVisuals';
+import CameraDemoStock from './CameraDemoStock';
 const Details=lazy(()=>import('./MiniCameraDetails'));
 const money=(n:number)=>new Intl.NumberFormat('ka-GE',{maximumFractionDigits:2}).format(n);
 const avatars=[['ნ','bg-success'],['გ','cam-offer-head'],['მ','bg-destructive'],['ლ','bg-foreground']];
@@ -41,7 +42,7 @@ export default function MiniCameraLanding({product,config,selectedQty,onSelect,o
  <section className="mt-6"><MiniCameraOfferCard product={product} selectedQty={selectedQty} onSelect={onSelect} onBuy={onBuy} repeatBlocked={repeatBlocked} onReorder={onReorder} header={<div className="cam-offer-head text-center text-sm font-extrabold py-2 tracking-wide">⭐ ყველაზე პოპულარული</div>}/></section>
  <div className="mt-5 cam-hero-card overflow-hidden">{!videoFailed?<video src={appDemoVideo.url} poster={appDemoPoster.url} autoPlay muted loop playsInline preload="metadata" width={720} height={720} aria-label="კამერის აპლიკაციის ცოცხალი ტრანსლაცია" onError={()=>setVideoFailed(true)} className="w-full aspect-square object-cover block"/>:<img src={appDemoPoster.url} alt="კამერის აპლიკაციის ცოცხალი ტრანსლაცია" width={720} height={720} loading="lazy" className="w-full aspect-square object-cover block"/>}</div>
  {(c.sections.today && (stats?.today_orders??0)>=10) && <p className="text-center text-sm font-semibold mt-5">დღეს შეუკვეთა <strong className="cam-blue"><CountUp value={stats!.today_orders}/></strong> ადამიანმა</p>}
- {c.sections.stock && stock!=null && stock>0 && <div className="mt-4"><div className="flex justify-between text-sm mb-2"><span className="font-bold">დარჩა {stock} ცალი</span><span className="text-muted-foreground">მარაგშია</span></div><progress className="camera-progress w-full h-2" max={Math.max(c.stock_bar_max,stock)} value={stock}/></div>}
+ {c.sections.stock && (preview ? <CameraDemoStock/> : stock!=null && stock>0 && <div className="mt-4"><div className="flex justify-between text-sm mb-2"><span className="font-bold">დარჩა {stock} ცალი</span><span className="text-muted-foreground">მარაგშია</span></div><progress className="camera-progress w-full h-2" max={Math.max(c.stock_bar_max,stock)} value={stock}/></div>)}
  <div className="py-7 space-y-3">{c.trust.map((text,i)=><p key={i} className="text-sm font-medium flex gap-2 items-start"><ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-success"/>{text}</p>)}</div>
  </div>
  <div ref={lower} id="camera-reviews">{showDetails?<Suspense fallback={<div className="min-h-80"/>}><Details config={c} reviews={reviews} countOverride={preview&&reviews.length?756:undefined} showAiSummary={preview}/></Suspense>:<div className="min-h-80"/>}</div>
