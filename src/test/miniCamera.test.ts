@@ -7,4 +7,14 @@ describe('camera offer rules',()=>{
  it('rounds real sold units down to hundreds',()=>{expect(cameraSoldLabel(3499)).toBe(3400);expect(cameraSoldLabel(99)).toBe(0);});
  it('computes reviews from actual rows',()=>{expect(cameraRating([{rating:5},{rating:4}])).toEqual({count:2,average:4.5});expect(cameraRating([])).toEqual({count:0,average:0});});
  it('does not invent missing assets or answers',()=>{const c=resolveCameraConfig();expect(c.video_url).toBe('');expect(c.night_image).toBe('');expect(c.box_contents).toEqual([]);expect(c.faq.every(f=>f.answer==='')).toBe(true);});
+ it('uses the benefit headline and section copy from the redesign brief',()=>{const c=resolveCameraConfig();
+  expect(c.title).toBe('მინი Wi-Fi კამერა — კონტროლი იქ, სადაც გჭირდება');
+  expect(c.benefits.map(b=>b.title)).toEqual(['კომპაქტური დიზაინი','Wi-Fi კონტროლი','ღამის ხედვა']);
+  expect(c.use_cases).toHaveLength(4);
+  expect(c.use_cases.map(u=>u.title)).toEqual(['სახლის მონიტორინგი','შინაური ცხოველები','ოფისი და მაღაზია','როცა სახლიდან შორს ხარ']);
+  expect(c.headings.size).toBe('პატარა ზომა. მარტივად მოსათავსებელი.');
+  expect(c.headings.reviews).toBe('რას ამბობენ მომხმარებლები');
+  expect(c.headings.benefits).toBe('პატარა ზომა. დიდი შესაძლებლობები.');
+ });
+ it('keeps comparison rows factual, never claiming to beat CCTV on everything',()=>{const c=resolveCameraConfig();expect(c.comparison.some(r=>r.camera==='არა' && r.cctv==='კი')).toBe(true);});
 });
