@@ -13,6 +13,7 @@ const json = (b: unknown, s = 200) =>
 type Order = {
   id: string;
   public_order_number: string;
+  status: string;
   customer_name: string;
   customer_phone: string;
   city: string;
@@ -23,11 +24,14 @@ type Order = {
 
 async function handleNewOrder(db: ReturnType<typeof serviceDb>, orderId: string) {
   const { data: order, error } = await db.from("orders").select(
-    "id, public_order_number, customer_name, customer_phone, city, address_line1, total, shipping_fee",
+    "id, public_order_number, status, customer_name, customer_phone, city, address_line1, total, shipping_fee",
   ).eq("id", orderId).maybeSingle<Order>();
   if (error) return json({ error: error.message }, 500);
   if (!order) return json({ error: "order not found", order_id: orderId }, 404);
 
+  // A lead is created at the phone step with status "pending_details"; the
+  // funnel later fills in the address on the same row. Label the two states.
+  const isLead = order.status === "pending_details";
   let { data: items } = await db.from("order_items").select("title, quantity, line_total").eq("order_id", orderId);
   if (!items?.length) {
     // The storefront inserts items right after the order row; wait briefly so
@@ -37,14 +41,14 @@ async function handleNewOrder(db: ReturnType<typeof serviceDb>, orderId: string)
   }
   const lines = (items ?? []).map((i) => `📦 ${i.quantity}× ${i.title}`).join("\n");
   const content =
-    `🛒 ახალი შეკვეთა #${order.public_order_number}\n` +
+    (isLead ? `🟡 ახალი ლიდი #${order.public_order_number}\n` : `🛒 ახალი შეკვეთა #${order.public_order_number}\n`) +
     `👤 ${order.customer_name}\n` +
     `📞 ${order.customer_phone}\n` +
-    `📍 ${order.city} — ${order.address_line1}\n` +
+    (isLead ? `📍 მისამართი: მომდევნო ნაბიჯზე\n` : `📍 ${order.city} — ${order.address_line1}\n`) +
     (lines ? `${lines}\n` : "") +
     `💰 ${Number(order.total).toFixed(2)} ₾ — გადახდა მიტანისას`;
   const sent = await sendTelegramMessage(content);
-  return json({ type: "order_created", order_number: order.public_order_number, sent });
+  return json({ type: "order_created", order_number: order.public_order_number, status: order.status, sent });
 }
 
 async function handleLowStock(db: ReturnType<typeof serviceDb>) {
