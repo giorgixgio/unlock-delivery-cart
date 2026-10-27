@@ -1,7 +1,7 @@
 # Roadmap — Courier section
 
 # Roadmap — Billing reminder payment correction
-- [ ] Reject implausible post-payment balance rebounds, rearm on substantial payments, test and deploy; verify without sending another SMS.
+- [x] Reject implausible post-payment balance rebounds and rearm on substantial payments; five tests pass, deployed, restored the observed $185.17 post-payment baseline, and live dry-run blocked the stale $352.94 response without sending an SMS.
 
 # Roadmap — Store policy footer
 - [x] Compact the footer with subtle two-column links; verified all six policy back arrows return to the camera page with ad-link parameters intact, no overflow or browser errors.
