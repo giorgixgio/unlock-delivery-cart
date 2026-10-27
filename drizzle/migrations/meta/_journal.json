@@ -134,6 +134,13 @@
       "when": 1793122016008,
       "tag": "0018_meta_billing_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793137485482,
+      "tag": "0019_telegram_alerts_stock_state_and_order_trigger",
+      "breakpoints": true
     }
   ]
 }
