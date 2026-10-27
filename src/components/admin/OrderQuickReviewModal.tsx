@@ -835,14 +835,30 @@ export default function OrderQuickReviewModal({
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
                     <div className="font-semibold">{order.customer_name || "—"}</div>
-                    <a href={`tel:${order.customer_phone}`} className="text-2xl font-extrabold text-primary tracking-wide hover:underline">
+                    <a
+                      href={toTelHref(order.customer_phone)}
+                      onClick={(e) => {
+                        if (!user) return;
+                        e.preventDefault();
+                        const { telHref } = startCallSync({
+                          operatorId: user.id,
+                          orderId: order.id,
+                          phone: order.customer_phone,
+                          customerName: order.customer_name,
+                        });
+                        window.location.href = telHref;
+                      }}
+                      className="text-2xl font-extrabold text-primary tracking-wide hover:underline"
+                    >
                       {order.customer_phone}
                     </a>
                   </div>
                   <div className="flex gap-2">
-                    <a href={`tel:${order.customer_phone}`}>
-                      <Button size="sm" className="gap-1.5"><Phone className="w-4 h-4" /> დარეკვა</Button>
-                    </a>
+                    <CallButton
+                      orderId={order.id}
+                      phone={order.customer_phone}
+                      customerName={order.customer_name}
+                    />
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={copyPhone}>
                       <Copy className="w-4 h-4" /> კოპირება
                     </Button>
