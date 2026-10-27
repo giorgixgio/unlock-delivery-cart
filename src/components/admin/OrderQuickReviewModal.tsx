@@ -21,6 +21,9 @@ import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActi
 import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
 import { startSession, markAction, endSession, currentSessionId } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
+import CallButton from "@/components/admin/CallButton";
+import { startCallSync } from "@/lib/callSyncService";
+import { toTelHref } from "@/lib/callSync";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
 import {
