@@ -1,5 +1,8 @@
 # Roadmap — Courier section
 
+# Roadmap — Billing reminder payment correction
+- [ ] Reject implausible post-payment balance rebounds, rearm on substantial payments, test and deploy; verify without sending another SMS.
+
 # Roadmap — Store policy footer
 - [x] Compact the footer with subtle two-column links; verified all six policy back arrows return to the camera page with ad-link parameters intact, no overflow or browser errors.
 - [x] Audit existing policy pages and Meta disclosure guidance: no public policy pages/footer exist; Meta requires accurate privacy disclosures and lawful, nonmisleading offers, not a guaranteed anti-ban footer checklist.

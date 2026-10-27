@@ -1,4 +1,5 @@
 Keep per-SKU demo media in `src/lib/productDemoMedia.ts` and render image/video variants in the shared `ProductDemoGif` panel, so landing pages maintain a consistent placement and style.
+Billing reminders validate balance increases with the pure balanceGuard helper before advancing the accepted balance or sending SMS, because old Meta balances can reappear after payments; substantial payment drops rearm milestones even above the alert floor.
 Use the shared StockLimitedPriceBadge for stock-limited price messaging on generic and wrench landings; keep catalog prices in products and standard delivery in the existing checkout defaults so displays and new orders agree.
 Meta dashboard performance rows must require the parent ad set's Meta `effective_status` to be `ACTIVE`; ad-level status or period spend alone is insufficient.
 Wholesale reorders keep a unique wholesale row SKU and a link to the existing product; always use the existing product SKU as the shipping mark, and never publish a reorder over the live product, because repeat purchases must not overwrite catalog data.
