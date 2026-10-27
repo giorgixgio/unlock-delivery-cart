@@ -1128,6 +1128,36 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_billing_alerts: {
+        Row: {
+          ad_account_id: string
+          last_balance_usd: number | null
+          last_checked_at: string | null
+          last_error: string | null
+          last_milestone: number | null
+          phone: string | null
+          threshold_usd: number
+        }
+        Insert: {
+          ad_account_id: string
+          last_balance_usd?: number | null
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_milestone?: number | null
+          phone?: string | null
+          threshold_usd: number
+        }
+        Update: {
+          ad_account_id?: string
+          last_balance_usd?: number | null
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_milestone?: number | null
+          phone?: string | null
+          threshold_usd?: number
+        }
+        Relationships: []
+      }
       operator_order_sessions: {
         Row: {
           actions_count: number
