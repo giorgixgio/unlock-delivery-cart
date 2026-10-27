@@ -2954,6 +2954,7 @@ export type Database = {
         Args: { p_actor?: string; p_actor_email?: string; p_order_id: string }
         Returns: number
       }
+      dispatch_telegram_owner_alert: { Args: { p_body: Json }; Returns: number }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
       mark_stockout_waitlist: {
@@ -3090,6 +3091,20 @@ export type Database = {
           p_total: number
         }
         Returns: undefined
+      }
+      telegram_operator_daily_stats: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          callback: number
+          calls: number
+          cancelled: number
+          confirmed: number
+          first_activity: string
+          last_activity: string
+          no_answer: number
+          operator: string
+          reviewed: number
+        }[]
       }
     }
     Enums: {

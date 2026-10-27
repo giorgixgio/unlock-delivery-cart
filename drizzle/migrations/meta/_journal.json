@@ -141,6 +141,13 @@
       "when": 1793137485482,
       "tag": "0019_telegram_alerts_stock_state_and_order_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793137952070,
+      "tag": "0020_telegram_operator_summary_and_fulfillment",
+      "breakpoints": true
     }
   ]
 }

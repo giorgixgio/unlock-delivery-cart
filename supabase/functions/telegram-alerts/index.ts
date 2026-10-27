@@ -3,9 +3,10 @@
 //  - "low_stock_run": fired by the telegram-low-stock pg_cron job
 // Every request must carry the internal secret stored in site_settings
 // (key: telegram_alert_secret) so nobody can forge alerts.
-import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { readSetting, serviceDb, sendTelegramMessage } from "../_shared/telegram.ts";
+import { z } from "npm:zod@3";
+import { summaryWindow, formatOperatorSummary, type OperatorRow } from "./operatorSummary.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -31,7 +32,7 @@ async function handleNewOrder(db: ReturnType<typeof serviceDb>, orderId: string)
 
   // A lead is created at the phone step with status "pending_details"; the
   // funnel later fills in the address on the same row. Label the two states.
-  const isLead = order.status === "pending_details";
+  const isLead = true; // The INSERT trigger validates the original lead state, before later updates.
   let { data: items } = await db.from("order_items").select("title, quantity, line_total").eq("order_id", orderId);
   if (!items?.length) {
     // The storefront inserts items right after the order row; wait briefly so
@@ -87,7 +88,50 @@ async function handleLowStock(db: ReturnType<typeof serviceDb>) {
   return json({ type: "low_stock_run", alerted: toAlert.length, sent });
 }
 
+const BodySchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("order_created"), order_id: z.string().uuid() }),
+  z.object({ type: z.literal("low_stock_run") }),
+  z.object({ type: z.literal("operator_daily_summary"), dry_run: z.boolean().optional() }),
+  z.object({ type: z.literal("bulk_fulfilled"), batch_id: z.string().uuid(), actor: z.string().max(255), dry_run: z.boolean().optional() }),
+]);
+
+async function handleOperatorSummary(db: ReturnType<typeof serviceDb>, dryRun = false) {
+  const window = summaryWindow();
+  const { data, error } = await db.rpc("telegram_operator_daily_stats", { p_from: window.from, p_to: window.to });
+  if (error) return json({ error: error.message }, 500);
+  const content = formatOperatorSummary(window.day, (data ?? []) as OperatorRow[], window.to);
+  if (dryRun) return json({ content, rows: data, window });
+  // Split at operator boundaries when approaching Telegram's 4096-character limit.
+  const parts: string[] = []; let part = "";
+  for (const block of content.split("\n\n")) {
+    if ((part + block).length > 3800) { parts.push(part); part = ""; }
+    part += (part ? "\n\n" : "") + block;
+  }
+  if (part) parts.push(part);
+  for (const text of parts) {
+    const sent = await sendTelegramMessage(text);
+    if (!sent.ok) return json({ error: sent.error, status: sent.status }, 502);
+  }
+  return json({ type: "operator_daily_summary", sent: true, operators: data?.length ?? 0 });
+}
+
+async function handleBulkFulfilled(db: ReturnType<typeof serviceDb>, batchId: string, actor: string, dryRun = false) {
+  const { data: batch, error } = await db.from("import_batches").select("file_name,total_rows,matched,unmatched,errors,status,applied_at").eq("id", batchId).maybeSingle();
+  if (error) return json({ error: error.message }, 500);
+  if (!batch || !["completed", "partial"].includes(batch.status)) return json({ error: "Batch is not finalized" }, 400);
+  const { count, error: countError } = await db.from("import_staging_rows").select("id", { count: "exact", head: true }).eq("batch_id", batchId).eq("applied", true);
+  if (countError) return json({ error: countError.message }, 500);
+  const content = `📦 კურიერის ფაილი დამუშავებულია\n👤 ${actor}\n📄 ${batch.file_name ?? "Excel"}\n` +
+    `✅ შესრულებული შეკვეთები: ${count ?? 0}\nფაილის რიგები: ${batch.total_rows} · დაუმთხვეველი: ${batch.unmatched}\n` +
+    `⚠️ შეცდომები: ${batch.errors} · გამოტოვებული/კონფლიქტი: ${Math.max(0, batch.matched - (count ?? 0) - batch.errors)}\n` +
+    `სტატუსი: ${batch.status === "partial" ? "ნაწილობრივ დასრულდა" : "დასრულდა"}`;
+  if (dryRun) return json({ content, applied: count });
+  const sent = await sendTelegramMessage(content);
+  return json({ type: "bulk_fulfilled", sent }, sent.ok ? 200 : 502);
+}
+
 Deno.serve(async (req) => {
+ try {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -95,10 +139,19 @@ Deno.serve(async (req) => {
   const secret = await readSetting(db, "telegram_alert_secret");
   if (!secret || req.headers.get("x-internal-secret") !== secret) return json({ error: "Unauthorized" }, 401);
 
-  let body: { type?: string; order_id?: string };
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  let raw: unknown;
+  try { raw = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  const parsed = BodySchema.safeParse(raw);
+  if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
+  const body = parsed.data;
 
   if (body.type === "order_created" && body.order_id) return handleNewOrder(db, body.order_id);
   if (body.type === "low_stock_run") return handleLowStock(db);
+  if (body.type === "operator_daily_summary") return handleOperatorSummary(db, body.dry_run);
+  if (body.type === "bulk_fulfilled") return handleBulkFulfilled(db, body.batch_id, body.actor, body.dry_run);
   return json({ error: "Unknown type" }, 400);
+ } catch (error) {
+   console.error("telegram-alerts failed", error);
+   return json({ error: error instanceof Error ? error.message : "Alert failed" }, 500);
+ }
 });
