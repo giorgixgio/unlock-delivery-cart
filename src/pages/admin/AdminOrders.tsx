@@ -11,6 +11,7 @@ import MassFulfillModal from "@/components/admin/MassFulfillModal";
 import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
+import CallButton from "@/components/admin/CallButton";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
 import ToggleStore from "@/components/admin/ToggleStore";
@@ -594,7 +595,16 @@ const AdminOrders = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-muted-foreground">{order.customer_phone}</span>
+                      <CallButton
+                        orderId={order.id}
+                        phone={order.customer_phone}
+                        customerName={order.customer_name}
+                        label=""
+                        className="h-9 w-9 p-0 rounded-full shrink-0"
+                      />
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
