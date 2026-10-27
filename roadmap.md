@@ -79,6 +79,9 @@
 - [ ] Authenticated end-to-end realtime test — minting a session for info@bigmart.ge needs user approval; verify on two real devices instead
 
 # Roadmap — Telegram owner alerts
+- [ ] Keep new-lead notifications only; no second notification when checkout completes.
+- [ ] Send daily operator summary at 19:00 Asia/Tbilisi with calls, first recorded activity, reviewed orders and outcomes.
+- [ ] Notify owner on completed courier bulk fulfillment, including actor/file/result counts; verify without changing real orders.
 - [x] Telegram connector linked; bot @Deliveryquestbot, owner chat 6441625882 confirmed with a test message
 - [x] New-order alert trigger + `telegram-alerts` edge function (items, total, COD note)
 - [x] Low-stock digest every 15 min at ≤50 pieces, 24h re-reminder, gift SKUs excluded — live run delivered 40-product alert
