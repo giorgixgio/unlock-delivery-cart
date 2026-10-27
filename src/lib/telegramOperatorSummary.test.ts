@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SUMMARY_UTC_CRON, summaryWindow, isLeadCreation } from "./operatorSummary";
+import { SUMMARY_UTC_CRON, summaryWindow, isLeadCreation } from "../../supabase/functions/telegram-alerts/operatorSummary";
 describe("Telegram owner alert rules", () => {
   it("schedules 7 PM Tbilisi at 15:00 UTC", () => {
     expect(SUMMARY_UTC_CRON).toBe("0 15 * * *");
