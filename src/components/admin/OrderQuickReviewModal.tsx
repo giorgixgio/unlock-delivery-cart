@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
-  X, ChevronLeft, ChevronRight, Phone, Copy, ExternalLink, Loader2,
+  X, ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
   Search, Plus, Minus, Trash2, AlertTriangle, Check, GitMerge,
 } from "lucide-react";
