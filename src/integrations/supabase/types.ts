@@ -2560,6 +2560,24 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_stock_alerts: {
+        Row: {
+          alerted_at: string
+          product_id: string
+          sku: string
+        }
+        Insert: {
+          alerted_at?: string
+          product_id: string
+          sku: string
+        }
+        Update: {
+          alerted_at?: string
+          product_id?: string
+          sku?: string
+        }
+        Relationships: []
+      }
       unidentified_items: {
         Row: {
           actor: string | null
