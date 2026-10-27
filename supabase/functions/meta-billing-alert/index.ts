@@ -3,6 +3,7 @@
 // Runs from pg_cron. Resets after a payment drops the balance below $250.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { acceptBillingBalance, isPaymentDrop } from "./balanceGuard.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/meta_ads";
 const START_USD = 250;
@@ -27,7 +28,8 @@ Deno.serve(async (req) => {
   const results: unknown[] = [];
 
   let isTest = false;
-  if (req.method === "POST") { try { isTest = (await req.clone().json())?.test === true; } catch { /* cron body */ } }
+  let dryRun = false;
+  if (req.method === "POST") { try { const body = await req.clone().json(); isTest = body?.test === true; dryRun = body?.dry_run === true; } catch { /* cron body */ } }
   if (isTest) {
     for (const r of rows ?? []) {
       if (!r.phone) continue;
@@ -49,17 +51,31 @@ Deno.serve(async (req) => {
       continue;
     }
     const due = Number(JSON.parse(text).balance) / 100;
+    const previous = r.last_balance_usd === null ? null : Number(r.last_balance_usd);
+    if (!acceptBillingBalance(due, previous, r.last_checked_at, Date.now())) {
+      // Keep both the accepted balance and its time: rejected reads cannot move
+      // the baseline, and valid spending can eventually catch up after an outage.
+      const warning = `Ignored implausible balance rebound: ${previous} -> ${due}`;
+      if (!dryRun) await db.from("meta_billing_alerts").update({ last_error: warning }).eq("ad_account_id", r.ad_account_id);
+      results.push({ account: r.ad_account_id, reported_due: due, accepted_due: previous, ignored: true, reason: warning });
+      continue;
+    }
     const threshold = Number(r.threshold_usd);
     const upd: Record<string, unknown> = { last_balance_usd: due, last_checked_at: new Date().toISOString(), last_error: null };
+    const payment = isPaymentDrop(due, previous);
+    const lastMilestone = payment ? Math.floor(due / STEP_USD) * STEP_USD : Number(r.last_milestone ?? -1);
+    if (payment) upd.last_milestone = lastMilestone;
 
     if (due < START_USD) {
       upd.last_milestone = null; // paid → re-arm
     } else {
       const milestone = Math.floor(due / STEP_USD) * STEP_USD;
-      if (milestone > Number(r.last_milestone ?? -1)) {
+      if (!payment && milestone > lastMilestone) {
         const left = Math.max(0, threshold - due).toFixed(2);
         const content = `Meta ads: ვალი $${due.toFixed(2)}. ზღვრამდე ($${threshold}) დარჩა $${left}. გადაიხადე ნაწილი.`;
-        if (!r.phone) {
+        if (dryRun) {
+          results.push({ account: r.ad_account_id, due, would_send: true });
+        } else if (!r.phone) {
           upd.last_error = "no phone set";
         } else {
           const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content, reference: `bill-${milestone}` });
@@ -72,7 +88,7 @@ Deno.serve(async (req) => {
         }
       }
     }
-    await db.from("meta_billing_alerts").update(upd).eq("ad_account_id", r.ad_account_id);
+    if (!dryRun) await db.from("meta_billing_alerts").update(upd).eq("ad_account_id", r.ad_account_id);
     results.push({ account: r.ad_account_id, due, ...upd });
   }
   return json({ results });
