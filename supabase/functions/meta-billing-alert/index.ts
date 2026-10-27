@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   if (isTest) {
     for (const r of rows ?? []) {
       if (!r.phone) continue;
-      const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content: "BIGMART: სატესტო შეტყობინება Meta ბილინგის შეხსენებისთვის.", reference: `bill-test-${Date.now()}` });
+      const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content: "BIGMART: სატესტო შეტყობინება Meta ბილინგის შეხსენებისთვის.", reference: `t${Date.now() % 100000}` });
       const sms = await fetch(`https://smsoffice.ge/api/v2/send/?${params}`);
       results.push({ destination: toMsisdn(r.phone), status: sms.status, body: (await sms.text()).slice(0, 300) });
     }
