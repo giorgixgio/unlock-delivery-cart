@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
-  X, ChevronLeft, ChevronRight, Phone, Copy, ExternalLink, Loader2,
+  X, ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
   Search, Plus, Minus, Trash2, AlertTriangle, Check, GitMerge,
 } from "lucide-react";
@@ -21,6 +21,9 @@ import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActi
 import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
 import { startSession, markAction, endSession, currentSessionId } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
+import CallButton from "@/components/admin/CallButton";
+import { startCallSync } from "@/lib/callSyncService";
+import { toTelHref } from "@/lib/callSync";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
 import {
@@ -832,14 +835,30 @@ export default function OrderQuickReviewModal({
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div>
                     <div className="font-semibold">{order.customer_name || "—"}</div>
-                    <a href={`tel:${order.customer_phone}`} className="text-2xl font-extrabold text-primary tracking-wide hover:underline">
+                    <a
+                      href={toTelHref(order.customer_phone)}
+                      onClick={(e) => {
+                        if (!user) return;
+                        e.preventDefault();
+                        const { telHref } = startCallSync({
+                          operatorId: user.id,
+                          orderId: order.id,
+                          phone: order.customer_phone,
+                          customerName: order.customer_name,
+                        });
+                        window.location.href = telHref;
+                      }}
+                      className="text-2xl font-extrabold text-primary tracking-wide hover:underline"
+                    >
                       {order.customer_phone}
                     </a>
                   </div>
                   <div className="flex gap-2">
-                    <a href={`tel:${order.customer_phone}`}>
-                      <Button size="sm" className="gap-1.5"><Phone className="w-4 h-4" /> დარეკვა</Button>
-                    </a>
+                    <CallButton
+                      orderId={order.id}
+                      phone={order.customer_phone}
+                      customerName={order.customer_name}
+                    />
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={copyPhone}>
                       <Copy className="w-4 h-4" /> კოპირება
                     </Button>
