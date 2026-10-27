@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_calls: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          device_id: string
+          id: string
+          operator_id: string
+          order_id: string
+          phone: string
+          source_device: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          device_id: string
+          id?: string
+          operator_id: string
+          order_id: string
+          phone: string
+          source_device: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          device_id?: string
+          id?: string
+          operator_id?: string
+          order_id?: string
+          phone?: string
+          source_device?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_calls_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_preferences: {
         Row: {
           default_store: string | null
