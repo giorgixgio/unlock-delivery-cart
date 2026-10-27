@@ -67,3 +67,10 @@
 - [x] Georgian free-delivery badge + live countdown to midnight Tbilisi next to price on 0016 page (emerald pill, tabular digits, reduced-motion safe)
 - [x] Checkout/order summary: struck-through delivery price → "უფასო" in green for 0016
 - [x] Verify at ~390px mobile: badge, timer, 0₾ total on 0016; 001 solar still shows normal fee
+
+# Roadmap — Call sync (phone ↔ PC)
+- [x] active_calls table with per-operator RLS + Realtime publication
+- [x] Call button in orders list and quick-review modal; write starts before tel: navigation, never blocks dialing
+- [x] PC panel (order details + notes) on phone-initiated calls; full-screen one-tap dial overlay on PC-initiated calls
+- [x] +995 tel: normalization, 30s freshness window, same-device suppression, header "Call sync: connected" indicator
+- [ ] Authenticated end-to-end realtime test — minting a session for info@bigmart.ge needs user approval; verify on two real devices instead
