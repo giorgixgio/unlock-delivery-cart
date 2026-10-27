@@ -9,7 +9,9 @@ import { useState } from "react";
 import { canAccessPath } from "@/lib/adminPermissions";
 import ToggleStore from "@/components/admin/ToggleStore";
 import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
+import CallSyncPanels from "@/components/admin/CallSyncPanels";
 import { useCourierAlertBadge } from "@/hooks/useCourierAlertBadge";
+import { useCallSync } from "@/hooks/useCallSync";
 
 const navGroups = [
   {
@@ -91,6 +93,14 @@ const AdminLayout = () => {
   const { pathname } = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data: alertCount } = useCourierAlertBadge();
+  const callSync = useCallSync(user?.id);
+
+  const callSyncBadge = (
+    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <span className={`w-2 h-2 rounded-full ${callSync.connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+      {callSync.connected ? "Call sync: connected" : "Call sync: offline"}
+    </span>
+  );
 
   const visibleGroups = navGroups
     .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to)) }))
