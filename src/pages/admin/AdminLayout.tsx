@@ -127,6 +127,7 @@ const AdminLayout = () => {
           )}
         </h2>
         <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+        <div className="mt-1.5">{callSyncBadge}</div>
         <ToggleStore className="mt-3 w-full" compact />
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2">
@@ -203,8 +204,10 @@ const AdminLayout = () => {
               </SheetContent>
             </Sheet>
             <h2 className="text-base font-bold text-foreground">Admin</h2>
+            <span className="ml-auto">{callSyncBadge}</span>
           </div>
         )}
+        <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
         <Outlet />
       </main>
     </div>
