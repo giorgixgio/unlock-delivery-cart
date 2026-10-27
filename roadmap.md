@@ -77,3 +77,10 @@
 - [x] PC panel (order details + notes) on phone-initiated calls; full-screen one-tap dial overlay on PC-initiated calls
 - [x] +995 tel: normalization, 30s freshness window, same-device suppression, header "Call sync: connected" indicator
 - [ ] Authenticated end-to-end realtime test — minting a session for info@bigmart.ge needs user approval; verify on two real devices instead
+
+# Roadmap — Telegram owner alerts
+- [x] Telegram connector linked; bot @Deliveryquestbot, owner chat 6441625882 confirmed with a test message
+- [x] New-order alert trigger + `telegram-alerts` edge function (items, total, COD note)
+- [x] Low-stock digest every 15 min at ≤50 pieces, 24h re-reminder, gift SKUs excluded — live run delivered 40-product alert
+- [x] Billing reminders now also send to Telegram as SMS backup; milestone advances when either channel delivers
+- [ ] New-order alert seen from a real customer order (code path tested only via the low-stock route)
