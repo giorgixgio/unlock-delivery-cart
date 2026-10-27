@@ -8,10 +8,12 @@ const GATEWAY = "https://connector-gateway.lovable.dev/meta_ads";
 const START_USD = 250;
 const STEP_USD = 10;
 
+// Same 9-digit local format the working customer SMS function uses (5XXXXXXXX).
 function toMsisdn(p: string): string {
   let d = p.replace(/[^0-9]/g, "");
   if (d.startsWith("00")) d = d.slice(2);
-  if (/^5\d{8}$/.test(d)) d = `995${d}`;
+  if (d.startsWith("995")) d = d.slice(3);
+  if (d.startsWith("0")) d = d.slice(1);
   return d;
 }
 
@@ -23,6 +25,18 @@ Deno.serve(async (req) => {
   const { data: rows, error } = await db.from("meta_billing_alerts").select("*");
   if (error) return json({ error: error.message }, 500);
   const results: unknown[] = [];
+
+  let isTest = false;
+  if (req.method === "POST") { try { isTest = (await req.clone().json())?.test === true; } catch { /* cron body */ } }
+  if (isTest) {
+    for (const r of rows ?? []) {
+      if (!r.phone) continue;
+      const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content: "BIGMART: სატესტო შეტყობინება Meta ბილინგის შეხსენებისთვის.", reference: `t${Date.now() % 100000}` });
+      const sms = await fetch(`https://smsoffice.ge/api/v2/send/?${params}`);
+      results.push({ destination: toMsisdn(r.phone), status: sms.status, body: (await sms.text()).slice(0, 300) });
+    }
+    return json({ test: true, results });
+  }
 
   for (const r of rows ?? []) {
     const res = await fetch(`${GATEWAY}/v26.0/${r.ad_account_id}?fields=balance,currency`, {
