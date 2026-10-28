@@ -7,6 +7,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { readSetting, serviceDb, sendTelegramMessage } from "../_shared/telegram.ts";
 import { z } from "npm:zod@3";
 import { summaryWindow, formatOperatorSummary, type OperatorRow } from "./operatorSummary.ts";
+import { isOwnerAlertEnabled } from "../_shared/telegramAlertPolicy.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -116,12 +117,13 @@ async function handleOperatorSummary(db: ReturnType<typeof serviceDb>, dryRun = 
 }
 
 async function handleBulkFulfilled(db: ReturnType<typeof serviceDb>, batchId: string, actor: string, dryRun = false) {
-  const { data: batch, error } = await db.from("import_batches").select("file_name,total_rows,matched,unmatched,errors,status,applied_at").eq("id", batchId).maybeSingle();
+  const { data: batch, error } = await db.from("import_batches").select("file_name,total_rows,matched,unmatched,errors,status,applied_at,store").eq("id", batchId).maybeSingle();
   if (error) return json({ error: error.message }, 500);
   if (!batch || !["completed", "partial"].includes(batch.status)) return json({ error: "Batch is not finalized" }, 400);
+  if (batch.store !== "B") return json({ sent: false, reason: "Not an Onway batch" });
   const { count, error: countError } = await db.from("import_staging_rows").select("id", { count: "exact", head: true }).eq("batch_id", batchId).eq("applied", true);
   if (countError) return json({ error: countError.message }, 500);
-  const content = `📦 კურიერის ფაილი დამუშავებულია\n👤 ${actor}\n📄 ${batch.file_name ?? "Excel"}\n` +
+  const content = `📦 Onway — ხელით ატვირთვა დაფიქსირდა\n👤 ${actor}\n📄 ${batch.file_name ?? "Excel"}\n` +
     `✅ შესრულებული შეკვეთები: ${count ?? 0}\nფაილის რიგები: ${batch.total_rows} · დაუმთხვეველი: ${batch.unmatched}\n` +
     `⚠️ შეცდომები: ${batch.errors} · გამოტოვებული/კონფლიქტი: ${Math.max(0, batch.matched - (count ?? 0) - batch.errors)}\n` +
     `სტატუსი: ${batch.status === "partial" ? "ნაწილობრივ დასრულდა" : "დასრულდა"}`;
@@ -144,6 +146,8 @@ Deno.serve(async (req) => {
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
   const body = parsed.data;
+  // Defense in depth: queued/legacy trigger requests must also stay quiet.
+  if (!isOwnerAlertEnabled(body.type)) return json({ type: body.type, sent: false, reason: "disabled" });
 
   if (body.type === "order_created" && body.order_id) return handleNewOrder(db, body.order_id);
   if (body.type === "low_stock_run") return handleLowStock(db);
