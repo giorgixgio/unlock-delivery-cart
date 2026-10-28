@@ -17,7 +17,10 @@ import {
   trackAddressPopupClosed,
 } from "@/lib/funnelTracking";
 import PredictiveInput from "@/components/PredictiveInput";
-import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
+import OnwayCityPicker from "@/components/OnwayCityPicker";
+import { useOnwayCities } from "@/hooks/useOnwayCities";
+import { selectedCityValid } from "@/lib/onwayCities";
+import { getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 
 const schema = z.object({
@@ -58,6 +61,8 @@ const AddressFormModal = ({
   onComplete,
 }: AddressFormModalProps) => {
   const [form, setForm] = useState({ region: "", address: "" });
+  const { cities, loading: citiesLoading, error: citiesError } = useOnwayCities();
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [historicalCities, setHistoricalCities] = useState<string[]>([]);
@@ -78,58 +83,14 @@ const AddressFormModal = ({
     setSavedAddress(null);
     trackAddressFormViewed(orderId);
     trackAddressPopupOpened(orderId);
-    const saved = loadCustomerInfo();
-    if (saved) {
-      setForm((f) => ({
-        ...f,
-        region: saved.region || f.region,
-        address: saved.address || f.address,
-      }));
-      if (saved.region && saved.address) {
-        setSavedAddress({ region: saved.region, address: saved.address });
-      }
-    }
+    setForm({ region: "", address: "" });
+    setSelectedCityId(null);
     // Autofocus city field so the keyboard opens on mount.
     const t = setTimeout(() => {
       try { cityRef.current?.focus(); } catch {}
     }, 260);
     return () => clearTimeout(t);
   }, [open, orderId]);
-
-  // Returning-customer lookup by phone from the just-created order.
-  // If we have a previous address on file, pre-fill and show a summary card
-  // so the user sees "we already have your address" and can confirm/edit.
-  useEffect(() => {
-    if (!open || !orderId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: current } = await supabase
-          .from("orders")
-          .select("customer_phone")
-          .eq("id", orderId)
-          .maybeSingle();
-        const phone = (current?.customer_phone || "").replace(/\D/g, "");
-        if (!phone || phone.length < 6) return;
-        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
-          p_phone: phone,
-        });
-        const prev = Array.isArray(data) ? data[0] : data;
-        if (cancelled || !prev) return;
-        const region = prev.normalized_city || prev.region || prev.city || "";
-        const address = prev.normalized_address || prev.address_line1 || "";
-        if (!region && !address) return;
-        setSavedAddress({ region, address });
-        setForm((f) => ({
-          ...f,
-          region: f.region.trim() || region,
-          address: f.address.trim() || address,
-        }));
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [open, orderId]);
-
 
   useEffect(() => {
     if (!open) return;
@@ -170,6 +131,9 @@ const AddressFormModal = ({
   };
 
   const handleSubmit = async () => {
+    if (citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) {
+      setErrors({ region: "აირჩიეთ ქალაქი სიიდან" }); cityRef.current?.focus(); return;
+    }
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       const fe: Record<string, string> = {};
@@ -312,16 +276,11 @@ const AddressFormModal = ({
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
-                    <PredictiveInput
-                      value={form.region}
-                      onChange={(val) => handleChange("region", val)}
-                      onSelect={(s) => handleChange("region", s.text)}
-                      getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
-                      placeholder="მაგ: თბილისი / ქუთაისი / ზუგდიდი"
-                      error={errors.region}
-                      className={inputClass}
-                      inputRef={cityRef}
-                    />
+                    <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                      onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
+                      onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
+                      error={citiesError ? "ქალაქების სია ვერ ჩაიტვირთა. სცადეთ თავიდან." : errors.region} className={inputClass} inputRef={cityRef} />
+
                   </div>
                 </div>
                 <div>
@@ -451,7 +410,7 @@ const AddressFormModal = ({
             </div>
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !form.region.trim()}
+              disabled={submitting || citiesLoading || !form.region.trim()}
               className="w-full font-extrabold rounded-[20px] bg-success hover:bg-success/90 text-success-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
               style={{
                 minHeight: 60,

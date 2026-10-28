@@ -25,6 +25,7 @@ export interface PayloadOrder {
   raw_address?: string | null;
   address_line1?: string | null;
   total?: number | string | null;
+  onway_region_id?: string | null;
 }
 
 const s = (v: unknown) => (v == null ? "" : String(v).trim());
@@ -39,6 +40,7 @@ export function buildOnwayPayload(
     key: creds.key,
     ...TRENDMART_SENDER,
     to_city: s(order.normalized_city) || s(order.raw_city) || s(order.city),
+    ...(order.onway_region_id ? { to_city_id: order.onway_region_id } : {}),
     to_name: s(order.customer_name),
     to_phone: s(order.customer_phone),
     to_address: s(order.normalized_address) || s(order.raw_address) || s(order.address_line1),

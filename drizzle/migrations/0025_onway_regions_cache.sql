@@ -1,0 +1,11 @@
+CREATE TABLE public.onway_regions (id text PRIMARY KEY, name text NOT NULL, fields jsonb NOT NULL DEFAULT '{}'::jsonb, active boolean NOT NULL DEFAULT true, refreshed_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT ON public.onway_regions TO anon, authenticated;
+GRANT ALL ON public.onway_regions TO service_role;
+ALTER TABLE public.onway_regions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public active Onway regions" ON public.onway_regions FOR SELECT TO anon, authenticated USING (active);
+CREATE INDEX onway_regions_name_idx ON public.onway_regions(name);
+CREATE TABLE public.onway_region_aliases (alias text PRIMARY KEY, region_id text NOT NULL REFERENCES public.onway_regions(id), refreshed_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT ON public.onway_region_aliases TO anon, authenticated;
+GRANT ALL ON public.onway_region_aliases TO service_role;
+ALTER TABLE public.onway_region_aliases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Onway region aliases" ON public.onway_region_aliases FOR SELECT TO anon, authenticated USING (EXISTS (SELECT 1 FROM public.onway_regions r WHERE r.id=region_id AND r.active));

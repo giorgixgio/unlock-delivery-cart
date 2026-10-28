@@ -4,14 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
 import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
+import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
+import { cityKey } from "../_shared/onwayRegions.ts";
+import { z } from "npm:zod@3";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
-  alreadySent, buildOnwayPayload, looksSuccessful, maskPayload, missingFields, parseTracking,
+  alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking,
 } from "./payload.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 const ONWAY_BASE = "https://onway.ge/index.php?route=";
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -25,9 +25,10 @@ function cmpBin(a: string, b: string): number {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !serviceKey || !anonKey) return json({error:"Configuration missing"},500);
 
     // --- Admin auth (same as export-courier) ---
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -42,6 +43,9 @@ Deno.serve(async (req) => {
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
+    const parsedBody = z.object({ action: z.enum(["account_check","review_list","review_save"]).optional(), dry_run: z.boolean().optional(), order_ids: z.array(z.string().uuid()).max(1000).optional(), wave_id: z.string().uuid().nullable().optional(), round_size: z.coerce.number().int().min(1).max(100).optional(), review: z.object({ order_id: z.string().uuid(), version: z.number().int(), region_id: z.string().max(100), address: z.string().max(300), name: z.string().max(255), phone: z.string().max(20), decision: z.enum(["confirm","exists","not_exists"]), tracking: z.string().max(100).optional() }).optional() }).safeParse(body);
+    if (!parsedBody.success) return json({ error: "Invalid request" }, 400);
+    body = parsedBody.data;
     const username = Deno.env.get("ONWAY_API_USERNAME") || "";
     const key = Deno.env.get("ONWAY_API_KEY") || "";
     if (!username || !key) return json({ error: "Onway API credentials missing" }, 500);
@@ -69,6 +73,26 @@ Deno.serve(async (req) => {
       return json({ results });
     }
 
+    const regionRows: {id:string;name:string}[] = [];
+    const aliasRows: {alias:string;region_id:string}[] = [];
+    for (let offset=0;;offset+=1000) {
+      const {data,error}=await supabase.from("onway_regions").select("id,name").eq("active",true).order("id").range(offset,offset+999);
+      if(error) return json({error:"Could not load Onway cities"},500); regionRows.push(...(data||[])); if(!data || data.length<1000) break;
+    }
+    for (let offset=0;;offset+=1000) {
+      const {data,error}=await supabase.from("onway_region_aliases").select("alias,region_id").order("alias").range(offset,offset+999);
+      if(error) return json({error:"Could not load city mappings"},500); aliasRows.push(...(data||[])); if(!data || data.length<1000) break;
+    }
+    const regionMap=new Map(regionRows.map(r=>[r.id,r]));
+    const nameMap=new Map(regionRows.map(r=>[cityKey(r.name),r]));
+    const aliasMap=new Map(aliasRows.map(a=>[a.alias,a.region_id]));
+    const resolveCity=(o:any)=>nameMap.get(cityKey(o.normalized_city || o.city)) || regionMap.get(aliasMap.get(cityKey(o.normalized_city || o.city)) || "");
+    if (body.action === "review_save") {
+      const r=body.review;
+      if(!r) return json({error:"Review required"},400);
+      // Verify store eligibility below before running a service-only atomic review action.
+      body.order_ids=[r.order_id];
+    }
     const dryRun = body.dry_run !== false;
     const onlyIds: string[] | null = Array.isArray(body.order_ids) && body.order_ids.length
       ? body.order_ids.map(String) : null;
@@ -100,6 +124,27 @@ Deno.serve(async (req) => {
       if (!items.length) return true;
       return items.some((i: any) => (whBySku[String(i.sku || "")] ?? "B") === "B");
     });
+    const {data: permits, error: permitError}=await supabase.from("onway_order_reviews").select("*");
+    if(permitError) return json({error:"Could not load review authorization"},500);
+    const permitMap=new Map((permits||[]).map((p:any)=>[p.order_id,p]));
+    const authorizedReview=(o:any)=>permitMap.get(o.id)?.reviewed_version===o.version;
+    const retryAllowed=(o:any)=>authorizedReview(o) && permitMap.get(o.id)?.retry_permitted===true;
+    const reasonsFor=(o:any)=> {
+      const reasons=heldReasons({...o,onway_reviewed_at:authorizedReview(o)?permitMap.get(o.id)?.reviewed_at:null});
+      if(!resolveCity(o)) reasons.push("city_not_mapped");
+      return reasons;
+    };
+    if(body.action==="review_save") {
+      const r=body.review;
+      const o=storeOrders.find((o:any)=>o.id===r.order_id);
+      if(!o) return json({error:"Not an eligible TrendMart order"},400);
+      const {data,error}=await supabase.rpc("onway_review_save", {p_order_id:r.order_id,p_version:r.version,p_region_id:r.region_id,p_address:r.address,p_name:r.name,p_phone:r.phone,p_actor:actor,p_decision:r.decision,p_tracking:r.tracking || null});
+      return error?json({error:error.message},409):json(data);
+    }
+    if(body.action==="review_list") return json({orders:storeOrders.flatMap((o:any)=> {
+      const state=reviewState({...o,onway_reviewed_at:authorizedReview(o)?permitMap.get(o.id)?.reviewed_at:null}) || (!alreadySent(o)&&reasonsFor(o).length?"held":null);
+      return state?[{order_id:o.id,order_number:o.public_order_number,version:o.version,customer_name:o.customer_name,customer_phone:o.customer_phone,city:o.normalized_city||o.city,address:o.normalized_address||o.address_line1,region_id:resolveCity(o)?.id || null,state,error:o.onway_error_text,reasons:reasonsFor(o)}]:[];
+    })});
 
     const meta = storeOrders.map((o: any) => {
       const items = o.order_items || [];
@@ -131,14 +176,14 @@ Deno.serve(async (req) => {
     }
 
     let targets = onlyIds ? assigned.filter((a) => onlyIds.includes(String(a.order.id))) : assigned;
-    const skipped = targets.filter((a) => alreadySent(a.order)).map((a) => ({
+    const skipped = targets.filter((a) => alreadySent(a.order) && !retryAllowed(a.order)).map((a) => ({
       order_id: a.order.id, order_number: a.order.public_order_number,
       onway_tracking: a.order.onway_tracking, onway_sent_at: a.order.onway_sent_at, onway_api_status: a.order.onway_api_status,
     }));
-    targets = targets.filter((a) => !alreadySent(a.order));
+    targets = targets.filter((a) => !alreadySent(a.order) || retryAllowed(a.order));
 
     // --- Normalize safety net (same as export-courier) ---
-    for (const t of targets) {
+    for (const t of dryRun ? [] : targets.filter(t=>!reasonsFor(t.order).length)) {
       const o = t.order;
       if (String(o.normalized_city || "").trim() && String(o.normalized_address || "").trim()) continue;
       try {
@@ -148,11 +193,8 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ order_id: o.id }),
         });
         if (!r.ok) continue;
-        const { data: f } = await supabase.from("orders").select("normalized_city, normalized_address, raw_city, raw_address").eq("id", o.id).single();
-        if (f) Object.assign(o, {
-          normalized_city: f.normalized_city ?? o.normalized_city, normalized_address: f.normalized_address ?? o.normalized_address,
-          raw_city: f.raw_city ?? o.raw_city, raw_address: f.raw_address ?? o.raw_address,
-        });
+        const { data: f } = await supabase.from("orders").select("*").eq("id", o.id).single();
+        if (f) Object.assign(o, f);
       } catch { /* best effort */ }
     }
 
@@ -171,20 +213,24 @@ Deno.serve(async (req) => {
       const labelText = `[${a.tag}] ${skuWithQty}`;
       const detail = noteText ? `${labelText} | ${noteText}` : labelText;
       const payload = buildOnwayPayload(order, detail, { username, key });
+      const region=resolveCity(order);
+      if(region) { payload.to_city=region.name; Object.assign(payload,{to_city_id:region.id}); }
+      const held=reasonsFor(order);
       const missing = missingFields(payload);
       if (!(order.order_items || []).length) missing.push("items");
-      return { order, tag: a.tag, payload, missing };
+      return { order, tag: a.tag, payload, missing, held };
     });
 
     if (dryRun) {
       return json({
         dry_run: true,
         count: built.length,
-        ready_count: built.filter((b) => !b.missing.length).length,
+        ready_count: built.filter((b) => !b.missing.length && !b.held.length).length,
+        held_count: built.filter(b=>b.held.length).length,
         skipped_already_sent: skipped,
         orders: built.map((b) => ({
           order_id: b.order.id, order_number: b.order.public_order_number, tag: b.tag,
-          missing: b.missing, payload: maskPayload(b.payload),
+          missing: b.missing, held: b.held, payload: maskPayload(b.payload),
         })),
       });
     }
@@ -193,12 +239,11 @@ Deno.serve(async (req) => {
     const results: { ok: boolean; skipped?: boolean; [key: string]: unknown }[] = [];
     for (const b of built) {
       const base = { order_id: b.order.id, order_number: b.order.public_order_number };
+      if(b.held.length) { results.push({...base,ok:false,skipped:true,state:"held",error:b.held.join(", ")}); continue; }
       if (b.missing.length) { results.push({ ...base, ok: false, skipped: true, error: `missing: ${b.missing.join(", ")}` }); continue; }
       // Atomic lock: only one request can claim an unsent order.
-      const { data: locked } = await supabase.from("orders")
-        .update({ onway_sent_at: new Date().toISOString(), onway_api_status: "sending" })
-        .eq("id", b.order.id).is("onway_sent_at", null).is("onway_tracking", null).select("id");
-      if (!locked?.length) { results.push({ ...base, ok: false, skipped: true, error: "already sent/locked" }); continue; }
+      const { data: locked } = await supabase.rpc("onway_claim_shipment",{p_order_id:b.order.id,p_version:b.order.version});
+      if (!locked) { results.push({ ...base, ok: false, skipped: true, error: "already sent/locked or changed" }); continue; }
 
       let status: number | null = null, raw = "", err: string | null = null;
       try {
@@ -208,13 +253,15 @@ Deno.serve(async (req) => {
         status = r.status; raw = await r.text();
       } catch (e) { err = String(e); }
       const tracking = raw ? parseTracking(raw) : null;
-      const ok = !err && status !== null && looksSuccessful(status, raw);
+      raw=raw.split(key).join("***").split(username).join("***");
+      const state=classifyOnwayReply(status,raw,tracking);
+      const ok = !err && state==="sent";
       await logCall({ order_id: b.order.id, endpoint: "api/order/add", request_masked: maskPayload(b.payload), http_status: status, response_raw: raw, parsed_tracking: tracking, error_message: err });
       // onway_sent_at stays set even on failure: Onway may have created it anyway.
       await supabase.from("orders").update({
-        onway_api_status: ok ? "sent" : "failed", ...(tracking ? { onway_tracking: tracking } : {}),
+        onway_api_status: ok ? "sent" : "unclear", onway_error_text:ok?null:(err || raw.slice(0,2000) || `HTTP ${status}`), ...(ok && tracking ? { onway_tracking: tracking } : {}),
       }).eq("id", b.order.id);
-      results.push({ ...base, ok, http_status: status, tracking, response_raw: raw.slice(0, 1000), error: err });
+      results.push({ ...base, ok, state:ok?"sent":"unclear", http_status: status, tracking:ok?tracking:null, response_raw: raw.slice(0, 1000), error: err || (!ok?raw.slice(0,1000):null) });
     }
     // One owner notification per actual API batch, never per order or preview.
     const counts = onwayBatchCounts(results);
@@ -228,7 +275,7 @@ Deno.serve(async (req) => {
       };
       EdgeRuntime.waitUntil(notify());
     }
-    return json({ dry_run: false, skipped_already_sent: skipped, results });
+    return json({ dry_run: false, skipped_already_sent: skipped, results, sent_count:results.filter(r=>r.ok).length, review_count:results.filter(r=>!r.ok).length });
   } catch (e) {
     console.error("onway-create-shipments error:", e);
     return json({ error: String(e) }, 500);

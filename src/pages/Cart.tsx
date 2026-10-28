@@ -19,6 +19,9 @@ import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/metaPixel";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
+import OnwayCityPicker from "@/components/OnwayCityPicker";
+import { useOnwayCities } from "@/hooks/useOnwayCities";
+import { selectedCityValid } from "@/lib/onwayCities";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,6 +98,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
   const [form, setForm] = useState({ phone: "", region: "", address: "" });
+  const { cities, loading: citiesLoading } = useOnwayCities();
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -152,44 +157,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [form.phone, phoneRevealed]);
 
-  // ── Returning-customer lookup by phone: if user typed a valid phone but
-  //    has no locally-saved address, pull the latest known address from DB
-  //    so we can show them the "we already have your address" summary card.
-  const lookedUpPhonesRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!isOpen) return;
-    if (isRecognized) return;
-    if (!isValidGeorgianPhone(form.phone)) return;
-    if (form.region.trim() && form.address.trim()) return;
-    const digits = form.phone.replace(/\D/g, "");
-    const last9 = digits.slice(-9);
-    if (last9.length < 6) return;
-    if (lookedUpPhonesRef.current.has(last9)) return;
-    lookedUpPhonesRef.current.add(last9);
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
-          p_phone: form.phone,
-        });
-        const row = Array.isArray(data) ? data[0] : data;
-        if (cancelled || !row) return;
-        setForm((f) => ({
-          ...f,
-          region: f.region.trim() || row.region || row.city || "",
-          address: f.address.trim() || row.address_line1 || "",
-        }));
-        if (row.is_tbilisi !== undefined && row.is_tbilisi !== null) {
-          const lower = (row.city || "").trim().toLowerCase();
-          setManualLocation(lower === "თბილისი" || lower === "tbilisi");
-        }
-        setIsRecognized(true);
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [isOpen, form.phone, form.region, form.address, isRecognized, setManualLocation]);
-
-
   // Focus address after city is confirmed (called from PredictiveInput onConfirm)
   const handleCityConfirm = useCallback(() => {
     setTimeout(() => {
@@ -239,14 +206,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     if (saved && (saved.phone || saved.name)) {
       setForm({
         phone: saved.phone || "",
-        region: saved.region || "",
-        address: saved.address || "",
+        region: "",
+        address: "",
       });
-      setIsRecognized(true);
-      if (saved.region) {
-        const lower = saved.region.trim().toLowerCase();
-        setManualLocation(lower === "თბილისი" || lower === "tbilisi");
-      }
+      setIsRecognized(false);
+
     }
   }, [isOpen, setManualLocation]);
 
@@ -331,6 +295,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       return;
     }
 
+    if (citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) {
+      setErrors({ region: "აირჩიეთ ქალაქი სიიდან" }); setIsEditing(true); cityInputRef.current?.focus(); return;
+    }
     const result = orderSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -359,11 +326,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
     // Validation passed — open confirmation modal
     setConfirmModalOpen(true);
-  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed]);
+  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed, cities, citiesLoading, selectedCityId]);
 
   // Actual order submission (called from modal confirm or auto-confirm)
   const handleSubmitOrder = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) return;
     setSubmitting(true);
     try {
       const order = await createOrder({
@@ -416,7 +383,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast, itemCount]);
+  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast, itemCount, cities, citiesLoading, selectedCityId]);
 
   // ── Urgency ticker state (before early returns for hooks rules) ──
   const URGENCY_MSGS = useMemo(() => [
@@ -617,7 +584,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   <div
                     className="transition-all duration-[280ms] ease-out overflow-hidden"
                     style={{
-                      maxHeight: phoneRevealed ? "350px" : "0px",
+                      maxHeight: phoneRevealed ? "650px" : "0px",
                       opacity: phoneRevealed ? 1 : 0,
                       transform: phoneRevealed ? "translateY(0)" : "translateY(6px)",
                     }}
@@ -626,16 +593,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                       <div>
                         <Label className="text-xs font-bold text-foreground">ქალაქი / რეგიონი</Label>
                         <div className="mt-0.5">
-                          <PredictiveInput
-                            value={form.region}
-                            onChange={(val) => handleChange("region", val)}
-                            onSelect={(s) => handleChange("region", s.text)}
-                            onConfirm={handleCityConfirm}
-                            getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
-                            placeholder="მაგ: თბილისი"
-                            error={errors.region}
-                            inputRef={cityInputRef}
-                          />
+                          <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                            onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
+                            onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
+                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} />
+
                         </div>
                       </div>
                       <div>

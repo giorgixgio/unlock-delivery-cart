@@ -262,9 +262,9 @@ export default function OrderQuickReviewModal({
       const o = data as unknown as OrderFull | null;
       setOrder(o);
       if (o) {
-        setCity(o.city || "");
+        setCity(o.normalized_city || o.city || "");
         {
-          const parts = splitDistrict(o.address_line1 || "");
+          const parts = splitDistrict(o.normalized_address || o.address_line1 || "");
           setDistrict(parts.district);
           setAddress(parts.rest);
         }
@@ -423,15 +423,17 @@ export default function OrderQuickReviewModal({
       ? composeAddress(district, address)
       : address.trim();
 
-    if (trimmedCity !== (order.city || "")) {
+    if (trimmedCity !== (order.normalized_city || order.city || "")) {
       updates.city = trimmedCity;
       updates.raw_city = trimmedCity;
+      updates.normalized_city = trimmedCity;
       const lower = trimmedCity.toLowerCase();
       updates.is_tbilisi = lower === "თბილისი" || lower === "tbilisi";
     }
-    if (trimmedAddr !== (order.address_line1 || "")) {
+    if (trimmedAddr !== (order.normalized_address || order.address_line1 || "")) {
       updates.address_line1 = trimmedAddr;
       updates.raw_address = trimmedAddr;
+      updates.normalized_address = trimmedAddr;
     }
     if ((courierNote || "") !== (order.address_line2 || "")) {
       updates.address_line2 = courierNote || null;
@@ -1038,6 +1040,7 @@ export default function OrderQuickReviewModal({
                 <div>
                   <Label className="text-xs">ქალაქი / რეგიონი</Label>
                   <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="მაგ: თბილისი / ქუთაისი" className="h-11 text-base" />
+                  {(order.raw_city || order.city) && (order.raw_city || order.city) !== city && <p className="mt-1 text-xs text-muted-foreground">Raw: {order.raw_city || order.city}</p>}
                 </div>
                 {isTbilisiCity(city) && (
                   <div>
@@ -1077,6 +1080,7 @@ export default function OrderQuickReviewModal({
                 <div>
                   <Label className="text-xs">მისამართი</Label>
                   <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ქუჩა, კორპუსი, ბინა ან სოფელი" className="h-11 text-base" />
+                  {(order.raw_address || order.address_line1) && (order.raw_address || order.address_line1) !== composeAddress(district, address) && <p className="mt-1 text-xs text-muted-foreground break-words">Raw: {order.raw_address || order.address_line1}</p>}
                 </div>
                 <div>
                   <Label className="text-xs">კომენტარი კურიერისთვის</Label>

@@ -12,6 +12,8 @@ import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
 import CallButton from "@/components/admin/CallButton";
+import OnwayReviewPanel, { useOnwayReview } from "@/components/admin/OnwayReviewPanel";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useViewModifier } from "@/hooks/useViewModifier";
 import { normalizePhone } from "@/lib/phoneUtils";
 import ToggleStore from "@/components/admin/ToggleStore";
@@ -136,6 +138,8 @@ const AdminOrders = () => {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const { applyToCount, hasModifier } = useViewModifier();
   const { activeStore } = useStore();
+  const { isAdmin } = useAdminAuth();
+  const onwayReview = useOnwayReview(isAdmin && activeStore !== "A");
 
   const fetchCounts = useCallback(async () => {
     const [reviewRes, readyRes, fulfilledRes, returnsRes] = await Promise.all([
@@ -253,12 +257,13 @@ const AdminOrders = () => {
     }
 
     // Group by normalized phone: show only latest order per customer, track duplicates
-    const grouped = groupOrdersByPhone(result);
+    const reviewIds = new Set(onwayReview.rows.map(r => r.order_id));
+    const grouped = groupOrdersByPhone(activeTab === "ready" ? result.filter(o => !reviewIds.has(o.id)) : result);
     setOrders(grouped);
     setLoading(false);
     setRefreshing(false);
     setLastRefreshed(new Date());
-  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount, activeStore]);
+  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount, activeStore, onwayReview.rows]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -394,7 +399,8 @@ const AdminOrders = () => {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Ready
+          Confirmed
+          {onwayReview.rows.length > 0 && <span className="rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">{onwayReview.rows.length} need review</span>}
           {counts.ready > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
               {counts.ready}
@@ -517,6 +523,8 @@ const AdminOrders = () => {
       </div>
 
       {/* Table */}
+      {activeTab === "ready" && onwayReview.error && <p className="text-destructive text-sm">{onwayReview.error}</p>}
+      {activeTab === "ready" && <OnwayReviewPanel rows={onwayReview.rows} onUpdated={() => { void onwayReview.refresh(); void fetchOrders(true); void fetchCounts(); }} />}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />

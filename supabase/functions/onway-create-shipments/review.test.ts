@@ -1,0 +1,16 @@
+import { assertEquals } from "jsr:@std/assert@1";
+import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
+import { parseRegions, uniqueRegionMatch } from "../_shared/onwayRegions.ts";
+const clean = { auto_confirmed:true, risk_level:"low",normalization_confidence:0.75,normalized_city:"ბათუმი",normalized_address:"რუსთაველის 5" };
+Deno.test("clean auto-confirmed orders are not held",()=>assertEquals(heldReasons(clean),[]));
+Deno.test("risk not low holds an auto-confirmed order",()=>assertEquals(heldReasons({...clean,risk_level:"medium"}),["risk_not_low"]));
+Deno.test("confidence below 0.75 holds an auto-confirmed order",()=>assertEquals(heldReasons({...clean,normalization_confidence:0.74}),["low_normalization_confidence"]));
+Deno.test("operator-confirmed orders are not auto-risk held",()=>assertEquals(heldReasons({...clean,risk_level:"high",operator_review_status:"confirmed",call_outcome_updated_by:"operator"}),[]));
+Deno.test("reviewed field alone is not operator confirmation",()=>assertEquals(heldReasons({...clean,risk_level:"high",operator_review_status:"confirmed"}),["risk_not_low"]));
+Deno.test("sent ambiguous replies remain unclear",()=>assertEquals(reviewState({...clean,onway_sent_at:"now",onway_api_status:"failed"}),"unclear"));
+Deno.test("a 200 without tracking is unclear",()=>assertEquals(classifyOnwayReply(200,'{"success":true}',null),"unclear"));
+Deno.test("a provider error with tracking is still unclear",()=>assertEquals(classifyOnwayReply(200,'{"error":"failed","tracking":"123"}',"123"),"unclear"));
+Deno.test("clear tracking response is accepted",()=>assertEquals(classifyOnwayReply(200,'{"tracking":"123"}',"123"),"sent"));
+Deno.test("regions use actual zone IDs",()=>assertEquals(parseRegions('{"zones":[{"zone_id":"2","name":"ბათუმი"}]}')[0].id,"2"));
+Deno.test("exact city wins over similarly named village",()=>assertEquals(uniqueRegionMatch("რუსთავი",[{id:"117",name:"რუსთავი",fields:{}},{id:"999",name:"ასპინძა > რუსთავი",fields:{}}])?.id,"117"));
+Deno.test("ambiguous village name is not mapped",()=>assertEquals(uniqueRegionMatch("სოფელი",[{id:"1",name:"გორი > სოფელი",fields:{}},{id:"2",name:"კასპი > სოფელი",fields:{}}]),null));
