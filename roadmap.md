@@ -1,5 +1,10 @@
 # Roadmap — Courier section
 
+# Roadmap — Telegram scope update
+- [ ] Disable lead, daily operator and low-stock Telegram alerts; preserve billing reminders.
+- [ ] Notify once per manual Onway fulfillment batch and real API send request; no dry-run alerts.
+- [ ] Test allowed alert types, deploy and verify active schedules without sending real shipments.
+
 # Roadmap — Onway webhook
 - [x] Create service-role-only raw callback log with RLS and no operator access.
 - [x] Add GET/POST shared-token callback with background capture, credential redaction and no order/UI changes.
