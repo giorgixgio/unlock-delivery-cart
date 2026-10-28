@@ -210,6 +210,20 @@ export async function createOrder(input: OrderInput) {
       },
     });
 
+    // Fire-and-forget, silent: IP city logging for accuracy research (never awaited).
+    try {
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ip-geo-log`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ order_id: order.id }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* ignore */ }
+
     // Fire-and-forget: normalize and score (skip for pending_details)
     if (orderStatus !== "pending_details") {
       try {

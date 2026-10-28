@@ -1059,6 +1059,66 @@ export type Database = {
           },
         ]
       }
+      ip_geo_log: {
+        Row: {
+          city_match: boolean | null
+          created_at: string
+          error_message: string | null
+          final_city: string | null
+          geo_city: string | null
+          geo_city_ka: string | null
+          geo_country: string | null
+          geo_region: string | null
+          id: string
+          ip: string | null
+          is_mobile: boolean | null
+          isp_org: string | null
+          lookup_status: string
+          order_id: string
+          provider: string | null
+          resolved_at: string | null
+          was_under_review: boolean
+        }
+        Insert: {
+          city_match?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          final_city?: string | null
+          geo_city?: string | null
+          geo_city_ka?: string | null
+          geo_country?: string | null
+          geo_region?: string | null
+          id?: string
+          ip?: string | null
+          is_mobile?: boolean | null
+          isp_org?: string | null
+          lookup_status?: string
+          order_id: string
+          provider?: string | null
+          resolved_at?: string | null
+          was_under_review?: boolean
+        }
+        Update: {
+          city_match?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          final_city?: string | null
+          geo_city?: string | null
+          geo_city_ka?: string | null
+          geo_country?: string | null
+          geo_region?: string | null
+          id?: string
+          ip?: string | null
+          is_mobile?: boolean | null
+          isp_org?: string | null
+          lookup_status?: string
+          order_id?: string
+          provider?: string | null
+          resolved_at?: string | null
+          was_under_review?: boolean
+        }
+        Relationships: []
+      }
       meta_ad_product_map: {
         Row: {
           ad_id: string
@@ -2955,6 +3015,7 @@ export type Database = {
         Returns: number
       }
       dispatch_telegram_owner_alert: { Args: { p_body: Json }; Returns: number }
+      ip_geo_refresh: { Args: { p_order_id: string }; Returns: undefined }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
       mark_stockout_waitlist: {

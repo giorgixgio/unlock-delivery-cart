@@ -148,6 +148,13 @@
       "when": 1793137952070,
       "tag": "0020_telegram_operator_summary_and_fulfillment",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793188851236,
+      "tag": "0021_ip_geo_log",
+      "breakpoints": true
     }
   ]
 }
