@@ -1,5 +1,11 @@
 # Roadmap — Courier section
 
+# Roadmap — Telegram scope update
+- [x] Disable lead, daily operator and low-stock Telegram alerts; preserve billing reminders. Live retired requests returned 200/sent:false; billing remains every five minutes, retired schedules inactive.
+- [x] Notify once per store-B manual Onway fulfillment batch and real API send request; no dry-run alerts. Both functions deployed; no real shipments sent for testing.
+- [x] Eight notification-policy tests and five existing shipment tests pass; build clean.
+- [ ] Observe manual/API batch notification on next owner-initiated shipment upload — no real shipment may be sent by the agent.
+
 # Roadmap — Onway webhook
 - [x] Create service-role-only raw callback log with RLS and no operator access.
 - [x] Add GET/POST shared-token callback with background capture, credential redaction and no order/UI changes.
@@ -88,9 +94,9 @@
 - [x] Keep new-lead notifications only; creation trigger requires pending_details, no alert on subsequent completion updates.
 - [x] Send daily operator summary at 19:00 Asia/Tbilisi with canonical calls, first/last recorded activity, handled orders and outcomes; six tests pass, real historical totals verified and live preview returned 200.
 - [x] Notify owner once on courier bulk import applying-to-completed/partial transition, including authenticated actor/file/result counts; real 74-order historical batch preview returned 200 without changing orders.
-- [ ] Observe automatic bulk alert on Eto's next real upload — awaits her next courier file; no real fulfillment performed for testing.
+- [x] Earlier bulk alert observation task superseded by the Onway-only scope update above.
 - [x] Telegram connector linked; bot @Deliveryquestbot, owner chat 6441625882 confirmed with a test message
 - [x] New-order alert trigger + `telegram-alerts` edge function (items, total, COD note)
 - [x] Low-stock digest every 15 min at ≤50 pieces, 24h re-reminder, gift SKUs excluded — live run delivered 40-product alert
 - [x] Billing reminders now also send to Telegram as SMS backup; milestone advances when either channel delivers
-- [ ] New-order alert seen from a real customer order (code path tested only via the low-stock route)
+- [x] New-order alert observation retired — owner disabled all lead/order Telegram alerts.

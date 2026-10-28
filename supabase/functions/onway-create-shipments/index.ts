@@ -2,6 +2,8 @@
 // Every Onway call goes through the static-IP proxy.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
+import { sendTelegramMessage } from "../_shared/telegram.ts";
+import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import {
   alreadySent, buildOnwayPayload, looksSuccessful, maskPayload, missingFields, parseTracking,
 } from "./payload.ts";
@@ -188,10 +190,10 @@ Deno.serve(async (req) => {
     }
 
     // --- Real send: one by one, lock first, keep going on errors ---
-    const results: unknown[] = [];
+    const results: { ok: boolean; skipped?: boolean; [key: string]: unknown }[] = [];
     for (const b of built) {
       const base = { order_id: b.order.id, order_number: b.order.public_order_number };
-      if (b.missing.length) { results.push({ ...base, ok: false, error: `missing: ${b.missing.join(", ")}` }); continue; }
+      if (b.missing.length) { results.push({ ...base, ok: false, skipped: true, error: `missing: ${b.missing.join(", ")}` }); continue; }
       // Atomic lock: only one request can claim an unsent order.
       const { data: locked } = await supabase.from("orders")
         .update({ onway_sent_at: new Date().toISOString(), onway_api_status: "sending" })
@@ -213,6 +215,18 @@ Deno.serve(async (req) => {
         onway_api_status: ok ? "sent" : "failed", ...(tracking ? { onway_tracking: tracking } : {}),
       }).eq("id", b.order.id);
       results.push({ ...base, ok, http_status: status, tracking, response_raw: raw.slice(0, 1000), error: err });
+    }
+    // One owner notification per actual API batch, never per order or preview.
+    const counts = onwayBatchCounts(results);
+    if (counts.attempted > 0) {
+      const notify = async () => {
+        try {
+          const sent = await sendTelegramMessage(`📦 Onway — API ატვირთვა\n👤 ${actor}\n` +
+            `შეკვეთები: ${counts.attempted}\n✅ წარმატებული პასუხი: ${counts.sent}\n⚠️ შესამოწმებელი/შეცდომა: ${counts.failed}`);
+          if (!sent.ok) console.error("Onway batch Telegram alert failed", sent.status, sent.error);
+        } catch (error) { console.error("Onway batch Telegram alert failed", error); }
+      };
+      EdgeRuntime.waitUntil(notify());
     }
     return json({ dry_run: false, skipped_already_sent: skipped, results });
   } catch (e) {

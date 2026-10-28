@@ -169,6 +169,13 @@
       "when": 1793191852568,
       "tag": "0023_onway_api_shipments",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793200295778,
+      "tag": "0024_telegram_billing_and_onway_only",
+      "breakpoints": true
     }
   ]
 }
