@@ -383,7 +383,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast, itemCount]);
+  }, [submitting, form, isTbilisi, items, total, shippingFee, orderTotal, isLandingPage, landingSlug, clearCart, dismissCart, navigate, toast, itemCount, cities, citiesLoading, selectedCityId]);
 
   // ── Urgency ticker state (before early returns for hooks rules) ──
   const URGENCY_MSGS = useMemo(() => [
