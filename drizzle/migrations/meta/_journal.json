@@ -176,6 +176,13 @@
       "when": 1793200295778,
       "tag": "0024_telegram_billing_and_onway_only",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793204128186,
+      "tag": "0025_onway_regions_cache",
+      "breakpoints": true
     }
   ]
 }

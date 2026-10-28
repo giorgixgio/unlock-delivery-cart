@@ -1257,6 +1257,56 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_region_aliases: {
+        Row: {
+          alias: string
+          refreshed_at: string
+          region_id: string
+        }
+        Insert: {
+          alias: string
+          refreshed_at?: string
+          region_id: string
+        }
+        Update: {
+          alias?: string
+          refreshed_at?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onway_region_aliases_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "onway_regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onway_regions: {
+        Row: {
+          active: boolean
+          fields: Json
+          id: string
+          name: string
+          refreshed_at: string
+        }
+        Insert: {
+          active?: boolean
+          fields?: Json
+          id: string
+          name: string
+          refreshed_at?: string
+        }
+        Update: {
+          active?: boolean
+          fields?: Json
+          id?: string
+          name?: string
+          refreshed_at?: string
+        }
+        Relationships: []
+      }
       onway_webhook_log: {
         Row: {
           body_json: Json | null
