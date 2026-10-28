@@ -1218,6 +1218,39 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_webhook_log: {
+        Row: {
+          body_json: Json | null
+          body_raw: string | null
+          headers: Json
+          id: string
+          method: string
+          query: Json
+          received_at: string
+          source_ip: string | null
+        }
+        Insert: {
+          body_json?: Json | null
+          body_raw?: string | null
+          headers?: Json
+          id?: string
+          method: string
+          query?: Json
+          received_at?: string
+          source_ip?: string | null
+        }
+        Update: {
+          body_json?: Json | null
+          body_raw?: string | null
+          headers?: Json
+          id?: string
+          method?: string
+          query?: Json
+          received_at?: string
+          source_ip?: string | null
+        }
+        Relationships: []
+      }
       operator_order_sessions: {
         Row: {
           actions_count: number

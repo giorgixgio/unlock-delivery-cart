@@ -1,5 +1,11 @@
 # Roadmap — Courier section
 
+# Roadmap — Onway webhook
+- [x] Create service-role-only raw callback log with RLS and no operator access.
+- [x] Add GET/POST shared-token callback with background capture, credential redaction and no order/UI changes.
+- [x] Six callback tests passed; deployed GET/POST without JWT return 401 for missing/wrong tokens; verified RLS, zero policies, no anon/operator grants and service-role insert access.
+- [ ] Verify live authorized capture — awaiting user-created shared ONWAY_WEBHOOK_TOKEN in Project Settings → Secrets; generated secrets cannot be revealed to Onway.
+
 # Roadmap — Billing reminder payment correction
 - [x] Reject implausible post-payment balance rebounds and rearm on substantial payments; five tests pass, deployed, restored the observed $185.17 post-payment baseline, and live dry-run blocked the stale $352.94 response without sending an SMS.
 
