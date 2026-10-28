@@ -41,6 +41,7 @@ Deno.serve(async req => {
     const { data: aliases } = await db.from("city_aliases").select("alias_normalized,canonical_city");
     const candidates = [...regions.map(r => ({ alias_normalized: r.name, canonical_city: r.name })), ...(aliases || [])];
     const byName = new Map<string, Set<string>>();
+    const exactNames = new Map(regions.map(r => [cityKey(r.name), r.id]));
     for (const r of regions) for (const name of [r.name, r.name.split(">").at(-1)]) {
       const k = cityKey(name);
       const ids = byName.get(k) || new Set<string>(); ids.add(r.id); byName.set(k, ids);
@@ -48,7 +49,7 @@ Deno.serve(async req => {
     const maps = new Map<string, { alias: string; region_id: string; refreshed_at: string }>();
     for (const a of candidates) {
       const ids = byName.get(cityKey(a.canonical_city));
-      const regionId = ids?.size === 1 ? [...ids][0] : null;
+      const regionId = exactNames.get(cityKey(a.canonical_city)) || (ids?.size === 1 ? [...ids][0] : null);
       if (regionId) maps.set(cityKey(a.alias_normalized), { alias: cityKey(a.alias_normalized), region_id: regionId, refreshed_at: now });
     }
     if (maps.size) {

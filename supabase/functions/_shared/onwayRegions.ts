@@ -25,6 +25,8 @@ export function uniqueRegionMatch(city: string, regions: OnwayRegion[], aliases:
   const key = cityKey(city);
   if (!key) return null;
   const canonical = new Set([key, ...aliases.filter(a => cityKey(a.alias_normalized) === key).map(a => cityKey(a.canonical_city))]);
-  const matches = regions.filter(r => canonical.has(cityKey(r.name)) || canonical.has(cityKey(r.name.split(">").at(-1))));
+  const exact = regions.filter(r => canonical.has(cityKey(r.name)));
+  if (exact.length === 1) return exact[0];
+  const matches = regions.filter(r => canonical.has(cityKey(r.name.split(">").at(-1))));
   return matches.length === 1 ? matches[0] : null;
 }
