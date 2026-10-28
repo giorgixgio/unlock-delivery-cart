@@ -42,7 +42,7 @@ Deno.serve(async req => {
     const candidates = [...regions.map(r => ({ alias_normalized: r.name, canonical_city: r.name })), ...(aliases || [])];
     const maps = new Map<string, { alias: string; region_id: string; refreshed_at: string }>();
     for (const a of candidates) {
-      const match = uniqueRegionMatch(a.alias_normalized, regions, aliases || []);
+      const match = uniqueRegionMatch(a.canonical_city, regions);
       if (match) maps.set(cityKey(a.alias_normalized), { alias: cityKey(a.alias_normalized), region_id: match.id, refreshed_at: now });
     }
     if (maps.size) {
