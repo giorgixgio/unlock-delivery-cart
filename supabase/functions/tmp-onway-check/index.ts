@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
 import {
   alreadySent, buildOnwayPayload, looksSuccessful, maskPayload, missingFields, parseTracking,
-} from "../onway-create-shipments/payload.ts";
+} from "./payload.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
