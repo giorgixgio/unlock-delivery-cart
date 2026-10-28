@@ -7,14 +7,11 @@ import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
 import { cityKey } from "../_shared/onwayRegions.ts";
 import { z } from "npm:zod@3";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
-  alreadySent, buildOnwayPayload, looksSuccessful, maskPayload, missingFields, parseTracking,
+  alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking,
 } from "./payload.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 const ONWAY_BASE = "https://onway.ge/index.php?route=";
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -28,9 +25,10 @@ function cmpBin(a: string, b: string): number {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !serviceKey || !anonKey) return json({error:"Configuration missing"},500);
 
     // --- Admin auth (same as export-courier) ---
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -185,7 +183,7 @@ Deno.serve(async (req) => {
     targets = targets.filter((a) => !alreadySent(a.order) || retryAllowed(a.order));
 
     // --- Normalize safety net (same as export-courier) ---
-    for (const t of dryRun ? [] : targets) {
+    for (const t of dryRun ? [] : targets.filter(t=>!reasonsFor(t.order).length)) {
       const o = t.order;
       if (String(o.normalized_city || "").trim() && String(o.normalized_address || "").trim()) continue;
       try {
@@ -195,11 +193,8 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ order_id: o.id }),
         });
         if (!r.ok) continue;
-        const { data: f } = await supabase.from("orders").select("normalized_city, normalized_address, raw_city, raw_address").eq("id", o.id).single();
-        if (f) Object.assign(o, {
-          normalized_city: f.normalized_city ?? o.normalized_city, normalized_address: f.normalized_address ?? o.normalized_address,
-          raw_city: f.raw_city ?? o.raw_city, raw_address: f.raw_address ?? o.raw_address,
-        });
+        const { data: f } = await supabase.from("orders").select("*").eq("id", o.id).single();
+        if (f) Object.assign(o, f);
       } catch { /* best effort */ }
     }
 

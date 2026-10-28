@@ -20,7 +20,7 @@ import PredictiveInput from "@/components/PredictiveInput";
 import OnwayCityPicker from "@/components/OnwayCityPicker";
 import { useOnwayCities } from "@/hooks/useOnwayCities";
 import { selectedCityValid } from "@/lib/onwayCities";
-import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
+import { getAddressSuggestions } from "@/lib/addressPredictor";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 
 const schema = z.object({
@@ -61,7 +61,7 @@ const AddressFormModal = ({
   onComplete,
 }: AddressFormModalProps) => {
   const [form, setForm] = useState({ region: "", address: "" });
-  const { cities, loading: citiesLoading } = useOnwayCities();
+  const { cities, loading: citiesLoading, error: citiesError } = useOnwayCities();
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -131,7 +131,7 @@ const AddressFormModal = ({
   };
 
   const handleSubmit = async () => {
-    if (cities.length && !selectedCityValid(cities, selectedCityId, form.region)) {
+    if (citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) {
       setErrors({ region: "აირჩიეთ ქალაქი სიიდან" }); cityRef.current?.focus(); return;
     }
     const parsed = schema.safeParse(form);
@@ -276,13 +276,10 @@ const AddressFormModal = ({
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
-                    {cities.length > 0 ? <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                    <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
                       onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
                       onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
-                      error={errors.region} className={inputClass} inputRef={cityRef} /> : <PredictiveInput
-                      value={form.region} onChange={val => handleChange("region", val)}
-                      onSelect={s => handleChange("region", s.text)} getSuggestions={input => getCitySuggestions(input, historicalCities)}
-                      error={errors.region} className={inputClass} inputRef={cityRef} placeholder="მაგ: თბილისი / ქუთაისი" />}
+                      error={citiesError ? "ქალაქების სია ვერ ჩაიტვირთა. სცადეთ თავიდან." : errors.region} className={inputClass} inputRef={cityRef} />
 
                   </div>
                 </div>

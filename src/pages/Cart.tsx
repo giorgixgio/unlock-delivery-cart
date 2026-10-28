@@ -295,7 +295,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       return;
     }
 
-    if (citiesLoading || (cities.length && !selectedCityValid(cities, selectedCityId, form.region))) {
+    if (citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) {
       setErrors({ region: "აირჩიეთ ქალაქი სიიდან" }); setIsEditing(true); cityInputRef.current?.focus(); return;
     }
     const result = orderSchema.safeParse(form);
@@ -330,7 +330,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
   // Actual order submission (called from modal confirm or auto-confirm)
   const handleSubmitOrder = useCallback(async () => {
-    if (submitting || citiesLoading || (cities.length && !selectedCityValid(cities, selectedCityId, form.region))) return;
+    if (submitting || citiesLoading || !selectedCityValid(cities, selectedCityId, form.region)) return;
     setSubmitting(true);
     try {
       const order = await createOrder({
@@ -593,13 +593,10 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                       <div>
                         <Label className="text-xs font-bold text-foreground">ქალაქი / რეგიონი</Label>
                         <div className="mt-0.5">
-                          {cities.length > 0 ? <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                          <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
                             onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
                             onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
-                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} /> : <PredictiveInput
-                            value={form.region} onChange={val => handleChange("region", val)}
-                            onSelect={s => handleChange("region", s.text)} getSuggestions={input => getCitySuggestions(input, historicalCities)}
-                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} placeholder="მაგ: თბილისი" />}
+                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} />
 
                         </div>
                       </div>
