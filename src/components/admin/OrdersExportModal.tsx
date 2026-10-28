@@ -7,6 +7,7 @@ import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { classifyCity, loadCityRef } from "@/lib/cityQa";
 import CityTypoCorrectionModal, { TypoRow } from "@/components/admin/CityTypoCorrectionModal";
 import { useStore } from "@/contexts/StoreContext";
+import OnwayApiSendModal from "@/components/admin/OnwayApiSendModal";
 
 type ExportStore = "A" | "B";
 
@@ -79,6 +80,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
   // Per-export store choice. Inherits the global toggle when it's a specific
   // store; "All Stores" means the operator must pick one before exporting.
   const [exportStore, setExportStore] = useState<ExportStore | null>(null);
+  const [onwayApiOpen, setOnwayApiOpen] = useState(false);
 
   useEffect(() => {
     if (open) setExportStore(activeStore === "A" || activeStore === "B" ? activeStore : null);
@@ -330,6 +332,12 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
                     <Download className="w-4 h-4 mr-2" />
                     {downloading ? "Exporting..." : `Export ${preview.count} → ${courier === "onway" ? "ONWAY" : "TRACKINGS.GE"}`}
                   </Button>
+                  {exportStore === "B" && courier === "onway" && (
+                    <Button variant="secondary" onClick={() => setOnwayApiOpen(true)} className="flex-1">
+                      <Truck className="w-4 h-4 mr-2" />
+                      Send to Onway (API)
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -339,6 +347,7 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
         </div>
       </div>
 
+      <OnwayApiSendModal open={onwayApiOpen} onClose={() => setOnwayApiOpen(false)} />
       <CityTypoCorrectionModal
         open={typoModalOpen}
         rows={typoRows}

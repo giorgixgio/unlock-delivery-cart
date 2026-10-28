@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.onway-webhook]
 verify_jwt = false
+
+[functions.onway-create-shipments]
+verify_jwt = false

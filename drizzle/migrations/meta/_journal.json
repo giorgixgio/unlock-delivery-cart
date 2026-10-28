@@ -162,6 +162,13 @@
       "when": 1793189658936,
       "tag": "0022_onway_webhook_log",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793191852568,
+      "tag": "0023_onway_api_shipments",
+      "breakpoints": true
     }
   ]
 }
