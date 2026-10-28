@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
-import { parseRegions, cityKey, uniqueRegionMatch } from "../_shared/onwayRegions.ts";
+import { parseRegions, cityKey } from "../_shared/onwayRegions.ts";
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 Deno.serve(async req => {
@@ -40,10 +40,16 @@ Deno.serve(async req => {
     if (retireError) throw new Error("Could not retire old regions");
     const { data: aliases } = await db.from("city_aliases").select("alias_normalized,canonical_city");
     const candidates = [...regions.map(r => ({ alias_normalized: r.name, canonical_city: r.name })), ...(aliases || [])];
+    const byName = new Map<string, Set<string>>();
+    for (const r of regions) for (const name of [r.name, r.name.split(">").at(-1)]) {
+      const k = cityKey(name);
+      const ids = byName.get(k) || new Set<string>(); ids.add(r.id); byName.set(k, ids);
+    }
     const maps = new Map<string, { alias: string; region_id: string; refreshed_at: string }>();
     for (const a of candidates) {
-      const match = uniqueRegionMatch(a.canonical_city, regions);
-      if (match) maps.set(cityKey(a.alias_normalized), { alias: cityKey(a.alias_normalized), region_id: match.id, refreshed_at: now });
+      const ids = byName.get(cityKey(a.canonical_city));
+      const regionId = ids?.size === 1 ? [...ids][0] : null;
+      if (regionId) maps.set(cityKey(a.alias_normalized), { alias: cityKey(a.alias_normalized), region_id: regionId, refreshed_at: now });
     }
     if (maps.size) {
       const { error: mapError } = await db.from("onway_region_aliases").upsert([...maps.values()]);

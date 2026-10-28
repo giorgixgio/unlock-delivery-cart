@@ -6,12 +6,17 @@ let cached: Promise<CityOption[]> | null = null;
 export function loadOnwayCities(refresh = false): Promise<CityOption[]> {
   if (refresh) cached = null;
   if (!cached) cached = (async () => {
-    const [{ data, error }, { data: aliases }] = await Promise.all([
-      supabase.from("onway_regions").select("id,name").eq("active", true).order("name").limit(1000),
-      supabase.from("onway_region_aliases").select("alias,region_id").limit(1000),
-    ]);
-    if (error) { cached = null; throw error; }
-    return (data || []).map(r => ({ ...r, aliases: (aliases || []).filter(a => a.region_id === r.id).map(a => a.alias) }));
+    const rows: { id: string; name: string }[] = [];
+    const aliases: { alias: string; region_id: string }[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.from("onway_regions").select("id,name").eq("active", true).order("id").range(offset, offset + 999);
+      if (error) { cached = null; throw error; } rows.push(...(data || [])); if (!data || data.length < 1000) break;
+    }
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.from("onway_region_aliases").select("alias,region_id").order("alias").range(offset, offset + 999);
+      if (error) break; aliases.push(...(data || [])); if (!data || data.length < 1000) break;
+    }
+    return rows.map(r => ({ ...r, aliases: aliases.filter(a => a.region_id === r.id).map(a => a.alias) })).sort((a,b) => a.name.localeCompare(b.name));
   })();
   return cached;
 }
