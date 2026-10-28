@@ -1218,6 +1218,45 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_api_log: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          endpoint: string
+          error_message: string | null
+          http_status: number | null
+          id: string
+          order_id: string | null
+          parsed_tracking: string | null
+          request_masked: Json
+          response_raw: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          endpoint: string
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          order_id?: string | null
+          parsed_tracking?: string | null
+          request_masked?: Json
+          response_raw?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          endpoint?: string
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          order_id?: string | null
+          parsed_tracking?: string | null
+          request_masked?: Json
+          response_raw?: string | null
+        }
+        Relationships: []
+      }
       onway_webhook_log: {
         Row: {
           body_json: Json | null
@@ -1452,6 +1491,9 @@ export type Database = {
           normalized_address: string | null
           normalized_city: string | null
           notes_customer: string | null
+          onway_api_status: string | null
+          onway_sent_at: string | null
+          onway_tracking: string | null
           operator_review_status: string | null
           operator_viewed_at: string | null
           operator_viewed_by: string | null
@@ -1534,6 +1576,9 @@ export type Database = {
           normalized_address?: string | null
           normalized_city?: string | null
           notes_customer?: string | null
+          onway_api_status?: string | null
+          onway_sent_at?: string | null
+          onway_tracking?: string | null
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
@@ -1616,6 +1661,9 @@ export type Database = {
           normalized_address?: string | null
           normalized_city?: string | null
           notes_customer?: string | null
+          onway_api_status?: string | null
+          onway_sent_at?: string | null
+          onway_tracking?: string | null
           operator_review_status?: string | null
           operator_viewed_at?: string | null
           operator_viewed_by?: string | null
