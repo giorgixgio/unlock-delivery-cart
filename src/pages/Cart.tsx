@@ -19,6 +19,9 @@ import { createOrder } from "@/lib/orderService";
 import { trackEvent } from "@/lib/analytics";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/metaPixel";
 import { loadCustomerInfo, saveCustomerInfo, clearCustomerInfo } from "@/lib/customerStore";
+import OnwayCityPicker from "@/components/OnwayCityPicker";
+import { useOnwayCities } from "@/hooks/useOnwayCities";
+import { selectedCityValid } from "@/lib/onwayCities";
 import PredictiveInput from "@/components/PredictiveInput";
 import { getCitySuggestions, getAddressSuggestions } from "@/lib/addressPredictor";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,6 +98,8 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
   const [form, setForm] = useState({ phone: "", region: "", address: "" });
+  const { cities, loading: citiesLoading } = useOnwayCities();
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -157,6 +162,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   //    so we can show them the "we already have your address" summary card.
   const lookedUpPhonesRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    return; // No address prefill: the customer explicitly selects their destination.
     if (!isOpen) return;
     if (isRecognized) return;
     if (!isValidGeorgianPhone(form.phone)) return;
@@ -239,11 +245,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     if (saved && (saved.phone || saved.name)) {
       setForm({
         phone: saved.phone || "",
-        region: saved.region || "",
-        address: saved.address || "",
+        region: "",
+        address: "",
       });
-      setIsRecognized(true);
-      if (saved.region) {
+      setIsRecognized(false);
+      if (false && saved.region) {
         const lower = saved.region.trim().toLowerCase();
         setManualLocation(lower === "თბილისი" || lower === "tbilisi");
       }
@@ -331,6 +337,9 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
       return;
     }
 
+    if (citiesLoading || (cities.length && !selectedCityValid(cities, selectedCityId, form.region))) {
+      setErrors({ region: "აირჩიეთ ქალაქი სიიდან" }); setIsEditing(true); cityInputRef.current?.focus(); return;
+    }
     const result = orderSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -359,11 +368,11 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
 
     // Validation passed — open confirmation modal
     setConfirmModalOpen(true);
-  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed]);
+  }, [canCheckout, closeCart, handleCheckoutIntent, isRecognized, form, isEditing, phoneRevealed, cities, citiesLoading, selectedCityId]);
 
   // Actual order submission (called from modal confirm or auto-confirm)
   const handleSubmitOrder = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || citiesLoading || (cities.length && !selectedCityValid(cities, selectedCityId, form.region))) return;
     setSubmitting(true);
     try {
       const order = await createOrder({
@@ -617,7 +626,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                   <div
                     className="transition-all duration-[280ms] ease-out overflow-hidden"
                     style={{
-                      maxHeight: phoneRevealed ? "350px" : "0px",
+                      maxHeight: phoneRevealed ? "650px" : "0px",
                       opacity: phoneRevealed ? 1 : 0,
                       transform: phoneRevealed ? "translateY(0)" : "translateY(6px)",
                     }}
@@ -626,16 +635,14 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
                       <div>
                         <Label className="text-xs font-bold text-foreground">ქალაქი / რეგიონი</Label>
                         <div className="mt-0.5">
-                          <PredictiveInput
-                            value={form.region}
-                            onChange={(val) => handleChange("region", val)}
-                            onSelect={(s) => handleChange("region", s.text)}
-                            onConfirm={handleCityConfirm}
-                            getSuggestions={(input) => getCitySuggestions(input, historicalCities)}
-                            placeholder="მაგ: თბილისი"
-                            error={errors.region}
-                            inputRef={cityInputRef}
-                          />
+                          {cities.length > 0 ? <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                            onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
+                            onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
+                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} /> : <PredictiveInput
+                            value={form.region} onChange={val => handleChange("region", val)}
+                            onSelect={s => handleChange("region", s.text)} getSuggestions={input => getCitySuggestions(input, historicalCities)}
+                            onConfirm={handleCityConfirm} error={errors.region} inputRef={cityInputRef} placeholder="მაგ: თბილისი" />}
+
                         </div>
                       </div>
                       <div>
