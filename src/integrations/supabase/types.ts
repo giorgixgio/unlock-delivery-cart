@@ -1257,6 +1257,41 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_order_reviews: {
+        Row: {
+          decision: string
+          order_id: string
+          retry_permitted: boolean
+          reviewed_at: string
+          reviewed_by: string
+          reviewed_version: number
+        }
+        Insert: {
+          decision: string
+          order_id: string
+          retry_permitted?: boolean
+          reviewed_at?: string
+          reviewed_by: string
+          reviewed_version: number
+        }
+        Update: {
+          decision?: string
+          order_id?: string
+          retry_permitted?: boolean
+          reviewed_at?: string
+          reviewed_by?: string
+          reviewed_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onway_order_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onway_region_aliases: {
         Row: {
           alias: string
@@ -1306,6 +1341,41 @@ export type Database = {
           refreshed_at?: string
         }
         Relationships: []
+      }
+      onway_review_events: {
+        Row: {
+          actor: string
+          created_at: string
+          decision: string
+          id: string
+          order_id: string
+          payload: Json
+        }
+        Insert: {
+          actor: string
+          created_at?: string
+          decision: string
+          id?: string
+          order_id: string
+          payload?: Json
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          decision?: string
+          id?: string
+          order_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onway_review_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onway_webhook_log: {
         Row: {
@@ -1542,6 +1612,7 @@ export type Database = {
           normalized_city: string | null
           notes_customer: string | null
           onway_api_status: string | null
+          onway_error_text: string | null
           onway_sent_at: string | null
           onway_tracking: string | null
           operator_review_status: string | null
@@ -1627,6 +1698,7 @@ export type Database = {
           normalized_city?: string | null
           notes_customer?: string | null
           onway_api_status?: string | null
+          onway_error_text?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
@@ -1712,6 +1784,7 @@ export type Database = {
           normalized_city?: string | null
           notes_customer?: string | null
           onway_api_status?: string | null
+          onway_error_text?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
@@ -3164,6 +3237,24 @@ export type Database = {
           sku: string
           title: string
         }[]
+      }
+      onway_claim_shipment: {
+        Args: { p_order_id: string; p_version: number }
+        Returns: boolean
+      }
+      onway_review_save: {
+        Args: {
+          p_actor: string
+          p_address: string
+          p_decision: string
+          p_name: string
+          p_order_id: string
+          p_phone: string
+          p_region_id: string
+          p_tracking?: string
+          p_version: number
+        }
+        Returns: Json
       }
       record_stockout_attempt: {
         Args: {
