@@ -26,7 +26,7 @@ async function callFn(body: Record<string, unknown>) {
 }
 
 /** TrendMart-only Onway API sender. Always shows a dry-run preview before any real send. */
-const OnwayApiSendModal = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose: () => void; orderId?: string }) => {
   const [dry, setDry] = useState<DryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -37,7 +37,7 @@ const OnwayApiSendModal = ({ open, onClose }: { open: boolean; onClose: () => vo
 
   const load = async () => {
     setLoading(true); setErr(null);
-    try { setDry(await callFn({ dry_run: true })); } catch (e: any) { setErr(e?.message || String(e)); }
+    try { setDry(await callFn({ dry_run: true, ...(orderId ? { order_ids: [orderId] } : {}) })); } catch (e: any) { setErr(e?.message || String(e)); }
     finally { setLoading(false); }
   };
   useEffect(() => { if (open) { setResults(null); setDry(null); load(); } }, [open]);
@@ -48,7 +48,8 @@ const OnwayApiSendModal = ({ open, onClose }: { open: boolean; onClose: () => vo
     if (!window.confirm(`Really send ${n} order(s) to Onway? This creates real shipments.`)) return;
     busy.current = true; setSending(true); setErr(null);
     try {
-      const data = await callFn({ dry_run: false, ...(orderIds ? { order_ids: orderIds } : {}) });
+      const ids = orderIds ?? (orderId ? [orderId] : null);
+      const data = await callFn({ dry_run: false, ...(ids ? { order_ids: ids } : {}) });
       setResults(data.results || []);
       await load();
     } catch (e: any) { setErr(e?.message || String(e)); }
@@ -63,6 +64,9 @@ const OnwayApiSendModal = ({ open, onClose }: { open: boolean; onClose: () => vo
           <h2 className="text-lg font-bold">Send to Onway (API) — TrendMart</h2>
           <button onClick={onClose} className="p-1 hover:bg-muted rounded"><X className="w-5 h-5" /></button>
         </div>
+        {dry && orderId && dry.count === 0 && dry.skipped_already_sent.length === 0 && (
+          <p className="text-sm text-destructive">This order can't be sent: it must be a confirmed, unfulfilled TrendMart order.</p>
+        )}
         <p className="text-xs text-muted-foreground">Preview only until you press a send button. Orders already sent are skipped.</p>
 
         {err && <p className="text-sm text-destructive">{err}</p>}
@@ -110,10 +114,10 @@ const OnwayApiSendModal = ({ open, onClose }: { open: boolean; onClose: () => vo
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-              <Button onClick={() => send(null)} disabled={sending || !dry.ready_count} className="flex-1">
+              {!orderId && <Button onClick={() => send(null)} disabled={sending || !dry.ready_count} className="flex-1">
                 {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                 Send {dry.ready_count} to Onway
-              </Button>
+              </Button>}
             </div>
           </>
         )}

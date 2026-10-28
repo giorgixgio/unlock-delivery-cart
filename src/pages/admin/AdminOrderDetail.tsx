@@ -19,6 +19,7 @@ import EditableItemRow from "@/components/admin/EditableItemRow";
 import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
 import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
+import OnwayApiSendModal from "@/components/admin/OnwayApiSendModal";
 
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -135,6 +136,7 @@ const AdminOrderDetail = () => {
   const { toast } = useToast();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [onwayOpen, setOnwayOpen] = useState(false);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1165,6 +1167,12 @@ const AdminOrderDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {order && order.is_confirmed && !order.is_fulfilled && (
+        <div className="px-4 md:px-6 pb-4">
+          <Button variant="outline" size="lg" onClick={() => setOnwayOpen(true)}>Send this order to Onway (API)</Button>
+          <OnwayApiSendModal open={onwayOpen} onClose={() => setOnwayOpen(false)} orderId={order.id} />
+        </div>
+      )}
       {order && (
         <div className="px-4 md:px-6 pb-6">
           <CourierHistorySection orderId={order.id} trackingNumber={order.tracking_number} />
