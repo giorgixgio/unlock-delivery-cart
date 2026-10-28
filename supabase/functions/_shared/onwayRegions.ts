@@ -9,7 +9,7 @@ export function parseRegions(raw: string): OnwayRegion[] {
     if (!value || typeof value !== "object") return;
     if (Array.isArray(value)) { value.forEach(walk); return; }
     const row = value as Record<string, unknown>;
-    const id = row.region_id ?? row.city_id ?? row.id;
+    const id = row.zone_id ?? row.region_id ?? row.city_id ?? row.id;
     const name = row.name ?? row.region_name ?? row.city_name ?? row.title;
     if ((typeof id === "string" || typeof id === "number") && typeof name === "string" && name.trim()) {
       found.set(String(id), { id: String(id), name: name.trim(), fields: row });
@@ -25,6 +25,6 @@ export function uniqueRegionMatch(city: string, regions: OnwayRegion[], aliases:
   const key = cityKey(city);
   if (!key) return null;
   const canonical = new Set([key, ...aliases.filter(a => cityKey(a.alias_normalized) === key).map(a => cityKey(a.canonical_city))]);
-  const matches = regions.filter(r => canonical.has(cityKey(r.name)));
+  const matches = regions.filter(r => canonical.has(cityKey(r.name)) || canonical.has(cityKey(r.name.split(">").at(-1))));
   return matches.length === 1 ? matches[0] : null;
 }
