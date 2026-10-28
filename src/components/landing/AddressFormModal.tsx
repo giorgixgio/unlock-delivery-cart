@@ -85,59 +85,12 @@ const AddressFormModal = ({
     trackAddressPopupOpened(orderId);
     setForm({ region: "", address: "" });
     setSelectedCityId(null);
-    const saved = loadCustomerInfo();
-    if (false && saved) {
-      setForm((f) => ({
-        ...f,
-        region: saved.region || f.region,
-        address: saved.address || f.address,
-      }));
-      if (saved.region && saved.address) {
-        setSavedAddress({ region: saved.region, address: saved.address });
-      }
-    }
     // Autofocus city field so the keyboard opens on mount.
     const t = setTimeout(() => {
       try { cityRef.current?.focus(); } catch {}
     }, 260);
     return () => clearTimeout(t);
   }, [open, orderId]);
-
-  // Returning-customer lookup by phone from the just-created order.
-  // If we have a previous address on file, pre-fill and show a summary card
-  // so the user sees "we already have your address" and can confirm/edit.
-  useEffect(() => {
-    return; // City selection remains explicit; no previous-address prefill.
-    if (!open || !orderId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: current } = await supabase
-          .from("orders")
-          .select("customer_phone")
-          .eq("id", orderId)
-          .maybeSingle();
-        const phone = (current?.customer_phone || "").replace(/\D/g, "");
-        if (!phone || phone.length < 6) return;
-        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
-          p_phone: phone,
-        });
-        const prev = Array.isArray(data) ? data[0] : data;
-        if (cancelled || !prev) return;
-        const region = prev.normalized_city || prev.region || prev.city || "";
-        const address = prev.normalized_address || prev.address_line1 || "";
-        if (!region && !address) return;
-        setSavedAddress({ region, address });
-        setForm((f) => ({
-          ...f,
-          region: f.region.trim() || region,
-          address: f.address.trim() || address,
-        }));
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [open, orderId]);
-
 
   useEffect(() => {
     if (!open) return;

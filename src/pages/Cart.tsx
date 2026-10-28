@@ -157,45 +157,6 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
     }
   }, [form.phone, phoneRevealed]);
 
-  // ── Returning-customer lookup by phone: if user typed a valid phone but
-  //    has no locally-saved address, pull the latest known address from DB
-  //    so we can show them the "we already have your address" summary card.
-  const lookedUpPhonesRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    return; // No address prefill: the customer explicitly selects their destination.
-    if (!isOpen) return;
-    if (isRecognized) return;
-    if (!isValidGeorgianPhone(form.phone)) return;
-    if (form.region.trim() && form.address.trim()) return;
-    const digits = form.phone.replace(/\D/g, "");
-    const last9 = digits.slice(-9);
-    if (last9.length < 6) return;
-    if (lookedUpPhonesRef.current.has(last9)) return;
-    lookedUpPhonesRef.current.add(last9);
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await (supabase as any).rpc("storefront_get_last_address_by_phone", {
-          p_phone: form.phone,
-        });
-        const row = Array.isArray(data) ? data[0] : data;
-        if (cancelled || !row) return;
-        setForm((f) => ({
-          ...f,
-          region: f.region.trim() || row.region || row.city || "",
-          address: f.address.trim() || row.address_line1 || "",
-        }));
-        if (row.is_tbilisi !== undefined && row.is_tbilisi !== null) {
-          const lower = (row.city || "").trim().toLowerCase();
-          setManualLocation(lower === "თბილისი" || lower === "tbilisi");
-        }
-        setIsRecognized(true);
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [isOpen, form.phone, form.region, form.address, isRecognized, setManualLocation]);
-
-
   // Focus address after city is confirmed (called from PredictiveInput onConfirm)
   const handleCityConfirm = useCallback(() => {
     setTimeout(() => {
@@ -249,10 +210,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
         address: "",
       });
       setIsRecognized(false);
-      if (false && saved.region) {
-        const lower = saved.region.trim().toLowerCase();
-        setManualLocation(lower === "თბილისი" || lower === "tbilisi");
-      }
+
     }
   }, [isOpen, setManualLocation]);
 
