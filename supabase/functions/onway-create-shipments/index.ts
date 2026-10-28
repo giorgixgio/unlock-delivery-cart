@@ -169,7 +169,9 @@ Deno.serve(async (req) => {
       const labelText = `[${a.tag}] ${skuWithQty}`;
       const detail = noteText ? `${labelText} | ${noteText}` : labelText;
       const payload = buildOnwayPayload(order, detail, { username, key });
-      return { order, tag: a.tag, payload, missing: missingFields(payload) };
+      const missing = missingFields(payload);
+      if (!(order.order_items || []).length) missing.push("items");
+      return { order, tag: a.tag, payload, missing };
     });
 
     if (dryRun) {
