@@ -86,8 +86,7 @@ export async function createOrder(input: OrderInput) {
   let inheritedAddress = input.addressLine1 || "";
   let inheritedIsTbilisi = input.isTbilisi ?? false;
   let addressInherited = false;
-  const needsInheritance =
-    (!inheritedCity.trim() || !inheritedAddress.trim()) && !!input.customerPhone;
+  const needsInheritance = false; // Destinations must be explicitly selected; never inherit a prior address.
   if (needsInheritance) {
     try {
       const digits = input.customerPhone.replace(/\D/g, "");

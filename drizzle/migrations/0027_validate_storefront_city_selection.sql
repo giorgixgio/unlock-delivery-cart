@@ -1,0 +1,8 @@
+CREATE OR REPLACE FUNCTION public.validate_storefront_city_selection() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN
+ IF current_user='anon' AND ((TG_OP='INSERT' AND NEW.status IS DISTINCT FROM 'pending_details') OR (TG_OP='UPDATE' AND NEW.city IS DISTINCT FROM OLD.city)) AND NOT EXISTS(SELECT 1 FROM public.onway_regions WHERE active AND name=NEW.city) THEN RAISE EXCEPTION 'Select a valid city from the list'; END IF; RETURN NEW; END; $$;
+CREATE TRIGGER validate_storefront_city_selection BEFORE INSERT OR UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION public.validate_storefront_city_selection();
+CREATE OR REPLACE FUNCTION public.storefront_update_order_address(p_order_id uuid, p_city text, p_region text, p_address_line1 text, p_is_tbilisi boolean, p_address_status text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN
+ IF p_address_status NOT IN ('completed','partial','missing') THEN RAISE EXCEPTION 'invalid address_status'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.onway_regions WHERE active AND name=p_city) THEN RAISE EXCEPTION 'Select a valid city from the list'; END IF;
+ UPDATE public.orders SET city=p_city,region=p_city,address_line1=p_address_line1,raw_city=p_city,raw_address=p_address_line1,is_tbilisi=p_is_tbilisi,status='new',address_status=p_address_status,address_added_at=now(),skipped_address=false WHERE id=p_order_id AND created_at>now()-interval '24 hours' AND coalesce(is_confirmed,false)=false;
+END; $$;
