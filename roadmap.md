@@ -1,5 +1,11 @@
 # Roadmap — Courier section
 
+# Roadmap — Onway regions and review
+- [ ] Fetch and log read-only Onway regions through the proxy; cache and map destinations with refresh support.
+- [ ] Require searchable list-selected cities in customer forms without prefill; show normalized quick-view addresses with raw secondary text.
+- [ ] Hold only flagged auto-confirmed API orders and add Confirmed-tab review block, editable review screen and safe ambiguous-response resolution.
+- [ ] Verify without real Onway mutations; report region coverage and recent held share.
+
 # Roadmap — Telegram scope update
 - [x] Disable lead, daily operator and low-stock Telegram alerts; preserve billing reminders. Live retired requests returned 200/sent:false; billing remains every five minutes, retired schedules inactive.
 - [x] Notify once per store-B manual Onway fulfillment batch and real API send request; no dry-run alerts. Both functions deployed; no real shipments sent for testing.
