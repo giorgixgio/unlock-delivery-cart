@@ -23,7 +23,7 @@ export function useOnwayReview(enabled: boolean) {
     try { const data = await invoke({ action: "review_list", dry_run: true }); setRows(data.orders || []); setError(null); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not load Onway review"); }
   }, [enabled]);
-  useEffect(() => { void refresh(); const timer = setInterval(refresh, 30000); return () => clearInterval(timer); }, [refresh]);
+  useEffect(() => { void refresh(); const timer = setInterval(refresh, 30000); window.addEventListener("onway-batch-updated",refresh); return () => { clearInterval(timer); window.removeEventListener("onway-batch-updated",refresh); }; }, [refresh]);
   return { rows, refresh, error };
 }
 export default function OnwayReviewPanel({ rows, onUpdated }: { rows: OnwayReviewRow[]; onUpdated: () => void }) {
