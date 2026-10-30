@@ -41,7 +41,7 @@ export default function OnwayCityPicker({ value, onChange, onSelect, cities, err
   const other = () => { if (selected) { onChange(""); setEditing(true); setTimeout(() => ref.current?.focus(), 0); } else ref.current?.focus(); setOpen(true); };
 
   return <div ref={wrapRef} className="min-w-0">
-    {selected && !editing && <div className="flex items-center gap-3">
+    {selected && !editing && !chips.some(c => c.id === selected.id) && <div className="mb-1 flex items-center gap-3">
       <span className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-base font-bold text-primary-foreground">✓ {selected.name}</span>
       <button type="button" className="text-sm font-semibold text-primary underline underline-offset-2" onClick={clear}>შეცვლა</button>
     </div>}
@@ -58,6 +58,7 @@ export default function OnwayCityPicker({ value, onChange, onSelect, cities, err
       {chips.map(c => { const on = selected?.id === c.id; return <Button key={c.id} type="button" variant={on ? "default" : "outline"} aria-pressed={on}
         className={chipBase} onMouseDown={e => e.preventDefault()} onClick={() => choose(c)}>{on ? `✓ ${c.name}` : c.name}</Button>; })}
       <Button type="button" variant="outline" className={`${chipBase} border-dashed`} onMouseDown={e => e.preventDefault()} onClick={other}>სხვა ქალაქი / სოფელი 🔍</Button>
+      {selected && !editing && chips.some(c => c.id === selected.id) && <button type="button" className="h-11 px-2 text-sm font-semibold text-primary underline underline-offset-2" onClick={clear}>შეცვლა</button>}
     </div>}
     {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
   </div>;
