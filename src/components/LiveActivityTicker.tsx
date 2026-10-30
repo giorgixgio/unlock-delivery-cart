@@ -21,14 +21,16 @@ const LiveActivityTicker = memo(() => {
   }, []);
 
   return (
-    <div className="bg-foreground/5 border border-border rounded-lg px-3 py-2 mb-3 overflow-hidden">
-      <p
-        className={`text-xs font-semibold text-muted-foreground text-center transition-opacity duration-300 ${
-          fading ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        {message}
-      </p>
+    <div className="flex justify-center" aria-live="polite">
+      <div className="inline-flex items-center gap-2 bg-card/90 backdrop-blur border border-border/60 shadow-soft rounded-full pl-2 pr-4 py-1.5 max-w-full">
+        <span className="relative flex w-2.5 h-2.5 flex-shrink-0">
+          <span className="absolute inset-0 rounded-full bg-success opacity-60 animate-ping" />
+          <span className="relative w-2.5 h-2.5 rounded-full bg-success" />
+        </span>
+        <p className={`text-xs font-semibold text-foreground truncate transition-all duration-300 ${fading ? "opacity-0 -translate-y-1" : "opacity-100 translate-y-0"}`}>
+          {message}
+        </p>
+      </div>
     </div>
   );
 });
