@@ -6,11 +6,20 @@ import CustomerRequestsPanel from "./CustomerRequestsPanel";
 /** Tracking link, page views, operator rating and customer requests for one order. */
 export default function OrderTrackingInfoCard({ order }: { order: any }) {
   const [fb, setFb] = useState<{ stars: number; comment: string | null; operator: string | null } | null>(null);
+  const [store, setStore] = useState<"BIGMART" | "TRENDMART">("TRENDMART");
+  useEffect(() => {
+    // Same store rule as SMS: any warehouse-B item (or no items) => TrendMart.
+    const skus = (order.order_items || []).map((i: any) => i.sku).filter(Boolean);
+    if (skus.length) supabase.from("products").select("sku, warehouse").in("sku", skus).then(({ data }) => {
+      const wh: Record<string, string> = Object.fromEntries((data || []).map((p: any) => [p.sku, String(p.warehouse ?? "B").toUpperCase()]));
+      setStore(skus.every((k: string) => wh[k] === "A") ? "BIGMART" : "TRENDMART");
+    });
+  }, [order.id]);
   useEffect(() => {
     supabase.from("customer_feedback").select("stars, comment, operator").eq("order_id", order.id).maybeSingle().then(({ data }) => setFb(data as any));
   }, [order.id]);
   if (!order.tracking_token) return null;
-  const domain = order.__store === "BIGMART" ? "bigmart.ge" : "trendmart.ge";
+  const domain = store === "BIGMART" ? "bigmart.ge" : "trendmart.ge";
   const views = Number(order.tracking_view_count || 0);
   return (
     <div className="bg-card rounded-lg p-4 border border-border space-y-2 text-sm">

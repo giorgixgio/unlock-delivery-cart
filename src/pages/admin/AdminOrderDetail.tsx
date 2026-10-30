@@ -20,6 +20,7 @@ import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActi
 import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
 import OnwayApiSendModal from "@/components/admin/OnwayApiSendModal";
+import OrderTrackingInfoCard from "@/components/admin/OrderTrackingInfoCard";
 import OnwayOrderStatusCard from "@/components/admin/OnwayOrderStatusCard";
 
 import {
@@ -1036,6 +1037,7 @@ const AdminOrderDetail = () => {
         <div className="flex justify-between font-bold border-t border-border pt-1.5"><span>Total</span><span>{Number(order.total).toFixed(1)} ₾</span></div>
       </div>
 
+      <OrderTrackingInfoCard order={order} />
       <OnwayOrderStatusCard orderId={order.id} plannedDate={(order as any).onway_planned_date} problemComment={(order as any).onway_problem_comment} problemImage={(order as any).onway_problem_image} />
 
       {/* Fulfillment & Tracking */}
