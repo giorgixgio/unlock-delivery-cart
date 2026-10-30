@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       if (!phone) { await skip("invalid_phone"); continue; }
       if ((type === "call_no_answer" || type === "delivery_failed") && (!settings.num1 || !settings.num2)) { await skip("operator_numbers_missing"); continue; }
 
-      const confirmedAt = new Date(new Date(item.send_after).getTime() - 5 * 60000);
+      const confirmedAt = new Date(item.created_at); // enqueued at confirmation time
       const { text, warnings } = renderSms(type, {
         n: String(order.public_order_number), store: ctx.store, num1: settings.num1, num2: settings.num2,
         product: ctx.product, total: Number(order.total || 0),
