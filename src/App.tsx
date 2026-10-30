@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -66,6 +67,8 @@ import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
 import AdminTestSku from "./pages/admin/AdminTestSku";
 import AdminReviews from './pages/admin/AdminReviews';
 import ReviewForm from './pages/ReviewForm';
+const OrderTracking = lazy(() => import('./pages/OrderTracking'));
+const AdminCustomerFeedback = lazy(() => import('./pages/admin/AdminCustomerFeedback'));
 import StorePolicy from './pages/StorePolicy';
 import StorePolicyFooter from './components/StorePolicyFooter';
 import { STORE_POLICY_LINKS } from '@/lib/storePolicies';
@@ -168,6 +171,7 @@ const App = () => (
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
                     <Route path="/r/:token" element={<ReviewForm />} />
+                    <Route path="/t/:token" element={<Suspense fallback={null}><OrderTracking /></Suspense>} />
                     {/* 5-for-49 bundle builder */}
                     <Route path="/5for39" element={<BundleLanding />} />
                     <Route path="/bundle" element={<BundleLanding />} />
@@ -192,6 +196,7 @@ const App = () => (
                       <Route path="dashboard" element={<AdminDashboard />} />
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="operator-stats" element={<AdminOperatorStats />} />
+                      <Route path="feedback" element={<Suspense fallback={null}><AdminCustomerFeedback /></Suspense>} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />
                       <Route path="batches/:id" element={<AdminBatchDetail />} />

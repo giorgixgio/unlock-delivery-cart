@@ -871,3 +871,8 @@
 .cam-stock-number { animation: cam-stock-tick .45s ease; }
 @keyframes cam-stock-tick { from { transform: translateY(-4px); opacity: .45; } to { transform: translateY(0); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cam-stock-fill { transition: none; } .cam-stock-number { animation: none; } }
+
+/* Order tracking map pins */
+.tracking-pin { width: 18px; height: 18px; border-radius: 9999px; border: 3px solid hsl(var(--background)); box-shadow: 0 0 0 2px hsl(var(--primary)); }
+.tracking-pin-origin { background: hsl(var(--foreground)); }
+.tracking-pin-dest { background: hsl(var(--primary)); }
