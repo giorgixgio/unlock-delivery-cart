@@ -85,16 +85,17 @@ Deno.test("final check catches the broken live text", () => {
 
 // ---- Tracking link ----
 import { deliveryWhenKa, trackingLink } from "./smsTemplates.ts";
-const worst = { n: "123456", store: "TRENDMART" as const, num1: "555111222", num2: "555333444", total: 1234.5, when: "otkhshabats", product: "X".repeat(20), link: "trendmart.ge/t/Ab3x9K" };
+const worst = { n: "123456", store: "TRENDMART" as const, num1: "555111222", num2: "555333444", total: 1234.5, when: "otkhshabats", product: "X".repeat(20), link: "https://trendmart.ge/t/Ab3x9K" };
 Deno.test("link goes on lead/confirmed/out-for-delivery and fits one SMS in the worst case", () => {
   for (const t of ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"] as const) {
     const r = renderSms(t, worst);
     assertEquals(r.skip, undefined, t);
-    assertEquals(r.text.endsWith(" Tvali adevnet: trendmart.ge/t/Ab3x9K TRENDMART"), true, t);
+    assertEquals(r.text.endsWith(" Tvali adevnet: https://trendmart.ge/t/Ab3x9K TRENDMART"), true, t);
     assertEquals(r.text.length <= 160, true, `${t} ${r.text.length}`);
+    assertEquals(r.text.includes("https://"), true, t);
   }
   assertEquals(renderSms("lead_created", { ...worst, num1: "", num2: "" }).text,
-    "Shekveta #123456 migebulia! Operatori male dagirekavt, gtxovt upasukhot. Tvali adevnet: trendmart.ge/t/Ab3x9K TRENDMART");
+    "Shekveta #123456 migebulia! Operatori male dagirekavt, gtxovt upasukhot. Tvali adevnet: https://trendmart.ge/t/Ab3x9K TRENDMART");
 });
 Deno.test("no link on call-us texts", () => {
   for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, worst).text.includes("/t/"), false, t);
@@ -109,7 +110,7 @@ Deno.test("drop order: product first, then link, never two segments", () => {
   assertEquals(r2.text.length <= 160, true);
 });
 Deno.test("domain follows the store", () => {
-  assertEquals(trackingLink("BIGMART", "Ab3x9K"), "bigmart.ge/t/Ab3x9K");
+  assertEquals(trackingLink("BIGMART", "Ab3x9K"), "https://bigmart.ge/t/Ab3x9K");
   assertEquals(trackingLink("TRENDMART", null), null);
 });
 Deno.test("Georgian delivery day uses the same rule", () => {
