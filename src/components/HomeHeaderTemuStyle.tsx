@@ -156,7 +156,7 @@ const SearchOverlay = ({ open, onClose }: { open: boolean; onClose: () => void }
 };
 
 /* ─── Main component ─── */
-const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => {
+const HomeHeaderTemuStyle = ({ headerVisible, showTrustBars = true }: { headerVisible?: boolean; showTrustBars?: boolean }) => {
   const { itemCount } = useCart();
   const { openCart } = useCartOverlay();
   const { t } = useLanguage();
@@ -215,40 +215,41 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
   return (
     <>
       <div className="sticky top-0 z-40" style={slideStyle}>
-        <header className="bg-card text-foreground shadow-sm border-b border-border">
-          <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-14 md:max-w-[1280px] md:px-8 md:h-16">
+        <header className="bg-card/85 backdrop-blur-xl text-foreground shadow-[0_4px_20px_-12px_hsl(var(--foreground)/0.25)] border-b border-border/60">
+          <div className="container max-w-2xl mx-auto px-3 flex items-center gap-2 h-16 md:max-w-[1280px] md:px-8 md:gap-6 md:h-[72px]">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex-shrink-0"
+              aria-label={siteName}
             >
-              <img src={siteLogo || logoSrc} alt={siteName} className="h-10 md:h-12 w-auto" />
+              <img src={siteLogo || logoSrc} alt={siteName} className="h-9 md:h-11 w-auto" width={120} height={44} />
             </button>
 
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex-1 flex items-center gap-2 bg-background/10 rounded-full px-3 h-9 border border-background/20 cursor-text"
+              className="flex-1 flex items-center gap-2 bg-muted/70 hover:bg-muted rounded-2xl px-4 h-11 border border-border/70 cursor-text transition-colors md:max-w-xl md:mx-auto"
             >
-              <Search className="w-4 h-4 opacity-70 flex-shrink-0" />
-              <span className="text-background/50 text-sm">{t("search")}</span>
+              <Search className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-muted-foreground text-sm truncate">{t("search")}</span>
             </button>
 
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-0.5 md:gap-2 flex-shrink-0">
               <CategoryDrawer>
-                <button className="p-1.5 rounded-full hover:bg-background/10 transition-colors" aria-label={t("menu")}>
+                <button className="p-2 rounded-xl hover:bg-muted transition-colors" aria-label={t("menu")}>
                   <Menu className="w-5 h-5" />
                 </button>
               </CategoryDrawer>
-              <button className="p-1.5 rounded-full hover:bg-background/10 transition-colors" aria-label={t("account")}>
+              <button className="hidden sm:inline-flex p-2 rounded-xl hover:bg-muted transition-colors" aria-label={t("account")}>
                 <User className="w-5 h-5" />
               </button>
               <button
                 onClick={() => openCart()}
-                className="p-1.5 rounded-full hover:bg-background/10 transition-colors relative"
+                className="p-2 rounded-xl hover:bg-muted transition-colors relative"
                 aria-label={t("cart")}
               >
                 <ShoppingCart className="w-5 h-5" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 leading-none">
+                  <span className="absolute top-0 right-0 bg-gradient-brand text-primary-foreground text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 leading-none shadow-brand">
                     {itemCount}
                   </span>
                 )}
@@ -258,6 +259,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
         </header>
       </div>
 
+      {showTrustBars && (<>
       {/* ── Trust badges (NOT sticky) ── */}
       <div className="bg-background border-b border-border">
         <div className="container max-w-2xl mx-auto px-3 py-2 flex gap-2 md:max-w-[1280px] md:px-8">
@@ -299,6 +301,7 @@ const HomeHeaderTemuStyle = ({ headerVisible }: { headerVisible?: boolean }) => 
           </TrustModal>
         </div>
       </div>
+      </>)}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );

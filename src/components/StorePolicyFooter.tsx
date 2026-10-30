@@ -1,32 +1,51 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Mail, MapPin, Banknote } from 'lucide-react';
 import { useCartOverlay } from '@/contexts/CartOverlayContext';
 import { getSiteConfig } from '@/config/siteConfig';
 import { STORE_POLICY_LINKS, TRENDMART_SELLER } from '@/lib/storePolicies';
+import logoSrc from '@/assets/logo.png';
 
-const compactLabels: Record<string,string>={
- '/privacy-policy':'კონფიდენციალურობა',
- '/cookie-policy':'ქუქი-ფაილები',
+const labels: Record<string,string>={
  '/terms':'წესები და პირობები',
- '/returns':'დაბრუნება',
- '/shipping':'მიწოდება',
+ '/privacy-policy':'კონფიდენციალურობის პოლიტიკა',
+ '/returns':'დაბრუნების პოლიტიკა',
+ '/shipping':'მიტანის პირობები',
+ '/cookie-policy':'ქუქი-ფაილები',
  '/contact':'კონტაქტი',
+ '/about':'ჩვენს შესახებ',
 };
+const ORDER=['/terms','/privacy-policy','/returns','/shipping','/cookie-policy','/contact','/about'];
 
 export default function StorePolicyFooter() {
  const {pathname}=useLocation();
  const {isCartOpen}=useCartOverlay();
  const visible=pathname==='/' || pathname==='/shop' || pathname.startsWith('/p/') || ['/bundle','/5for39'].includes(pathname) || STORE_POLICY_LINKS.some(link=>link.path===pathname);
  if(getSiteConfig().warehouse!=='B' || !visible || isCartOpen)return null;
- return <footer className="border-t border-border bg-background text-muted-foreground pb-24 pt-3" lang="ka">
-  <div className="max-w-7xl mx-auto px-5 space-y-1">
-   <div className="flex flex-wrap items-center justify-between gap-x-4">
-    <Link to="/contact" className="text-sm font-semibold inline-flex min-h-11 items-center hover:text-foreground">TrendMart</Link>
-    <a className="inline-flex min-h-11 items-center text-sm hover:text-foreground" href={`mailto:${TRENDMART_SELLER.email}`}>{TRENDMART_SELLER.email}</a>
+ const links=ORDER.filter(p=>STORE_POLICY_LINKS.some(l=>l.path===p));
+ return <footer className="bg-card border-t border-border/60 text-muted-foreground pb-28 pt-10" lang="ka">
+  <div className="max-w-[1280px] mx-auto px-5 md:px-8 grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
+   <div>
+    <img src={logoSrc} alt="TrendMart" className="h-16 w-auto -ml-2" width={96} height={64} loading="lazy" />
+    <p className="mt-3 text-sm leading-relaxed max-w-sm">ქართული ონლაინ მაღაზია. მიტანა კურიერით მთელ საქართველოში, გადახდა ნივთის მიღებისას.</p>
    </div>
-   <nav aria-label="მაღაზიის ინფორმაცია" className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-4">
-    {STORE_POLICY_LINKS.map(link=><Link key={link.path} to={link.path} className="text-sm min-h-11 inline-flex items-center break-words hover:text-foreground hover:underline underline-offset-4">{compactLabels[link.path] ?? link.title}</Link>)}
+   <nav aria-label="მაღაზიის ინფორმაცია">
+    <h3 className="text-sm font-bold text-foreground mb-3">ინფორმაცია</h3>
+    <ul className="grid grid-cols-2 md:grid-cols-1 gap-x-4">
+     {links.map(p=><li key={p}><Link to={p} className="text-sm min-h-10 inline-flex items-center hover:text-foreground hover:underline underline-offset-4">{labels[p]}</Link></li>)}
+    </ul>
    </nav>
-   <p className="text-xs leading-5 pt-2 break-words">{TRENDMART_SELLER.name} · ს/ნ {TRENDMART_SELLER.id} · {TRENDMART_SELLER.address}</p>
+   <div>
+    <h3 className="text-sm font-bold text-foreground mb-3">კონტაქტი</h3>
+    <ul className="space-y-2 text-sm">
+     <li className="flex gap-2"><MapPin className="w-4 h-4 text-primary flex-shrink-0 mt-0.5"/>{TRENDMART_SELLER.address}, თბილისი</li>
+     <li className="flex gap-2"><Mail className="w-4 h-4 text-primary flex-shrink-0 mt-0.5"/><a href={`mailto:${TRENDMART_SELLER.email}`} className="hover:text-foreground">{TRENDMART_SELLER.email}</a></li>
+    </ul>
+    <h3 className="text-sm font-bold text-foreground mt-5 mb-2">გადახდის მეთოდი</h3>
+    <span className="inline-flex items-center gap-2 border border-border rounded-xl px-3 h-10 text-sm font-semibold text-foreground"><Banknote className="w-4 h-4 text-success"/>გადახდა მიტანისას</span>
+   </div>
+  </div>
+  <div className="max-w-[1280px] mx-auto px-5 md:px-8 mt-8 pt-5 border-t border-border/60 text-xs leading-5">
+   © {new Date().getFullYear()} {TRENDMART_SELLER.name} · ს/ნ {TRENDMART_SELLER.id} · {TRENDMART_SELLER.address}
   </div>
  </footer>;
 }
