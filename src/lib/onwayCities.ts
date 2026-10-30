@@ -20,10 +20,23 @@ export function loadOnwayCities(refresh = false): Promise<CityOption[]> {
   })();
   return cached;
 }
-export function searchOnwayCities(cities: CityOption[], query: string): CityOption[] {
+/** Quick-select chips under the city field (top cities by recent orders). Edit freely. */
+export const POPULAR_CITIES = ["თბილისი", "ბათუმი", "ქუთაისი", "გორი", "რუსთავი", "ზუგდიდი", "ოზურგეთი", "თელავი"];
+/** Ranks: exact/startsWith city, then villages ("ქალაქი > სოფელი"), then contains. Empty query returns nothing. */
+export function searchOnwayCities(cities: CityOption[], query: string, limit = 8): CityOption[] {
   const q = key(query);
-  return cities.filter(c => !q || [c.name, ...c.aliases].some(s => key(s).includes(q)))
-    .sort((a, b) => Number(key(b.name) === q) - Number(key(a.name) === q)).slice(0, 30);
+  if (!q) return [];
+  const rank = (c: CityOption) => {
+    const keys = [c.name, ...c.aliases].map(key);
+    if (!keys.some(k => k.includes(q))) return -1;
+    const village = c.name.includes(">");
+    if (keys.some(k => k === q)) return village ? 2 : 0;
+    if (!village && keys.some(k => k.startsWith(q))) return 1;
+    if (village) return keys.some(k => k.startsWith(q)) ? 2 : 3;
+    return 4;
+  };
+  return cities.map(c => [c, rank(c)] as const).filter(([, r]) => r >= 0)
+    .sort((a, b) => a[1] - b[1] || a[0].name.localeCompare(b[0].name)).slice(0, limit).map(([c]) => c);
 }
 export function selectedCityValid(cities: CityOption[], id: string | null, name: string) {
   return cities.some(c => c.id === id && c.name === name);
