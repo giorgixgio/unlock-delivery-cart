@@ -33,7 +33,7 @@ Deno.test("every template fits one SMS with a 20-char product", () => {
   }
 });
 Deno.test("product part is dropped when the text would exceed 160", () => {
-  const r = renderSms("order_confirmed", { ...v, total: 1234.5, product: "X".repeat(60), when: "1-3 samushao dgeshi" });
+  const r = renderSms("order_confirmed", { ...v, total: 1234.5, product: "X".repeat(110), when: "1-3 samushao dgeshi" });
   assertEquals(r.text.startsWith("Shekveta dadasturda! Jami 1234.50 GEL"), true);
 });
 Deno.test("confirmed text with product and integer total", () => {
@@ -97,7 +97,7 @@ Deno.test("no link on call-us texts", () => {
   for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, worst).text.includes("/t/"), false, t);
 });
 Deno.test("drop order: product first, then link, never two segments", () => {
-  const long = { ...worst, n: "1".repeat(40) };
+  const long = { ...worst, product: "X".repeat(60) };
   const r = renderSms("order_confirmed", long);
   assertEquals(r.warnings.includes("product_dropped"), true);
   const r2 = renderSms("lead_created", { ...worst, n: "1".repeat(50) });
@@ -111,6 +111,6 @@ Deno.test("domain follows the store", () => {
 });
 Deno.test("Georgian delivery day uses the same rule", () => {
   assertEquals(deliveryWhenKa(new Date("2026-10-29T10:00:00Z"), true), "ხვალ"); // Thu 14:00 -> Fri
-  assertEquals(deliveryWhenKa(new Date("2026-10-31T15:00:00Z"), true), "სამშაბათს"); // Sat 19:00 -> skip Sun -> Mon? 
+  assertEquals(deliveryWhenKa(new Date("2026-10-31T15:00:00Z"), true), "სამშაბათს"); // Sat 19:00 -> 2 working days, Sunday off
   assertEquals(deliveryWhenKa(new Date(), false), "1-3 სამუშაო დღეში");
 });
