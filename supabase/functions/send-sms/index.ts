@@ -1,15 +1,17 @@
 // send-sms — Sender.ge dispatcher with insert-first dedup guard.
 // verify_jwt = false at the platform level; we validate in code:
 //   type=confirmation  → the (orderNumber, phone) pair must match an order
-//                        created within the last 10 minutes. Sends the Latin
-//                        "lead_created" sequence text (logged as lead_created).
+//                        created within the last 10 minutes. Waits up to 60s for
+//                        the auto-confirm decision, then sends lead_created or
+//                        order_auto_confirmed (never both).
 //   type=fulfillment   → the caller must be an active admin (JWT required).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts";
-import { renderSms } from "../_shared/smsTemplates.ts";
-import { loadSmsContext } from "../_shared/smsOrderContext.ts";
+import { deliveryWhen, isTbilisiCity, renderSms } from "../_shared/smsTemplates.ts";
+import { loadSmsContext, STOPPED_STATUSES } from "../_shared/smsOrderContext.ts";
+import { logBlockedSms } from "../_shared/smsGuard.ts";
 
 const PROVIDER = "sender.ge";
 
@@ -20,6 +22,49 @@ function buildContent(type: SmsType, orderNumber: string): string {
     return `შეკვეთა #${orderNumber} მიღებულია. ოპერატორი დაგირეკავთ. BIGMART`;
   }
   return `შეკვეთა #${orderNumber} გზაშია. კურიერი დაგირეკავთ. BIGMART`;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const DECISION_WAIT_MS = 60_000;
+
+/** lead_created or order_auto_confirmed — one per order (unique index sms_logs_first_text_uniq). */
+async function sendFirstText(service: any, apiKey: string, orderNumber: string, destination: string) {
+  const started = Date.now();
+  let ctx = await loadSmsContext(service, { orderNumber });
+  // Scoring sets normalization_confidence together with auto_confirmed; null means undecided.
+  while (ctx && ctx.order.normalization_confidence == null && !STOPPED_STATUSES.has(String(ctx.order.status)) && Date.now() - started < DECISION_WAIT_MS) {
+    await sleep(4000);
+    ctx = await loadSmsContext(service, { orderNumber });
+  }
+  if (!ctx || STOPPED_STATUSES.has(String(ctx.order.status))) return;
+  const auto = ctx.order.auto_confirmed === true;
+  const seqType = auto ? "order_auto_confirmed" : "lead_created";
+  if (!ctx.settings.enabled[seqType]) return;
+  const r = renderSms(seqType, {
+    n: orderNumber, store: ctx.store, num1: ctx.settings.num1, num2: ctx.settings.num2, product: ctx.product,
+    total: Number(ctx.order.total || 0),
+    when: auto ? deliveryWhen(new Date(), isTbilisiCity(ctx.order.normalized_city || ctx.order.city, ctx.order.is_tbilisi)) : undefined,
+  });
+  if (r.warnings.length) console.warn("send-sms", seqType, r.warnings.join(","));
+  if (r.skip) { await logBlockedSms(service, { orderNumber, phone: destination, type: seqType, content: r.text, reason: r.skip }); return; }
+
+  let logId: string | null = null, prior = 0;
+  const { data: ins, error } = await service.from("sms_logs")
+    .insert({ order_number: orderNumber, phone: destination, type: seqType, sender: PROVIDER, provider: PROVIDER, content: r.text, status: "pending", attempts: 1 })
+    .select("id").maybeSingle();
+  if (error) {
+    if (error.code !== "23505") throw new Error(error.message);
+    const { data: claimed } = await service.rpc("sms_claim_retry", { p_order_number: orderNumber, p_type: seqType, p_phone: destination, p_content: r.text });
+    if (!claimed) return; // already sent, or the other first-text type exists
+    logId = claimed as string;
+    const { data: row } = await service.from("sms_logs").select("attempts").eq("id", logId).maybeSingle();
+    prior = Math.max(0, Number(row?.attempts ?? 1) - 1);
+  } else logId = ins!.id;
+  const res = await sendSms(apiKey, destination, r.text);
+  await service.from("sms_logs").update({
+    error_code: res.httpStatus, api_message: res.apiMessage, status: res.status, message_id: res.messageId, segments: res.segments,
+    delivery_status: res.status === "sent" ? "pending" : null, attempts: prior + res.attempts,
+  }).eq("id", logId);
 }
 
 Deno.serve(async (req) => {
@@ -105,18 +150,14 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    let content = buildContent(type, orderNumber);
-    let logType: string = type;
     if (type === "confirmation") {
-      const ctx = await loadSmsContext(service, { orderNumber });
-      if (!ctx || !ctx.settings.enabled.lead_created) {
-        return new Response(JSON.stringify({ skipped: "disabled" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      const r = renderSms("lead_created", { n: orderNumber, store: ctx.store, num1: ctx.settings.num1, num2: ctx.settings.num2, total: Number(ctx.order.total || 0) });
-      if (r.warnings.length) console.warn("send-sms lead_created", r.warnings.join(","));
-      content = r.text; logType = "lead_created";
+      // Wait for the auto-confirm decision in the background, then send exactly one first text.
+      EdgeRuntime.waitUntil(sendFirstText(service, apiKey, orderNumber, destination).catch((e) => console.error("send-sms first text", (e as Error).message)));
+      return new Response(JSON.stringify({ accepted: true }),
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const content = buildContent(type, orderNumber);
+    const logType: string = type;
 
     // --- INSERT-FIRST DEDUP GUARD ---
     // unique(order_number, type): a fresh insert wins; on conflict a single
