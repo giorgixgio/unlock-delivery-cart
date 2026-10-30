@@ -25,7 +25,7 @@ export default function StorePolicyFooter() {
  return <footer className="bg-card border-t border-border/60 text-muted-foreground pb-28 pt-10" lang="ka">
   <div className="max-w-[1280px] mx-auto px-5 md:px-8 grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
    <div>
-    <img src={logoSrc} alt="TrendMart" className="h-9 w-auto" width={110} height={36} loading="lazy" />
+    <img src={logoSrc} alt="TrendMart" className="h-16 w-auto -ml-2" width={96} height={64} loading="lazy" />
     <p className="mt-3 text-sm leading-relaxed max-w-sm">ქართული ონლაინ მაღაზია. მიტანა კურიერით მთელ საქართველოში, გადახდა ნივთის მიღებისას.</p>
    </div>
    <nav aria-label="მაღაზიის ინფორმაცია">
