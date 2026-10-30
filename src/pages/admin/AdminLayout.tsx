@@ -20,6 +20,7 @@ const navGroups = [
       { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
       { to: "/admin/operator-stats", label: "Operator Stats", icon: BarChart3 },
+      { to: "/admin/feedback", label: "Customer feedback", icon: BarChart3 },
     ],
   },
   {

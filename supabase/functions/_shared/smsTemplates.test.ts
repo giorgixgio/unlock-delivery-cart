@@ -33,12 +33,12 @@ Deno.test("every template fits one SMS with a 20-char product", () => {
   }
 });
 Deno.test("product part is dropped when the text would exceed 160", () => {
-  const r = renderSms("order_confirmed", { ...v, total: 1234.5, product: "X".repeat(60), when: "1-3 samushao dgeshi" });
+  const r = renderSms("order_confirmed", { ...v, total: 1234.5, product: "X".repeat(110), when: "1-3 samushao dgeshi" });
   assertEquals(r.text.startsWith("Shekveta dadasturda! Jami 1234.50 GEL"), true);
 });
 Deno.test("confirmed text with product and integer total", () => {
   assertEquals(renderSms("order_confirmed", { ...v, product: "Kamera" }).text,
-    "Shekveta dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. Madloba rom agvirchiet! TRENDMART");
+    "Shekveta dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. TRENDMART");
 });
 
 // ---- Empty-placeholder protection ----
@@ -65,7 +65,7 @@ Deno.test("address_problem text", () => {
 });
 Deno.test("order_auto_confirmed with and without product/number", () => {
   assertEquals(renderSms("order_auto_confirmed", { ...v, product: "Kamera" }).text,
-    "Shekveta #122579 dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. Kitkhvebi? 555111222. TRENDMART");
+    "Shekveta #122579 dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. TRENDMART");
   assertEquals(renderSms("order_auto_confirmed", noNums).text,
     "Shekveta #122579 dadasturda! Jami 34 GEL, gadakhda kurierTan. Mitana: xval. TRENDMART");
 });
@@ -78,4 +78,39 @@ Deno.test("final check catches the broken live text", () => {
   assertEquals(isTemplateIncomplete("Shekveta # migebulia"), true);
   for (const t of ["lead_created", "call_no_answer", "order_confirmed", "out_for_delivery", "delivery_failed", "address_problem", "order_auto_confirmed"] as const)
     assertEquals(renderSms(t, { ...v, product: "Kamera" }).skip, undefined, t);
+});
+
+// ---- Tracking link ----
+import { deliveryWhenKa, trackingLink } from "./smsTemplates.ts";
+const worst = { n: "123456", store: "TRENDMART" as const, num1: "555111222", num2: "555333444", total: 1234.5, when: "otkhshabats", product: "X".repeat(20), link: "trendmart.ge/t/Ab3x9K" };
+Deno.test("link goes on lead/confirmed/out-for-delivery and fits one SMS in the worst case", () => {
+  for (const t of ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"] as const) {
+    const r = renderSms(t, worst);
+    assertEquals(r.skip, undefined, t);
+    assertEquals(r.text.endsWith(" Tvali adevnet: trendmart.ge/t/Ab3x9K"), true, t);
+    assertEquals(r.text.length <= 160, true, `${t} ${r.text.length}`);
+  }
+  assertEquals(renderSms("lead_created", { ...worst, num1: "", num2: "" }).text,
+    "Shekveta #123456 migebulia! Operatori male dagirekavt, gtxovt upasukhot. TRENDMART Tvali adevnet: trendmart.ge/t/Ab3x9K");
+});
+Deno.test("no link on call-us texts", () => {
+  for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, worst).text.includes("/t/"), false, t);
+});
+Deno.test("drop order: product first, then link, never two segments", () => {
+  const long = { ...worst, product: "X".repeat(60) };
+  const r = renderSms("order_confirmed", long);
+  assertEquals(r.warnings.includes("product_dropped"), true);
+  const r2 = renderSms("lead_created", { ...worst, n: "1".repeat(50) });
+  assertEquals(r2.warnings.includes("link_dropped"), true);
+  assertEquals(r2.text.includes("/t/"), false);
+  assertEquals(r2.text.length <= 160, true);
+});
+Deno.test("domain follows the store", () => {
+  assertEquals(trackingLink("BIGMART", "Ab3x9K"), "bigmart.ge/t/Ab3x9K");
+  assertEquals(trackingLink("TRENDMART", null), null);
+});
+Deno.test("Georgian delivery day uses the same rule", () => {
+  assertEquals(deliveryWhenKa(new Date("2026-10-29T10:00:00Z"), true), "ხვალ"); // Thu 14:00 -> Fri
+  assertEquals(deliveryWhenKa(new Date("2026-10-31T15:00:00Z"), true), "სამშაბათს"); // Sat 19:00 -> 2 working days, Sunday off
+  assertEquals(deliveryWhenKa(new Date(), false), "1-3 სამუშაო დღეში");
 });

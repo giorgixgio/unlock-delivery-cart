@@ -3,7 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts";
-import { applyQuietHours, deliveryWhen, isTbilisiCity, renderSms, type SeqType } from "../_shared/smsTemplates.ts";
+import { applyQuietHours, deliveryWhen, isTbilisiCity, renderSms, trackingLink, type SeqType } from "../_shared/smsTemplates.ts";
 import { loadSmsContext, STOPPED_STATUSES } from "../_shared/smsOrderContext.ts";
 import { logBlockedSms } from "../_shared/smsGuard.ts";
 
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
       const confirmedAt = new Date(item.created_at); // enqueued at confirmation time
       const { text, warnings, skip: skipReason } = renderSms(type, {
-        n: String(order.public_order_number), store: ctx.store, num1: settings.num1, num2: settings.num2,
+        n: String(order.public_order_number), store: ctx.store, link: trackingLink(ctx.store, ctx.order.tracking_token), num1: settings.num1, num2: settings.num2,
         product: ctx.product, total: Number(order.total || 0),
         when: type === "order_confirmed" ? deliveryWhen(confirmedAt, isTbilisiCity(order.normalized_city || order.city, order.is_tbilisi)) : undefined,
       });

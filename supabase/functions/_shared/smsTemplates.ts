@@ -23,6 +23,8 @@ export function parseSmsSettings(raw: string | null | undefined): SmsSettings {
 export interface TemplateVars {
   n: string; store: "BIGMART" | "TRENDMART"; num1: string; num2: string;
   product?: string | null; total: number; when?: string;
+  /** "trendmart.ge/t/Ab3x9K" — appended to lead/confirmed/out-for-delivery texts. */
+  link?: string | null;
 }
 
 // GSM 03.38 basic set + extension table characters.
@@ -51,7 +53,17 @@ export const formatTotal = (v: number) => {
 /** Types that are useless without an operator number to call back. */
 export const NEEDS_NUMBER: SeqType[] = ["call_no_answer", "delivery_failed", "address_problem"];
 
-function templates(type: SeqType, v: TemplateVars, withProduct: boolean): string | null {
+export const LINK_TYPES: SeqType[] = ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"];
+export const trackingLink = (store: "BIGMART" | "TRENDMART", token: string | null | undefined) =>
+  token ? `${store === "BIGMART" ? "bigmart.ge" : "trendmart.ge"}/t/${token}` : null;
+
+function templates(type: SeqType, v: TemplateVars, withProduct: boolean, withLink = true): string | null {
+  const body = baseTemplate(type, v, withProduct);
+  if (body == null) return null;
+  return withLink && v.link && LINK_TYPES.includes(type) ? `${body} Tvali adevnet: ${v.link}` : body;
+}
+
+function baseTemplate(type: SeqType, v: TemplateVars, withProduct: boolean): string | null {
   const total = `${formatTotal(v.total)} GEL`;
   const p = withProduct && v.product ? v.product : null;
   const nums = [v.num1, v.num2].map((x) => String(x || "").trim()).filter(Boolean);
@@ -61,16 +73,13 @@ function templates(type: SeqType, v: TemplateVars, withProduct: boolean): string
     case "lead_created": return nums.length
       ? `Shekveta #${v.n} migebulia! Operatori male dagirekavt ${numsText} nomridan. Gtxovt upasukhot. ${v.store}`
       : `Shekveta #${v.n} migebulia! Operatori male dagirekavt, gtxovt upasukhot. ${v.store}`;
-    case "order_auto_confirmed": {
-      const ask = nums.length ? ` Kitkhvebi? ${nums[0]}.` : "";
-      return p
-        ? `Shekveta #${v.n} dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}.${ask} ${v.store}`
-        : `Shekveta #${v.n} dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}.${ask} ${v.store}`;
-    }
+    case "order_auto_confirmed": return p
+      ? `Shekveta #${v.n} dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`
+      : `Shekveta #${v.n} dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`;
     case "call_no_answer": return `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gadmogvirekt ${numsText}, rom shekveta ar gauqmdes. ${v.store}`;
     case "order_confirmed": return p
-      ? `Shekveta dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. Madloba rom agvirchiet! ${v.store}`
-      : `Shekveta dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. Madloba rom agvirchiet! ${v.store}`;
+      ? `Shekveta dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`
+      : `Shekveta dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`;
     case "out_for_delivery": return p
       ? `Dghes kurieri mogitant ${p}-s! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`
       : `Dghes kurieri mogitant shekvetas! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`;
@@ -82,7 +91,7 @@ function templates(type: SeqType, v: TemplateVars, withProduct: boolean): string
 /** Last line of defence: true when a rendered text still has an empty or raw placeholder. */
 export function isTemplateIncomplete(text: string): boolean {
   return !text.trim() || /  /.test(text) || / an  /.test(text) || /[{}]/.test(text)
-    || /\b(undefined|null|NaN)\b/.test(text) || /\ban\s+(an|nomridan)\b/.test(text) || /#\s/.test(text)
+    || /\b(undefined|null|NaN)\b/.test(text) || /\/t\/(\s|$)/.test(text) || /\ban\s+(an|nomridan)\b/.test(text) || /#\s/.test(text)
     || /:\s*\./.test(text) || /\s[.,]/.test(text);
 }
 
@@ -96,6 +105,10 @@ export function renderSms(type: SeqType, v: TemplateVars): { text: string; warni
   if (text.length > 160 && v.product) {
     text = toGsm7(templates(type, v, false)!).text; warnings.push("product_dropped");
   }
+  if (text.length > 160 && v.link) {
+    text = toGsm7(templates(type, v, false, false)!).text; warnings.push("link_dropped");
+  }
+  if (text.length > 160) return { text, warnings, skip: "template_incomplete" }; // never 2 segments
   if (isTemplateIncomplete(text)) return { text, warnings, skip: "template_incomplete" };
   return { text, warnings };
 }
@@ -117,6 +130,15 @@ export function deliveryWhen(confirmedAt: Date, isTbilisi: boolean): string {
   let need = t.getUTCHours() >= 18 ? 2 : 1, offset = 0;
   while (need > 0) { offset++; if (new Date(base + offset * DAY).getUTCDay() !== 0) need--; } // Sunday off
   return offset === 1 ? "xval" : WEEKDAYS[new Date(base + offset * DAY).getUTCDay()];
+}
+
+const WEEKDAYS_KA = ["კვირას", "ორშაბათს", "სამშაბათს", "ოთხშაბათს", "ხუთშაბათს", "პარასკევს", "შაბათს"];
+/** Same rule as deliveryWhen, in Georgian for the tracking page. */
+export function deliveryWhenKa(confirmedAt: Date, isTbilisi: boolean): string {
+  const lat = deliveryWhen(confirmedAt, isTbilisi);
+  if (lat === "1-3 samushao dgeshi") return "1-3 სამუშაო დღეში";
+  if (lat === "xval") return "ხვალ";
+  return WEEKDAYS_KA[WEEKDAYS.indexOf(lat)];
 }
 
 /** Moves a send time out of 22:00–09:30 Tbilisi quiet hours to the next 09:30. */
