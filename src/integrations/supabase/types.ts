@@ -1395,13 +1395,91 @@ export type Database = {
           },
         ]
       }
+      onway_status_events: {
+        Row: {
+          comment: string | null
+          created_at: string
+          dedupe_key: string
+          event_time: string | null
+          id: string
+          image: string | null
+          order_id: string | null
+          planned_date: string | null
+          reason: string | null
+          status_id: string | null
+          status_name: string | null
+          tracking: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          dedupe_key: string
+          event_time?: string | null
+          id?: string
+          image?: string | null
+          order_id?: string | null
+          planned_date?: string | null
+          reason?: string | null
+          status_id?: string | null
+          status_name?: string | null
+          tracking: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          dedupe_key?: string
+          event_time?: string | null
+          id?: string
+          image?: string | null
+          order_id?: string | null
+          planned_date?: string | null
+          reason?: string | null
+          status_id?: string | null
+          status_name?: string | null
+          tracking?: string
+        }
+        Relationships: []
+      }
+      onway_status_map: {
+        Row: {
+          action: string
+          first_seen_at: string | null
+          last_seen_at: string | null
+          seen_count: number
+          status_id: string
+          status_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          action?: string
+          first_seen_at?: string | null
+          last_seen_at?: string | null
+          seen_count?: number
+          status_id: string
+          status_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          first_seen_at?: string | null
+          last_seen_at?: string | null
+          seen_count?: number
+          status_id?: string
+          status_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onway_webhook_log: {
         Row: {
           body_json: Json | null
           body_raw: string | null
           headers: Json
           id: string
+          match_status: string | null
           method: string
+          order_id: string | null
+          processed_at: string | null
           query: Json
           received_at: string
           source_ip: string | null
@@ -1411,7 +1489,10 @@ export type Database = {
           body_raw?: string | null
           headers?: Json
           id?: string
+          match_status?: string | null
           method: string
+          order_id?: string | null
+          processed_at?: string | null
           query?: Json
           received_at?: string
           source_ip?: string | null
@@ -1421,7 +1502,10 @@ export type Database = {
           body_raw?: string | null
           headers?: Json
           id?: string
+          match_status?: string | null
           method?: string
+          order_id?: string | null
+          processed_at?: string | null
           query?: Json
           received_at?: string
           source_ip?: string | null
@@ -1631,6 +1715,13 @@ export type Database = {
           notes_customer: string | null
           onway_api_status: string | null
           onway_error_text: string | null
+          onway_last_status: string | null
+          onway_last_status_at: string | null
+          onway_planned_date: string | null
+          onway_problem_at: string | null
+          onway_problem_comment: string | null
+          onway_problem_image: string | null
+          onway_problem_resolved_at: string | null
           onway_sent_at: string | null
           onway_tracking: string | null
           operator_review_status: string | null
@@ -1717,6 +1808,13 @@ export type Database = {
           notes_customer?: string | null
           onway_api_status?: string | null
           onway_error_text?: string | null
+          onway_last_status?: string | null
+          onway_last_status_at?: string | null
+          onway_planned_date?: string | null
+          onway_problem_at?: string | null
+          onway_problem_comment?: string | null
+          onway_problem_image?: string | null
+          onway_problem_resolved_at?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
@@ -1803,6 +1901,13 @@ export type Database = {
           notes_customer?: string | null
           onway_api_status?: string | null
           onway_error_text?: string | null
+          onway_last_status?: string | null
+          onway_last_status_at?: string | null
+          onway_planned_date?: string | null
+          onway_problem_at?: string | null
+          onway_problem_comment?: string | null
+          onway_problem_image?: string | null
+          onway_problem_resolved_at?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
@@ -2447,6 +2552,7 @@ export type Database = {
           sku_locked: boolean
           sku_reassigned: boolean
           sku_reassigned_at: string | null
+          sms_name: string | null
           stock_quantity: number
           synced_at: string
           tags: string[]
@@ -2475,6 +2581,7 @@ export type Database = {
           sku_locked?: boolean
           sku_reassigned?: boolean
           sku_reassigned_at?: string | null
+          sms_name?: string | null
           stock_quantity?: number
           synced_at?: string
           tags?: string[]
@@ -2503,6 +2610,7 @@ export type Database = {
           sku_locked?: boolean
           sku_reassigned?: boolean
           sku_reassigned_at?: string | null
+          sms_name?: string | null
           stock_quantity?: number
           synced_at?: string
           tags?: string[]
@@ -2663,6 +2771,48 @@ export type Database = {
           status?: string
           type?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sms_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          order_id: string
+          order_number: string
+          send_after: string
+          sent_at: string | null
+          seq: number
+          status: string
+          type: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id: string
+          order_number: string
+          send_after?: string
+          sent_at?: string | null
+          seq?: number
+          status?: string
+          type: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id?: string
+          order_number?: string
+          send_after?: string
+          sent_at?: string | null
+          seq?: number
+          status?: string
+          type?: string
         }
         Relationships: []
       }
@@ -3323,6 +3473,15 @@ export type Database = {
           p_type: string
         }
         Returns: string
+      }
+      sms_enqueue: {
+        Args: {
+          p_max_seq: number
+          p_order_id: string
+          p_send_after: string
+          p_type: string
+        }
+        Returns: boolean
       }
       storefront_add_upsell_items: {
         Args: {
