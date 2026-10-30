@@ -1,3 +1,4 @@
+import SmsNameEditor from "@/components/admin/SmsNameEditor";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/useProducts";
@@ -869,6 +870,7 @@ const AdminProducts = () => {
                       </button>
                     </div>
                   )}
+                  <SmsNameEditor productId={row.productId} />
                   {row.skuConflict && activeTab !== "conflicts" && (
                     <Badge variant="destructive" className="mt-1 text-[10px] gap-1">
                       <AlertTriangle className="w-3 h-3" /> SKU Conflict
