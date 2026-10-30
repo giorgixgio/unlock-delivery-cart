@@ -218,6 +218,13 @@
       "when": 1793378185922,
       "tag": "0030_sms_sequence_and_onway_status",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793378962628,
+      "tag": "0031_sms_auto_confirm_and_onway_ai",
+      "breakpoints": true
     }
   ]
 }
