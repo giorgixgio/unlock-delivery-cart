@@ -876,3 +876,9 @@
 .tracking-pin { width: 18px; height: 18px; border-radius: 9999px; border: 3px solid hsl(var(--background)); box-shadow: 0 0 0 2px hsl(var(--primary)); }
 .tracking-pin-origin { background: hsl(var(--foreground)); }
 .tracking-pin-dest { background: hsl(var(--primary)); }
+
+/* City picker → address field attention (2 soft pulses, then static) */
+@keyframes address-attn-pulse { 0%,100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); } 50% { box-shadow: 0 0 0 5px hsl(var(--primary) / 0.35); } }
+.address-attn { animation: address-attn-pulse 0.6s ease-in-out 2; border-color: hsl(var(--primary)) !important; }
+[data-attn-hint]::after { content: attr(data-attn-hint); display: block; margin-top: 4px; font-size: 13px; font-weight: 600; color: hsl(var(--primary)); }
+@media (prefers-reduced-motion: reduce) { .address-attn { animation: none; box-shadow: 0 0 0 3px hsl(var(--primary) / 0.35); } }
