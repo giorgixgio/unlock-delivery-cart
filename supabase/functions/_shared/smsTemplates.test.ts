@@ -54,8 +54,11 @@ Deno.test("lead_created with one number has no ' an '", () => {
     "Shekveta #122579 migebulia! Operatori male dagirekavt 555111222 nomridan. Gtxovt upasukhot. TRENDMART");
   assertEquals(renderSms("lead_created", { ...v, num1: "" }).text.includes(" an "), false);
 });
-Deno.test("call_no_answer, delivery_failed and address_problem skip without numbers", () => {
-  for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, noNums).skip, "no_operator_numbers");
+Deno.test("no-number fallbacks still send", () => {
+  assertEquals(renderSms("call_no_answer", noNums).text, "Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gtxovt upasukhot shemdeg zars an gadmogvirekt gamotovebul nomerze. TRENDMART");
+  assertEquals(renderSms("delivery_failed", noNums).text, "Kurierma ver dagikavshirdat. Gtxovt upasukhot shemdeg zars an gadmogvirekt, rom shekveta xelaxla mogitanot. TRENDMART");
+  assertEquals(renderSms("address_problem", noNums).text, "Misamarti ver vipovet. Gtxovt upasukhot chvens zars misamartis dasazusteblad. TRENDMART");
+  for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, noNums).skip, undefined);
 });
 Deno.test("delivery_failed with one number", () => {
   assertEquals(renderSms("delivery_failed", { ...v, num2: "" }).text, "Kurierma ver dagikavshirdat. Dagvikavshirdit 555111222, rom shekveta xelaxla mogitanot. TRENDMART");
@@ -87,11 +90,11 @@ Deno.test("link goes on lead/confirmed/out-for-delivery and fits one SMS in the 
   for (const t of ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"] as const) {
     const r = renderSms(t, worst);
     assertEquals(r.skip, undefined, t);
-    assertEquals(r.text.endsWith(" Tvali adevnet: trendmart.ge/t/Ab3x9K"), true, t);
+    assertEquals(r.text.endsWith(" Tvali adevnet: trendmart.ge/t/Ab3x9K TRENDMART"), true, t);
     assertEquals(r.text.length <= 160, true, `${t} ${r.text.length}`);
   }
   assertEquals(renderSms("lead_created", { ...worst, num1: "", num2: "" }).text,
-    "Shekveta #123456 migebulia! Operatori male dagirekavt, gtxovt upasukhot. TRENDMART Tvali adevnet: trendmart.ge/t/Ab3x9K");
+    "Shekveta #123456 migebulia! Operatori male dagirekavt, gtxovt upasukhot. Tvali adevnet: trendmart.ge/t/Ab3x9K TRENDMART");
 });
 Deno.test("no link on call-us texts", () => {
   for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, worst).text.includes("/t/"), false, t);
