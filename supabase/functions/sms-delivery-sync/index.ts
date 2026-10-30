@@ -1,5 +1,5 @@
 // sms-delivery-sync — refreshes Sender.ge delivery status for recent sent SMS.
-// Callers: the 15-minute schedule (anon apikey + internal secret header) or an active admin.
+// Callers: the 15-minute schedule (x-cron-secret from internal_job_secrets) or an active admin.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { getDelivery, senderApiKey } from "../_shared/senderGe.ts";
@@ -15,8 +15,12 @@ Deno.serve(async (req) => {
     if (!apiKey) return json({ error: "SENDER_GE_API_KEY not configured" }, 500);
     const service = createClient(url, serviceKey);
 
-    const cronSecret = Deno.env.get("SMS_SYNC_CRON_SECRET");
-    const fromCron = !!cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+    const given = req.headers.get("x-cron-secret");
+    let fromCron = false;
+    if (given) {
+      const { data: s } = await service.from("internal_job_secrets").select("value").eq("name", "sms_delivery_sync").maybeSingle();
+      fromCron = !!s?.value && s.value === given;
+    }
     if (!fromCron) {
       const auth = req.headers.get("Authorization") || "";
       if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
