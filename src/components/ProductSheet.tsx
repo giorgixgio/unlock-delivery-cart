@@ -35,7 +35,7 @@ interface ProductSheetProps {
 }
 
 // ── Image Carousel ──
-const ImageCarousel = ({ images, title, productId }: { images: string[]; title: string; productId: string }) => {
+const ImageCarousel = ({ images, title, productId, fill }: { images: string[]; title: string; productId: string; fill?: boolean }) => {
   const [current, setCurrent] = useState(0);
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
@@ -56,7 +56,7 @@ const ImageCarousel = ({ images, title, productId }: { images: string[]; title: 
   }, [offset, current, imgs.length]);
 
   return (
-    <div className="relative w-full aspect-square bg-muted overflow-hidden" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+    <div className={`relative w-full ${fill ? "h-full min-h-0" : "aspect-square"} bg-muted overflow-hidden`} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
       <div className="flex h-full" style={{ transform: `translateX(calc(-${current * 100}% + ${swiping ? offset : 0}px))`, transition: swiping ? "none" : "transform 280ms ease-out" }}>
         {imgs.map((src, i) => (
           <img key={i} src={src} alt={`${title} ${i + 1}`} className="w-full h-full object-cover flex-shrink-0" draggable={false} />
@@ -375,8 +375,8 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
       </button>
       <div className={isMobile ? 'overflow-y-auto max-h-[calc(92vh-180px)]' : 'flex flex-col max-h-[85vh] min-h-0'}>
         <div className={isMobile ? '' : 'flex gap-0 flex-1 min-h-0 overflow-hidden'}>
-          <div className={isMobile ? '' : 'w-[420px] flex-shrink-0'}>
-            <ImageCarousel images={product.images} title={product.id} productId={product.id} />
+          <div className={isMobile ? '' : 'w-[420px] flex-shrink-0 h-full'}>
+            <ImageCarousel images={product.images} title={product.id} productId={product.id} fill={!isMobile} />
           </div>
 
           <div className={isMobile ? '' : 'flex-1 overflow-y-auto min-h-0'}>
