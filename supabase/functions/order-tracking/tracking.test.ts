@@ -24,3 +24,4 @@ Deno.test("later stage implies earlier ones without inventing timestamps", () =>
   assertEquals(s[2].at, null);
 });
 Deno.test("planned date in Georgian", () => assertEquals(plannedDateKa("2026-11-02"), "ორშაბათი, 2 ნოემბერი"));
+Deno.test("phone-as-name is never shown", () => assertEquals(firstName("555107727"), null));

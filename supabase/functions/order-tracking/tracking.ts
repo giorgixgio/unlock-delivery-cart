@@ -12,7 +12,7 @@ export function streetOnly(address: unknown): string | null {
   return s ? s.slice(0, 40) : null;
 }
 
-export const firstName = (name: unknown) => String(name ?? "").trim().split(/\s+/)[0]?.slice(0, 30) || null;
+export const firstName = (name: unknown) => { const f = String(name ?? "").trim().split(/\s+/)[0] || ""; return f && !/\d/.test(f) ? f.slice(0, 30) : null; };
 
 export const isHandedToCourier = (o: any) =>
   !!o.onway_sent_at || !!o.onway_tracking || !!o.tracking_number || o.is_fulfilled === true || ["shipped", "delivered", "returned"].includes(String(o.status));
