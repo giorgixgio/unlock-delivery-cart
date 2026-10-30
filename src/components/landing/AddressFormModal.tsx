@@ -276,7 +276,7 @@ const AddressFormModal = ({
                 <div>
                   <Label className="text-[14px] font-bold text-foreground">ქალაქი / რეგიონი</Label>
                   <div className="mt-1.5">
-                    <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading}
+                    <OnwayCityPicker value={form.region} cities={cities} loading={citiesLoading} selectedId={selectedCityId}
                       onChange={val => { setSelectedCityId(null); handleChange("region", val); }}
                       onSelect={c => { setSelectedCityId(c.id); handleChange("region", c.name); }}
                       error={citiesError ? "ქალაქების სია ვერ ჩაიტვირთა. სცადეთ თავიდან." : errors.region} className={inputClass} inputRef={cityRef} />
