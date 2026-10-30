@@ -4,7 +4,6 @@
 export const TRENDMART_SENDER = {
   from_city: "თბილისი",
   from_name: "ტრენდმარტი",
-  from_phone: "555555555",
   from_address: "3 კახეთის გზატკეცილი",
 } as const;
 
@@ -12,6 +11,12 @@ export const TRENDMART_SENDER = {
 export const PAYMENT_SETUP = { payment: 3, payer: 3, receiver_shipprice_pay: 0, brittle: 0 } as const;
 
 export const MASKED_KEY = "***";
+
+/** Pickup contact phone from Admin Settings; null when empty or the old placeholder. */
+export function validPickupPhone(raw: unknown): string | null {
+  const d = String(raw ?? "").replace(/\D/g, "").replace(/^995/, "");
+  return /^\d{9}$/.test(d) && d !== "555555555" ? d : null;
+}
 
 export interface PayloadOrder {
   id: string;
@@ -34,11 +39,13 @@ export function buildOnwayPayload(
   order: PayloadOrder,
   orderDetail: string,
   creds: { username: string; key: string },
+  fromPhone: string,
 ) {
   return {
     username: creds.username,
     key: creds.key,
     ...TRENDMART_SENDER,
+    from_phone: fromPhone,
     to_city: s(order.normalized_city) || s(order.raw_city) || s(order.city),
     ...(order.onway_region_id ? { to_city_id: order.onway_region_id } : {}),
     to_name: s(order.customer_name),

@@ -20,6 +20,7 @@ import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActi
 import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
 import OnwayApiSendModal from "@/components/admin/OnwayApiSendModal";
+import OnwayOrderStatusCard from "@/components/admin/OnwayOrderStatusCard";
 
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -28,7 +29,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
-import { triggerFulfillmentSms } from "@/lib/smsService";
 import { isTbilisiCity, hasDistrict } from "@/lib/tbilisiDistricts";
 import { logCallOutcome } from "@/lib/callAttemptService";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
@@ -383,34 +383,7 @@ const AdminOrderDetail = () => {
         payload: { before: { is_fulfilled: order.is_fulfilled }, after: { is_fulfilled: newVal } },
       });
 
-      // SMS side effect — only on false → true. Never blocks fulfillment.
-      if (!wasFulfilled && newVal) {
-        try {
-          const summary = await triggerFulfillmentSms([{
-            orderId: id,
-            orderNumber: order.public_order_number,
-            phone: order.customer_phone,
-            status: order.status,
-          }]);
-          if (summary.sent > 0) {
-            toast({ title: "SMS გაიგზავნა" });
-          } else if (summary.failed > 0) {
-            const err = summary.errors[0];
-            toast({
-              title: "SMS ვერ გაიგზავნა",
-              description: err ? `code ${err.code ?? "—"} · ${err.message ?? ""}` : undefined,
-              variant: "destructive",
-            });
-          } else if (summary.skipped > 0) {
-            const reason = Object.keys(summary.skipReasons)[0];
-            if (reason && reason !== "already_sent") {
-              toast({ title: `SMS გამოტოვდა (${reason})` });
-            }
-          }
-        } catch (smsErr) {
-          console.warn("[fulfillment-sms] error", smsErr);
-        }
-      }
+      // Fulfillment no longer sends an SMS; the customer sequence lives in sms_queue.
     } catch (err: any) {
       const msg = err?.message || String(err);
       if (msg.includes("CONFLICT")) {
@@ -1062,6 +1035,8 @@ const AdminOrderDetail = () => {
         <div className="flex justify-between text-sm"><span>Discount</span><span>-{Number(order.discount_total).toFixed(1)} ₾</span></div>
         <div className="flex justify-between font-bold border-t border-border pt-1.5"><span>Total</span><span>{Number(order.total).toFixed(1)} ₾</span></div>
       </div>
+
+      <OnwayOrderStatusCard orderId={order.id} plannedDate={(order as any).onway_planned_date} problemComment={(order as any).onway_problem_comment} problemImage={(order as any).onway_problem_image} />
 
       {/* Fulfillment & Tracking */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">

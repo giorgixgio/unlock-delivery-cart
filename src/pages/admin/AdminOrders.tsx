@@ -12,6 +12,7 @@ import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import BulkActionsBar from "@/components/admin/BulkActionsBar";
 import OrderQuickReviewModal, { OUTCOME_LABEL, OUTCOME_BADGE_CLS } from "@/components/admin/OrderQuickReviewModal";
 import CallButton from "@/components/admin/CallButton";
+import DeliveryProblemsPanel from "@/components/admin/DeliveryProblemsPanel";
 import OnwayReviewPanel, { useOnwayReview } from "@/components/admin/OnwayReviewPanel";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useViewModifier } from "@/hooks/useViewModifier";
@@ -523,6 +524,7 @@ const AdminOrders = () => {
       </div>
 
       {/* Table */}
+      <DeliveryProblemsPanel />
       {activeTab === "ready" && onwayReview.error && <p className="text-destructive text-sm">{onwayReview.error}</p>}
       {activeTab === "ready" && <OnwayReviewPanel rows={onwayReview.rows} onUpdated={() => { void onwayReview.refresh(); void fetchOrders(true); void fetchCounts(); }} />}
       {loading ? (

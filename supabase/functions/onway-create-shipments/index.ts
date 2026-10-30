@@ -9,7 +9,7 @@ import { cityKey } from "../_shared/onwayRegions.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
-  alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking,
+  alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking, validPickupPhone,
 } from "./payload.ts";
 
 const ONWAY_BASE = "https://onway.ge/index.php?route=";
@@ -71,6 +71,15 @@ Deno.serve(async (req) => {
         results[ep] = { http_status: status, response_raw: raw, error: err };
       }
       return json({ results });
+    }
+
+    // Pickup contact phone is a per-store Admin setting; never ship with a placeholder.
+    const { data: pickupRow } = await supabase.from("site_settings").select("value").eq("key", "onway_pickup_phones").maybeSingle();
+    let pickupPhones: Record<string, unknown> = {};
+    try { pickupPhones = JSON.parse(pickupRow?.value || "{}"); } catch { /* invalid => empty */ }
+    const fromPhone = validPickupPhone(pickupPhones.TRENDMART);
+    if (!fromPhone && body.action !== "review_list") {
+      return json({ error: "TrendMart pickup phone is not set (or is 555555555). Add it in Admin → Settings → SMS & courier before creating shipments." }, 400);
     }
 
     const regionRows: {id:string;name:string}[] = [];
@@ -212,7 +221,7 @@ Deno.serve(async (req) => {
       if (order.is_return) noteText = `RETURN — ${noteText}`.trim();
       const labelText = `[${a.tag}] ${skuWithQty}`;
       const detail = noteText ? `${labelText} | ${noteText}` : labelText;
-      const payload = buildOnwayPayload(order, detail, { username, key });
+      const payload = buildOnwayPayload(order, detail, { username, key }, fromPhone!);
       const region=resolveCity(order);
       if(region) { payload.to_city=region.name; Object.assign(payload,{to_city_id:region.id}); }
       const held=reasonsFor(order);
