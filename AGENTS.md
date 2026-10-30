@@ -20,4 +20,4 @@ Onway API shipments go through `onway-create-shipments` (admin-only, store B, sa
 Cache provider destinations through `onway-regions`, share `OnwayCityPicker` across customer and review forms, and resolve only exact or unique aliases to provider IDs, because arbitrary address text and ambiguous villages must not become courier destinations.
 Keep Onway review decisions and retry permissions in service-role-only write tables with version-bound atomic claim/review RPCs, because an unclear response retains its duplicate lock until an operator explicitly reconciles shipment existence.
 
-SMS goes only through Sender.ge via `supabase/functions/_shared/senderGe.ts` (POST form body, 9-digit destination, retries only on 503/network); `sms_logs` failed or stale-pending rows are reclaimed atomically by `sms_claim_retry`, so retries never double-send.
+SMS goes only through Sender.ge via `supabase/functions/_shared/senderGe.ts` over `proxyFetch` (Sender.ge whitelists the static IPs; POST form body, 9-digit destination, retries only on 503/network); `sms_logs` failed or stale-pending rows are reclaimed atomically by `sms_claim_retry`, so retries never double-send.
