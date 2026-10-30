@@ -50,8 +50,6 @@ export const formatTotal = (v: number) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 };
 
-/** Types that are useless without an operator number to call back. */
-export const NEEDS_NUMBER: SeqType[] = ["call_no_answer", "delivery_failed", "address_problem"];
 
 export const LINK_TYPES: SeqType[] = ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"];
 export const trackingLink = (store: "BIGMART" | "TRENDMART", token: string | null | undefined) =>
@@ -60,7 +58,9 @@ export const trackingLink = (store: "BIGMART" | "TRENDMART", token: string | nul
 function templates(type: SeqType, v: TemplateVars, withProduct: boolean, withLink = true): string | null {
   const body = baseTemplate(type, v, withProduct);
   if (body == null) return null;
-  return withLink && v.link && LINK_TYPES.includes(type) ? `${body} Tvali adevnet: ${v.link}` : body;
+  if (!(withLink && v.link && LINK_TYPES.includes(type))) return body;
+  const sign = ` ${v.store}`; // link goes before the store-name sign-off
+  return body.endsWith(sign) ? `${body.slice(0, -sign.length)} Tvali adevnet: ${v.link}${sign}` : `${body} Tvali adevnet: ${v.link}`;
 }
 
 function baseTemplate(type: SeqType, v: TemplateVars, withProduct: boolean): string | null {
@@ -68,7 +68,6 @@ function baseTemplate(type: SeqType, v: TemplateVars, withProduct: boolean): str
   const p = withProduct && v.product ? v.product : null;
   const nums = [v.num1, v.num2].map((x) => String(x || "").trim()).filter(Boolean);
   const numsText = nums.join(" an ");
-  if (NEEDS_NUMBER.includes(type) && !nums.length) return null;
   switch (type) {
     case "lead_created": return nums.length
       ? `Shekveta #${v.n} migebulia! Operatori male dagirekavt ${numsText} nomridan. Gtxovt upasukhot. ${v.store}`
@@ -76,15 +75,21 @@ function baseTemplate(type: SeqType, v: TemplateVars, withProduct: boolean): str
     case "order_auto_confirmed": return p
       ? `Shekveta #${v.n} dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`
       : `Shekveta #${v.n} dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`;
-    case "call_no_answer": return `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gadmogvirekt ${numsText}, rom shekveta ar gauqmdes. ${v.store}`;
+    case "call_no_answer": return nums.length
+      ? `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gadmogvirekt ${numsText}, rom shekveta ar gauqmdes. ${v.store}`
+      : `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gtxovt upasukhot shemdeg zars an gadmogvirekt gamotovebul nomerze. ${v.store}`;
     case "order_confirmed": return p
       ? `Shekveta dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`
       : `Shekveta dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`;
     case "out_for_delivery": return p
       ? `Dghes kurieri mogitant ${p}-s! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`
       : `Dghes kurieri mogitant shekvetas! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`;
-    case "delivery_failed": return `Kurierma ver dagikavshirdat. Dagvikavshirdit ${numsText}, rom shekveta xelaxla mogitanot. ${v.store}`;
-    case "address_problem": return `Misamarti ver vipovet. Dagvikavshirdit ${numsText} misamartis dasazusteblad. ${v.store}`;
+    case "delivery_failed": return nums.length
+      ? `Kurierma ver dagikavshirdat. Dagvikavshirdit ${numsText}, rom shekveta xelaxla mogitanot. ${v.store}`
+      : `Kurierma ver dagikavshirdat. Gtxovt upasukhot shemdeg zars an gadmogvirekt, rom shekveta xelaxla mogitanot. ${v.store}`;
+    case "address_problem": return nums.length
+      ? `Misamarti ver vipovet. Dagvikavshirdit ${numsText} misamartis dasazusteblad. ${v.store}`
+      : `Misamarti ver vipovet. Gtxovt upasukhot chvens zars misamartis dasazusteblad. ${v.store}`;
   }
 }
 
