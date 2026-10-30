@@ -258,9 +258,11 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
       }));
     const smsCount = countEligibleFulfillmentTargets(smsTargets);
 
-    const balance = await fetchSmsBalance();
+    const smsBalance = await fetchSmsBalance();
+    const balance = smsBalance ? smsBalance.balance : null;
     const balanceStr = balance === null ? "?" : String(balance);
-    let msg = `იგზავნება ${smsCount} SMS. ბალანსი: ${balanceStr}.`;
+    let msg = `იგზავნება ${smsCount} SMS. Sender.ge ბალანსი: ${balanceStr}.`;
+    if (smsBalance && smsBalance.overdraft > 0) msg += ` ოვერდრაფტი: ${smsBalance.overdraft}.`;
     if (balance !== null && balance < smsCount) {
       msg += `\n\n⚠️ ბალანსი ვერ ფარავს ${smsCount - balance} SMS-ს. მხოლოდ პირველი ${balance} გაიგზავნება.\n\nგსურთ გაგრძელება?`;
     } else {
