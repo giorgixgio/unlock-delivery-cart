@@ -181,6 +181,8 @@ const AdminOrders = () => {
     setCounts({ review: applyToCount(review.length), ready: applyToCount(ready.length), fulfilled: applyToCount(fulfilled.length), returns: returns.length });
   }, [applyToCount, activeStore]);
 
+  // Only the Ready tab hides Onway-review orders; a stable string key avoids reloading the list on every 30s poll.
+  const reviewKey = activeTab === "ready" ? onwayReview.rows.map(r => r.order_id).sort().join(",") : "";
   const fetchOrders = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -259,13 +261,13 @@ const AdminOrders = () => {
     }
 
     // Group by normalized phone: show only latest order per customer, track duplicates
-    const reviewIds = new Set(onwayReview.rows.map(r => r.order_id));
+    const reviewIds = new Set(reviewKey ? reviewKey.split(",") : []);
     const grouped = groupOrdersByPhone(activeTab === "ready" ? result.filter(o => !reviewIds.has(o.id)) : result);
     setOrders(grouped);
     setLoading(false);
     setRefreshing(false);
     setLastRefreshed(new Date());
-  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount, activeStore, onwayReview.rows]);
+  }, [activeTab, dateFilter, locationFilter, search, hasModifier, applyToCount, activeStore, reviewKey]);
 
   useEffect(() => {
     setSelectedIds([]);

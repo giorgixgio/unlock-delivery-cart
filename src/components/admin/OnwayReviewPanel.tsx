@@ -19,8 +19,8 @@ export function useOnwayReview(enabled: boolean) {
   const [rows, setRows] = useState<OnwayReviewRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const refresh = useCallback(async () => {
-    if (!enabled) { setRows([]); return; }
-    try { const data = await invoke({ action: "review_list", dry_run: true }); setRows(data.orders || []); setError(null); }
+    if (!enabled) { setRows(old => old.length ? [] : old); return; }
+    try { const data = await invoke({ action: "review_list", dry_run: true }); const next = data.orders || []; setRows(old => JSON.stringify(old) === JSON.stringify(next) ? old : next); setError(null); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not load Onway review"); }
   }, [enabled]);
   useEffect(() => { void refresh(); const timer = setInterval(refresh, 30000); window.addEventListener("onway-batch-updated",refresh); return () => { clearInterval(timer); window.removeEventListener("onway-batch-updated",refresh); }; }, [refresh]);
