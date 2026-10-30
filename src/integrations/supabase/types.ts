@@ -779,6 +779,72 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          kind: string
+          operator: string | null
+          order_id: string
+          stars: number
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          operator?: string | null
+          order_id: string
+          stars: number
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          operator?: string | null
+          order_id?: string
+          stars?: number
+        }
+        Relationships: []
+      }
+      customer_requests: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          order_id: string
+          payload: Json
+          priority: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          order_id: string
+          payload?: Json
+          priority?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          order_id?: string
+          payload?: Json
+          priority?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       dashboard_view_modifiers: {
         Row: {
           created_at: string
@@ -1786,8 +1852,12 @@ export type Database = {
           subtotal: number
           tags: string[]
           total: number
+          tracking_first_seen_at: string | null
+          tracking_last_seen_at: string | null
           tracking_number: string | null
+          tracking_token: string | null
           tracking_url: string | null
+          tracking_view_count: number
           updated_at: string
           user_agent: string | null
           version: number
@@ -1881,8 +1951,12 @@ export type Database = {
           subtotal?: number
           tags?: string[]
           total?: number
+          tracking_first_seen_at?: string | null
+          tracking_last_seen_at?: string | null
           tracking_number?: string | null
+          tracking_token?: string | null
           tracking_url?: string | null
+          tracking_view_count?: number
           updated_at?: string
           user_agent?: string | null
           version?: number
@@ -1976,8 +2050,12 @@ export type Database = {
           subtotal?: number
           tags?: string[]
           total?: number
+          tracking_first_seen_at?: string | null
+          tracking_last_seen_at?: string | null
           tracking_number?: string | null
+          tracking_token?: string | null
           tracking_url?: string | null
+          tracking_view_count?: number
           updated_at?: string
           user_agent?: string | null
           version?: number
@@ -3070,6 +3148,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_rate_hits: {
+        Row: {
+          created_at: string
+          id: number
+          ip: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          ip: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          ip?: string
+        }
+        Relationships: []
+      }
       unidentified_items: {
         Row: {
           actor: string | null
@@ -3325,6 +3421,15 @@ export type Database = {
         Args: { p_order_id: string; p_restore?: boolean }
         Returns: number
       }
+      apply_order_cancel_stock_core: {
+        Args: {
+          p_actor: string
+          p_actor_email: string
+          p_order_id: string
+          p_restore: boolean
+        }
+        Returns: number
+      }
       apply_order_confirm_stock: {
         Args: { p_order_id: string }
         Returns: number
@@ -3447,6 +3552,7 @@ export type Database = {
         Returns: number
       }
       dispatch_telegram_owner_alert: { Args: { p_body: Json }; Returns: number }
+      gen_tracking_token: { Args: never; Returns: string }
       ip_geo_refresh: { Args: { p_order_id: string }; Returns: undefined }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
