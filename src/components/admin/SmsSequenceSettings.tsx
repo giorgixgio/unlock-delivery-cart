@@ -11,11 +11,13 @@ import {
 } from "../../../supabase/functions/_shared/smsTemplates";
 
 const LABELS: Record<SeqType, string> = {
-  lead_created: "1. Lead created (instant)",
+  lead_created: "1. Lead created (instant, waits up to 60s for auto-confirm)",
+  order_auto_confirmed: "1b. Auto-confirmed order (replaces 1 and 3)",
   call_no_answer: "2. Call — no answer (max 2)",
   order_confirmed: "3. Order confirmed (+5 min)",
   out_for_delivery: "5. Out for delivery (Onway)",
-  delivery_failed: "6. Delivery failed (Onway, max 2)",
+  delivery_failed: "6. Delivery failed — no answer / not home / wrong phone (max 2)",
+  address_problem: "6b. Delivery failed — wrong address (max 2)",
 };
 
 async function saveSetting(key: string, value: string) {
