@@ -197,6 +197,13 @@
       "when": 1793204552906,
       "tag": "0027_validate_storefront_city_selection",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793376757417,
+      "tag": "0028_sms_logs_sender_ge",
+      "breakpoints": true
     }
   ]
 }

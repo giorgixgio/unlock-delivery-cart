@@ -2591,39 +2591,60 @@ export type Database = {
       sms_logs: {
         Row: {
           api_message: string | null
+          attempts: number | null
           content: string | null
           created_at: string
+          delivered_at: string | null
+          delivery_status: string | null
           error_code: number | null
           id: string
+          message_id: string | null
           order_number: string
           phone: string | null
+          provider: string | null
+          segments: number | null
           sender: string
           status: string
           type: string
+          updated_at: string | null
         }
         Insert: {
           api_message?: string | null
+          attempts?: number | null
           content?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           error_code?: number | null
           id?: string
+          message_id?: string | null
           order_number: string
           phone?: string | null
+          provider?: string | null
+          segments?: number | null
           sender?: string
           status?: string
           type: string
+          updated_at?: string | null
         }
         Update: {
           api_message?: string | null
+          attempts?: number | null
           content?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           error_code?: number | null
           id?: string
+          message_id?: string | null
           order_number?: string
           phone?: string | null
+          provider?: string | null
+          segments?: number | null
           sender?: string
           status?: string
           type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3276,6 +3297,15 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sms_claim_retry: {
+        Args: {
+          p_content: string
+          p_order_number: string
+          p_phone: string
+          p_type: string
+        }
+        Returns: string
+      }
       storefront_add_upsell_items: {
         Args: {
           p_items: Json
