@@ -373,12 +373,13 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
       >
         <X className="w-5 h-5 text-foreground" />
       </button>
-      <div className={`overflow-y-auto ${isMobile ? 'max-h-[calc(92vh-180px)]' : 'flex gap-0 max-h-[80vh]'}`}>
-        <div className={isMobile ? '' : 'w-[420px] flex-shrink-0'}>
-          <ImageCarousel images={product.images} title={product.id} productId={product.id} />
-        </div>
+      <div className={isMobile ? 'overflow-y-auto max-h-[calc(92vh-180px)]' : 'flex flex-col max-h-[85vh] min-h-0'}>
+        <div className={isMobile ? '' : 'flex gap-0 flex-1 min-h-0 overflow-hidden'}>
+          <div className={isMobile ? '' : 'w-[420px] flex-shrink-0'}>
+            <ImageCarousel images={product.images} title={product.id} productId={product.id} />
+          </div>
 
-        <div className={isMobile ? '' : 'flex-1 overflow-y-auto max-h-[80vh]'}>
+          <div className={isMobile ? '' : 'flex-1 overflow-y-auto min-h-0'}>
           {/* ── Progress bar — PRIMARY feedback surface ── */}
           <SheetProgressBar itemCount={itemCount} threshold={threshold} isUnlocked={isUnlocked} />
 
@@ -422,12 +423,13 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
           <DemoTimer productId={product.id} />
           <DescriptionSection description={product.description} />
 
-          {!isMobile && (
-            <div className="border-t border-border p-6 bg-card space-y-3">
-              {renderActionZone()}
-            </div>
-          )}
+          </div>
         </div>
+        {!isMobile && (
+          <div className="border-t border-border p-4 bg-card space-y-3 flex-shrink-0">
+            {renderActionZone()}
+          </div>
+        )}
       </div>
 
       {isMobile && (
@@ -437,7 +439,7 @@ const ProductSheet = ({ product, open, onClose, sourceOverride, onAdd }: Product
       )}
 
       {/* Sticky bottom CTA when unlocked — always visible */}
-      {isUnlocked && quantity > 0 && (
+      {isMobile && isUnlocked && quantity > 0 && (
         <div className="sticky bottom-0 z-20 bg-card border-t border-success/30 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] animate-fade-in">
           <p className="text-center text-[11px] font-semibold text-success mb-1.5">
             ✅ შეკვეთა მზადაა
