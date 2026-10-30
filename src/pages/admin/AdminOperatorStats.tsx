@@ -9,6 +9,7 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { getOrderIdsForStore } from "@/lib/adminStoreFilter";
 import { tbilisiDayKey, tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
+import OperatorRatingsCard from "@/components/admin/OperatorRatingsCard";
 import { attemptsPerResolved, calculateCapacity, median, percentChange, workedSeconds } from "@/lib/operatorStatsEngine";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
@@ -139,6 +140,7 @@ export default function AdminOperatorStats(){
 
   return <TooltipProvider delayDuration={100}><div className="p-3 sm:p-6 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Users className="h-6 w-6 text-primary"/><h1 className="text-xl sm:text-2xl font-extrabold">Operator Stats</h1><ToggleStore/></div><Button variant="outline" size="sm" onClick={()=>setReload(v=>v+1)} disabled={loading}><RefreshCw className={`mr-1 h-4 w-4 ${loading?"animate-spin":""}`}/>Refresh</Button></div>
+    <OperatorRatingsCard/>
     <div className="flex gap-1 overflow-x-auto">{PRESETS.map(p=><Button key={p.key} size="sm" variant={preset===p.key?"default":"outline"} onClick={()=>setPreset(p.key)}>{p.label}</Button>)}</div>
     {preset==="custom"&&<div className="flex gap-2"><Input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="w-40"/><Input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="w-40"/></div>}
     <div className="flex flex-wrap gap-2 items-end"><div><label className="text-xs font-bold text-muted-foreground">Operator</label><select value={operator} onChange={e=>setOperator(e.target.value)} className="block h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="all">All operators</option>{operators.map(o=><option key={o}>{o}</option>)}</select></div><span className="text-xs text-muted-foreground">Tbilisi time{lastLoaded?` · updated ${lastLoaded.toLocaleTimeString("ka-GE",{timeZone:"Asia/Tbilisi"})}`:""}</span></div>
