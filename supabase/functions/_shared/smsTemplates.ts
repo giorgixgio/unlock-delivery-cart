@@ -1,8 +1,8 @@
 // Pure SMS sequence helpers shared by edge functions and the admin preview.
 // No Deno/browser APIs here.
 
-export type SeqType = "lead_created" | "call_no_answer" | "order_confirmed" | "out_for_delivery" | "delivery_failed";
-export const SEQ_TYPES: SeqType[] = ["lead_created", "call_no_answer", "order_confirmed", "out_for_delivery", "delivery_failed"];
+export type SeqType = "lead_created" | "order_auto_confirmed" | "call_no_answer" | "order_confirmed" | "out_for_delivery" | "delivery_failed" | "address_problem";
+export const SEQ_TYPES: SeqType[] = ["lead_created", "order_auto_confirmed", "call_no_answer", "order_confirmed", "out_for_delivery", "delivery_failed", "address_problem"];
 
 export interface SmsSettings {
   enabled: Record<SeqType, boolean>;
@@ -10,7 +10,7 @@ export interface SmsSettings {
   num2: string;
 }
 export const DEFAULT_SMS_SETTINGS: SmsSettings = {
-  enabled: { lead_created: true, call_no_answer: true, order_confirmed: true, out_for_delivery: true, delivery_failed: true },
+  enabled: { lead_created: true, order_auto_confirmed: true, call_no_answer: true, order_confirmed: true, out_for_delivery: true, delivery_failed: true, address_problem: true },
   num1: "", num2: "",
 };
 export function parseSmsSettings(raw: string | null | undefined): SmsSettings {
@@ -48,31 +48,55 @@ export const formatTotal = (v: number) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 };
 
-function templates(type: SeqType, v: TemplateVars, withProduct: boolean): string {
+/** Types that are useless without an operator number to call back. */
+export const NEEDS_NUMBER: SeqType[] = ["call_no_answer", "delivery_failed", "address_problem"];
+
+function templates(type: SeqType, v: TemplateVars, withProduct: boolean): string | null {
   const total = `${formatTotal(v.total)} GEL`;
   const p = withProduct && v.product ? v.product : null;
+  const nums = [v.num1, v.num2].map((x) => String(x || "").trim()).filter(Boolean);
+  const numsText = nums.join(" an ");
+  if (NEEDS_NUMBER.includes(type) && !nums.length) return null;
   switch (type) {
-    case "lead_created": return `Shekveta #${v.n} migebulia! Operatori male dagirekavt ${v.num1} an ${v.num2} nomridan. Gtxovt upasukhot. ${v.store}`;
-    case "call_no_answer": return `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gadmogvirekt ${v.num1} an ${v.num2}, rom shekveta ar gauqmdes. ${v.store}`;
+    case "lead_created": return nums.length
+      ? `Shekveta #${v.n} migebulia! Operatori male dagirekavt ${numsText} nomridan. Gtxovt upasukhot. ${v.store}`
+      : `Shekveta #${v.n} migebulia! Operatori male dagirekavt, gtxovt upasukhot. ${v.store}`;
+    case "order_auto_confirmed": {
+      const ask = nums.length ? ` Kitkhvebi? ${nums[0]}.` : "";
+      return p
+        ? `Shekveta #${v.n} dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}.${ask} ${v.store}`
+        : `Shekveta #${v.n} dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}.${ask} ${v.store}`;
+    }
+    case "call_no_answer": return `Shekvetis dasadastureblad dagirekeT, magram ver dagikavshirdit. Gadmogvirekt ${numsText}, rom shekveta ar gauqmdes. ${v.store}`;
     case "order_confirmed": return p
       ? `Shekveta dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. Madloba rom agvirchiet! ${v.store}`
       : `Shekveta dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. Madloba rom agvirchiet! ${v.store}`;
     case "out_for_delivery": return p
       ? `Dghes kurieri mogitant ${p}-s! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`
       : `Dghes kurieri mogitant shekvetas! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`;
-    case "delivery_failed": return `Kurierma ver dagikavshirdat. Dagvikavshirdit ${v.num1} an ${v.num2}, rom shekveta xelaxla mogitanot. ${v.store}`;
+    case "delivery_failed": return `Kurierma ver dagikavshirdat. Dagvikavshirdit ${numsText}, rom shekveta xelaxla mogitanot. ${v.store}`;
+    case "address_problem": return `Misamarti ver vipovet. Dagvikavshirdit ${numsText} misamartis dasazusteblad. ${v.store}`;
   }
 }
 
-/** Renders a GSM-7-safe text; drops {product} if the message would exceed one SMS. */
-export function renderSms(type: SeqType, v: TemplateVars): { text: string; warnings: string[] } {
+/** Last line of defence: true when a rendered text still has an empty or raw placeholder. */
+export function isTemplateIncomplete(text: string): boolean {
+  return !text.trim() || /  /.test(text) || / an  /.test(text) || /[{}]/.test(text)
+    || /\b(undefined|null|NaN)\b/.test(text) || /\ban\s+(an|nomridan)\b/.test(text) || /#\s/.test(text)
+    || /:\s*\./.test(text) || /\s[.,]/.test(text);
+}
+
+/** Renders a GSM-7-safe text; drops {product} if over one SMS. skip is set when nothing must be sent. */
+export function renderSms(type: SeqType, v: TemplateVars): { text: string; warnings: string[]; skip?: "no_operator_numbers" | "template_incomplete" } {
   const warnings: string[] = [];
-  let { text, changed } = toGsm7(templates(type, v, true));
+  const raw = templates(type, v, true);
+  if (raw == null) return { text: "", warnings, skip: "no_operator_numbers" };
+  let { text, changed } = toGsm7(raw);
   if (changed) warnings.push("non_gsm_replaced");
   if (text.length > 160 && v.product) {
-    const r = toGsm7(templates(type, v, false));
-    text = r.text; warnings.push("product_dropped");
+    text = toGsm7(templates(type, v, false)!).text; warnings.push("product_dropped");
   }
+  if (isTemplateIncomplete(text)) return { text, warnings, skip: "template_incomplete" };
   return { text, warnings };
 }
 export const smsSegments = (text: string) => (isGsm7(text) ? (text.length <= 160 ? 1 : Math.ceil(text.length / 153)) : (text.length <= 70 ? 1 : Math.ceil(text.length / 67)));
