@@ -9,7 +9,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts";
-import { deliveryWhen, isTbilisiCity, renderSms } from "../_shared/smsTemplates.ts";
+import { deliveryWhen, isTbilisiCity, renderSms, trackingLink } from "../_shared/smsTemplates.ts";
 import { loadSmsContext, STOPPED_STATUSES } from "../_shared/smsOrderContext.ts";
 import { logBlockedSms } from "../_shared/smsGuard.ts";
 
@@ -41,7 +41,7 @@ async function sendFirstText(service: any, apiKey: string, orderNumber: string, 
   const seqType = auto ? "order_auto_confirmed" : "lead_created";
   if (!ctx.settings.enabled[seqType]) return;
   const r = renderSms(seqType, {
-    n: orderNumber, store: ctx.store, num1: ctx.settings.num1, num2: ctx.settings.num2, product: ctx.product,
+    n: orderNumber, store: ctx.store, link: trackingLink(ctx.store, ctx.order.tracking_token), num1: ctx.settings.num1, num2: ctx.settings.num2, product: ctx.product,
     total: Number(ctx.order.total || 0),
     when: auto ? deliveryWhen(new Date(), isTbilisiCity(ctx.order.normalized_city || ctx.order.city, ctx.order.is_tbilisi)) : undefined,
   });
