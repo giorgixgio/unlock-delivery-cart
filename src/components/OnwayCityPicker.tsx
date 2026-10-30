@@ -42,9 +42,9 @@ export default function OnwayCityPicker({ value, onChange, onSelect, cities, err
       {matches.map((c, i) => <Button key={c.id} type="button" variant="ghost" role="option" aria-selected={i === active} className="w-full min-h-12 h-auto justify-start whitespace-normal text-left !text-base" onMouseDown={e => e.preventDefault()} onClick={() => choose(c)}>{c.name}</Button>)}
       {!matches.length && <p className="p-3 text-base text-muted-foreground">{loading ? "იტვირთება…" : "ქალაქი ვერ მოიძებნა"}</p>}
     </div>}
-    {!typed && chips.length > 0 && <div className="mt-2 flex flex-wrap gap-2" aria-label="პოპულარული ქალაქები">
+    {!typed && chips.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5" aria-label="პოპულარული ქალაქები">
       {chips.map((c, i) => <Button key={c.id} type="button" variant={i === 0 ? "default" : "outline"}
-        className={`h-11 rounded-full px-4 ${i === 0 ? "text-base font-bold" : "text-[15px] font-semibold"}`}
+        className={`h-11 rounded-full ${i === 0 ? "px-3.5 text-base font-bold" : "px-2.5 text-[15px] font-semibold"}`}
         onMouseDown={e => e.preventDefault()} onClick={() => choose(c, true)}>{c.name}</Button>)}
     </div>}
     {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
