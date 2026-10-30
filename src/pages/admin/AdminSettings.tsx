@@ -13,6 +13,8 @@ import SiteBrandingPanel from "@/components/admin/SiteBrandingPanel";
 import CustomsDocSettingsPanel from "@/components/admin/CustomsDocSettingsPanel";
 import DefaultStoreSettings from "@/components/admin/DefaultStoreSettings";
 import SmsStatusPanel from "@/components/admin/SmsStatusPanel";
+import SmsSequenceSettings from "@/components/admin/SmsSequenceSettings";
+import OnwayStatusMapPanel from "@/components/admin/OnwayStatusMapPanel";
 
 interface AdminUser {
   id: string;
@@ -141,6 +143,8 @@ const AdminSettings = () => {
       <DefaultStoreSettings />
 
       <SmsStatusPanel />
+      <SmsSequenceSettings />
+      <OnwayStatusMapPanel />
 
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}

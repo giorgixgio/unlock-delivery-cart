@@ -20,6 +20,7 @@ import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActi
 import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
 import OnwayApiSendModal from "@/components/admin/OnwayApiSendModal";
+import OnwayOrderStatusCard from "@/components/admin/OnwayOrderStatusCard";
 
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -1034,6 +1035,8 @@ const AdminOrderDetail = () => {
         <div className="flex justify-between text-sm"><span>Discount</span><span>-{Number(order.discount_total).toFixed(1)} ₾</span></div>
         <div className="flex justify-between font-bold border-t border-border pt-1.5"><span>Total</span><span>{Number(order.total).toFixed(1)} ₾</span></div>
       </div>
+
+      <OnwayOrderStatusCard orderId={order.id} plannedDate={(order as any).onway_planned_date} problemComment={(order as any).onway_problem_comment} problemImage={(order as any).onway_problem_image} />
 
       {/* Fulfillment & Tracking */}
       <div className="bg-card rounded-lg p-4 border border-border space-y-3">
