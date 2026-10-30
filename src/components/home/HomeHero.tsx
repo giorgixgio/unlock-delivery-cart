@@ -4,7 +4,7 @@ import type { Product } from "@/lib/constants";
 
 interface Slide { eyebrow: string; title: string; sub: string; cta: string; target: string; }
 const SLIDES: Slide[] = [
-  { eyebrow: "დღის შეთავაზება", title: "ფასდაკლებები 70%-მდე", sub: "ტოპ გაყიდვადი ნივთები საუკეთესო ფასად", cta: "ნახეთ შეთავაზებები", target: "#products" },
+  { eyebrow: "დღის შეთავაზება", title: "ფასდაკლებები 65%-მდე", sub: "ტოპ გაყიდვადი ნივთები საუკეთესო ფასად", cta: "ნახეთ შეთავაზებები", target: "#products" },
   { eyebrow: "მიტანა", title: "მიტანა მთელ საქართველოში", sub: "კურიერით — ქალაქებსა და სოფლებში", cta: "დაიწყეთ შოპინგი", target: "#products" },
   { eyebrow: "სიახლე", title: "ახალი ტრენდული ნივთები", sub: "ყოველკვირეულად ვამატებთ ახალ პროდუქტებს", cta: "ნახეთ სიახლეები", target: "#products" },
   { eyebrow: "უსაფრთხოდ", title: "თანხის გადახდა მიტანისას", sub: "გადაიხდით მხოლოდ ნივთის მიღების შემდეგ", cta: "შეუკვეთეთ ახლა", target: "#products" },

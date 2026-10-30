@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect, memo, useSyncExternalStore } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, Heart, Check } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { useCart } from "@/contexts/CartContext";
 import { useCheckoutGate } from "@/contexts/CheckoutGateContext";
 import { Button } from "@/components/ui/button";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import ProductSheet from "@/components/ProductSheet";
-import ProductMicroProof from "@/components/ProductMicroProof";
-import ProductBadgeStack from "@/components/ProductBadgeStack";
 import { getStockOverrides, subscribeOverrides } from "@/lib/stockOverrideStore";
 
 interface ProductCardProps {
@@ -66,12 +64,13 @@ const ProductCard = memo(({ product, isHero = false }: ProductCardProps) => {
   const [showFloat, setShowFloat] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const [liked, setLiked] = useState(false);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     addAndGate(product, "grid_card");
     setShowFloat(true);
-    setTimeout(() => setShowFloat(false), 600);
+    setTimeout(() => setShowFloat(false), 1200);
   };
 
   const handleMinus = (e: React.MouseEvent) => {
@@ -83,115 +82,81 @@ const ProductCard = memo(({ product, isHero = false }: ProductCardProps) => {
     setSheetOpen(true);
   };
 
+  const oldPrice = getFakeOldPrice(product.id, product.price);
+  const discount = getDiscountPercent(product.price, oldPrice);
+  const badge = isHero || product.isPriorityImpulse ? "TOP გაყიდვადი" : product.tags?.some((t) => /new|ახალ/i.test(t)) ? "ტრენდული" : null;
+
   return (
     <>
       <div
-        className={`relative bg-card rounded-lg shadow-card overflow-hidden border cursor-pointer transition-transform duration-150 ${
-          isHero ? "border-primary border-2 ring-2 ring-primary/20 shadow-lg" : "border-border"
-        } ${pressed ? "scale-[0.98] shadow-lg" : ""}`}
+        className={`group relative bg-card rounded-[20px] overflow-hidden border cursor-pointer transition-all duration-200 shadow-soft hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_hsl(20_40%_20%/0.35)] flex flex-col ${
+          isHero ? "border-primary/60 ring-2 ring-primary/15" : "border-border/60"
+        } ${pressed ? "scale-[0.98]" : ""}`}
         onClick={handleCardClick}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
         onPointerLeave={() => setPressed(false)}
       >
-        {showFloat && (
-          <div className="absolute top-2 right-2 z-10 text-primary font-extrabold text-lg animate-float-up pointer-events-none">
-            +1
+        <div className="relative p-1.5">
+          <div className="relative rounded-2xl overflow-hidden [&_img]:transition-transform [&_img]:duration-500 group-hover:[&_img]:scale-105">
+            <LazyImage src={product.image} alt={product.title} />
+            {isOOS && (
+              <div className="absolute inset-0 bg-foreground/40 flex items-center justify-center">
+                <span className="bg-foreground/70 backdrop-blur-sm text-background text-xs font-bold px-3 py-1 rounded-full">მარაგი ამოიწურა</span>
+              </div>
+            )}
           </div>
-        )}
-
-        <ProductBadgeStack product={product} context="grid" />
-
-        <div className="relative">
-          <LazyImage src={product.image} alt={product.title} />
-          {isOOS && (
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-              <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">
-                Sold Out
-              </span>
+          <span className={`absolute top-3 left-3 text-[10px] font-extrabold px-2 py-1 rounded-full shadow-sm ${badge ? "bg-foreground text-background" : "bg-gradient-brand text-primary-foreground"}`}>
+            {badge ?? `-${discount}%`}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setLiked((v) => !v); }}
+            aria-label={liked ? "სურვილებიდან წაშლა" : "სურვილებში დამატება"}
+            aria-pressed={liked}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-card/90 backdrop-blur flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+          >
+            <Heart className={`w-4 h-4 transition-colors ${liked ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+          </button>
+          {showFloat && (
+            <div className="absolute bottom-3 right-3 z-10 bg-success text-success-foreground text-xs font-bold rounded-full px-2.5 py-1 flex items-center gap-1 animate-float-up pointer-events-none">
+              <Check className="w-3.5 h-3.5" /> დაემატა
             </div>
           )}
         </div>
 
-        <div className="p-2">
-          {/* Title: fixed 2-line area */}
-          <p className="text-[13px] font-medium text-foreground leading-tight line-clamp-2 h-[2.25rem]">
-            {product.title}
-          </p>
+        <div className="px-3 pb-3 pt-1 flex flex-col flex-1">
+          <p className="text-[13px] md:text-sm font-medium text-foreground leading-snug line-clamp-2 min-h-[2.4rem]">{product.title}</p>
 
-          {/* Price row */}
-          {(() => {
-            const oldPrice = getFakeOldPrice(product.id, product.price);
-            const discount = getDiscountPercent(product.price, oldPrice);
-            return (
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className="text-price text-primary">{product.price} ₾</span>
-                <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
-              </div>
-            );
-          })()}
+          <div className="flex items-baseline gap-1.5 mt-1.5 flex-wrap">
+            <span className="text-xl md:text-2xl font-extrabold tracking-tight text-brand">{product.price} ₾</span>
+            <span className="text-xs text-muted-foreground line-through">{oldPrice.toFixed(2)} ₾</span>
+            {badge && <span className="text-[10px] font-extrabold text-brand bg-accent rounded-full px-1.5 py-0.5">-{discount}%</span>}
+          </div>
 
-          {/* Discount badge — dedicated line with reserved height */}
-          {(() => {
-            const oldPrice = getFakeOldPrice(product.id, product.price);
-            const discount = getDiscountPercent(product.price, oldPrice);
-            return (
-              <div className="h-[18px] mt-0.5">
-                <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
-                  -{discount}%
-                </span>
-              </div>
-            );
-          })()}
+          <p className="text-[11px] text-muted-foreground mt-0.5">გადახდა მიღებისას</p>
 
-          {/* Urgency/info: single line */}
-          <ProductMicroProof product={product} maxChars={40} lines={1} />
-
-          {/* CTA */}
-          <div className="mt-1.5">
+          <div className="mt-auto pt-2.5">
             {isOOS ? (
-              <Button disabled className="w-full h-10 text-sm font-bold rounded-lg opacity-50" size="default">
-                Sold Out
-              </Button>
+              <Button disabled className="w-full h-10 text-sm font-bold rounded-xl opacity-50">მარაგი ამოიწურა</Button>
             ) : quantity === 0 ? (
-              <Button
+              <button
                 onClick={handleAdd}
-                className="w-full h-10 text-sm font-bold rounded-lg"
-                size="default"
+                className={`w-full h-10 rounded-xl bg-gradient-brand text-primary-foreground text-sm font-bold flex items-center justify-center gap-1.5 shadow-brand active:scale-95 transition-transform ${showFloat ? "tm-pop" : ""}`}
               >
-                <Plus className="w-4 h-4 mr-1" />
-                შეკვეთა
-              </Button>
+                <Plus className="w-4 h-4" /> შეკვეთა
+              </button>
             ) : (
-              <div className="flex items-center gap-2 w-full justify-between">
-                <Button
-                  onClick={handleMinus}
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 rounded-lg border-2"
-                >
+              <div className="flex items-center gap-2 w-full justify-between bg-accent rounded-xl p-1">
+                <button onClick={handleMinus} aria-label="შემცირება" className="h-8 w-8 rounded-lg bg-card flex items-center justify-center active:scale-90 transition-transform">
                   <Minus className="w-4 h-4" />
-                </Button>
-                <span className="text-lg font-bold text-foreground min-w-[1.5rem] text-center">
-                  {quantity}
-                </span>
-                <Button
-                  onClick={handleAdd}
-                  size="icon"
-                  className="h-10 w-10 rounded-lg"
-                >
+                </button>
+                <span className="text-base font-bold text-foreground min-w-[1.5rem] text-center">{quantity}</span>
+                <button onClick={handleAdd} aria-label="დამატება" className={`h-8 w-8 rounded-lg bg-gradient-brand text-primary-foreground flex items-center justify-center active:scale-90 transition-transform ${showFloat ? "tm-pop" : ""}`}>
                   <Plus className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
             )}
           </div>
-
-          {/* COD helper text */}
-          {!isOOS && (
-            <p className="text-[9px] text-muted-foreground text-center mt-1 leading-tight h-[14px]">
-              გადახდა მიღებისას
-            </p>
-          )}
         </div>
       </div>
 
