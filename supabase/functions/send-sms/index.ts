@@ -1,12 +1,15 @@
 // send-sms — Sender.ge dispatcher with insert-first dedup guard.
 // verify_jwt = false at the platform level; we validate in code:
 //   type=confirmation  → the (orderNumber, phone) pair must match an order
-//                        created within the last 10 minutes.
+//                        created within the last 10 minutes. Sends the Latin
+//                        "lead_created" sequence text (logged as lead_created).
 //   type=fulfillment   → the caller must be an active admin (JWT required).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts";
+import { renderSms } from "../_shared/smsTemplates.ts";
+import { loadSmsContext } from "../_shared/smsOrderContext.ts";
 
 const PROVIDER = "sender.ge";
 
@@ -102,7 +105,18 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const content = buildContent(type, orderNumber);
+    let content = buildContent(type, orderNumber);
+    let logType: string = type;
+    if (type === "confirmation") {
+      const ctx = await loadSmsContext(service, { orderNumber });
+      if (!ctx || !ctx.settings.enabled.lead_created) {
+        return new Response(JSON.stringify({ skipped: "disabled" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const r = renderSms("lead_created", { n: orderNumber, store: ctx.store, num1: ctx.settings.num1, num2: ctx.settings.num2, total: Number(ctx.order.total || 0) });
+      if (r.warnings.length) console.warn("send-sms lead_created", r.warnings.join(","));
+      content = r.text; logType = "lead_created";
+    }
 
     // --- INSERT-FIRST DEDUP GUARD ---
     // unique(order_number, type): a fresh insert wins; on conflict a single
@@ -111,7 +125,7 @@ Deno.serve(async (req) => {
     let priorAttempts = 0;
     const { data: inserted, error: insertErr } = await service
       .from("sms_logs")
-      .insert({ order_number: orderNumber, phone: destination, type, sender: PROVIDER, provider: PROVIDER, content, status: "pending", attempts: 1 })
+      .insert({ order_number: orderNumber, phone: destination, type: logType, sender: PROVIDER, provider: PROVIDER, content, status: "pending", attempts: 1 })
       .select("id")
       .maybeSingle();
 
@@ -121,7 +135,7 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const { data: claimed, error: claimErr } = await service.rpc("sms_claim_retry", {
-        p_order_number: orderNumber, p_type: type, p_phone: destination, p_content: content,
+        p_order_number: orderNumber, p_type: logType, p_phone: destination, p_content: content,
       });
       if (claimErr) {
         return new Response(JSON.stringify({ error: `retry claim failed: ${claimErr.message}` }),
