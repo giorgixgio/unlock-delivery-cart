@@ -53,7 +53,7 @@ export const formatTotal = (v: number) => {
 
 export const LINK_TYPES: SeqType[] = ["lead_created", "order_auto_confirmed", "order_confirmed", "out_for_delivery"];
 export const trackingLink = (store: "BIGMART" | "TRENDMART", token: string | null | undefined) =>
-  token ? `${store === "BIGMART" ? "bigmart.ge" : "trendmart.ge"}/t/${token}` : null;
+  token ? `https://${store === "BIGMART" ? "bigmart.ge" : "trendmart.ge"}/t/${token}` : null;
 
 function templates(type: SeqType, v: TemplateVars, withProduct: boolean, withLink = true): string | null {
   const body = baseTemplate(type, v, withProduct);

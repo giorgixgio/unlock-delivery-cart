@@ -51,7 +51,7 @@ export default function SmsSequenceSettings() {
     } catch { toast.error("Could not save SMS settings"); }
     setSaving(false);
   };
-  const sample = { n: "122579", store: "TRENDMART" as const, num1: s.num1 || "5XXXXXXXX", num2: s.num2 || "5XXXXXXXX", total: 34, when: "xval", link: "trendmart.ge/t/Ab3x9K" };
+  const sample = { n: "122579", store: "TRENDMART" as const, num1: s.num1 || "5XXXXXXXX", num2: s.num2 || "5XXXXXXXX", total: 34, when: "xval", link: "https://trendmart.ge/t/Ab3x9K" };
 
   return (
     <div className="bg-card rounded-lg p-4 border border-border space-y-4">
