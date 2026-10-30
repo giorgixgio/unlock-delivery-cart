@@ -79,6 +79,9 @@ const Index = () => {
 
         {activeCategory === "all" && <Reveal><PromoBanner product={promo} /></Reveal>}
 
+        {activeCategory === "all" && <Reveal><ReviewsSection /></Reveal>}
+        {activeCategory === "all" && <Reveal><WhyTrendmart /></Reveal>}
+
         <section id="products" className="scroll-mt-24">
           <SectionTitle title={activeCategory === "all" ? "ყველა პროდუქტი" : "კატეგორიის პროდუქტები"} subtitle={`${filtered.length} ნივთი`} />
           {isLoading ? (
@@ -103,8 +106,6 @@ const Index = () => {
           )}
         </section>
 
-        {!hasMore && <Reveal><ReviewsSection /></Reveal>}
-        {!hasMore && <Reveal><WhyTrendmart /></Reveal>}
       </div>
     </main>
   );

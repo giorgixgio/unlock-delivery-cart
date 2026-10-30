@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Mail, MapPin, Banknote, Facebook, Instagram } from 'lucide-react';
+import { Mail, MapPin, Banknote } from 'lucide-react';
 import { useCartOverlay } from '@/contexts/CartOverlayContext';
 import { getSiteConfig } from '@/config/siteConfig';
 import { STORE_POLICY_LINKS, TRENDMART_SELLER } from '@/lib/storePolicies';
@@ -27,10 +27,6 @@ export default function StorePolicyFooter() {
    <div>
     <img src={logoSrc} alt="TrendMart" className="h-9 w-auto" width={110} height={36} loading="lazy" />
     <p className="mt-3 text-sm leading-relaxed max-w-sm">ქართული ონლაინ მაღაზია. მიტანა კურიერით მთელ საქართველოში, გადახდა ნივთის მიღებისას.</p>
-    <div className="mt-4 flex gap-2">
-     <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-primary hover:bg-gradient-brand hover:text-primary-foreground transition-colors"><Facebook className="w-4 h-4"/></a>
-     <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-primary hover:bg-gradient-brand hover:text-primary-foreground transition-colors"><Instagram className="w-4 h-4"/></a>
-    </div>
    </div>
    <nav aria-label="მაღაზიის ინფორმაცია">
     <h3 className="text-sm font-bold text-foreground mb-3">ინფორმაცია</h3>
