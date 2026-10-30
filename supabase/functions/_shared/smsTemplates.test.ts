@@ -40,3 +40,42 @@ Deno.test("confirmed text with product and integer total", () => {
   assertEquals(renderSms("order_confirmed", { ...v, product: "Kamera" }).text,
     "Shekveta dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. Madloba rom agvirchiet! TRENDMART");
 });
+
+// ---- Empty-placeholder protection ----
+import { isTemplateIncomplete } from "./smsTemplates.ts";
+const noNums = { ...v, num1: "", num2: "" };
+Deno.test("lead_created without numbers uses the no-number variant", () => {
+  const r = renderSms("lead_created", noNums);
+  assertEquals(r.text, "Shekveta #122579 migebulia! Operatori male dagirekavt, gtxovt upasukhot. TRENDMART");
+  assertEquals(r.skip, undefined);
+});
+Deno.test("lead_created with one number has no ' an '", () => {
+  assertEquals(renderSms("lead_created", { ...v, num2: "" }).text,
+    "Shekveta #122579 migebulia! Operatori male dagirekavt 555111222 nomridan. Gtxovt upasukhot. TRENDMART");
+  assertEquals(renderSms("lead_created", { ...v, num1: "" }).text.includes(" an "), false);
+});
+Deno.test("call_no_answer, delivery_failed and address_problem skip without numbers", () => {
+  for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, noNums).skip, "no_operator_numbers");
+});
+Deno.test("delivery_failed with one number", () => {
+  assertEquals(renderSms("delivery_failed", { ...v, num2: "" }).text, "Kurierma ver dagikavshirdat. Dagvikavshirdit 555111222, rom shekveta xelaxla mogitanot. TRENDMART");
+});
+Deno.test("address_problem text", () => {
+  assertEquals(renderSms("address_problem", v).text, "Misamarti ver vipovet. Dagvikavshirdit 555111222 an 555333444 misamartis dasazusteblad. TRENDMART");
+});
+Deno.test("order_auto_confirmed with and without product/number", () => {
+  assertEquals(renderSms("order_auto_confirmed", { ...v, product: "Kamera" }).text,
+    "Shekveta #122579 dadasturda! Kamera - 34 GEL, gadakhda kurierTan. Mitana: xval. Kitkhvebi? 555111222. TRENDMART");
+  assertEquals(renderSms("order_auto_confirmed", noNums).text,
+    "Shekveta #122579 dadasturda! Jami 34 GEL, gadakhda kurierTan. Mitana: xval. TRENDMART");
+});
+Deno.test("missing delivery date blocks the send", () => {
+  assertEquals(renderSms("order_auto_confirmed", { ...v, when: undefined }).skip, "template_incomplete");
+});
+Deno.test("final check catches the broken live text", () => {
+  assertEquals(isTemplateIncomplete("Operatori male dagirekavt  an  nomridan. TRENDMART"), true);
+  assertEquals(isTemplateIncomplete("Hello {num1} TRENDMART"), true);
+  assertEquals(isTemplateIncomplete("Shekveta # migebulia"), true);
+  for (const t of ["lead_created", "call_no_answer", "order_confirmed", "out_for_delivery", "delivery_failed", "address_problem", "order_auto_confirmed"] as const)
+    assertEquals(renderSms(t, { ...v, product: "Kamera" }).skip, undefined, t);
+});

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Ev { id: string; status_name: string | null; comment: string | null; image: string | null; event_time: string | null }
+interface Ev { ai_reason: string | null; ai_summary: string | null; id: string; status_name: string | null; comment: string | null; image: string | null; event_time: string | null }
 
 /** Onway webhook history, planned date and latest courier problem for one order. */
 export default function OnwayOrderStatusCard({ orderId, plannedDate, problemComment, problemImage }: {
@@ -9,7 +9,7 @@ export default function OnwayOrderStatusCard({ orderId, plannedDate, problemComm
 }) {
   const [events, setEvents] = useState<Ev[]>([]);
   useEffect(() => {
-    supabase.from("onway_status_events").select("id,status_name,comment,image,event_time").eq("order_id", orderId)
+    supabase.from("onway_status_events").select("id,status_name,comment,image,event_time,ai_reason,ai_summary").eq("order_id", orderId)
       .order("event_time", { ascending: false }).limit(30).then(({ data }) => setEvents((data as Ev[]) || []));
   }, [orderId]);
   if (!events.length && !plannedDate) return null;
@@ -29,6 +29,7 @@ export default function OnwayOrderStatusCard({ orderId, plannedDate, problemComm
           <li key={e.id} className="flex flex-wrap gap-2">
             <span className="text-xs text-muted-foreground">{fmt(e.event_time)}</span>
             <span className="font-medium">{e.status_name}</span>
+            {e.ai_reason && <span className="rounded bg-muted px-1.5 text-xs" title={e.ai_summary || ""}>AI: {e.ai_reason}</span>}
             {e.comment && <span className="italic">— {e.comment}</span>}
             {e.image && <a href={e.image} target="_blank" rel="noreferrer" className="underline">photo</a>}
           </li>

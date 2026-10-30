@@ -1275,6 +1275,30 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_comment_ai_cache: {
+        Row: {
+          comment_hash: string
+          confidence: number
+          created_at: string
+          reason: string
+          summary: string | null
+        }
+        Insert: {
+          comment_hash: string
+          confidence: number
+          created_at?: string
+          reason: string
+          summary?: string | null
+        }
+        Update: {
+          comment_hash?: string
+          confidence?: number
+          created_at?: string
+          reason?: string
+          summary?: string | null
+        }
+        Relationships: []
+      }
       onway_order_reviews: {
         Row: {
           decision: string
@@ -1397,6 +1421,9 @@ export type Database = {
       }
       onway_status_events: {
         Row: {
+          ai_confidence: number | null
+          ai_reason: string | null
+          ai_summary: string | null
           comment: string | null
           created_at: string
           dedupe_key: string
@@ -1411,6 +1438,9 @@ export type Database = {
           tracking: string
         }
         Insert: {
+          ai_confidence?: number | null
+          ai_reason?: string | null
+          ai_summary?: string | null
           comment?: string | null
           created_at?: string
           dedupe_key: string
@@ -1425,6 +1455,9 @@ export type Database = {
           tracking: string
         }
         Update: {
+          ai_confidence?: number | null
+          ai_reason?: string | null
+          ai_summary?: string | null
           comment?: string | null
           created_at?: string
           dedupe_key?: string
@@ -1721,7 +1754,9 @@ export type Database = {
           onway_problem_at: string | null
           onway_problem_comment: string | null
           onway_problem_image: string | null
+          onway_problem_reason: string | null
           onway_problem_resolved_at: string | null
+          onway_problem_summary: string | null
           onway_sent_at: string | null
           onway_tracking: string | null
           operator_review_status: string | null
@@ -1814,7 +1849,9 @@ export type Database = {
           onway_problem_at?: string | null
           onway_problem_comment?: string | null
           onway_problem_image?: string | null
+          onway_problem_reason?: string | null
           onway_problem_resolved_at?: string | null
+          onway_problem_summary?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
@@ -1907,7 +1944,9 @@ export type Database = {
           onway_problem_at?: string | null
           onway_problem_comment?: string | null
           onway_problem_image?: string | null
+          onway_problem_reason?: string | null
           onway_problem_resolved_at?: string | null
+          onway_problem_summary?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
           operator_review_status?: string | null
