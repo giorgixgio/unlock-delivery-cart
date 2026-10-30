@@ -12,6 +12,7 @@ import StaffPasswordPanel from "@/components/admin/StaffPasswordPanel";
 import SiteBrandingPanel from "@/components/admin/SiteBrandingPanel";
 import CustomsDocSettingsPanel from "@/components/admin/CustomsDocSettingsPanel";
 import DefaultStoreSettings from "@/components/admin/DefaultStoreSettings";
+import SmsStatusPanel from "@/components/admin/SmsStatusPanel";
 
 interface AdminUser {
   id: string;
@@ -138,6 +139,8 @@ const AdminSettings = () => {
 
       <CustomsDocSettingsPanel />
       <DefaultStoreSettings />
+
+      <SmsStatusPanel />
 
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}

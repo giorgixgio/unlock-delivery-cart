@@ -197,6 +197,20 @@
       "when": 1793204552906,
       "tag": "0027_validate_storefront_city_selection",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793376757417,
+      "tag": "0028_sms_logs_sender_ge",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793376898260,
+      "tag": "0029_internal_job_secrets",
+      "breakpoints": true
     }
   ]
 }

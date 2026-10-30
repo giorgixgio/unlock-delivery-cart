@@ -1,12 +1,13 @@
 // Checks the Meta ad account's unpaid balance and alerts the owner at every
 // $10 step from $250 due up to the billing threshold, so a partial payment can
-// be made in time. Alerts go out via SMS (SMSOffice) AND Telegram; Telegram is
+// be made in time. Alerts go out via SMS (Sender.ge) AND Telegram; Telegram is
 // the backup that counts as delivered even when the SMS fails.
 // Runs from pg_cron. Resets after a payment drops the balance below $250.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { acceptBillingBalance, isPaymentDrop } from "./balanceGuard.ts";
 import { sendTelegramMessage } from "../_shared/telegram.ts";
+import { sendSms, senderApiKey } from "../_shared/senderGe.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/meta_ads";
 const START_USD = 250;
@@ -36,9 +37,8 @@ Deno.serve(async (req) => {
   if (isTest) {
     for (const r of rows ?? []) {
       if (!r.phone) continue;
-      const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content: "BIGMART: სატესტო შეტყობინება Meta ბილინგის შეხსენებისთვის.", reference: `t${Date.now() % 100000}` });
-      const sms = await fetch(`https://smsoffice.ge/api/v2/send/?${params}`);
-      results.push({ destination: toMsisdn(r.phone), status: sms.status, body: (await sms.text()).slice(0, 300) });
+      const sms = await sendSms(senderApiKey() ?? "", toMsisdn(r.phone), "BIGMART: სატესტო შეტყობინება Meta ბილინგის შეხსენებისთვის.");
+      results.push({ destination: toMsisdn(r.phone), status: sms.httpStatus, body: sms.status + (sms.apiMessage ? `: ${sms.apiMessage}` : "") });
     }
     return json({ test: true, results });
   }
@@ -83,13 +83,9 @@ Deno.serve(async (req) => {
           if (!r.phone) {
             upd.last_error = "no phone set";
           } else {
-            const params = new URLSearchParams({ key: Deno.env.get("SMSOFFICE_API_KEY")!, destination: toMsisdn(r.phone), sender: "BIGMART", content, reference: `bill-${milestone}` });
-            const sms = await fetch(`https://smsoffice.ge/api/v2/send/?${params}`);
-            const body = await sms.text();
-            let ok = sms.ok;
-            try { ok = ok && JSON.parse(body).Success !== false; } catch { /* ignore */ }
-            if (ok) delivered = true;
-            else upd.last_error = `sms ${sms.status}: ${body.slice(0, 200)}`;
+            const sms = await sendSms(senderApiKey() ?? "", toMsisdn(r.phone), content);
+            if (sms.status === "sent") delivered = true;
+            else upd.last_error = `sms ${sms.httpStatus}: ${(sms.apiMessage ?? "").slice(0, 200)}`;
           }
           // Telegram backup: counts as delivered even when the SMS failed.
           const tg = await sendTelegramMessage(content);

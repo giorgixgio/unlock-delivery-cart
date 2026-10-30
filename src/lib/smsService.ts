@@ -111,13 +111,15 @@ export async function triggerFulfillmentSms(
   return summary;
 }
 
-/** Fetch current SMSOffice balance (admin-only). Returns null on error. */
-export async function fetchSmsBalance(): Promise<number | null> {
+export interface SmsBalance { balance: number; overdraft: number }
+
+/** Fetch current Sender.ge balance (admin-only). Returns null on error. */
+export async function fetchSmsBalance(): Promise<SmsBalance | null> {
   try {
     const { data, error } = await supabase.functions.invoke("sms-balance", { body: {} });
     if (error) return null;
-    const b = (data as any)?.balance;
-    return typeof b === "number" && Number.isFinite(b) ? b : null;
+    const b = Number((data as any)?.balance), o = Number((data as any)?.overdraft ?? 0);
+    return Number.isFinite(b) ? { balance: b, overdraft: Number.isFinite(o) ? o : 0 } : null;
   } catch { return null; }
 }
 
