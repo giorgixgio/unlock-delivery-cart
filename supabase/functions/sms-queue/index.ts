@@ -5,6 +5,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts";
 import { applyQuietHours, deliveryWhen, isTbilisiCity, renderSms, type SeqType } from "../_shared/smsTemplates.ts";
 import { loadSmsContext, STOPPED_STATUSES } from "../_shared/smsOrderContext.ts";
+import { logBlockedSms } from "../_shared/smsGuard.ts";
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const MAX_ATTEMPTS = 3;
@@ -57,13 +58,13 @@ Deno.serve(async (req) => {
         await skip(`order_${order.status}`); continue;
       }
       if (type === "order_confirmed" && order.status !== "confirmed" && order.status !== "shipped") { await skip("not_confirmed"); continue; }
+      if (type === "order_confirmed" && order.auto_confirmed === true) { await skip("auto_confirmed"); continue; }
       if (type === "call_no_answer" && order.status === "confirmed") { await skip("already_confirmed"); continue; }
       const phone = normalizeGePhone(order.customer_phone);
       if (!phone) { await skip("invalid_phone"); continue; }
-      if ((type === "call_no_answer" || type === "delivery_failed") && (!settings.num1 || !settings.num2)) { await skip("operator_numbers_missing"); continue; }
 
       const confirmedAt = new Date(item.created_at); // enqueued at confirmation time
-      const { text, warnings } = renderSms(type, {
+      const { text, warnings, skip: skipReason } = renderSms(type, {
         n: String(order.public_order_number), store: ctx.store, num1: settings.num1, num2: settings.num2,
         product: ctx.product, total: Number(order.total || 0),
         when: type === "order_confirmed" ? deliveryWhen(confirmedAt, isTbilisiCity(order.normalized_city || order.city, order.is_tbilisi)) : undefined,
@@ -72,6 +73,10 @@ Deno.serve(async (req) => {
 
       // sms_logs keeps unique(order_number, type); repeat steps get a suffix.
       const logType = item.seq > 1 ? `${type}_${item.seq}` : type;
+      if (skipReason) {
+        await logBlockedSms(db, { orderNumber: item.order_number, phone, type: logType, content: text, reason: skipReason });
+        await skip(skipReason); continue;
+      }
       const { data: log, error: logErr } = await db.from("sms_logs").insert({
         order_number: item.order_number, phone, type: logType, sender: "sender.ge", provider: "sender.ge", content: text, status: "pending", attempts: 1,
       }).select("id").maybeSingle();

@@ -42,7 +42,7 @@ export function sendConfirmationSms(orderNumber: string, phone: string | null | 
   if (!orderNumber || !hasValidGePhone(phone)) return;
   void invokeSend({ phone: phone as string, orderNumber, type: "confirmation" })
     .then((res) => {
-      if (res?.ok) trackEvent("sms_sent", { orderNumber, type: "confirmation" });
+      if (res?.ok || res?.accepted) trackEvent("sms_sent", { orderNumber, type: "confirmation" });
       else if (res?.skipped) { /* already_sent or invalid_phone — silent */ }
       else trackEvent("sms_failed", { orderNumber, type: "confirmation", errorCode: res?.errorCode ?? null });
     })
