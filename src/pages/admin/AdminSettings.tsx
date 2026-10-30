@@ -15,6 +15,7 @@ import DefaultStoreSettings from "@/components/admin/DefaultStoreSettings";
 import SmsStatusPanel from "@/components/admin/SmsStatusPanel";
 import SmsSequenceSettings from "@/components/admin/SmsSequenceSettings";
 import OnwayStatusMapPanel from "@/components/admin/OnwayStatusMapPanel";
+import DeliveryFailureStats from "@/components/admin/DeliveryFailureStats";
 
 interface AdminUser {
   id: string;
@@ -145,6 +146,7 @@ const AdminSettings = () => {
       <SmsStatusPanel />
       <SmsSequenceSettings />
       <OnwayStatusMapPanel />
+      <DeliveryFailureStats />
 
       {/* Super-admin only: presentation mode controls */}
       {isSuperAdmin && <PresentationSettingsPanel />}
