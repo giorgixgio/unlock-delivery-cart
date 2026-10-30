@@ -1,5 +1,7 @@
 // Sender.ge SMS API v1 client. POST + x-www-form-urlencoded only; the API key
 // never appears in URLs, logs or returned values.
+import { proxyFetch } from "./proxyFetch.ts";
+// Sender.ge whitelists our QuotaGuard static IPs, so every call goes through the proxy.
 const BASE = "https://sender.ge/api";
 const TIMEOUT_MS = 15000;
 const RETRY_DELAYS_MS = [1000, 3000];
@@ -23,7 +25,7 @@ async function post(path: string, fields: Record<string, string>): Promise<RawRe
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const resp = await fetch(`${BASE}/${path}`, {
+    const resp = await proxyFetch(`${BASE}/${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(fields).toString(),
