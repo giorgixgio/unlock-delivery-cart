@@ -4,6 +4,7 @@ import { useCartOverlay } from '@/contexts/CartOverlayContext';
 import { getSiteConfig } from '@/config/siteConfig';
 import { STORE_POLICY_LINKS, TRENDMART_SELLER } from '@/lib/storePolicies';
 import logoSrc from '@/assets/logo.png';
+import { useSiteBranding } from '@/hooks/useSiteBranding';
 
 const labels: Record<string,string>={
  '/terms':'წესები და პირობები',
@@ -19,13 +20,14 @@ const ORDER=['/terms','/privacy-policy','/returns','/shipping','/cookie-policy',
 export default function StorePolicyFooter() {
  const {pathname}=useLocation();
  const {isCartOpen}=useCartOverlay();
+ const {logoUrl: siteLogo, siteName}=useSiteBranding();
  const visible=pathname==='/' || pathname==='/shop' || pathname.startsWith('/p/') || ['/bundle','/5for39'].includes(pathname) || STORE_POLICY_LINKS.some(link=>link.path===pathname);
  if(getSiteConfig().warehouse!=='B' || !visible || isCartOpen)return null;
  const links=ORDER.filter(p=>STORE_POLICY_LINKS.some(l=>l.path===p));
  return <footer className="bg-card border-t border-border/60 text-muted-foreground pb-28 pt-10" lang="ka">
   <div className="max-w-[1280px] mx-auto px-5 md:px-8 grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
    <div>
-    <img src={logoSrc} alt="TrendMart" className="h-16 w-auto -ml-2" width={96} height={64} loading="lazy" />
+    <img src={siteLogo || logoSrc} alt={siteName} className="h-12 w-auto" width={144} height={48} loading="lazy" />
     <p className="mt-3 text-sm leading-relaxed max-w-sm">ქართული ონლაინ მაღაზია. მიტანა კურიერით მთელ საქართველოში, გადახდა ნივთის მიღებისას.</p>
    </div>
    <nav aria-label="მაღაზიის ინფორმაცია">
