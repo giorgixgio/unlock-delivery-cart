@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Check, Loader2, Phone, Star } from "lucide-react";
 import { getPolicySections, TRENDMART_RETURNS } from "@/lib/storePolicies";
+import OnwayCityPicker from "@/components/OnwayCityPicker";
+import { useOnwayCities } from "@/hooks/useOnwayCities";
+import { selectedCityValid } from "@/lib/onwayCities";
 
 const TrackingMap = lazy(() => import("@/components/tracking/TrackingMap"));
 
@@ -14,6 +17,7 @@ interface Tracking {
   total: number; delivery_text: string | null; items: { title: string; qty: number; image: string | null }[]; stages: Stage[];
   handed: boolean; status: "active" | "delivered" | "canceled"; can_cancel: boolean; operator_phone: string | null;
   can_rate_operator: boolean; rated: boolean; review_token: string | null;
+  confirmed: boolean; needs_address: boolean; shipping_fee: number;
 }
 
 async function call(body: Record<string, unknown>) {
@@ -56,7 +60,8 @@ export default function OrderTracking() {
     </main>
   );
 
-  const current = data.stages.findIndex((s) => !s.done);
+  const stages = data.confirmed ? data.stages : data.stages.slice(0, 1);
+  const current = data.confirmed ? stages.findIndex((s) => !s.done) : -1;
   return (
     <main className="mx-auto max-w-md space-y-5 px-4 pb-16 pt-4">
       <header className="flex items-center justify-between">
@@ -72,10 +77,17 @@ export default function OrderTracking() {
           <p className="text-base font-semibold">კურიერს გადაუხდით:</p>
           <p className="text-5xl font-black leading-tight">{money(data.total)} ₾</p>
           <p className="mt-1 text-sm opacity-90">გადახდა კურიერთან მიღებისას</p>
+          {data.shipping_fee > 0 && <p className="text-sm opacity-90">მათ შორის მიტანა: {money(data.shipping_fee)} ₾</p>}
         </section>
       )}
 
-      {data.status === "active" && data.delivery_text && (
+      {data.status === "active" && data.needs_address && <AddressForm token={token} onDone={load} />}
+      {data.status === "active" && !data.confirmed && (
+        <section className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 text-center text-lg font-bold">ოპერატორი დაგირეკავთ დასადასტურებლად</section>
+      )}
+      {data.status === "active" && (data.needs_address || !data.confirmed) && <ShippingInfo />}
+
+      {data.status === "active" && data.confirmed && !data.needs_address && data.delivery_text && (
         <section className="rounded-2xl border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">მიტანის დღე</p>
           <p className="text-2xl font-extrabold">{data.delivery_text}</p>
@@ -86,11 +98,11 @@ export default function OrderTracking() {
       {data.status !== "canceled" && (
         <section className="rounded-2xl border border-border bg-card p-4">
           <ol className="space-y-0">
-            {data.stages.map((s, i) => {
+            {stages.map((s, i) => {
               const isCurrent = i === current;
               return (
                 <li key={s.key} className="relative flex gap-3 pb-5 last:pb-0">
-                  {i < data.stages.length - 1 && <span className={`absolute left-[15px] top-8 h-[calc(100%-2rem)] w-0.5 ${s.done ? "bg-primary" : "bg-border"}`} />}
+                  {i < stages.length - 1 && <span className={`absolute left-[15px] top-8 h-[calc(100%-2rem)] w-0.5 ${s.done ? "bg-primary" : "bg-border"}`} />}
                   <span className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${s.done ? "border-primary bg-primary text-primary-foreground" : isCurrent ? "border-primary bg-background animate-pulse" : "border-border bg-background"}`}>
                     {s.done ? <Check className="h-4 w-4" /> : <span className={`h-2.5 w-2.5 rounded-full ${isCurrent ? "bg-primary" : "bg-border"}`} />}
                   </span>
@@ -105,7 +117,7 @@ export default function OrderTracking() {
         </section>
       )}
 
-      {data.status === "active" && <Suspense fallback={<div className="h-56 rounded-2xl bg-muted" />}><TrackingMap city={data.city} handed={data.handed} /></Suspense>}
+      {data.status === "active" && data.confirmed && !data.needs_address && <Suspense fallback={<div className="h-56 rounded-2xl bg-muted" />}><TrackingMap city={data.city} handed={data.handed} /></Suspense>}
 
       <section className="space-y-2">
         <h2 className="text-lg font-bold">პროდუქტები</h2>
@@ -119,7 +131,7 @@ export default function OrderTracking() {
       </section>
 
       {data.status === "active" && <Actions data={data} token={token} onChanged={load} />}
-      {data.can_rate_operator && <OperatorRating token={token} onDone={load} />}
+      {data.confirmed && data.can_rate_operator && <OperatorRating token={token} onDone={load} />}
       {data.status === "delivered" && data.review_token && (
         <Button asChild size="lg" className="h-14 w-full text-lg"><Link to={`/r/${data.review_token}`}>შეაფასეთ პროდუქტი ⭐</Link></Button>
       )}
@@ -144,11 +156,11 @@ function Actions({ data, token, onChanged }: { data: Tracking; token: string; on
       {data.operator_phone && (
         <Button asChild size="lg" className="h-14 w-full gap-2 text-lg"><a href={telHref(data.operator_phone)}><Phone className="h-5 w-5" />დაგვირეკეთ</a></Button>
       )}
-      {mode === null && <Button variant="outline" size="lg" className="h-14 w-full text-base" onClick={() => setMode("change")}>მისამართის / დღის შეცვლა</Button>}
+      {mode === null && !data.needs_address && <Button variant="outline" size="lg" className="h-14 w-full text-base" onClick={() => setMode("change")}>{data.confirmed ? "მისამართის / დღის შეცვლა" : "მისამართის შესწორება"}</Button>}
       {mode === "change" && (
         <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
           <label className="block text-sm font-semibold">ახალი მისამართი<textarea value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} rows={2} className="mt-1 w-full rounded-lg border border-input bg-background p-2 text-base" /></label>
-          <label className="block text-sm font-semibold">სასურველი დღე<input value={day} onChange={(e) => setDay(e.target.value)} maxLength={100} placeholder="მაგ. ხვალ საღამოს" className="mt-1 w-full rounded-lg border border-input bg-background p-2 text-base" /></label>
+          {data.confirmed && <label className="block text-sm font-semibold">სასურველი დღე<input value={day} onChange={(e) => setDay(e.target.value)} maxLength={100} placeholder="მაგ. ხვალ საღამოს" className="mt-1 w-full rounded-lg border border-input bg-background p-2 text-base" /></label>}
           <div className="flex gap-2">
             <Button className="h-12 flex-1" disabled={busy || (!address.trim() && !day.trim())} onClick={() => run({ action: "change", address: address.trim() || undefined, day: day.trim() || undefined }, "sent")}>გაგზავნა</Button>
             <Button variant="ghost" className="h-12" onClick={() => setMode(null)}>დახურვა</Button>
@@ -184,6 +196,46 @@ function Actions({ data, token, onChanged }: { data: Tracking; token: string; on
       {mode === "saved" && <p className="rounded-xl bg-muted p-3 text-center font-semibold">გმადლობთ! ოპერატორი მალე დაგირეკავთ.</p>}
       {err && <p className="text-center text-sm text-destructive">{err}</p>}
     </section>
+  );
+}
+
+function ShippingInfo() {
+  return (
+    <section className="space-y-1 rounded-2xl border border-border bg-card p-4 text-base">
+      <p className="text-sm text-muted-foreground">მიწოდების პირობები</p>
+      <p>• თბილისი — მომდევნო სამუშაო დღეს (თუ შეკვეთა 18:00-მდე დადასტურდა)</p>
+      <p>• რეგიონები — 1-3 სამუშაო დღე</p>
+      <p>• კვირას მიტანა არ ხდება</p>
+      <p className="font-semibold">გადახდა კურიერთან, ნივთის მიღებისას</p>
+    </section>
+  );
+}
+
+function AddressForm({ token, onDone }: { token: string; onDone: () => void }) {
+  const { cities, loading } = useOnwayCities();
+  const [city, setCity] = useState(""), [cityId, setCityId] = useState<string | null>(null);
+  const [address, setAddress] = useState(""), [name, setName] = useState("");
+  const [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null), [done, setDone] = useState(false);
+  if (done) return <section className="rounded-2xl border-2 border-primary bg-primary/5 p-5 text-center text-lg font-bold">გმადლობთ! მისამართი შენახულია.</section>;
+  const save = async () => {
+    if (!selectedCityValid(cities, cityId, city)) return setErr("აირჩიეთ ქალაქი სიიდან");
+    if (address.trim().length < 3) return setErr("ჩაწერეთ მისამართი");
+    setBusy(true); setErr(null);
+    try { await call({ action: "set_address", token, region_id: cityId, address: address.trim(), name: name.trim() || undefined }); setDone(true); setTimeout(onDone, 2500); }
+    catch (e: any) { setErr(e.code === "rate_limited" ? "ძალიან ბევრი მცდელობა, სცადეთ მოგვიანებით." : "ვერ შეინახა, სცადეთ ხელახლა."); }
+    setBusy(false);
+  };
+  return (
+    <form className="space-y-3 rounded-2xl border-2 border-primary bg-card p-4 shadow-md" onSubmit={(e) => { e.preventDefault(); save(); }}>
+      <h2 className="text-xl font-extrabold">მიუთითეთ მიწოდების მისამართი</h2>
+      <div><p className="mb-1 text-sm font-semibold">ქალაქი / სოფელი</p>
+        <OnwayCityPicker value={city} cities={cities} loading={loading} selectedId={cityId}
+          onChange={(v) => { setCityId(null); setCity(v); }} onSelect={(c) => { setCityId(c.id); setCity(c.name); }} /></div>
+      <label className="block text-sm font-semibold">მისამართი<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} placeholder="ქუჩა, სახლის ნომერი, ბინა" className="mt-1 h-12 w-full rounded-lg border border-input bg-background px-3 text-base" /></label>
+      <label className="block text-sm font-semibold">მიმღების სახელი (არასავალდებულო)<input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className="mt-1 h-12 w-full rounded-lg border border-input bg-background px-3 text-base" /></label>
+      {err && <p className="text-sm text-destructive">{err}</p>}
+      <Button type="submit" size="lg" className="h-14 w-full text-lg" disabled={busy}>{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "შენახვა"}</Button>
+    </form>
   );
 }
 

@@ -57,3 +57,8 @@ export function plannedDateKa(d: string): string | null {
 export const CANCEL_REASONS_KA: Record<string, string> = {
   cant_afford: "ვეღარ ვიყიდი", too_expensive: "ძვირია", bought_elsewhere: "სხვაგან ვიყიდე", accidental: "შემთხვევით შევუკვეთე", other: "სხვა",
 };
+
+/** Order still lacks a usable delivery address (skipped or never entered at checkout). */
+export const needsAddress = (o: any) =>
+  !isClosed(o) && !isHandedToCourier(o) &&
+  (o.address_status === "missing" || o.skipped_address === true || !String(o.normalized_city || o.city || "").trim());

@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { buildStages, firstName, isHandedToCourier, plannedDateKa, streetOnly } from "./tracking.ts";
+import { buildStages, firstName, isHandedToCourier, plannedDateKa, streetOnly , needsAddress } from "./tracking.ts";
 
 Deno.test("street only, no house or flat", () => {
   assertEquals(streetOnly("ვაჟა-ფშაველას გამზ. 12, ბ. 5"), "ვაჟა-ფშაველას გამზ");
@@ -25,3 +25,11 @@ Deno.test("later stage implies earlier ones without inventing timestamps", () =>
 });
 Deno.test("planned date in Georgian", () => assertEquals(plannedDateKa("2026-11-02"), "ორშაბათი, 2 ნოემბერი"));
 Deno.test("phone-as-name is never shown", () => assertEquals(firstName("555107727"), null));
+
+Deno.test("needsAddress: skipped address on open order", () => {
+  assertEquals(needsAddress({ status: "new", address_status: "missing", city: "" }), true);
+  assertEquals(needsAddress({ status: "new", skipped_address: true, city: "თბილისი" }), true);
+  assertEquals(needsAddress({ status: "new", address_status: "completed", city: "ბათუმი" }), false);
+  assertEquals(needsAddress({ status: "canceled", city: "" }), false);
+  assertEquals(needsAddress({ status: "new", city: "", onway_sent_at: "2026-01-01" }), false);
+});
