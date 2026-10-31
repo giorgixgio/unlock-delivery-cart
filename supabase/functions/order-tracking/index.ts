@@ -6,7 +6,7 @@ import { z } from "npm:zod@3";
 import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { deliveryWhenKa, isTbilisiCity, parseSmsSettings } from "../_shared/smsTemplates.ts";
 import { loadSmsContext } from "../_shared/smsOrderContext.ts";
-import { buildStages, CANCEL_REASONS_KA, firstName, isClosed, isHandedToCourier, plannedDateKa, streetOnly } from "./tracking.ts";
+import { buildStages, CANCEL_REASONS_KA, firstName, isClosed, isHandedToCourier, needsAddress, plannedDateKa, streetOnly } from "./tracking.ts";
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const RATE_WINDOW_MS = 10 * 60_000, RATE_MAX = 60;
@@ -16,6 +16,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("change"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), address: z.string().trim().max(300).optional(), day: z.string().trim().max(100).optional() }),
   z.object({ action: z.literal("call_me"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), reason: z.string().max(40), text: z.string().trim().max(300).optional() }),
   z.object({ action: z.literal("cancel"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), reason: z.string().max(40), text: z.string().trim().max(300).optional() }),
+  z.object({ action: z.literal("set_address"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), region_id: z.string().max(100), address: z.string().trim().min(3).max(300), name: z.string().trim().max(100).optional() }),
   z.object({ action: z.literal("rate_operator"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), stars: z.number().int().min(1).max(5), comment: z.string().trim().max(1000).optional() }),
 ]);
 
@@ -37,7 +38,7 @@ Deno.serve(async (req) => {
   const b = parsed.data;
 
   const { data: o } = await db.from("orders")
-    .select("id, public_order_number, customer_name, city, normalized_city, address_line1, normalized_address, is_tbilisi, total, status, is_confirmed, auto_confirmed, packed_at, onway_sent_at, onway_tracking, tracking_number, is_fulfilled, onway_planned_date, created_at, call_outcome, call_outcome_updated_at, call_outcome_updated_by, last_call_attempt_by, tracking_view_count, tracking_first_seen_at, order_items(title, quantity, image_url, unit_price, sku)")
+    .select("id, public_order_number, customer_name, city, normalized_city, address_line1, normalized_address, is_tbilisi, total, status, is_confirmed, auto_confirmed, packed_at, onway_sent_at, onway_tracking, tracking_number, is_fulfilled, onway_planned_date, created_at, call_outcome, call_outcome_updated_at, call_outcome_updated_by, last_call_attempt_by, tracking_view_count, tracking_first_seen_at, address_status, skipped_address, shipping_fee, order_items(title, quantity, image_url, unit_price, sku)")
     .eq("tracking_token", b.token).maybeSingle();
   if (!o) return json({ error: "not_found" }, 404);
   const ctx = await loadSmsContext(db, { id: o.id });
@@ -88,6 +89,7 @@ Deno.serve(async (req) => {
       operator_phone: parseSmsSettings(s.sms_sequence).num1 || null,
       can_rate_operator: !fb && o.call_outcome === "confirmed" && o.auto_confirmed !== true && o.status !== "delivered" && !isClosed(o),
       rated: !!fb, review_token: reviewUrlToken,
+      confirmed: stages[1]?.done === true, needs_address: needsAddress(o), shipping_fee: Number(o.shipping_fee || 0),
     });
   }
 
@@ -98,6 +100,24 @@ Deno.serve(async (req) => {
     const kind = b.address ? "change_address" : "change_day";
     await db.from("customer_requests").insert({ order_id: o.id, kind, payload: { address: b.address ?? null, day: b.day ?? null } });
     await tg("📝 კლიენტი ითხოვს ცვლილებას", `${b.address ? `ახალი მისამართი: ${b.address}\n` : ""}${b.day ? `სასურველი დღე: ${b.day}` : ""}`);
+    return json({ ok: true });
+  }
+
+  if (b.action === "set_address") {
+    if (!needsAddress(o)) return json({ error: "address_exists" }, 409);
+    const { data: region } = await db.from("onway_regions").select("id, name").eq("id", b.region_id).eq("active", true).maybeSingle();
+    if (!region) return json({ error: "invalid_city" }, 400);
+    const patch: Record<string, unknown> = {
+      city: region.name, region: region.name, raw_city: region.name, address_line1: b.address, raw_address: b.address,
+      is_tbilisi: region.id === "1", address_status: "completed", address_added_at: new Date().toISOString(), skipped_address: false,
+    };
+    if (["pending_details", "pending_address"].includes(String(o.status))) patch.status = "new";
+    if (b.name) patch.customer_name = b.name;
+    const { error } = await db.from("orders").update(patch).eq("id", o.id);
+    if (error) return json({ error: "save_failed" }, 500);
+    await db.from("order_events").insert({ order_id: o.id, actor: "customer", event_type: "address_added", payload: { source: "tracking_page", note: "customer added address via tracking page", city: region.name, name_changed: !!b.name } });
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/normalize-and-score`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ order_id: o.id }) }).catch((e) => console.error("normalize", e));
     return json({ ok: true });
   }
 
