@@ -13,7 +13,8 @@ export interface OnwayReviewRow { order_id: string; order_number: string; versio
 const labels = { held: "Held for review — never sent", rejected: "Rejected by Onway", unclear: "Unclear — may exist in Onway" };
 async function invoke(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke("onway-create-shipments", { body });
-  if (error) throw error; if (data?.error) throw new Error(data.error); return data;
+  if (error) { let msg = error.message; try { const j = await (error as any).context?.json?.(); if (j?.error) msg = j.error; } catch { /* keep generic */ } throw new Error(msg); }
+  if (data?.error) throw new Error(data.error); return data;
 }
 export function useOnwayReview(enabled: boolean) {
   const [rows, setRows] = useState<OnwayReviewRow[]>([]);
