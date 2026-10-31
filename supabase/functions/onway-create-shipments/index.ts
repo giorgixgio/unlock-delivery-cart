@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     let pickupPhones: Record<string, unknown> = {};
     try { pickupPhones = JSON.parse(pickupRow?.value || "{}"); } catch { /* invalid => empty */ }
     const fromPhone = validPickupPhone(pickupPhones.TRENDMART);
-    if (!fromPhone && body.action !== "review_list") {
+    if (!fromPhone && body.action !== "review_list" && body.action !== "review_save") {
       return json({ error: "TrendMart pickup phone is not set (or is 555555555). Add it in Admin → Settings → SMS & courier before creating shipments." }, 400);
     }
 
