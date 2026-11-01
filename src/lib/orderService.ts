@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { CartItem, Product } from "@/lib/constants";
 import { getCookieIdHash, getUserAgent } from "@/lib/identitySignals";
@@ -243,6 +244,7 @@ export async function createOrder(input: OrderInput) {
       }
     }
 
+    trackFunnel("order_submitted", { order_id: order.id });
     return order;
   } catch (err: any) {
     // Log FAILED system event

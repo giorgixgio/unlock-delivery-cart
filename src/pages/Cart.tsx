@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPage } from "@/contexts/LandingPageContext";
@@ -145,6 +146,30 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const [historicalAddresses, setHistoricalAddresses] = useState<string[]>([]);
 
   const countdown = useCountdown(6);
+
+  useEffect(() => { if (isValidGeorgianPhone(form.phone)) trackFunnel("phone_entered", { flow: "cart" }); }, [form.phone]);
+  const cartFunnelRef = useRef({ form, selectedCityId });
+  cartFunnelRef.current = { form, selectedCityId };
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      try {
+        const t = e.target as HTMLElement | null;
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) trackFunnel("form_open", { flow: "cart" });
+      } catch {}
+    };
+    const onBlur = () => setTimeout(() => {
+      try {
+        const { form: f, selectedCityId: c } = cartFunnelRef.current;
+        if (c && (f.address || "").trim().length >= 5) trackFunnel("address_entered", { flow: "cart" });
+      } catch {}
+    }, 0);
+    document.addEventListener("focusin", onFocus, true);
+    document.addEventListener("focusout", onBlur, true);
+    return () => {
+      document.removeEventListener("focusin", onFocus, true);
+      document.removeEventListener("focusout", onBlur, true);
+    };
+  }, []);
 
   // Phone validity check for reveal + focus city
   useEffect(() => {

@@ -964,6 +964,36 @@ export type Database = {
           },
         ]
       }
+      funnel_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          page_path: string | null
+          product_slug: string | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          page_path?: string | null
+          product_slug?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          page_path?: string | null
+          product_slug?: string | null
+          session_id?: string | null
+        }
+        Relationships: []
+      }
       grid_events: {
         Row: {
           created_at: string
