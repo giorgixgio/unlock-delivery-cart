@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { useMemo, useEffect, useState, lazy, Suspense } from "react";
 import logoSrc from "@/assets/logo.png";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
@@ -231,6 +232,7 @@ const GenericLanding = ({
   const hasSku002QuantityOffer = String(product.sku) === "002";
   const sku002BumpConfig: BumpConfig = CAMERA_BUMP;
 
+  useEffect(() => { trackFunnel("landing_view"); }, []);
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic' });

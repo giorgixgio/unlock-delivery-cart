@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,19 @@ const AddressFormModal = ({
   const [savedAddress, setSavedAddress] = useState<{ region: string; address: string } | null>(null);
   const submittedRef = useRef(false);
   const cityRef = useRef<HTMLInputElement>(null);
+  const funnelRef = useRef({ form, selectedCityId });
+  funnelRef.current = { form, selectedCityId };
+  useEffect(() => {
+    if (!open) return;
+    const onBlur = () => setTimeout(() => {
+      try {
+        const { form: f, selectedCityId: c } = funnelRef.current;
+        if (c && (f.address || "").trim().length >= 5) trackFunnel("address_entered", { flow: "address_popup" });
+      } catch {}
+    }, 0);
+    document.addEventListener("focusout", onBlur, true);
+    return () => document.removeEventListener("focusout", onBlur, true);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

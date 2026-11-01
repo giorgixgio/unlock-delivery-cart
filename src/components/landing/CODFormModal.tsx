@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -59,6 +60,8 @@ const CODFormModal = ({
 
   const cleanedPhone = cleanPhoneInput(phone);
   const isValid = isValidGeorgianMobile(cleanedPhone);
+  useEffect(() => { if (open) trackFunnel("form_open"); }, [open]);
+  useEffect(() => { if (open && isValid) trackFunnel("phone_entered"); }, [open, isValid]);
   const showInlineError = touched && !isValid && cleanedPhone.length > 0;
 
   const unitPrice = product.price;

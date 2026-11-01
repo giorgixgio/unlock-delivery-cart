@@ -1,3 +1,4 @@
+import { trackFunnel } from "@/lib/funnelTracker";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Clock, Loader2 } from "lucide-react";
@@ -33,6 +34,7 @@ const SCROLL_COLLAPSE_PX = 80; // hide top bars once user scrolls past hero
 const SlotNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
   const [display, setDisplay] = useState(0);
   const [done, setDone] = useState(false);
+  useEffect(() => { trackFunnel("landing_view"); }, []);
   useEffect(() => {
     const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) { setDisplay(value); setDone(true); return; }
