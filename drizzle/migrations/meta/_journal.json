@@ -232,6 +232,13 @@
       "when": 1793379856219,
       "tag": "0032_order_tracking_page",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793532824774,
+      "tag": "0033_create_funnel_events",
+      "breakpoints": true
     }
   ]
 }
