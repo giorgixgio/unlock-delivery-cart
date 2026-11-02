@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Headphones } from "lucide-react";
@@ -18,6 +24,11 @@ export default function CallQueueAdminCard() {
   const [settings, setSettings] = useState<CallQueueSettings | null>(null);
   const [operators, setOperators] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [masterAsk, setMasterAsk] = useState<boolean | null>(null);
+  const [night, setNight] = useState({ night_from: "", night_to: "", night_first_call_after: "", night_retry_slot: "" });
+  useEffect(() => {
+    if (settings) setNight({ night_from: settings.night_from, night_to: settings.night_to, night_first_call_after: settings.night_first_call_after, night_retry_slot: settings.night_retry_slot });
+  }, [settings]);
 
   useEffect(() => {
     if (role !== "admin") return;
@@ -43,6 +54,29 @@ export default function CallQueueAdminCard() {
     setCallQueueTestMode(getCallQueueTestMode()); // notify listeners to refetch
   };
 
+  const saveMaster = async (on: boolean) => {
+    if (!settings) return;
+    setBusy("master");
+    const ok = await saveCallQueueSettings({ operators_use_queue: on }, user?.email || "admin");
+    setBusy(null); setMasterAsk(null);
+    if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
+    setSettings({ ...settings, operators_use_queue: on });
+    toast({ title: on ? "Operators now use the Call Queue" : "Operators back on the Orders page" });
+    setCallQueueTestMode(getCallQueueTestMode());
+  };
+
+  const validTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  const saveNight = async () => {
+    if (!settings) return;
+    if (!Object.values(night).every(validTime)) { toast({ title: "Use HH:MM times", variant: "destructive" }); return; }
+    setBusy("night");
+    const ok = await saveCallQueueSettings(night, user?.email || "admin");
+    setBusy(null);
+    if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
+    setSettings({ ...settings, ...night });
+    toast({ title: "Night lead times saved" });
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card text-card-foreground p-3 sm:p-4 max-w-xl">
       <div className="flex items-center justify-between gap-3">
@@ -63,8 +97,17 @@ export default function CallQueueAdminCard() {
           Open Call Queue →
         </Link>
       )}
+      <div className="mt-3 border-t border-border pt-2 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold">Operators use Call Queue</div>
+          <div className="text-xs text-muted-foreground">On: every operator (not managers/admins) works only from the queue; Orders list hidden for them.</div>
+        </div>
+        <Switch checked={!!settings?.operators_use_queue} disabled={!settings || busy === "master"} onCheckedChange={(v) => setMasterAsk(v)} />
+      </div>
       <div className="mt-3 border-t border-border pt-2 space-y-1.5">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">Operators</div>
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">
+          Operators {settings?.operators_use_queue && <span className="normal-case font-normal">(ignored while the switch above is on)</span>}
+        </div>
         {operators.length === 0 && <div className="text-xs text-muted-foreground">No active operators.</div>}
         {operators.map((email) => {
           const on = !!settings?.enabled_operators.some((e) => e.toLowerCase() === email.toLowerCase());
@@ -76,6 +119,37 @@ export default function CallQueueAdminCard() {
           );
         })}
       </div>
+      <div className="mt-3 border-t border-border pt-2 space-y-2">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">Night leads (Tbilisi time)</div>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            ["night_from", "Night from"], ["night_to", "Night to"],
+            ["night_first_call_after", "First call after"], ["night_retry_slot", "No-answer retry at"],
+          ] as const).map(([k, label]) => (
+            <label key={k} className="text-xs space-y-1">
+              <span className="text-muted-foreground">{label}</span>
+              <Input value={night[k]} onChange={(e) => setNight({ ...night, [k]: e.target.value })} placeholder="HH:MM" className="h-9 text-base" />
+            </label>
+          ))}
+        </div>
+        <Button size="sm" variant="outline" disabled={!settings || busy === "night"} onClick={saveNight}>Save night times</Button>
+      </div>
+      <AlertDialog open={masterAsk !== null} onOpenChange={(o) => !o && setMasterAsk(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{masterAsk ? "Switch all operators to the Call Queue?" : "Switch operators back to the Orders page?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {masterAsk
+                ? "Operators will no longer see the Orders list and will open on the Call Queue. Managers and admins keep both. Takes effect within a minute."
+                : "Operators will see the Orders page again; only operators switched on individually keep the queue."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => masterAsk !== null && saveMaster(masterAsk)}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

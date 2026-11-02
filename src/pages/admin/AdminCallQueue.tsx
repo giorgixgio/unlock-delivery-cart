@@ -643,11 +643,12 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
 
   return (
     <div className="space-y-3 mt-2">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
         {[
           ["ახალი / Fresh waiting", stats?.fresh_waiting],
           ["გადარეკვა / Callbacks due", stats?.callbacks_due],
           ["განმეორება / Retries due now", stats?.retries_due],
+          ["ღამის / Night leads (from 12:00)", stats?.night_waiting],
           ["მოგვიანებით / Retries later", stats ? (stats.retries_later_today ?? 0) + (stats.retries_tomorrow ?? 0) : undefined],
         ].map(([l, v]) => (
           <div key={l as string} className="rounded-lg border border-border bg-card p-2">

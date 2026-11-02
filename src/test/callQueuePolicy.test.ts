@@ -84,3 +84,21 @@ describe("night leads", () => {
     expect(queueTier(o, "op", tb2("2026-11-03", "10:00"))).toBe(2);
   });
 });
+
+import { isQueueOnlyOperator, queueOnlyRedirect } from "@/lib/adminPermissions";
+describe("master switch routing", () => {
+  const on = { operators_use_queue: true, manager_emails: ["eto@bigmart.ge"] };
+  it("plain operators are queue-only only when the switch is on", () => {
+    expect(isQueueOnlyOperator("operator", "a@x.ge", on)).toBe(true);
+    expect(isQueueOnlyOperator("operator", "a@x.ge", { ...on, operators_use_queue: false })).toBe(false);
+  });
+  it("managers and admins keep Orders", () => {
+    expect(isQueueOnlyOperator("operator", "ETO@bigmart.ge", on)).toBe(false);
+    expect(isQueueOnlyOperator("admin", "a@x.ge", on)).toBe(false);
+  });
+  it("orders list redirects, single order stays", () => {
+    expect(queueOnlyRedirect("/admin/orders", true)).toBe("/admin/call-queue");
+    expect(queueOnlyRedirect("/admin/orders/abc", true)).toBeNull();
+    expect(queueOnlyRedirect("/admin/orders", false)).toBeNull();
+  });
+});
