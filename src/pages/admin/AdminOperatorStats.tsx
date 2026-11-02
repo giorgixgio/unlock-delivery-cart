@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle, HelpCircle, Loader2, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,28 +10,22 @@ import { useStore } from "@/contexts/StoreContext";
 import { getOrderIdsForStore } from "@/lib/adminStoreFilter";
 import { tbilisiDayKey, tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 import OperatorRatingsCard from "@/components/admin/OperatorRatingsCard";
-import { attemptsPerResolved, calculateCapacity, median, percentChange, workedSeconds } from "@/lib/operatorStatsEngine";
+import { attemptsPerResolved, calculateCapacity, isDuplicateCancel, isFinalOutcome, latestFinalByOrder, median, openQueue, operatorOutcomes, percentChange, previousRangeFor, rangeFor, workedSeconds } from "@/lib/operatorStatsEngine";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
 type Preset = "today" | "yesterday" | "7d" | "30d" | "custom";
 type Tab = "overview" | "operators" | "capacity" | "day";
-type Order = { id:string; created_at:string; status:string; total:number; is_confirmed:boolean; is_fulfilled:boolean; auto_confirmed:boolean|null; is_return:boolean|null; next_call_after:string|null };
+type Order = { id:string; created_at:string; status:string; total:number; is_confirmed:boolean; is_fulfilled:boolean; auto_confirmed:boolean|null; is_return:boolean|null; next_call_after:string|null; call_attempt_count:number|null; last_call_attempt_at:string|null };
 type Event = { id:string; order_id:string; actor:string; created_at:string; event_type:string; payload:any };
 type Session = { id:string; order_id:string; operator:string; session_started_at:string; session_ended_at:string|null; active_duration_seconds:number|null; capped_duration_seconds:number|null; outcome:string|null; had_meaningful_action:boolean };
 const DAY = 86400000;
 const PRESETS: { key: Preset; label: string }[] = [{key:"today",label:"Today"},{key:"yesterday",label:"Yesterday"},{key:"7d",label:"7 days"},{key:"30d",label:"30 days"},{key:"custom",label:"Custom"}];
 const TABS: { key: Tab; label: string }[] = [{key:"overview",label:"Overview"},{key:"operators",label:"Operators"},{key:"capacity",label:"Capacity planner"},{key:"day",label:"Day performance"}];
 const FINAL = new Set(["confirmed", "cancelled"]);
+const LS_KEY="operator-stats-prefs";
+function readPrefs():{preset?:Preset;tab?:Tab}{try{return JSON.parse(localStorage.getItem(LS_KEY)||"{}")||{};}catch{return {};}}
+const fmtTb=(d:Date)=>new Date(d.getTime()+TBILISI_OFFSET_MS).toISOString().replace(/^\d{4}-(\d\d)-(\d\d)T(\d\d:\d\d).*$/,"$2.$1 $3");
 
-function rangeFor(preset: Preset, customFrom: string, customTo: string) {
-  const now = new Date(), today = tbilisiStartOfDay(now);
-  if (preset === "today") return { from: today, to: now };
-  if (preset === "yesterday") return { from: new Date(today.getTime()-DAY), to: new Date(today.getTime()-1) };
-  if (preset === "7d") return { from: new Date(today.getTime()-6*DAY), to: now };
-  if (preset === "30d") return { from: new Date(today.getTime()-29*DAY), to: now };
-  const parse = (s:string, end=false) => { const [y,m,d]=s.split("-").map(Number); const ms=Date.UTC(y,(m||1)-1,d||1)-TBILISI_OFFSET_MS; return new Date(ms+(end?DAY-1:0)); };
-  return { from: customFrom ? parse(customFrom) : new Date(today.getTime()-6*DAY), to: customTo ? parse(customTo,true) : now };
-}
 async function allPages<T>(query: (from:number,to:number)=>PromiseLike<{data:T[]|null;error:any}>): Promise<T[]> {
   const rows:T[]=[]; for(let from=0;;from+=1000){ const {data,error}=await query(from,from+999); if(error) throw error; rows.push(...(data||[])); if(!data||data.length<1000) break; } return rows;
 }
@@ -42,18 +36,21 @@ const hourKey=(iso:string)=>new Date(new Date(iso).getTime()+TBILISI_OFFSET_MS).
 
 export default function AdminOperatorStats(){
   const {activeStore}=useStore();
-  const [preset,setPreset]=useState<Preset>("7d"),[customFrom,setCustomFrom]=useState(""),[customTo,setCustomTo]=useState("");
-  const [tab,setTab]=useState<Tab>("overview"),[operator,setOperator]=useState("all"),[reload,setReload]=useState(0),[loading,setLoading]=useState(true);
+  const [preset,setPreset]=useState<Preset>(()=>readPrefs().preset??"today"),[customFrom,setCustomFrom]=useState(""),[customTo,setCustomTo]=useState("");
+  const [tab,setTab]=useState<Tab>(()=>readPrefs().tab??"overview"),[operator,setOperator]=useState("all"),[reload,setReload]=useState(0),[loading,setLoading]=useState(true);
   const [orders,setOrders]=useState<Order[]>([]),[previousOrders,setPreviousOrders]=useState<Order[]>([]),[events,setEvents]=useState<Event[]>([]),[previousEvents,setPreviousEvents]=useState<Event[]>([]),[sessions,setSessions]=useState<Session[]>([]),[firstTouches,setFirstTouches]=useState<Session[]>([]),[openOrders,setOpenOrders]=useState<Order[]>([]);
-  const [selected,setSelected]=useState<string|null>(null),[lastLoaded,setLastLoaded]=useState<Date|null>(null);
+  const [selected,setSelected]=useState<string|null>(null),[lastLoaded,setLastLoaded]=useState<Date|null>(null),[loadedRange,setLoadedRange]=useState<{from:Date;to:Date}|null>(null),[laterOutcomes,setLaterOutcomes]=useState<Event[]>([]);
+  const requestIdRef=useRef(0);
+  useEffect(()=>{try{localStorage.setItem(LS_KEY,JSON.stringify({preset,tab}));}catch{/* ignore */}},[preset,tab]);
   const range=useMemo(()=>rangeFor(preset,customFrom,customTo),[preset,customFrom,customTo]);
   const periodMs=Math.max(1,range.to.getTime()-range.from.getTime()+1);
-  const previousRange=useMemo(()=>({from:new Date(range.from.getTime()-periodMs),to:new Date(range.from.getTime()-1)}),[range.from,periodMs]);
+  const previousRange=useMemo(()=>previousRangeFor(preset,range),[preset,range]);
 
   const load=useCallback(async()=>{
-    setLoading(true);
+    const myId=++requestIdRef.current; const stale=()=>myId!==requestIdRef.current;
+    setLoading(true); setLoadedRange(null);
     try{
-      const orderSelect="id,created_at,status,total,is_confirmed,is_fulfilled,auto_confirmed,is_return,next_call_after";
+      const orderSelect="id,created_at,status,total,is_confirmed,is_fulfilled,auto_confirmed,is_return,next_call_after,call_attempt_count,last_call_attempt_at";
       const eventSelect="id,order_id,actor,created_at,event_type,payload";
       const sessionSelect="id,order_id,operator,session_started_at,session_ended_at,active_duration_seconds,capped_duration_seconds,outcome,had_meaningful_action";
       const [curOrders,prevOrders,curEvents,prevEvents,curSessions,queue]=await Promise.all([
@@ -64,18 +61,28 @@ export default function AdminOperatorStats(){
         allPages<Session>((f,t)=>supabase.from("operator_order_sessions" as any).select(sessionSelect).gte("session_started_at",range.from.toISOString()).lte("session_started_at",range.to.toISOString()).range(f,t) as any),
         allPages<Order>((f,t)=>supabase.from("orders").select(orderSelect).in("status",["new","on_hold","pending_bump"]).or("is_return.is.null,is_return.eq.false").range(f,t) as any),
       ]);
+      if(stale()) return;
       const ids=Array.from(new Set([...curOrders,...prevOrders,...queue].map(o=>o.id).concat(curEvents.map(e=>e.order_id),prevEvents.map(e=>e.order_id),curSessions.map(s=>s.order_id))));
       const allowed=await getOrderIdsForStore(ids,activeStore);
-      const first:Session[]=[];
+      if(stale()) return;
+      const first:Session[]=[], later:Event[]=[];
+      const outcomeIds=Array.from(new Set(curEvents.filter(e=>e.event_type==="call_outcome"&&allowed.has(e.order_id)).map(e=>e.order_id)));
+      await Promise.all(chunks(outcomeIds).map(async batch=>{
+        const rows=await allPages<Event>((f,t)=>supabase.from("order_events").select(eventSelect).eq("event_type","call_outcome").in("order_id",batch).gt("created_at",range.to.toISOString()).range(f,t) as any);
+        later.push(...rows);
+      }));
       await Promise.all(chunks(ids.filter(id=>allowed.has(id))).map(async batch=>{
         const rows=await allPages<Session>((f,t)=>supabase.from("operator_order_sessions" as any).select(sessionSelect).in("order_id",batch).order("session_started_at",{ascending:true}).range(f,t) as any);
         first.push(...rows);
       }));
+      if(stale()) return;
       setOrders(curOrders.filter(o=>allowed.has(o.id))); setPreviousOrders(prevOrders.filter(o=>allowed.has(o.id)));
       setEvents(curEvents.filter(e=>allowed.has(e.order_id))); setPreviousEvents(prevEvents.filter(e=>allowed.has(e.order_id)));
       setSessions(curSessions.filter(s=>allowed.has(s.order_id))); setFirstTouches(first); setOpenOrders(queue.filter(o=>allowed.has(o.id)));
+      setLaterOutcomes(later); setLoadedRange({from:range.from,to:range.to});
       setLastLoaded(new Date());
-    }catch(error){ console.error("operator stats load",error); }
+    }catch(error){ if(stale()) return; console.error("operator stats load",error); }
+    if(stale()) return;
     setLoading(false);
   },[activeStore,range.from,range.to,previousRange.from,previousRange.to,reload]);
   useEffect(()=>{void load();},[load]);
@@ -95,39 +102,38 @@ export default function AdminOperatorStats(){
 
   const calculateOverview=(periodOrders:Order[],calls:Event[],queue:Order[]=[])=>{
     const real=periodOrders.filter(o=>o.status!=="merged"&&!o.is_return), auto=real.filter(o=>o.auto_confirmed).length;
-    const clean=calls.filter(e=>e.payload?.source!=="duplicate_cleanup"), resolvedIds=new Set(clean.filter(e=>FINAL.has(e.payload?.outcome)).map(e=>e.order_id));
-    const resolvedFinal=Array.from(resolvedIds).map(id=>[...clean].reverse().find(e=>e.order_id===id&&FINAL.has(e.payload?.outcome))).filter(Boolean) as Event[];
+    const latest=latestFinalByOrder(calls), resolvedIds=new Set(latest.keys());
+    const resolvedFinal=Array.from(latest.values()) as Event[];
     const confirmed=resolvedFinal.filter(e=>e.payload?.outcome==="confirmed").length,cancelled=resolvedFinal.filter(e=>e.payload?.outcome==="cancelled").length;
     const firstByOrder=new Map<string,number>();
     for(const s of firstTouches){const time=new Date(s.session_started_at).getTime(); if(!firstByOrder.has(s.order_id)||time<(firstByOrder.get(s.order_id)??Infinity)) firstByOrder.set(s.order_id,time);}
     for(const e of calls){const time=new Date(e.created_at).getTime(); if(!firstByOrder.has(e.order_id)||time<(firstByOrder.get(e.order_id)??Infinity)) firstByOrder.set(e.order_id,time);}
     const firstTimes=real.map(o=>(firstByOrder.get(o.id)??NaN)-new Date(o.created_at).getTime()).filter(Number.isFinite).filter(n=>n>=0).map(n=>n/1000);
-    const touched=new Set(callEvents.map(e=>e.order_id)), now=Date.now();
-    const open=queue.filter(o=>!touched.has(o.id)||!o.next_call_after||new Date(o.next_call_after).getTime()<=now).length;
-    return {leads:real.length,auto,needed:real.length-auto,resolved:resolvedIds.size,confirmed,cancelled,conversion:confirmed+cancelled?confirmed/(confirmed+cancelled):0,calls:calls.length,callsPerResolved:resolvedIds.size?calls.length/resolvedIds.size:0,firstTouch:median(firstTimes),open};
+    const q=openQueue(queue);
+    return {leads:real.length,auto,needed:real.length-auto,resolved:resolvedIds.size,confirmed,cancelled,conversion:confirmed+cancelled?confirmed/(confirmed+cancelled):0,calls:calls.length,callsPerResolved:resolvedIds.size?calls.length/resolvedIds.size:0,firstTouch:median(firstTimes),open:q.open,neverCalled:q.neverCalled,callbacksDue:q.callbacksDue};
   };
-  const filteredOpenOrders=useMemo(()=>operator==="all"?openOrders:openOrders.filter(o=>operatorOrderIds.has(o.id)),[openOrders,operator,operatorOrderIds]);
-  const overview=useMemo(()=>calculateOverview(visibleOrders,visibleCalls,filteredOpenOrders),[visibleOrders,visibleCalls,filteredOpenOrders,firstTouches,callEvents]);
-  const previous=useMemo(()=>calculateOverview(visiblePreviousOrders,visiblePrevCalls),[visiblePreviousOrders,visiblePrevCalls,firstTouches,callEvents]);
+  
+  const overview=useMemo(()=>calculateOverview(visibleOrders,visibleCalls,openOrders),[visibleOrders,visibleCalls,openOrders,firstTouches]);
+  const previous=useMemo(()=>calculateOverview(visiblePreviousOrders,visiblePrevCalls),[visiblePreviousOrders,visiblePrevCalls,firstTouches]);
 
   const dayData=useMemo(()=>{
     const map=new Map<string,{day:string;leads:number;resolved:number;confirmed:number;untouched:number}>();
-    for(const o of visibleOrders){const day=tbilisiDayKey(o.created_at);const row=map.get(day)??{day:day.slice(5),leads:0,resolved:0,confirmed:0,untouched:0};row.leads++;const dayEnd=tbilisiStartOfDay(new Date(o.created_at)).getTime()+DAY;const calls=callEvents.filter(e=>e.order_id===o.id&&new Date(e.created_at).getTime()<dayEnd);if(calls.some(e=>FINAL.has(e.payload?.outcome)))row.resolved++;if(calls.some(e=>e.payload?.outcome==="confirmed"))row.confirmed++;if(!calls.length)row.untouched++;map.set(day,row);}return Array.from(map.entries()).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v);
-  },[visibleOrders,callEvents]);
+    for(const o of visibleOrders){const day=tbilisiDayKey(o.created_at);const row=map.get(day)??{day:day.slice(5),leads:0,resolved:0,confirmed:0,untouched:0};row.leads++;const dayEnd=tbilisiStartOfDay(new Date(o.created_at)).getTime()+DAY;const calls=visibleCalls.filter(e=>e.order_id===o.id&&new Date(e.created_at).getTime()<dayEnd);const fin=latestFinalByOrder(calls).get(o.id);if(fin)row.resolved++;if(fin?.payload?.outcome==="confirmed")row.confirmed++;if(!calls.length)row.untouched++;map.set(day,row);}return Array.from(map.entries()).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v);
+  },[visibleOrders,visibleCalls]);
   const hourData=useMemo(()=>Array.from({length:24},(_,hour)=>({hour:`${String(hour).padStart(2,"0")}:00`,leads:visibleOrders.filter(o=>hourKey(o.created_at)===hour).length,calls:visibleCalls.filter(e=>hourKey(e.created_at)===hour).length})),[visibleOrders,visibleCalls]);
 
-  const upsells=useMemo(()=>{const map=new Map<string,{orders:Set<string>;amount:number}>();for(const e of events.filter(e=>["item_added","item_quantity_change","landing_qty_discount"].includes(e.event_type))){const delta=e.event_type==="item_added"?Number(e.payload?.added_revenue??e.payload?.unit_price??0)*Number(e.payload?.quantity??1):Number(e.payload?.delta_total??0);if(delta<=0)continue;const m=map.get(e.actor)??{orders:new Set(),amount:0};m.orders.add(e.order_id);m.amount+=delta;map.set(e.actor,m);}return map;},[events]);
+  const upsells=useMemo(()=>{const map=new Map<string,{orders:Set<string>;amount:number}>();for(const e of events.filter(e=>["item_added","item_quantity_change","landing_qty_discount"].includes(e.event_type))){const delta=e.event_type==="item_added"?Number(e.payload?.added_revenue??e.payload?.unit_price??0)*Number(e.payload?.quantity??1):Number(e.payload?.delta_total??0);if(delta<=0||EXCLUDED_OPERATORS.has(e.actor??""))continue;const m=map.get(e.actor)??{orders:new Set(),amount:0};m.orders.add(e.order_id);m.amount+=delta;map.set(e.actor,m);}return map;},[events,EXCLUDED_OPERATORS]);
+  const allOutcomes=useMemo(()=>[...events.filter(e=>e.event_type==="call_outcome"),...laterOutcomes],[events,laterOutcomes]);
   const operatorRows=useMemo(()=>operators.map(name=>{
-    const calls=callEvents.filter(e=>e.actor===name), clean=calls.filter(e=>e.payload?.source!=="duplicate_cleanup"),resolvedIds=new Set(clean.filter(e=>FINAL.has(e.payload?.outcome)).map(e=>e.order_id));
-    const final=Array.from(resolvedIds).map(id=>[...clean].reverse().find(e=>e.order_id===id&&FINAL.has(e.payload?.outcome))).filter(Boolean) as Event[];
-    const confirmed=final.filter(e=>e.payload?.outcome==="confirmed").length,cancelled=final.length-confirmed,noAnswer=calls.filter(e=>e.payload?.outcome==="no_answer").length;
+    const calls=callEvents.filter(e=>e.actor===name), oc=operatorOutcomes(name,calls,allOutcomes);
+    const confirmed=oc.confirmedIds.size,cancelled=oc.cancelled.length,overturned=oc.overturned,noAnswer=calls.filter(e=>e.payload?.outcome==="no_answer").length;
     const opSessions=sessions.filter(s=>s.operator===name&&s.session_ended_at), answered=opSessions.filter(s=>s.outcome!=="no_answer").map(s=>s.active_duration_seconds??s.capped_duration_seconds??0), unanswered=opSessions.filter(s=>s.outcome==="no_answer").map(s=>s.active_duration_seconds??s.capped_duration_seconds??0);
     const actionTimes=[...calls.map(e=>({operator:name,at:e.created_at})),...opSessions.map(s=>({operator:name,at:s.session_started_at}))],worked=workedSeconds(actionTimes),handling=opSessions.reduce((n,s)=>n+(s.active_duration_seconds??s.capped_duration_seconds??0),0),up=upsells.get(name);
     const firstForOperator: Session[]=[]; const firstSeen=new Map<string,Session>();for(const s of firstTouches){const p=firstSeen.get(s.order_id);if(!p||s.session_started_at<p.session_started_at)firstSeen.set(s.order_id,s);}for(const s of firstSeen.values())if(s.operator===name)firstForOperator.push(s);
     const orderMap=new Map(orders.map(o=>[o.id,o]));const firstDelays=firstForOperator.map(s=>{const o=orderMap.get(s.order_id);return o?(new Date(s.session_started_at).getTime()-new Date(o.created_at).getTime())/1000:NaN}).filter(Number.isFinite);
-    const reasons:Record<string,number>={};for(const e of final.filter(e=>e.payload?.outcome==="cancelled")){const r=e.payload?.cancel_reason||"other";reasons[r]=(reasons[r]||0)+1;}
-    return {name,calls:calls.length,resolved:resolvedIds.size,confirmed,cancelled,noAnswerRate:calls.length?noAnswer/calls.length:0,attempts:attemptsPerResolved(calls.map(e=>({orderId:e.order_id,outcome:e.payload?.outcome}))),upsellRate:confirmed&&up?up.orders.size/confirmed:0,upsell:up?.amount||0,answered:median(answered),unanswered:median(unanswered),firstTouch:median(firstDelays),worked,perHour:worked?calls.length/(worked/3600):0,confirmsPerHour:worked?confirmed/(worked/3600):0,utilization:worked?handling/worked:0,reasons,duplicateCleanup:calls.filter(e=>e.payload?.source==="duplicate_cleanup").length};
-  }),[operators,callEvents,sessions,upsells,firstTouches,orders]);
+    const reasons:Record<string,number>={};for(const e of oc.cancelled){const r=e.payload?.cancel_reason||"other";reasons[r]=(reasons[r]||0)+1;}
+    return {name,calls:calls.length,resolved:oc.resolved,confirmed,cancelled,overturned,noAnswerRate:calls.length?noAnswer/calls.length:0,attempts:attemptsPerResolved(calls.map(e=>({orderId:e.order_id,outcome:e.payload?.outcome}))),upsellRate:confirmed&&up?Array.from(oc.confirmedIds).filter(id=>up.orders.has(id)).length/confirmed:0,upsell:up?.amount||0,answered:median(answered),unanswered:median(unanswered),firstTouch:median(firstDelays),worked,perHour:worked?calls.length/(worked/3600):0,confirmsPerHour:worked?confirmed/(worked/3600):0,utilization:worked?handling/worked:0,reasons,duplicateCleanup:calls.filter(e=>isDuplicateCancel(e)).length};
+  }),[operators,callEvents,allOutcomes,sessions,upsells,firstTouches,orders]);
 
   const days=Math.max(1,Math.ceil(periodMs/DAY)),avgLeads=overview.leads/days,autoShare=overview.leads?overview.auto/overview.leads:0,totalHandling=visibleSessions.reduce((n,s)=>n+(s.active_duration_seconds??s.capped_duration_seconds??0),0),minutesPerNeed=overview.needed?totalHandling/60/overview.needed:0;
   const [target,setTarget]=useState(0),[shift,setShift]=useState(8),[util,setUtil]=useState(75),[maxFirstTouch,setMaxFirstTouch]=useState(60);
@@ -142,21 +148,22 @@ export default function AdminOperatorStats(){
     <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Users className="h-6 w-6 text-primary"/><h1 className="text-xl sm:text-2xl font-extrabold">Operator Stats</h1><ToggleStore/></div><Button variant="outline" size="sm" onClick={()=>setReload(v=>v+1)} disabled={loading}><RefreshCw className={`mr-1 h-4 w-4 ${loading?"animate-spin":""}`}/>Refresh</Button></div>
     <OperatorRatingsCard/>
     <div className="flex gap-1 overflow-x-auto">{PRESETS.map(p=><Button key={p.key} size="sm" variant={preset===p.key?"default":"outline"} onClick={()=>setPreset(p.key)}>{p.label}</Button>)}</div>
+    <div className="text-xs text-muted-foreground">{loadedRange?`Showing: ${fmtTb(loadedRange.from)} – ${fmtTb(loadedRange.to)} (Tbilisi)`:"Loading…"}</div>
     {preset==="custom"&&<div className="flex gap-2"><Input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} className="w-40"/><Input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} className="w-40"/></div>}
     <div className="flex flex-wrap gap-2 items-end"><div><label className="text-xs font-bold text-muted-foreground">Operator</label><select value={operator} onChange={e=>setOperator(e.target.value)} className="block h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="all">All operators</option>{operators.map(o=><option key={o}>{o}</option>)}</select></div><span className="text-xs text-muted-foreground">Tbilisi time{lastLoaded?` · updated ${lastLoaded.toLocaleTimeString("ka-GE",{timeZone:"Asia/Tbilisi"})}`:""}</span></div>
     <div className="flex gap-1 overflow-x-auto border-b border-border pb-2">{TABS.map(t=><Button key={t.key} variant={tab===t.key?"default":"ghost"} size="sm" onClick={()=>setTab(t.key)}>{t.label}</Button>)}</div>
     {loading?<div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-primary"/></div>:<>
       {tab==="overview"&&<><div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <Kpi label="Leads received" value={overview.leads} previous={previous.leads} tip="Real orders created in this period. Merged orders and returns are excluded."/>
-        <Kpi label="Auto-confirmed" value={overview.auto} previous={previous.auto} sub={`Needed an operator: ${overview.needed}`} tip="Orders where auto_confirmed is true. Needed an operator = leads minus auto-confirmed."/>
+        {operator==="all"?<Kpi label="Leads received" value={overview.leads} previous={previous.leads} tip="Real orders created in this period. Merged orders and returns are excluded."/>:<Kpi label="Orders handled" value={overview.leads} previous={previous.leads} tip="Real orders created in this period that this operator called."/>}
+        {operator==="all"&&<Kpi label="Auto-confirmed" value={overview.auto} previous={previous.auto} sub={`Needed an operator: ${overview.needed}`} tip="Orders where auto_confirmed is true. Needed an operator = leads minus auto-confirmed."/>}
         <Kpi label="Resolved by operators" value={overview.resolved} previous={previous.resolved} tip="Unique orders with a final confirmed or cancelled operator event in this period."/>
-        <Kpi label="Operator conversion" value={pct(overview.conversion)} previousRate={percentChange(overview.conversion,previous.conversion)} tip="Operator-confirmed ÷ operator-confirmed plus operator-cancelled. Duplicate cleanup is excluded."/>
+        <Kpi label="Operator conversion" value={pct(overview.conversion)} previousRate={percentChange(overview.conversion,previous.conversion)} tip="Operator-confirmed ÷ operator-confirmed plus operator-cancelled. Duplicate cleanup and duplicate_order cancels are excluded."/>
         <Kpi label="Calls made" value={overview.calls} previous={previous.calls} tip="Every call outcome event, including repeated no-answer attempts and callbacks."/>
         <Kpi label="Calls / resolved order" value={overview.callsPerResolved.toFixed(2)} previousRate={percentChange(overview.callsPerResolved,previous.callsPerResolved)} tip="All call attempts divided by unique resolved orders."/>
         <Kpi label="Median first touch" value={minutes(overview.firstTouch)} previousRate={percentChange(overview.firstTouch,previous.firstTouch)} invert tip="Middle delay from order creation to its earliest session or call event."/>
-        <Kpi label="Open queue now" value={overview.open} tip="Pending untouched orders plus callbacks and no-answer orders currently due."/>
+        <Kpi label="Open queue now" value={overview.open} sub={`never called: ${overview.neverCalled} · callbacks due: ${overview.callbacksDue}`} tip="Open orders (new, on hold, pending bump; no returns) never called, or with a callback due now. Independent of the selected period."/>
       </div><div className="grid lg:grid-cols-2 gap-3"><ChartBox title="Daily trend" tip="Leads created, orders resolved, confirmed, and untouched by each Tbilisi day"><ResponsiveContainer width="100%" height={260}><LineChart data={dayData}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="day"/><YAxis/><ChartTooltip/><Legend/><Line dataKey="leads" stroke="hsl(var(--primary))"/><Line dataKey="resolved" stroke="hsl(var(--chart-2))"/><Line dataKey="confirmed" stroke="hsl(var(--chart-3))"/><Line dataKey="untouched" stroke="hsl(var(--destructive))"/></LineChart></ResponsiveContainer></ChartBox><ChartBox title="Coverage by hour" tip="Leads arriving versus calls made in each Tbilisi hour"><ResponsiveContainer width="100%" height={260}><BarChart data={hourData}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="hour" interval={2}/><YAxis/><ChartTooltip/><Legend/><Bar dataKey="leads" fill="hsl(var(--primary))"/><Bar dataKey="calls" fill="hsl(var(--chart-2))"/></BarChart></ResponsiveContainer></ChartBox></div></>}
-      {tab==="operators"&&<><div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900"><AlertTriangle className="inline h-4 w-4 mr-1"/>Rows below 20 resolved orders are marked as a small sample.</div><div className="overflow-x-auto rounded-md border"><table className="min-w-[1380px] w-full text-xs"><thead className="bg-muted/60"><tr><th rowSpan={2} className="sticky left-0 z-10 bg-muted p-2 text-left">Operator</th><th colSpan={4}>Volume</th><th colSpan={5}>Quality</th><th colSpan={3}>Speed</th><th colSpan={4}>Productivity</th></tr><tr>{["Calls","Resolved","Confirmed","Cancelled","Conversion","No-answer","Attempts/resolved","Upsell","+₾","Answered call","No-answer call","First touch","Worked hours","Calls/hour","Confirms/hour","Utilization"].map(h=><th key={h} className="p-2 whitespace-nowrap">{h}</th>)}</tr></thead><tbody>{operatorRows.map(r=><tr key={r.name} className="border-t hover:bg-muted/30 cursor-pointer" onClick={()=>setSelected(r.name)}><td className="sticky left-0 bg-background p-2 font-semibold max-w-48 truncate">{r.name}{r.resolved<20&&<span className="ml-1 text-amber-600">!</span>}</td><td>{r.calls}</td><td>{r.resolved}</td><td>{r.confirmed}</td><td title={Object.entries(r.reasons).map(([k,v])=>`${k}: ${v}`).join("\n")}>{r.cancelled}</td><td>{pct(r.resolved?r.confirmed/r.resolved:0)}</td><td>{pct(r.noAnswerRate)}</td><td>{r.attempts.toFixed(2)}</td><td>{pct(r.upsellRate)}</td><td>{r.upsell.toFixed(0)} ₾</td><td>{minutes(r.answered)}</td><td>{minutes(r.unanswered)}</td><td>{minutes(r.firstTouch)}</td><td>{(r.worked/3600).toFixed(1)}</td><td>{r.perHour.toFixed(1)}</td><td>{r.confirmsPerHour.toFixed(1)}</td><td>{pct(r.utilization)}</td></tr>)}</tbody></table></div></>}
+      {tab==="operators"&&<><div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900"><AlertTriangle className="inline h-4 w-4 mr-1"/>Rows below 20 resolved orders are marked as a small sample.</div><div className="overflow-x-auto rounded-md border"><table className="min-w-[1440px] w-full text-xs"><thead className="bg-muted/60"><tr><th rowSpan={2} className="sticky left-0 z-10 bg-muted p-2 text-left">Operator</th><th colSpan={5}>Volume</th><th colSpan={5}>Quality</th><th colSpan={3}>Speed</th><th colSpan={4}>Productivity</th></tr><tr>{["Calls","Resolved","Confirmed","Cancelled","Overturned","Conversion","No-answer","Attempts/resolved","Upsell","+₾","Answered call","No-answer call","First touch","Worked hours","Calls/hour","Confirms/hour","Utilization"].map(h=><th key={h} className="p-2 whitespace-nowrap">{h}</th>)}</tr></thead><tbody>{operatorRows.map(r=><tr key={r.name} className="border-t hover:bg-muted/30 cursor-pointer" onClick={()=>setSelected(r.name)}><td className="sticky left-0 bg-background p-2 font-semibold max-w-48 truncate">{r.name}{r.resolved<20&&<span className="ml-1 text-amber-600">!</span>}</td><td>{r.calls}</td><td>{r.resolved}</td><td>{r.confirmed}</td><td title={Object.entries(r.reasons).map(([k,v])=>`${k}: ${v}`).join("\n")}>{r.cancelled}</td><td>{r.overturned}</td><td>{pct(r.resolved?r.confirmed/r.resolved:0)}</td><td>{pct(r.noAnswerRate)}</td><td>{r.attempts.toFixed(2)}</td><td>{pct(r.upsellRate)}</td><td>{r.upsell.toFixed(0)} ₾</td><td>{minutes(r.answered)}</td><td>{minutes(r.unanswered)}</td><td>{minutes(r.firstTouch)}</td><td>{(r.worked/3600).toFixed(1)}</td><td>{r.perHour.toFixed(1)}</td><td>{r.confirmsPerHour.toFixed(1)}</td><td>{pct(r.utilization)}</td></tr>)}</tbody></table></div></>}
       {tab==="capacity"&&<><div className="grid grid-cols-2 lg:grid-cols-4 gap-2"><Kpi label="Avg leads / day" value={avgLeads.toFixed(1)} tip={`Selected period: ${days} day(s).`}/><Kpi label="Auto-confirm share" value={pct(autoShare)} tip="Auto-confirmed leads divided by all real leads."/><Kpi label="Operator minutes / lead" value={minutesPerNeed.toFixed(1)} tip="All session handling minutes divided by leads that needed an operator."/><Kpi label="Realistic throughput" value={`${(overview.resolved/(operatorRows.reduce((n,r)=>n+r.worked,0)/3600||1)).toFixed(1)}/h`} tip="Resolved orders divided by reconstructed worked hours."/><Kpi label="Active operators / day" value={avgActiveOps.toFixed(1)} tip="Operators with activity in the selected period."/><Kpi label="Worked hours / operator / day" value={avgWorked.toFixed(1)} tip="Nearby action gaps, excluding breaks over 15 minutes, plus two minutes after each operator's final action."/></div><div className="grid md:grid-cols-4 gap-3 border-y py-4"><Control label="Target leads/day"><Input type="number" min={1} value={target} onChange={e=>setTarget(Number(e.target.value))}/><input aria-label="Target leads slider" type="range" min={1} max={Math.max(100,Math.ceil(avgLeads*3))} value={target} onChange={e=>setTarget(Number(e.target.value))} className="w-full"/></Control><Control label="Shift length (hours)"><Input type="number" min={1} max={16} value={shift} onChange={e=>setShift(Number(e.target.value))}/></Control><Control label="Target utilization (%)"><Input type="number" min={10} max={100} value={util} onChange={e=>setUtil(Number(e.target.value))}/></Control><Control label="Max first-touch (minutes)"><Input type="number" min={1} value={maxFirstTouch} onChange={e=>setMaxFirstTouch(Number(e.target.value))}/></Control></div><div className="grid grid-cols-2 lg:grid-cols-4 gap-2"><Kpi label="Operator-hours needed" value={capacity.operatorHours.toFixed(1)} tip="Target leads needing an operator multiplied by measured minutes per lead."/><Kpi label="Operators needed" value={capacity.operatorsNeeded} tip="Operator-hours divided by usable shift hours, rounded up."/><Kpi label="Current team capacity" value={`≈ ${currentCapacity.toFixed(0)} leads/day`} tip="Capacity at the team's current measured worked hours and operator minutes per lead."/><Kpi label="First-touch target" value={`≤ ${maxFirstTouch}m`} tip="Planning target shown for staffing decisions; it does not alter historical calculations."/></div><div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm"><thead><tr><th className="text-left">Scenario</th><th>Leads/day</th><th>Hours needed</th><th>Operators needed</th></tr></thead><tbody>{[1,1.5,2,3].map(mult=>{const c=calculateCapacity({targetLeads:avgLeads*mult,autoConfirmShare:autoShare,minutesPerLeadNeedingOperator:minutesPerNeed,shiftHours:shift,targetUtilization:util/100});return <tr key={mult} className="border-t"><td>{mult}× current</td><td>{(avgLeads*mult).toFixed(0)}</td><td>{c.operatorHours.toFixed(1)}</td><td>{c.operatorsNeeded}</td></tr>})}</tbody></table></div><div className="rounded-md border bg-muted/30 p-3 text-sm"><b>How this estimate works:</b> We remove the share confirmed automatically, multiply the remaining leads by the measured operator minutes per lead, then divide by usable shift time ({shift}h × {util}%).</div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">{operatorRows.map(r=><Kpi key={r.name} label={r.name} value={`≈ ${(r.perHour*shift*util/100).toFixed(0)} calls/day`} tip="Individual measured calls per worked hour, scaled to the selected shift and utilization."/>)}</div></>}
       {tab==="day"&&<><p className="text-xs text-muted-foreground">Orders created in the selected Tbilisi period. This cohort uses the same rules as Dashboard.</p><div className="grid grid-cols-2 lg:grid-cols-4 gap-2"><Kpi label="Leads" value={dayPerf.leads} tip="Real created orders; merged orders and returns excluded."/><Kpi label="Confirmed total" value={dayPerf.confirmed} tip="Created orders now confirmed or fulfilled."/><Kpi label="Auto-confirmed" value={dayPerf.auto} tip="Confirmed created orders where auto_confirmed is true."/><Kpi label="Operator-confirmed" value={dayPerf.opConfirmed} tip="Created orders with at least one confirmed operator event."/><Kpi label="Still pending" value={dayPerf.pending} tip="Created orders not confirmed, fulfilled, or cancelled."/><Kpi label="Cancelled" value={dayPerf.cancelled} tip="Customer orders cancelled. Courier returns are not included."/><Kpi label="Merged" value={dayPerf.merged} tip="Merged duplicates, excluded from leads."/><Kpi label="Courier returns" value={dayPerf.returned} tip="Return orders shown separately, never counted as operator cancellations."/><Kpi label="Revenue" value={`${dayPerf.revenue.toFixed(0)} ₾`} tip="Total of non-cancelled real created orders."/></div></>}
     </>}
