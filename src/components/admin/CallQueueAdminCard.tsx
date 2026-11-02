@@ -109,7 +109,7 @@ export default function CallQueueAdminCard() {
             <AlertDialogDescription>
               {masterAsk
                 ? "Operators will no longer see the Orders list and will open on the Call Queue. Managers and admins keep both. Takes effect within a minute."
-                : "Operators will see the Orders page again; only operators switched on individually keep the queue."}
+                : "Operators will see the Orders page again; only admins in test mode can open the queue."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
