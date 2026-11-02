@@ -239,6 +239,13 @@
       "when": 1793532824774,
       "tag": "0033_create_funnel_events",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793622762455,
+      "tag": "0034_operator_delivery_quality",
+      "breakpoints": true
     }
   ]
 }

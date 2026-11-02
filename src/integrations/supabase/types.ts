@@ -3620,6 +3620,16 @@ export type Database = {
         }
         Returns: Json
       }
+      operator_delivery_quality: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          matched: boolean
+          operator: string
+          order_id: string
+          status: string
+          total: number
+        }[]
+      }
       record_stockout_attempt: {
         Args: {
           p_payload: Json
