@@ -1,7 +1,22 @@
 /** Pure rules for undoing the last Call Queue outcome. The DB RPC call_queue_undo enforces the same rules. */
 
 export const UNDO_WINDOW_MS = 5 * 60 * 1000;
-export const UNDO_TOAST_MS = 60 * 1000;
+/** The snapshot time is backdated this much to tolerate clock skew (see takeSnapshot in the queue page). */
+export const SNAPSHOT_BACKDATE_MS = 15_000;
+/** How long the bottom "Saved … Undo" bar stays on screen. Undo itself stays available for UNDO_WINDOW_MS. */
+export const UNDO_TOAST_MS = 15_000;
+
+/** Timestamp when the undo bar disappears, in real time (the snapshot backdating is undone here). */
+export function undoBarDeadlineMs(takenAt: string, backdateMs = SNAPSHOT_BACKDATE_MS, ttlMs = UNDO_TOAST_MS): number {
+  return new Date(takenAt).getTime() + backdateMs + ttlMs;
+}
+
+/** 0..1 share of the bar's remaining time, used for its countdown line. */
+export function undoBarFraction(remainingMs: number, ttlMs = UNDO_TOAST_MS): number {
+  if (ttlMs <= 0) return 0;
+  return Math.min(1, Math.max(0, remainingMs / ttlMs));
+}
+
 
 /** Order fields restored by undo (address and items are intentionally not reverted). */
 export const UNDO_SNAPSHOT_FIELDS = [
