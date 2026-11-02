@@ -94,6 +94,7 @@ export interface QueueOrderLike {
 export function queueTier(
   o: QueueOrderLike, caller: string, now: Date, gapMinutes = DEFAULT_QUEUE_SETTINGS.retryGapMinutes,
   s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+  isOnShift: (email: string) => boolean = () => true,
 ): number | null {
   const t = now.getTime();
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
@@ -112,7 +113,7 @@ export function queueTier(
   if (o.call_outcome === "callback" && (o.queue_last_touched_by ?? "").toLowerCase() === me) return 1;
   if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") return 2;
   if (o.call_outcome === "callback") {
-    return !o.queue_last_touched_by || next === null || next <= t - 30 * 60000 ? 3 : null;
+    return !o.queue_last_touched_by || next === null || next <= t - 30 * 60000 || !isOnShift(o.queue_last_touched_by) ? 3 : null;
   }
   const last = ts(o.last_call_attempt_at);
   if (next === null && last !== null && last > t - gapMinutes * 60000) return null;
@@ -133,4 +134,36 @@ export function sortQueue<T extends QueueOrderLike>(orders: T[], caller: string,
       return a.o.created_at.localeCompare(b.o.created_at);
     })
     .map((x) => x.o);
+}
+
+// ---------- Shifts (↔ call_queue_next / call_queue_autoend_shifts / call_queue_shift_start / release trigger) ----------
+export interface ShiftLike { started_at: string; ended_at: string | null; paused: boolean }
+
+/** Whether call_queue_next may hand out an order to this operator. */
+export function shiftGate(open: ShiftLike | null | undefined): "ok" | "not_on_shift" | "paused" {
+  if (!open || open.ended_at) return "not_on_shift";
+  return open.paused ? "paused" : "ok";
+}
+
+/** Start shift resumes the single open shift instead of creating a second one. */
+export function startShiftPlan(open: ShiftLike | null | undefined): "resume" | "insert" {
+  return open && !open.ended_at ? "resume" : "insert";
+}
+
+/** Locks are released the moment a shift is paused or ended. */
+export function releasesLocks(prev: ShiftLike, next: ShiftLike): boolean {
+  return (!!next.ended_at && !prev.ended_at) || (next.paused && !prev.paused);
+}
+
+export const AUTO_END_IDLE_MS = 60 * 60000;
+/** End time for a forgotten shift, or null to keep it open. */
+export function autoEndAt(shift: ShiftLike, lastActivity: Date, now: Date, workEnd = DEFAULT_QUEUE_SETTINGS.workEnd): Date | null {
+  if (shift.ended_at) return null;
+  const last = new Date(Math.max(lastActivity.getTime(), new Date(shift.started_at).getTime()));
+  const n = local(now);
+  const previousDay = local(new Date(shift.started_at)).day < n.day;
+  const pastWorkEnd = n.minute > hm(workEnd) + 60;
+  const idle = !shift.paused && now.getTime() - last.getTime() > AUTO_END_IDLE_MS;
+  if (previousDay || pastWorkEnd || idle) return new Date(Math.min(last.getTime(), now.getTime()));
+  return null;
 }
