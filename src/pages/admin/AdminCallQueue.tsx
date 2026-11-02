@@ -164,7 +164,7 @@ function QueueTab() {
 
   const loadShift = useCallback(async () => {
     const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at")
-      .ilike("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+      .eq("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
     if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return; }
     setShift(data?.[0] ?? null);
   }, [actor, toast]);
