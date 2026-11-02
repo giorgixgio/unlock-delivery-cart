@@ -16,7 +16,7 @@ export function callNormalize(orderId: string) {
 /** Same writes as the quick-review pop-up: update, manual_edit event, markAction, normalize on address change. */
 export async function persistOrderEdits(
   orderId: string, updates: Record<string, unknown>, actor: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: boolean; error?: string }> {
   if (Object.keys(updates).length === 0) return { ok: true };
   const { error } = await supabase.from("orders").update(updates as any).eq("id", orderId);
   if (error) return { ok: false, error: error.message };

@@ -1,9 +1,7 @@
 import { isTbilisiCity } from "@/lib/tbilisiDistricts";
 
 export type ConfirmAddressField = "city" | "district" | "address";
-export type ConfirmAddressResult =
-  | { ok: true }
-  | { ok: false; field: ConfirmAddressField; message: string };
+export interface ConfirmAddressResult { ok: boolean; field?: ConfirmAddressField; message?: string }
 
 export const MIN_CONFIRM_ADDRESS_LENGTH = 3;
 
