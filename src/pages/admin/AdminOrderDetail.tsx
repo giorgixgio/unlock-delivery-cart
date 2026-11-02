@@ -136,6 +136,7 @@ const AdminOrderDetail = () => {
   const [searchParams] = useSearchParams();
   const fromTab = searchParams.get("from") || "review";
   const { user } = useAdminAuth();
+  const outcomeLock = useOutcomeLock();
   const { toast } = useToast();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
