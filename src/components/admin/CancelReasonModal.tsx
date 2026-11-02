@@ -16,11 +16,16 @@ interface Props {
   /** Optional stock restore choice (shown only when provided) */
   restoreStock?: boolean;
   onRestoreStockChange?: (value: boolean) => void;
+  /** Optional: reasons to hide (e.g. Call Queue hides no_answer_after_attempts). */
+  hiddenReasons?: CancelReason[];
+  /** Optional: minimum note length for "other" (default: any non-empty note). */
+  minOtherNoteLength?: number;
 }
 
 export default function CancelReasonModal({
   open, orderNumber, callAttemptCount, maxAttempts = DEFAULT_MAX_CALL_ATTEMPTS,
   preselect, submitting, onCancel, onConfirm, restoreStock, onRestoreStockChange,
+  hiddenReasons, minOtherNoteLength,
 }: Props) {
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [note, setNote] = useState("");
@@ -36,7 +41,7 @@ export default function CancelReasonModal({
 
   const maxReached = callAttemptCount >= maxAttempts;
   const needsNote = reason === "other";
-  const noteValid = !needsNote || note.trim().length > 0;
+  const noteValid = !needsNote || note.trim().length >= Math.max(1, minOtherNoteLength ?? 1);
   const canConfirm = reason !== null && noteValid && !submitting;
 
   return (
@@ -60,7 +65,7 @@ export default function CancelReasonModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
-          {CANCEL_REASONS.map((r) => {
+          {CANCEL_REASONS.filter((r) => !hiddenReasons?.includes(r.value)).map((r) => {
             const disabled = r.requiresMaxAttempts && !maxReached;
             const isSel = reason === r.value;
             return (

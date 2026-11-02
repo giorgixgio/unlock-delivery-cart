@@ -21,6 +21,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { filterOrdersForStore } from "@/lib/adminStoreFilter";
 import ProductLeadsSection from "@/components/admin/ProductLeadsSection";
 import MetaAdsSection from "@/components/admin/MetaAdsSection";
+import CallQueueAdminCard from "@/components/admin/CallQueueAdminCard";
 
 const DELIVERY_FEE = 6.5;
 /** What WE pay the courier per shipped order, regardless of what the customer paid. */
@@ -250,6 +251,7 @@ const AdminDashboard = () => {
     return (
       <div className="dash-glow p-6 space-y-6">
         <DashboardStyles />
+      <CallQueueAdminCard />
         <div className="h-8 w-40 bg-white/5 animate-pulse rounded" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (

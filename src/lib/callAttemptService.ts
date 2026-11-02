@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
-export type CallOutcomeSource = "quick_review" | "order_detail" | "bulk" | "duplicate_cleanup";
+export type CallOutcomeSource = "quick_review" | "order_detail" | "bulk" | "duplicate_cleanup" | "call_queue";
 
 export async function logCallOutcome(
   orderId: string,
