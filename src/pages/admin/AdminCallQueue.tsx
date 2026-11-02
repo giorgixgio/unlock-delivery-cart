@@ -35,7 +35,7 @@ import {
   fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, queueShiftStart, queueAutoEndShifts, type QueueStats,
 } from "@/lib/callQueueService";
 import {
-  buildSnapshot, canUndo, UNDO_TOAST_MS, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
+  buildSnapshot, canUndo, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
   SNAPSHOT_BACKDATE_MS, undoBarDeadlineMs, undoBarFraction,
   type UndoAction, type QueueOutcome, type UndoCheck,
 
