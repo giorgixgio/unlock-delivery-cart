@@ -295,6 +295,11 @@ export type Database = {
           lock_minutes: number
           manager_emails: string[]
           max_attempts: number
+          night_first_call_after: string
+          night_from: string
+          night_retry_slot: string
+          night_to: string
+          operators_use_queue: boolean
           retry_gap_minutes: number
           updated_at: string
           updated_by: string | null
@@ -307,6 +312,11 @@ export type Database = {
           lock_minutes?: number
           manager_emails?: string[]
           max_attempts?: number
+          night_first_call_after?: string
+          night_from?: string
+          night_retry_slot?: string
+          night_to?: string
+          operators_use_queue?: boolean
           retry_gap_minutes?: number
           updated_at?: string
           updated_by?: string | null
@@ -319,6 +329,11 @@ export type Database = {
           lock_minutes?: number
           manager_emails?: string[]
           max_attempts?: number
+          night_first_call_after?: string
+          night_from?: string
+          night_retry_slot?: string
+          night_to?: string
+          operators_use_queue?: boolean
           retry_gap_minutes?: number
           updated_at?: string
           updated_by?: string | null
@@ -3582,6 +3597,11 @@ export type Database = {
           lock_minutes: number
           manager_emails: string[]
           max_attempts: number
+          night_first_call_after: string
+          night_from: string
+          night_retry_slot: string
+          night_to: string
+          operators_use_queue: boolean
           retry_gap_minutes: number
           updated_at: string
           updated_by: string | null
@@ -3612,11 +3632,22 @@ export type Database = {
         Returns: undefined
       }
       call_queue_is_manager: { Args: never; Returns: boolean }
+      call_queue_is_night: {
+        Args: { p_created: string; p_from: string; p_to: string }
+        Returns: boolean
+      }
       call_queue_is_open: {
         Args: { o: Database["public"]["Tables"]["orders"]["Row"] }
         Returns: boolean
       }
       call_queue_next: { Args: { p_store: string }; Returns: Json }
+      call_queue_night_held: {
+        Args: {
+          o: Database["public"]["Tables"]["orders"]["Row"]
+          p_now: string
+        }
+        Returns: boolean
+      }
       call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_schedule_retry: { Args: { p_order_id: string }; Returns: Json }
