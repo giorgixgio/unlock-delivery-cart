@@ -34,29 +34,6 @@ export interface QualityRow {
   conversion: number; overturned: number; overturnedIds: string[];
 }
 
-export function useOperatorQuality(args: {
-  operators: string[]; rows: BaseRow[]; calls: Ev[]; allOutcomes: Ev[]; sessions: SessionLite[];
-  orders: { id: string; created_at: string }[]; firstTouches: SessionLite[]; delivery: DeliveryRow[]; range: StatsRange | null;
-  workStart: number; workEnd: number; excluded: Set<string>;
-}) {
-  const { operators, rows, calls, allOutcomes, sessions, orders, firstTouches, delivery, range, workStart, workEnd, excluded } = args;
-  return useMemo(() => {
-    if (!range) return null;
-    const outcomes = allOutcomes;
-    const giveUps = findGiveUps(outcomes, range).filter((g) => !excluded.has(g.operator));
-    const cbRows = callbackTimeliness(outcomes, range).filter((r) => !excluded.has(r.event.actor));
-    // first touch (earliest session or call) per order with its operator
-    const first = new Map<string, { at: number; operator: string }>();
-    const touch = (orderId: string, at: string, op: string) => { const t = Date.parse(at); const p = first.get(orderId); if (!p || t < p.at) first.set(orderId, { at: t, operator: op }); };
-    for (const s of firstTouches) touch(s.order_id, s.session_started_at, s.operator);
-    for (const e of outcomes) touch(e.order_id, e.created_at, e.actor);
-    const firstMs = new Map(Array.from(first, ([k, v]) => [k, v.at]));
-    const totals = new Map<string, number>(delivery.map((d) => [d.order_id, Number(d.total || 0)]));
-    return { giveUps, cbRows, first, firstMs, totals };
-  }, [allOutcomes, range, firstTouches, delivery, excluded])
-    && useMemo(() => null, []);
-}
-
 /** Builds per-operator + team quality rows. Pure apart from memoisation in the caller. */
 export function buildQuality(args: {
   operators: string[]; rows: BaseRow[]; calls: Ev[]; allOutcomes: Ev[]; sessions: SessionLite[];

@@ -133,7 +133,7 @@ export function operatorOutcomes(operator: string, periodCalls: OutcomeEvent[], 
     else cancelled.push(e);
   }
   const resolved = confirmedIds.size + cancelled.length;
-  return { confirmedIds, cancelled, overturned: overturnedIds.size, resolved, conversion: resolved ? confirmedIds.size / resolved : 0 };
+  return { confirmedIds, cancelled, overturned: overturnedIds.size, overturnedIds: Array.from(overturnedIds), resolved, conversion: resolved ? confirmedIds.size / resolved : 0 };
 }
 
 // ---------- Open queue ----------
