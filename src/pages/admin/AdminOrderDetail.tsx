@@ -32,6 +32,8 @@ import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
 import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib/idempotencyService";
 import { isTbilisiCity, hasDistrict } from "@/lib/tbilisiDistricts";
 import { logCallOutcome } from "@/lib/callAttemptService";
+import { useOutcomeLock } from "@/hooks/useOutcomeLock";
+import OutcomeLockBanner from "@/components/admin/OutcomeLockBanner";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
 
 const STATUSES = ["new", "confirmed", "packed", "shipped", "delivered", "canceled", "returned", "on_hold", "merged"];
@@ -134,6 +136,7 @@ const AdminOrderDetail = () => {
   const [searchParams] = useSearchParams();
   const fromTab = searchParams.get("from") || "review";
   const { user } = useAdminAuth();
+  const outcomeLock = useOutcomeLock();
   const { toast } = useToast();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -792,14 +795,15 @@ const AdminOrderDetail = () => {
               </div>
             </div>
           )}
+          {outcomeLock.locked && <div className="mb-3"><OutcomeLockBanner orderId={order.id} /></div>}
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleConfirmOrder} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={handleConfirmOrder} disabled={saving || outcomeLock.locked} title={outcomeLock.reason ?? undefined} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
               <CheckCircle className="w-4 h-4" /> Confirm Order
             </Button>
-            <Button onClick={handleKeepOnHold} disabled={saving} variant="outline" className="gap-2">
+            <Button onClick={handleKeepOnHold} disabled={saving || outcomeLock.locked} title={outcomeLock.reason ?? undefined} variant="outline" className="gap-2">
               <PauseCircle className="w-4 h-4" /> Keep on Hold
             </Button>
-            <Button onClick={handleCancelDuplicate} disabled={saving} variant="destructive" className="gap-2">
+            <Button onClick={handleCancelDuplicate} disabled={saving || outcomeLock.locked} title={outcomeLock.reason ?? undefined} variant="destructive" className="gap-2">
               <XCircle className="w-4 h-4" /> Cancel as Duplicate
             </Button>
           </div>

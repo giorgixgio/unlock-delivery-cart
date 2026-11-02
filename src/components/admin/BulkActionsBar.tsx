@@ -13,6 +13,7 @@ import { logSystemEvent } from "@/lib/systemEventService";
 import { versionedOrderUpdate } from "@/lib/idempotencyService";
 import { logCallOutcome } from "@/lib/callAttemptService";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useOutcomeLock } from "@/hooks/useOutcomeLock";
 
 interface BulkActionsBarProps {
   selectedIds: string[];
@@ -27,6 +28,7 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
   const { user } = useAdminAuth();
   const actor = user?.email || "admin";
   const [loading, setLoading] = useState(false);
+  const outcomeLock = useOutcomeLock();
   const [confirmAction, setConfirmAction] = useState<"confirm" | "cancel" | "delete" | null>(null);
   const [restoreStock, setRestoreStock] = useState(true);
 
@@ -123,8 +125,8 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
   };
 
   const runAction = () => {
-    if (confirmAction === "confirm") handleBulkConfirm();
-    else if (confirmAction === "cancel") handleBulkCancel();
+    if (confirmAction === "confirm" && !outcomeLock.locked) handleBulkConfirm();
+    else if (confirmAction === "cancel" && !outcomeLock.locked) handleBulkCancel();
     else if (confirmAction === "delete") handleBulkDelete();
   };
 
@@ -139,10 +141,10 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
       <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-4 py-2.5">
         <span className="text-sm font-bold text-primary">{selectedIds.length} selected</span>
         <div className="h-5 w-px bg-border mx-1" />
-        <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700" onClick={() => setConfirmAction("confirm")} disabled={loading}>
+        <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700" onClick={() => setConfirmAction("confirm")} disabled={loading || outcomeLock.locked} title={outcomeLock.reason ?? undefined}>
           <CheckCircle className="w-3.5 h-3.5" /> Confirm
         </Button>
-        <Button size="sm" variant="outline" className="gap-1.5 text-amber-700" onClick={() => setConfirmAction("cancel")} disabled={loading}>
+        <Button size="sm" variant="outline" className="gap-1.5 text-amber-700" onClick={() => setConfirmAction("cancel")} disabled={loading || outcomeLock.locked} title={outcomeLock.reason ?? undefined}>
           <XCircle className="w-3.5 h-3.5" /> Cancel
         </Button>
         {selectedIds.length >= 2 && (

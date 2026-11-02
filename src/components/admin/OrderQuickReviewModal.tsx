@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { applyOrderConfirmStock, applyOrderCancelStock } from "@/lib/stockService";
+import { useOutcomeLock } from "@/hooks/useOutcomeLock";
+import OutcomeLockBanner from "@/components/admin/OutcomeLockBanner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -255,6 +257,8 @@ export default function OrderQuickReviewModal({
 
 
 
+  const outcomeLock = useOutcomeLock();
+
   // Keyboard navigation
   useEffect(() => {
     if (!orderId) return;
@@ -316,7 +320,7 @@ export default function OrderQuickReviewModal({
    *  - callback: opens callback picker.
    */
   const handleOutcome = async (outcome: Outcome) => {
-    if (!order) return;
+    if (!order || outcomeLock.locked) return;
 
     // Address must be complete before confirming (city, street ≥3 chars, district for Tbilisi).
     if (outcome === "confirmed") {
@@ -587,6 +591,8 @@ export default function OrderQuickReviewModal({
                 )}
               </section>
 
+              {outcomeLock.locked && <OutcomeLockBanner orderId={order.id} onNavigate={onClose} />}
+
               {/* Previous orders from same phone */}
               <PreviousOrdersPanel
                 order={order}
@@ -612,7 +618,7 @@ export default function OrderQuickReviewModal({
                     const attempts = Number(order.call_attempt_count || 0);
                     const maxReached = attempts >= DEFAULT_MAX_CALL_ATTEMPTS;
                     const isNoAnswer = o.key === "no_answer";
-                    const disabled = saving || (isNoAnswer && maxReached);
+                    const disabled = saving || outcomeLock.locked || (isNoAnswer && maxReached);
                     const label = isNoAnswer
                       ? maxReached
                         ? "მაქს. ცდები ⛔"
@@ -625,7 +631,7 @@ export default function OrderQuickReviewModal({
                         disabled={disabled}
                         onClick={() => handleOutcome(o.key)}
                         className={`relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border-2 font-bold text-sm transition-all disabled:opacity-60 ${isSel ? o.selected + " scale-[1.02]" : o.unselected}`}
-                        title={isNoAnswer && maxReached ? "გააუქმე მიზეზით: არ პასუხობს რამდენიმე ცდის შემდეგ" : undefined}
+                        title={outcomeLock.locked ? outcomeLock.reason ?? undefined : isNoAnswer && maxReached ? "გააუქმე მიზეზით: არ პასუხობს რამდენიმე ცდის შემდეგ" : undefined}
                       >
                         {isSel ? <Check className="w-4 h-4" /> : <o.Icon className="w-4 h-4" />}
                         <span className="truncate">{label}</span>
