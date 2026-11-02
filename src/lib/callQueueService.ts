@@ -71,6 +71,40 @@ export const queueAssign = (orderId: string, operator: string) =>
 export const queueForceRelease = (orderId: string) => rpc<void>("call_queue_force_release", { p_order_id: orderId });
 export const queueOverride = (orderId: string) => rpc<void>("call_queue_override", { p_order_id: orderId });
 export const queueIsManager = () => rpc<boolean>("call_queue_is_manager");
+export const queueUndo = (orderId: string, snapshot: Record<string, unknown>, eventIds: string[]) =>
+  rpc<{ ok: boolean; sms_already_sent: boolean }>("call_queue_undo", { p_order_id: orderId, p_snapshot: snapshot, p_event_ids: eventIds });
+
+const UNDO_STATE_SELECT = "status, is_fulfilled, onway_sent_at, onway_tracking, packed_at, packing_wave_id";
+const SNAPSHOT_SELECT =
+  "status, is_confirmed, call_outcome, call_outcome_updated_at, call_outcome_updated_by, operator_review_status, review_required, call_attempt_count, last_call_attempt_at, last_call_attempt_by, call_attempt_history, next_call_after, final_cancel_reason, final_cancel_note, canceled_after_attempts, queue_extra_attempts, queue_last_touched_by";
+
+/** Fresh copy of the fields undo restores, read right before an outcome. */
+export async function fetchUndoSnapshotSource(orderId: string): Promise<Record<string, unknown> | null> {
+  const { data, error } = await db.from("orders").select(SNAPSHOT_SELECT).eq("id", orderId).maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+/** Current blocking state for undo plus whether anyone else touched the order since `sinceIso`. */
+export async function fetchUndoState(orderId: string, me: string, sinceIso: string) {
+  const [{ data: o }, { data: ev }] = await Promise.all([
+    db.from("orders").select(UNDO_STATE_SELECT).eq("id", orderId).maybeSingle(),
+    db.from("order_events").select("actor").eq("order_id", orderId).gte("created_at", sinceIso).limit(200),
+  ]);
+  if (!o) return null;
+  const touchedByOther = ((ev as any[]) || []).some((r) => {
+    const a = (r.actor || "").toLowerCase();
+    return a && a !== "system" && a !== me.toLowerCase();
+  });
+  return { ...o, touchedByOther };
+}
+
+/** Ids of this operator's undoable events on the order since the action started. */
+export async function fetchActionEventIds(orderId: string, actor: string, sinceIso: string, types: string[]): Promise<string[]> {
+  const { data } = await db.from("order_events").select("id").eq("order_id", orderId).eq("actor", actor)
+    .gte("created_at", sinceIso).in("event_type", types).limit(50);
+  return ((data as any[]) || []).map((r) => r.id);
+}
 
 /**
  * Confirm exactly like OrderQuickReviewModal's "confirmed" outcome:
