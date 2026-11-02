@@ -6,6 +6,8 @@ import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
 import { cityKey } from "../_shared/onwayRegions.ts";
+import { finalizeOnwaySent, type FinalizeEntry } from "../_shared/onwayFulfill.ts";
+import { apiBatchName, reviewBatchName } from "../_shared/courierLabel.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
@@ -143,14 +145,17 @@ Deno.serve(async (req) => {
       if(!resolveCity(o)) reasons.push("city_not_mapped");
       return reasons;
     };
+    let reviewTracking: string | null = null;
     if(body.action==="review_save") {
       const r=body.review;
       const o=storeOrders.find((o:any)=>o.id===r.order_id);
       if(!o) return json({error:"Not an eligible TrendMart order"},400);
       const {data,error}=await supabase.rpc("onway_review_save", {p_order_id:r.order_id,p_version:r.version,p_region_id:r.region_id,p_address:r.address,p_name:r.name,p_phone:r.phone,p_actor:actor,p_decision:r.decision,p_tracking:r.tracking || null});
-      return error?json({error:error.message},409):json(data);
+      if(error) return json({error:error.message},409);
+      if(r.decision!=="exists" || !r.tracking?.trim()) return json(data);
+      reviewTracking=r.tracking.trim();
     }
-    if(body.action==="review_list") return json({orders:storeOrders.flatMap((o:any)=> {
+    if(body.action==="review_list" && !reviewTracking) return json({orders:storeOrders.flatMap((o:any)=> {
       const state=reviewState({...o,onway_reviewed_at:authorizedReview(o)?permitMap.get(o.id)?.reviewed_at:null}) || (!alreadySent(o)&&reasonsFor(o).length?"held":null);
       return state?[{order_id:o.id,order_number:o.public_order_number,version:o.version,customer_name:o.customer_name,customer_phone:o.customer_phone,city:o.normalized_city||o.city,address:o.normalized_address||o.address_line1,region_id:resolveCity(o)?.id || null,state,error:o.onway_error_text,reasons:reasonsFor(o)}]:[];
     })});
@@ -182,6 +187,18 @@ Deno.serve(async (req) => {
     } else {
       multiMeta.sort((a, b) => new Date(a.order.created_at).getTime() - new Date(b.order.created_at).getTime())
         .forEach((m, i) => assigned.push({ order: m.order, tag: `R${pad(Math.floor(i / roundSize) + 1, 2)}-${pad((i % roundSize) + 1, 2)}` }));
+    }
+
+    const laneOf = (tag: string) => tag.startsWith("R")
+      ? { lane: "multi", round: Number(tag.slice(1, 3)), slot: Number(tag.slice(4, 6)) }
+      : { lane: "single", round: null, slot: null };
+    // Review confirmed the shipment exists in Onway: finish it like a normal send.
+    if (reviewTracking) {
+      const a = assigned.find((x) => x.order.id === body.review!.order_id);
+      if (!a) return json({ ok: true, fulfil: null });
+      const fin = await finalizeOnwaySent(supabase, authClient, [{ order: a.order, tag: a.tag, tracking: reviewTracking, ...laneOf(a.tag) }], binBySku,
+        { fileName: reviewBatchName(), actor, appendToExisting: true });
+      return json({ ok: true, fulfil: fin });
     }
 
     let targets = onlyIds ? assigned.filter((a) => onlyIds.includes(String(a.order.id))) : assigned;
@@ -246,6 +263,7 @@ Deno.serve(async (req) => {
 
     // --- Real send: one by one, lock first, keep going on errors ---
     const results: { ok: boolean; skipped?: boolean; [key: string]: unknown }[] = [];
+    const toFinalize: FinalizeEntry[] = [];
     for (const b of built) {
       const base = { order_id: b.order.id, order_number: b.order.public_order_number };
       if(b.held.length) { results.push({...base,ok:false,skipped:true,state:"held",error:b.held.join(", ")}); continue; }
@@ -270,7 +288,20 @@ Deno.serve(async (req) => {
       await supabase.from("orders").update({
         onway_api_status: ok ? "sent" : "unclear", onway_error_text:ok?null:(err || raw.slice(0,2000) || `HTTP ${status}`), ...(ok && tracking ? { onway_tracking: tracking } : {}),
       }).eq("id", b.order.id);
+      if (ok && tracking) toFinalize.push({ order: b.order, tag: b.tag, tracking, ...laneOf(b.tag) });
       results.push({ ...base, ok, state:ok?"sent":"unclear", http_status: status, tracking:ok?tracking:null, response_raw: raw.slice(0, 1000), error: err || (!ok?raw.slice(0,1000):null) });
+    }
+    // Fulfil + batch every successfully sent order (same path as Mass Fulfill).
+    let fulfil: Awaited<ReturnType<typeof finalizeOnwaySent>> | null = null;
+    if (toFinalize.length) {
+      try {
+        fulfil = await finalizeOnwaySent(supabase, authClient, toFinalize, binBySku, { fileName: apiBatchName(toFinalize.length), actor });
+      } catch (e) {
+        const msg = `Sent to Onway but not fulfilled — fulfil manually: ${String(e)}`;
+        for (const t of toFinalize) await supabase.from("orders").update({ onway_error_text: msg.slice(0, 2000) }).eq("id", t.order.id);
+        fulfil = { batch_id: null, file_name: null, fulfilled_ids: [], skipped_ids: [], failed: toFinalize.map((t) => ({ order_id: t.order.id, error: msg })) };
+      }
+      for (const f of fulfil.failed) { const r = results.find((x) => x.order_id === f.order_id); if (r) r.fulfil_error = f.error; }
     }
     // One owner notification per actual API batch, never per order or preview.
     const counts = onwayBatchCounts(results);
@@ -284,7 +315,7 @@ Deno.serve(async (req) => {
       };
       EdgeRuntime.waitUntil(notify());
     }
-    return json({ dry_run: false, skipped_already_sent: skipped, results, sent_count:results.filter(r=>r.ok).length, review_count:results.filter(r=>!r.ok).length });
+    return json({ dry_run: false, skipped_already_sent: skipped, results, sent_count:results.filter(r=>r.ok).length, review_count:results.filter(r=>!r.ok).length, fulfilled_count: fulfil?.fulfilled_ids.length ?? 0, not_fulfilled_count: fulfil?.failed.length ?? 0, batch_id: fulfil?.batch_id ?? null, batch_name: fulfil?.file_name ?? null });
   } catch (e) {
     console.error("onway-create-shipments error:", e);
     return json({ error: String(e) }, 500);
