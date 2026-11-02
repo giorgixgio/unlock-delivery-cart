@@ -251,7 +251,6 @@ const AdminDashboard = () => {
     return (
       <div className="dash-glow p-6 space-y-6">
         <DashboardStyles />
-      <CallQueueAdminCard />
         <div className="h-8 w-40 bg-white/5 animate-pulse rounded" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -267,6 +266,8 @@ const AdminDashboard = () => {
   return (
     <div className="dash-glow p-4 sm:p-6 space-y-6 sm:space-y-8 min-h-full">
       <DashboardStyles />
+
+      <CallQueueAdminCard />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
