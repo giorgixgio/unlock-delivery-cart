@@ -35,7 +35,10 @@ import {
 import { DEFAULT_MAX_CALL_ATTEMPTS, type CancelReason } from "@/lib/cancelReasons";
 
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
-import { TBILISI_DISTRICTS, isTbilisiCity, splitDistrict, composeAddress } from "@/lib/tbilisiDistricts";
+import AddressFields, { useAddressFields } from "@/components/admin/order-review/AddressFields";
+import OrderItemsEditor from "@/components/admin/order-review/OrderItemsEditor";
+import PreviousOrdersPanel from "@/components/admin/order-review/PreviousOrdersPanel";
+import { persistOrderEdits } from "@/components/admin/order-review/persistOrderEdits";
 
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
@@ -163,17 +166,6 @@ interface ProductSearchResult {
   available: boolean;
 }
 
-function callNormalize(orderId: string) {
-  try {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    fetch(`${url}/functions/v1/normalize-and-score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ order_id: orderId }),
-    });
-  } catch (e) { console.warn("normalize call failed", e); }
-}
 
 export default function OrderQuickReviewModal({
   orderId, onClose, onPrev, onNext, hasPrev, hasNext, onOrderUpdated,
@@ -186,56 +178,20 @@ export default function OrderQuickReviewModal({
   const [order, setOrder] = useState<OrderFull | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   /** Direction the panel should animate (1 = next/right, -1 = prev/left, 0 = none) */
   const [switchDir, setSwitchDir] = useState<0 | 1 | -1>(0);
   const lastIdRef = useRef<string | null>(null);
 
-  // Simple operator fields
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [district, setDistrict] = useState("");
-  const districtRef = useRef<HTMLInputElement | null>(null);
-  const [courierNote, setCourierNote] = useState("");
+  // Simple operator fields (address lives in the shared AddressFields hook)
+  const addr = useAddressFields();
   const [operatorNote, setOperatorNote] = useState("");
-
-  // Advanced
-  const [advRawCity, setAdvRawCity] = useState("");
-  const [advNormCity, setAdvNormCity] = useState("");
-  const [advRawAddr, setAdvRawAddr] = useState("");
-  const [advNormAddr, setAdvNormAddr] = useState("");
-
-  // Product search
-  const [searchOpen, setSearchOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
 
   // Cancel + callback modals
   const [restoreStock, setRestoreStock] = useState(true);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelPreselect, setCancelPreselect] = useState<CancelReason | null>(null);
   const [callbackOpen, setCallbackOpen] = useState(false);
-
-  // Previous orders from same phone
-  interface PrevOrder {
-    id: string;
-    public_order_number: string;
-    created_at: string;
-    status: string;
-    total: number;
-    call_attempt_count: number | null;
-  }
-  const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
-  const [prevLoading, setPrevLoading] = useState(false);
-  const [bulkCanceling, setBulkCanceling] = useState(false);
-  const [expandedPrevId, setExpandedPrevId] = useState<string | null>(null);
-  const [prevItemsById, setPrevItemsById] = useState<Record<string, { sku: string; title: string; quantity: number; unit_price: number; image_url: string }[]>>({});
-  const [prevItemsLoading, setPrevItemsLoading] = useState<string | null>(null);
-  const [cancelingPrevId, setCancelingPrevId] = useState<string | null>(null);
-  const [mergeWithPrevId, setMergeWithPrevId] = useState<string | null>(null);
 
   const actor = user?.email || "admin";
 
@@ -245,10 +201,7 @@ export default function OrderQuickReviewModal({
     // direction is already set by goPrev/goNext callers; first open = 0
     let cancelled = false;
     setLoading(true);
-    setAdvancedOpen(false);
-    setSearchOpen(false);
-    setSearchTerm("");
-    setSearchResults([]);
+    addr.setAdvancedOpen(false);
 
     (async () => {
       const { data } = await supabase
@@ -262,18 +215,8 @@ export default function OrderQuickReviewModal({
       const o = data as unknown as OrderFull | null;
       setOrder(o);
       if (o) {
-        setCity(o.normalized_city || o.city || "");
-        {
-          const parts = splitDistrict(o.normalized_address || o.address_line1 || "");
-          setDistrict(parts.district);
-          setAddress(parts.rest);
-        }
-        setCourierNote(o.address_line2 || "");
+        addr.reset(o);
         setOperatorNote(o.internal_note || "");
-        setAdvRawCity(o.raw_city || "");
-        setAdvNormCity(o.normalized_city || "");
-        setAdvRawAddr(o.raw_address || "");
-        setAdvNormAddr(o.normalized_address || "");
 
         // Always log a per-session "order_opened" event for operator stats
         supabase.from("order_events").insert({
@@ -313,88 +256,6 @@ export default function OrderQuickReviewModal({
     return () => { void endSession("unmounted"); };
   }, []);
 
-  // ── Fetch previous orders from the same phone (last 9 digits) ──
-  useEffect(() => {
-    if (!order?.customer_phone || !order?.id) { setPrevOrders([]); return; }
-    const digits = order.customer_phone.replace(/\D/g, "");
-    const last9 = digits.slice(-9);
-    if (last9.length < 6) { setPrevOrders([]); return; }
-    let cancelled = false;
-    setPrevLoading(true);
-    (async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, public_order_number, created_at, status, total, call_attempt_count")
-        .ilike("customer_phone", `%${last9}%`)
-        .neq("id", order.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (cancelled) return;
-      setPrevOrders((data || []) as PrevOrder[]);
-      setPrevLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [order?.id, order?.customer_phone]);
-
-  const cancellablePrev = useMemo(
-    () => prevOrders.filter((p) => !["canceled", "delivered", "shipped", "packed", "returned", "merged"].includes(p.status)),
-    [prevOrders],
-  );
-
-  const handleBulkCancelPrev = useCallback(async () => {
-    if (cancellablePrev.length === 0) return;
-    if (!confirm(`${cancellablePrev.length} წინა შეკვეთა გაუქმდება (დუბლიკატი). გავაგრძელო?`)) return;
-    setBulkCanceling(true);
-    let ok = 0, fail = 0;
-    for (const p of cancellablePrev) {
-      const success = await cancelOrderWithReason(
-        p.id, actor, "duplicate_order", "Bulk-canceled as duplicate from quick review",
-        Number(p.call_attempt_count || 0), undefined, "duplicate_cleanup", currentSessionId(),
-      );
-      if (success) ok++; else fail++;
-    }
-    // Refresh list
-    setPrevOrders((list) =>
-      list.map((p) =>
-        cancellablePrev.some((c) => c.id === p.id) ? { ...p, status: "canceled" } : p
-      ),
-    );
-    setBulkCanceling(false);
-    toast({
-      title: fail === 0 ? `გაუქმდა ${ok} წინა შეკვეთა` : `გაუქმდა ${ok}, ვერ ${fail}`,
-      variant: fail === 0 ? undefined : "destructive",
-    });
-  }, [cancellablePrev, actor, toast]);
-
-  const togglePrevExpand = useCallback(async (id: string) => {
-    if (expandedPrevId === id) { setExpandedPrevId(null); return; }
-    setExpandedPrevId(id);
-    if (!prevItemsById[id]) {
-      setPrevItemsLoading(id);
-      const { data } = await supabase
-        .from("order_items")
-        .select("sku, title, quantity, unit_price, image_url")
-        .eq("order_id", id);
-      setPrevItemsById((m) => ({ ...m, [id]: (data || []) as any }));
-      setPrevItemsLoading(null);
-    }
-  }, [expandedPrevId, prevItemsById]);
-
-  const cancelSinglePrev = useCallback(async (p: { id: string; public_order_number: string; call_attempt_count: number | null }) => {
-    if (!confirm(`შეკვეთა #${p.public_order_number} გაუქმდება (დუბლიკატი). გავაგრძელო?`)) return;
-    setCancelingPrevId(p.id);
-    const ok = await cancelOrderWithReason(
-      p.id, actor, "duplicate_order", "Canceled as duplicate from quick review",
-      Number(p.call_attempt_count || 0), undefined, "duplicate_cleanup", currentSessionId(),
-    );
-    setCancelingPrevId(null);
-    if (ok) {
-      setPrevOrders((list) => list.map((x) => x.id === p.id ? { ...x, status: "canceled" } : x));
-      toast({ title: `#${p.public_order_number} გაუქმდა` });
-    } else {
-      toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" });
-    }
-  }, [actor, toast]);
 
 
 
@@ -416,53 +277,18 @@ export default function OrderQuickReviewModal({
   /** Collect address/note edits diff vs current loaded order */
   const collectEditUpdates = useCallback((): Record<string, unknown> => {
     if (!order) return {};
-    const updates: Record<string, unknown> = {};
-    const trimmedCity = city.trim();
-    // District (Tbilisi only) is written as a prefix into the same address field.
-    const trimmedAddr = isTbilisiCity(city)
-      ? composeAddress(district, address)
-      : address.trim();
-
-    if (trimmedCity !== (order.normalized_city || order.city || "")) {
-      updates.city = trimmedCity;
-      updates.raw_city = trimmedCity;
-      updates.normalized_city = trimmedCity;
-      const lower = trimmedCity.toLowerCase();
-      updates.is_tbilisi = lower === "თბილისი" || lower === "tbilisi";
-    }
-    if (trimmedAddr !== (order.normalized_address || order.address_line1 || "")) {
-      updates.address_line1 = trimmedAddr;
-      updates.raw_address = trimmedAddr;
-      updates.normalized_address = trimmedAddr;
-    }
-    if ((courierNote || "") !== (order.address_line2 || "")) {
-      updates.address_line2 = courierNote || null;
-    }
-    if ((operatorNote || "") !== (order.internal_note || "")) {
-      updates.internal_note = operatorNote || null;
-    }
-    if (advancedOpen) {
-      if (advRawCity !== (order.raw_city || "")) updates.raw_city = advRawCity || null;
-      if (advNormCity !== (order.normalized_city || "")) updates.normalized_city = advNormCity || null;
-      if (advRawAddr !== (order.raw_address || "")) updates.raw_address = advRawAddr || null;
-      if (advNormAddr !== (order.normalized_address || "")) updates.normalized_address = advNormAddr || null;
-    }
-    return updates;
-  }, [order, city, address, district, courierNote, operatorNote, advancedOpen, advRawCity, advNormCity, advRawAddr, advNormAddr]);
+    const extra: Record<string, unknown> = {};
+    if ((operatorNote || "") !== (order.internal_note || "")) extra.internal_note = operatorNote || null;
+    return addr.collectUpdates(order, extra);
+  }, [order, operatorNote, addr]);
 
   const persistUpdates = useCallback(async (updates: Record<string, unknown>): Promise<boolean> => {
     if (!order || Object.keys(updates).length === 0) return true;
-    const { error } = await supabase.from("orders").update(updates).eq("id", order.id);
-    if (error) {
-      toast({ title: "შენახვა ვერ მოხერხდა", description: error.message, variant: "destructive" });
+    const res = await persistOrderEdits(order.id, updates, actor);
+    if (!res.ok) {
+      toast({ title: "შენახვა ვერ მოხერხდა", description: res.error, variant: "destructive" });
       return false;
     }
-    await supabase.from("order_events").insert({
-      order_id: order.id, actor, event_type: "manual_edit",
-      payload: { section: "quick_review", changed: Object.keys(updates) } as any,
-    });
-    markAction("manual_edit");
-    if (updates.city !== undefined || updates.address_line1 !== undefined) callNormalize(order.id);
     onOrderUpdated(order.id, updates);
     setOrder({ ...order, ...(updates as Partial<OrderFull>) });
     return true;
@@ -496,15 +322,13 @@ export default function OrderQuickReviewModal({
   const handleOutcome = async (outcome: Outcome) => {
     if (!order) return;
 
-    // Tbilisi orders must carry a district before they can be confirmed.
-    if (outcome === "confirmed" && isTbilisiCity(city) && !district.trim()) {
-      toast({
-        title: "მიუთითეთ რაიონი",
-        description: "თბილისის შეკვეთისთვის რაიონის მითითება სავალდებულოა (მაგ: ვაკე).",
-        variant: "destructive",
-      });
-      districtRef.current?.focus();
-      return;
+    // Address must be complete before confirming (city, street ≥3 chars, district for Tbilisi).
+    if (outcome === "confirmed") {
+      const v = addr.validateForConfirm();
+      if (!v.ok) {
+        toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
+        return;
+      }
     }
 
 
@@ -648,116 +472,12 @@ export default function OrderQuickReviewModal({
     toast({ title: "ნომერი დაკოპირდა" });
   };
 
-  // -------- Item add/edit --------
-
-  const refreshItemsAndTotals = useCallback(async () => {
+  // -------- Item add/edit (shared OrderItemsEditor) --------
+  const handleItemsChanged = useCallback((patch: { order_items: OrderItem[]; subtotal: number; total: number }) => {
     if (!order) return;
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("id, product_id, title, sku, quantity, unit_price, line_total, image_url")
-      .eq("order_id", order.id);
-    const list = (items || []) as OrderItem[];
-    const newSubtotal = list.reduce((s, i) => s + Number(i.line_total), 0);
-    const shipping = Number(order.shipping_fee || 0);
-    const discount = Number(order.discount_total || 0);
-    const newTotal = newSubtotal + shipping - discount;
-    await supabase.from("orders").update({ subtotal: newSubtotal, total: newTotal }).eq("id", order.id);
-    setOrder({ ...order, order_items: list, subtotal: newSubtotal, total: newTotal });
-    onOrderUpdated(order.id, { subtotal: newSubtotal, total: newTotal });
+    setOrder((o) => (o ? { ...o, ...patch } : o));
+    onOrderUpdated(order.id, { subtotal: patch.subtotal, total: patch.total });
   }, [order, onOrderUpdated]);
-
-  const changeItemQty = async (item: OrderItem, nextQty: number) => {
-    if (nextQty < 1 || !order) return;
-
-    // Base (1-unit) catalog price so admin edits match the storefront tier pricing.
-    let basePrice = Number(item.unit_price);
-    const { data: prod } = await supabase
-      .from("products")
-      .select("price")
-      .eq("sku", item.sku)
-      .limit(1)
-      .maybeSingle();
-    if (prod?.price != null) basePrice = Number(prod.price);
-
-    const newLineTotal = getTieredLineTotal(basePrice, nextQty, item.sku);
-    const newUnitPrice = getTieredUnitPrice(basePrice, nextQty, item.sku);
-    const { error } = await supabase
-      .from("order_items")
-      .update({ quantity: nextQty, line_total: newLineTotal, unit_price: newUnitPrice })
-      .eq("id", item.id);
-    if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
-    await supabase.from("order_events").insert({
-      order_id: order.id, actor, event_type: "item_quantity_change",
-      payload: { item_id: item.id, sku: item.sku, from: item.quantity, to: nextQty } as any,
-    });
-    markAction("item_quantity_change");
-    await refreshItemsAndTotals();
-  };
-
-  const removeItem = async (item: OrderItem) => {
-    if (!order) return;
-    if (!confirm(`${item.title} — წავშალო შეკვეთიდან?`)) return;
-    const { error } = await supabase.from("order_items").delete().eq("id", item.id);
-    if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
-    await supabase.from("order_events").insert({
-      order_id: order.id, actor, event_type: "item_removed",
-      payload: { item_id: item.id, sku: item.sku, title: item.title } as any,
-    });
-    markAction("item_removed");
-    await refreshItemsAndTotals();
-    toast({ title: "წაიშალა" });
-  };
-
-  // Search products with debounce
-  useEffect(() => {
-    if (!searchOpen) return;
-    const term = searchTerm.trim();
-    if (term.length < 2) { setSearchResults([]); return; }
-    let cancelled = false;
-    setSearching(true);
-    const t = setTimeout(async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("id, title, sku, price, image, available")
-        .or(`title.ilike.%${term}%,sku.ilike.%${term}%,id.ilike.%${term}%`)
-        .limit(20);
-      if (cancelled) return;
-      setSearchResults((data as ProductSearchResult[]) || []);
-      setSearching(false);
-    }, 220);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [searchTerm, searchOpen]);
-
-  const addProduct = async (p: ProductSearchResult) => {
-    if (!order) return;
-    const existing = order.order_items.find((i) => i.product_id === p.id || i.sku === p.sku);
-    if (existing) {
-      await changeItemQty(existing, existing.quantity + 1);
-      toast({ title: "პროდუქტი უკვე იყო — რაოდენობა გაიზარდა" });
-    } else {
-      const newLine = Number(p.price);
-      const { error } = await supabase.from("order_items").insert({
-        order_id: order.id,
-        product_id: p.id,
-        sku: p.sku || p.id,
-        title: p.title,
-        quantity: 1,
-        unit_price: p.price,
-        line_total: newLine,
-        image_url: p.image || "",
-      });
-      if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
-      await supabase.from("order_events").insert({
-        order_id: order.id, actor, event_type: "item_added",
-        payload: { product_id: p.id, sku: p.sku, title: p.title, quantity: 1, unit_price: Number(p.price), added_revenue: Number(p.price) } as any,
-      });
-      markAction("item_added");
-      await refreshItemsAndTotals();
-      toast({ title: `დაემატა: ${p.title}` });
-    }
-    setSearchTerm("");
-    setSearchResults([]);
-  };
 
   if (!orderId) return null;
 
@@ -872,122 +592,11 @@ export default function OrderQuickReviewModal({
               </section>
 
               {/* Previous orders from same phone */}
-              {(prevLoading || prevOrders.length > 0) && (
-                <section className="rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 p-3">
-                  <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      წინა შეკვეთები ({prevOrders.length})
-                    </h3>
-                    {cancellablePrev.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-7 gap-1.5 text-xs"
-                        disabled={bulkCanceling}
-                        onClick={handleBulkCancelPrev}
-                      >
-                        {bulkCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                        ყველა წინა გააუქმე ({cancellablePrev.length})
-                      </Button>
-                    )}
-                  </div>
-                  {prevLoading ? (
-                    <div className="text-xs text-muted-foreground">იტვირთება…</div>
-                  ) : (
-                    <div className="space-y-1">
-                      {prevOrders.map((p) => {
-                        const isExpanded = expandedPrevId === p.id;
-                        const items = prevItemsById[p.id];
-                        const canCancelRow = !["canceled", "delivered", "shipped", "packed", "returned", "merged"].includes(p.status);
-                        const canMergeRow = canCancelRow && order && !order.is_fulfilled;
-                        return (
-                          <div key={p.id} className="bg-background/70 rounded-md border border-border/60 overflow-hidden">
-                            <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-                              <button
-                                type="button"
-                                onClick={() => togglePrevExpand(p.id)}
-                                className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80"
-                                aria-expanded={isExpanded}
-                              >
-                                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
-                                <span className="font-mono text-xs font-bold">#{p.public_order_number}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor[p.status] || "bg-muted"}`}>
-                                  {p.status.replace("_", " ")}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground truncate">
-                                  {new Date(p.created_at).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                </span>
-                              </button>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                <span className="text-xs font-semibold mr-1">{Number(p.total).toFixed(2)} ₾</span>
-                                {canMergeRow && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setMergeWithPrevId(p.id)}
-                                    className="p-1 rounded hover:bg-blue-100 text-blue-700"
-                                    title="მიმდინარესთან შერწყმა"
-                                    aria-label="Merge with current"
-                                  >
-                                    <GitMerge className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                {canCancelRow && (
-                                  <button
-                                    type="button"
-                                    disabled={cancelingPrevId === p.id}
-                                    onClick={() => cancelSinglePrev(p)}
-                                    className="p-1 rounded hover:bg-red-100 text-red-700 disabled:opacity-50"
-                                    title="გააუქმე (დუბლიკატი)"
-                                    aria-label="Cancel this order"
-                                  >
-                                    {cancelingPrevId === p.id
-                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      : <XCircle className="w-3.5 h-3.5" />}
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/admin/orders/${p.id}`)}
-                                  className="p-1 rounded hover:bg-muted text-primary"
-                                  title="Advanced"
-                                  aria-label="Open advanced"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                            {isExpanded && (
-                              <div className="border-t border-border/60 bg-muted/30 px-2.5 py-1.5">
-                                {prevItemsLoading === p.id ? (
-                                  <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                                    <Loader2 className="w-3 h-3 animate-spin" /> იტვირთება…
-                                  </div>
-                                ) : items && items.length > 0 ? (
-                                  <ul className="space-y-1">
-                                    {items.map((it, idx) => (
-                                      <li key={idx} className="flex items-center gap-2 text-[11px]">
-                                        {it.image_url && (
-                                          <img src={it.image_url} alt="" className="w-6 h-6 rounded object-cover border border-border/60" />
-                                        )}
-                                        <span className="flex-1 truncate">{it.title}</span>
-                                        <span className="font-semibold">×{it.quantity}</span>
-                                        <span className="text-muted-foreground w-14 text-right">{(it.unit_price * it.quantity).toFixed(2)} ₾</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <div className="text-[11px] text-muted-foreground">პროდუქტები არ არის</div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              )}
+              <PreviousOrdersPanel
+                order={order}
+                currentSkus={order.order_items?.map((i) => i.sku) || []}
+                actor={actor}
+              />
 
 
               {/* Call attempts */}
@@ -1035,190 +644,17 @@ export default function OrderQuickReviewModal({
 
 
               {/* Address */}
-              <section className="rounded-lg border border-border p-3 bg-card space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">მისამართი</h3>
-                <div>
-                  <Label className="text-xs">ქალაქი / რეგიონი</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="მაგ: თბილისი / ქუთაისი" className="h-11 text-base" />
-                  {(order.raw_city || order.city) && (order.raw_city || order.city) !== city && <p className="mt-1 text-xs text-muted-foreground">Raw: {order.raw_city || order.city}</p>}
-                </div>
-                {isTbilisiCity(city) && (
-                  <div>
-                    <Label className="text-xs">
-                      რაიონი <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      ref={districtRef}
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      list="tbilisi-districts"
-                      placeholder="მაგ: ვაკე / საბურთალო"
-                      className={`h-11 text-base ${!district.trim() ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                    />
-                    <datalist id="tbilisi-districts">
-                      {TBILISI_DISTRICTS.map((d) => <option key={d} value={d} />)}
-                    </datalist>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {TBILISI_DISTRICTS.slice(0, 8).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setDistrict(d)}
-                          className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${
-                            district === d ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
-                          }`}
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      რაიონი შეინახება მისამართის დასაწყისში: <span className="font-medium">{composeAddress(district || "…", address) || "…"}</span>
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-xs">მისამართი</Label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ქუჩა, კორპუსი, ბინა ან სოფელი" className="h-11 text-base" />
-                  {(order.raw_address || order.address_line1) && (order.raw_address || order.address_line1) !== composeAddress(district, address) && <p className="mt-1 text-xs text-muted-foreground break-words">Raw: {order.raw_address || order.address_line1}</p>}
-                </div>
-                <div>
-                  <Label className="text-xs">კომენტარი კურიერისთვის</Label>
-                  <textarea value={courierNote} onChange={(e) => setCourierNote(e.target.value)}
-                    placeholder="სადარბაზო, სართული, დამატებითი მინიშნება"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-base min-h-[60px]" />
-                </div>
-
-                <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-                    Advanced address fields
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-2 pt-2 border-t border-dashed border-border">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px] uppercase text-muted-foreground">Raw city</Label>
-                        <Input value={advRawCity} onChange={(e) => setAdvRawCity(e.target.value)} className="h-8 text-xs" /></div>
-                      <div><Label className="text-[10px] uppercase text-muted-foreground">Normalized city</Label>
-                        <Input value={advNormCity} onChange={(e) => setAdvNormCity(e.target.value)} className="h-8 text-xs" /></div>
-                      <div><Label className="text-[10px] uppercase text-muted-foreground">Raw address</Label>
-                        <Input value={advRawAddr} onChange={(e) => setAdvRawAddr(e.target.value)} className="h-8 text-xs" /></div>
-                      <div><Label className="text-[10px] uppercase text-muted-foreground">Normalized address</Label>
-                        <Input value={advNormAddr} onChange={(e) => setAdvNormAddr(e.target.value)} className="h-8 text-xs" /></div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">⚠ Advanced fields override simple input on save.</p>
-                  </CollapsibleContent>
-                </Collapsible>
-              </section>
+              <AddressFields state={addr} order={order} />
 
               {/* Items */}
-              <section className="rounded-lg border border-border p-3 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">პროდუქტები</h3>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setReturnOpen(true)}>
-                      <RotateCcw className="w-3.5 h-3.5" /> Create Return
-                    </Button>
-                    <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
-                      <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
-                    </Button>
-                  </div>
-
-                </div>
-
-                {searchOpen && (
-                  <div className="mb-3 rounded-md border border-dashed border-border p-2 bg-muted/30">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        autoFocus
-                        placeholder="ძებნა SKU, სახელი ან ID…"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8 h-9 text-sm"
-                      />
-                    </div>
-                    <div className="mt-2 max-h-60 overflow-y-auto divide-y divide-border/60">
-                      {searching && <div className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> ვძებნი…</div>}
-                      {!searching && searchTerm.trim().length >= 2 && searchResults.length === 0 && (
-                        <div className="py-3 text-center text-xs text-muted-foreground">ვერ მოიძებნა</div>
-                      )}
-                      {searchResults.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => addProduct(p)}
-                          className="w-full flex items-center gap-2 py-2 px-1 hover:bg-background rounded text-left"
-                        >
-                          <div className="w-9 h-9 rounded border border-border overflow-hidden flex-shrink-0">
-                            {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{p.title}</div>
-                            <div className="text-[11px] text-muted-foreground">SKU {p.sku || p.id} · {Number(p.price).toFixed(1)} ₾
-                              {!p.available && <span className="ml-1.5 text-rose-600 font-bold inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> მარაგში არ არის</span>}
-                            </div>
-                          </div>
-                          <Plus className="w-4 h-4 text-emerald-600" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {order.order_items?.map((it) => (
-                    <div key={it.id} className="flex items-center gap-2 text-sm border-b border-border/60 last:border-0 pb-2 last:pb-0">
-                      <div className="w-10 h-10 rounded border border-border overflow-hidden flex-shrink-0">
-                        {it.image_url && <img src={it.image_url} alt="" className="w-full h-full object-cover" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{it.title}</div>
-                        <div className="text-xs text-muted-foreground">SKU {it.sku} · {Number(it.unit_price).toFixed(1)} ₾</div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => changeItemQty(it, it.quantity - 1)} disabled={saving || it.quantity <= 1}>
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-7 text-center font-bold text-sm">{it.quantity}</span>
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => changeItemQty(it, it.quantity + 1)} disabled={saving}>
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="font-bold whitespace-nowrap w-16 text-right">{Number(it.line_total).toFixed(1)} ₾</div>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeItem(it)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                  {(!order.order_items || order.order_items.length === 0) && (
-                    <div className="text-xs text-muted-foreground py-3 text-center">პროდუქტი არ არის</div>
-                  )}
-                </div>
-
-                {order.order_items && order.order_items.length === 1 && (
-                  <LandingQtyDiscountActions
-                    orderId={order.id}
-                    items={order.order_items.map((it) => ({
-                      id: it.id,
-                      sku: it.sku,
-                      title: it.title,
-                      quantity: it.quantity,
-                      unit_price: Number(it.unit_price),
-                      line_total: Number(it.line_total),
-                    }))}
-                    actor={actor}
-                    disabled={saving}
-                    onApplied={refreshItemsAndTotals}
-                  />
-                )}
-
-                {/* Totals */}
-                <div className="mt-3 pt-3 border-t border-border space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{Number(order.subtotal).toFixed(1)} ₾</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">მიწოდება</span><span>{Number(order.shipping_fee).toFixed(1)} ₾</span></div>
-                  <div className="flex justify-between font-bold text-base"><span>სულ</span><span>{Number(order.total).toFixed(1)} ₾</span></div>
-                </div>
-              </section>
+              <OrderItemsEditor
+                key={order.id}
+                order={order}
+                actor={actor}
+                saving={saving}
+                onChanged={handleItemsChanged}
+                onCreateReturn={() => setReturnOpen(true)}
+              />
 
               {/* Operator note */}
               <section className="rounded-lg border border-border p-3 bg-card">
@@ -1264,18 +700,6 @@ export default function OrderQuickReviewModal({
         onCancel={() => setCallbackOpen(false)}
         onConfirm={handleCallbackConfirm}
       />
-      {order && mergeWithPrevId && (
-        <ManualMergeModal
-          open={!!mergeWithPrevId}
-          orderIds={[order.id, mergeWithPrevId]}
-          onClose={() => setMergeWithPrevId(null)}
-          onComplete={() => {
-            setMergeWithPrevId(null);
-            setPrevOrders((list) => list.map((x) => x.id === mergeWithPrevId ? { ...x, status: "merged" } : x));
-            toast({ title: "შერწყმა დასრულდა ✓" });
-          }}
-        />
-      )}
       {order && (
         <CreateReturnModal
           open={returnOpen}
