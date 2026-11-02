@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import {
-  fetchCallQueueSettings, getCallQueueTestMode, TEST_MODE_EVENT, type CallQueueSettings,
+  fetchCallQueueSettingsCached, getCallQueueTestMode, TEST_MODE_EVENT, type CallQueueSettings,
 } from "@/lib/callQueueService";
+import { isQueueOnlyOperator } from "@/lib/adminPermissions";
 
-/** Who may open the Call Queue: admins with test mode on, or operators in enabled_operators. */
+/**
+ * Who may open the Call Queue: admins with test mode on, operators in enabled_operators,
+ * or every operator while the master switch (operators_use_queue) is on.
+ * Settings are re-read on load and window focus (cached up to 60 s).
+ */
 export function useCallQueueAccess() {
   const { user, role } = useAdminAuth();
   const [settings, setSettings] = useState<CallQueueSettings | null>(null);
@@ -21,16 +26,31 @@ export function useCallQueueAccess() {
   useEffect(() => {
     if (!user) return;
     let alive = true;
-    fetchCallQueueSettings().then((s) => { if (alive) { setSettings(s); setLoaded(true); } }).catch(() => setLoaded(true));
-    const on = () => fetchCallQueueSettings().then((s) => alive && setSettings(s)).catch(() => {});
-    window.addEventListener(TEST_MODE_EVENT, on);
-    return () => { alive = false; window.removeEventListener(TEST_MODE_EVENT, on); };
+    fetchCallQueueSettingsCached().then((s) => { if (alive) { setSettings(s); setLoaded(true); } }).catch(() => alive && setLoaded(true));
+    const refresh = (force: boolean) => () =>
+      fetchCallQueueSettingsCached(force ? 0 : undefined).then((s) => alive && setSettings(s)).catch(() => {});
+    const onChange = refresh(true), onFocus = refresh(false);
+    const onVisible = () => { if (document.visibilityState === "visible") onFocus(); };
+    window.addEventListener(TEST_MODE_EVENT, onChange);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    const t = setInterval(onFocus, 60_000);
+    return () => {
+      alive = false; clearInterval(t);
+      window.removeEventListener(TEST_MODE_EVENT, onChange);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [user]);
 
   const email = (user?.email || "").toLowerCase();
   const isAdminRole = role === "admin";
-  const enabled = !!settings?.enabled_operators.some((e) => e.toLowerCase() === email);
+  const masterOn = !!settings?.operators_use_queue;
+  const enabled = masterOn
+    ? role === "operator"
+    : !!settings?.enabled_operators.some((e) => e.toLowerCase() === email);
   const isManager = isAdminRole || !!settings?.manager_emails.some((e) => e.toLowerCase() === email);
-  const allowed = (isAdminRole && testMode) || enabled;
-  return { allowed, loaded, testMode: isAdminRole && testMode, isAdminRole, isManager, settings };
+  const allowed = (isAdminRole && testMode) || enabled || (masterOn && isManager);
+  const queueOnly = isQueueOnlyOperator(role, email, settings);
+  return { allowed, loaded, testMode: isAdminRole && testMode, isAdminRole, isManager, settings, queueOnly };
 }
