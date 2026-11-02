@@ -35,8 +35,10 @@ import {
   fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, queueShiftStart, queueAutoEndShifts, type QueueStats,
 } from "@/lib/callQueueService";
 import {
-  buildSnapshot, canUndo, UNDO_TOAST_MS, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
+  buildSnapshot, canUndo, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
+  SNAPSHOT_BACKDATE_MS, undoBarDeadlineMs, undoBarFraction,
   type UndoAction, type QueueOutcome, type UndoCheck,
+
 } from "@/lib/callQueueUndo";
 import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
 
@@ -244,7 +246,7 @@ function QueueTab() {
     if (!order) return null;
     const src = await fetchUndoSnapshotSource(order.id);
     if (!src) return null;
-    const takenAt = new Date(Date.now() - 15000).toISOString();
+    const takenAt = new Date(Date.now() - SNAPSHOT_BACKDATE_MS).toISOString();
     return { orderId: order.id, orderNumber: order.public_order_number, outcome, actor, takenAt, snapshot: buildSnapshot(src, outcome, actor, takenAt) };
   };
 
@@ -264,6 +266,23 @@ function QueueTab() {
     const t = setTimeout(() => setNow(Date.now()), Math.max(0, ms + 50));
     return () => clearTimeout(t);
   }, [lastAction]);
+
+  // The bottom bar ticks fast enough for its countdown line to move smoothly.
+  const barDeadline = lastAction ? undoBarDeadlineMs(lastAction.takenAt) : 0;
+  const [barNow, setBarNow] = useState(Date.now());
+  useEffect(() => {
+    if (!lastAction) return;
+    setBarNow(Date.now());
+    if (Date.now() >= barDeadline) return;
+    const t = setInterval(() => {
+      const n = Date.now();
+      setBarNow(n);
+      if (n >= barDeadline) clearInterval(t);
+    }, 100);
+    return () => clearInterval(t);
+  }, [lastAction, barDeadline]);
+  const barRemaining = Math.max(0, barDeadline - barNow);
+
 
   /** After any action: release lock (also sets queue_last_touched_by) and load the next order. */
   const finish = async (id: string, outcome: string, action: UndoAction | null) => {
@@ -441,7 +460,7 @@ function QueueTab() {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  const showUndoBar = !!lastAction && now - new Date(lastAction.takenAt).getTime() < UNDO_TOAST_MS + 15000;
+  const showUndoBar = !!lastAction && (barRemaining > 0 || undoing);
   const itemCount = order?.order_items.reduce((s, i) => s + Number(i.quantity || 0), 0) ?? 0;
 
   const UndoButton = ({ className = "" }: { className?: string }) => (
@@ -591,14 +610,21 @@ function QueueTab() {
       )}
 
       {showUndoBar && lastAction && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md rounded-xl border border-border bg-foreground text-background shadow-xl px-3 py-2 flex items-center gap-2 ${order ? "bottom-56 lg:bottom-6" : "bottom-6"}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md rounded-xl border border-border bg-foreground text-background shadow-xl px-3 py-2 flex items-center gap-2 overflow-hidden ${order ? "bottom-56 lg:bottom-6" : "bottom-6"}`}>
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span className="text-sm font-semibold truncate">Saved: {OUTCOME_LABEL[lastAction.outcome]} · #{lastAction.orderNumber}</span>
           <Button size="sm" variant="secondary" className="ml-auto h-8" disabled={!undoCheck.ok || undoing} title={undoCheck.ok ? undefined : undoCheck.reason} onClick={doUndo}>
             {undoing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Undo"}
           </Button>
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-background/20">
+            <div
+              className="h-full bg-emerald-400 transition-[width] duration-100 ease-linear"
+              style={{ width: `${undoBarFraction(barRemaining) * 100}%` }}
+            />
+          </div>
         </div>
       )}
+
 
       <AlertDialog open={pendingShift !== null} onOpenChange={(o) => !o && setPendingShift(null)}>
         <AlertDialogContent>
