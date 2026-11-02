@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle,
+  Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle, Undo2,
 } from "lucide-react";
 import CallButton from "@/components/admin/CallButton";
 import AddressFields, { useAddressFields } from "@/components/admin/order-review/AddressFields";
@@ -23,12 +23,18 @@ import ToggleStore from "@/components/admin/ToggleStore";
 import { startSession, endSession, markAction, currentSessionId } from "@/lib/operatorSession";
 import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "@/lib/callAttemptService";
 import { applyOrderCancelStock } from "@/lib/stockService";
-import { tbilisiStartOfDay } from "@/lib/tbilisiTime";
+import { tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
-  queueForceRelease, queueOverride, confirmOrderFromQueue, type QueueStats,
+  queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo,
+  fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, type QueueStats,
 } from "@/lib/callQueueService";
+import {
+  buildSnapshot, canUndo, UNDO_TOAST_MS, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
+  type UndoAction, type QueueOutcome, type UndoCheck,
+} from "@/lib/callQueueUndo";
+import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
 
 const IDLE_MS = 3 * 60 * 1000;
 
@@ -58,12 +64,26 @@ async function findOrder(term: string): Promise<{ id: string } | null> {
   return (data?.[0] as any) ?? null;
 }
 
+const fmtDur = (sec: number) => {
+  const m = Math.floor(sec / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+};
+const tbClock = (iso: string) => {
+  const d = new Date(new Date(iso).getTime() + TBILISI_OFFSET_MS);
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+};
+const isTypingTarget = (t: EventTarget | null) => {
+  const el = t as HTMLElement | null;
+  if (!el) return false;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable;
+};
+
 export default function AdminCallQueue() {
   const access = useCallQueueAccess();
   if (!access.loaded) return <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   if (!access.allowed && !access.isManager) return <Navigate to="/admin/orders" replace />;
   return (
-    <div className="p-3 sm:p-6 max-w-2xl mx-auto space-y-3">
+    <div className="p-3 sm:p-6 max-w-2xl lg:max-w-6xl mx-auto space-y-3">
       {access.testMode && (
         <div className="rounded-lg border-2 border-yellow-400 bg-yellow-100 text-yellow-900 px-3 py-2 text-sm font-bold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" /> Test mode — actions here are real.
@@ -79,13 +99,19 @@ export default function AdminCallQueue() {
           {access.isManager && <TabsTrigger value="team">Team</TabsTrigger>}
         </TabsList>
         {access.allowed && <TabsContent value="queue"><QueueTab /></TabsContent>}
-        {access.isManager && <TabsContent value="team"><TeamTab operators={access.settings?.enabled_operators ?? []} /></TabsContent>}
+        {access.isManager && (
+          <TabsContent value="team">
+            <TeamTab operators={access.settings?.enabled_operators ?? []} lockMinutes={access.settings?.lock_minutes ?? 10} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
 }
 
 // ───────────────────────── Operator queue ─────────────────────────
+interface ShiftState { id: string; paused: boolean; started_at: string }
+
 function QueueTab() {
   const { user } = useAdminAuth();
   const actor = user?.email || "admin";
@@ -103,10 +129,17 @@ function QueueTab() {
   const [idle, setIdle] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [today, setToday] = useState({ count: 0, sum: 0 });
-  const [shift, setShift] = useState<{ id: string; paused: boolean } | null>(null);
+  const [shift, setShift] = useState<ShiftState | null>(null);
+  const [shiftBusy, setShiftBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [returnOpen, setReturnOpen] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [lastAction, setLastAction] = useState<UndoAction | null>(null);
+  const [undoCheck, setUndoCheck] = useState<UndoCheck>({ ok: false, reason: "Nothing to undo" });
+  const [undoing, setUndoing] = useState(false);
   const addr = useAddressFields();
+
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(t); }, []);
 
   /** Save address edits with the pop-up's diff rules; runs before every outcome. */
   const saveEdits = async (): Promise<boolean> => {
@@ -126,14 +159,15 @@ function QueueTab() {
     const ids = [...new Set(((data as any[]) || []).map((r) => r.order_id))];
     if (ids.length === 0) { setToday({ count: 0, sum: 0 }); return; }
     const { data: os } = await supabase.from("orders").select("total").in("id", ids).eq("is_confirmed", true);
-    setToday({ count: ids.length, sum: ((os as any[]) || []).reduce((s, o) => s + Number(o.total || 0), 0) });
+    setToday({ count: (os as any[])?.length ?? 0, sum: ((os as any[]) || []).reduce((s, o) => s + Number(o.total || 0), 0) });
   }, [actor]);
 
   const loadShift = useCallback(async () => {
-    const { data } = await (supabase as any).from("operator_shifts").select("id, paused")
-      .eq("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+    const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at")
+      .ilike("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+    if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return; }
     setShift(data?.[0] ?? null);
-  }, [actor]);
+  }, [actor, toast]);
 
   useEffect(() => { void loadToday(); void loadShift(); }, [loadToday, loadShift]);
   useEffect(() => () => { void endSession("unmounted"); if (idleTimer.current) clearTimeout(idleTimer.current); }, []);
@@ -143,6 +177,23 @@ function QueueTab() {
     return data as unknown as QOrder | null;
   }, []);
 
+  const openOrder = useCallback(async (id: string) => {
+    const o = await fetchOrder(id);
+    setOrder(o);
+    if (!o) return;
+    addr.reset(o);
+    // Same as OrderQuickReviewModal on open
+    supabase.from("order_events").insert({ order_id: o.id, actor, event_type: "order_opened", payload: {} as any });
+    void startSession(o.id, actor);
+    if (!o.operator_viewed_at) {
+      supabase.from("orders").update({
+        operator_viewed_at: new Date().toISOString(), operator_viewed_by: actor,
+        operator_review_status: o.operator_review_status || "viewed",
+      } as any).eq("id", o.id).then(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actor, fetchOrder]);
+
   const loadNext = useCallback(async () => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     setIdle(false);
@@ -151,33 +202,47 @@ function QueueTab() {
     try {
       const res = await queueNext(activeStore);
       if (!res.order_id) { setOrder(null); setEmpty(true); return; }
-      const o = await fetchOrder(res.order_id);
-      setOrder(o);
-      if (o) addr.reset(o);
-      if (o) {
-        // Same as OrderQuickReviewModal on open
-        supabase.from("order_events").insert({ order_id: o.id, actor, event_type: "order_opened", payload: {} as any });
-        void startSession(o.id, actor);
-        if (!o.operator_viewed_at) {
-          supabase.from("orders").update({
-            operator_viewed_at: new Date().toISOString(), operator_viewed_by: actor,
-            operator_review_status: o.operator_review_status || "viewed",
-          } as any).eq("id", o.id).then(() => {});
-        }
-      }
+      await openOrder(res.order_id);
     } catch (e: any) {
       toast({ title: "რიგი ვერ ჩაიტვირთა", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStore, actor, fetchOrder, toast]);
+  }, [activeStore, openOrder, toast]);
+
+  // ── Undo bookkeeping ──
+  /** Snapshot the fields undo restores. Start time is backdated slightly to tolerate clock skew. */
+  const takeSnapshot = async (outcome: QueueOutcome): Promise<UndoAction | null> => {
+    if (!order) return null;
+    const src = await fetchUndoSnapshotSource(order.id);
+    if (!src) return null;
+    const takenAt = new Date(Date.now() - 15000).toISOString();
+    return { orderId: order.id, orderNumber: order.public_order_number, outcome, actor, takenAt, snapshot: buildSnapshot(src, outcome, actor, takenAt) };
+  };
+
+  const refreshUndo = useCallback(async (a: UndoAction | null) => {
+    if (!a) { setUndoCheck({ ok: false, reason: "Nothing to undo" }); return; }
+    const pre = canUndo(a, actor, { status: null, is_fulfilled: false, onway_sent_at: null, onway_tracking: null, packed_at: null, packing_wave_id: null, touchedByOther: false });
+    if (!pre.ok) { setUndoCheck(pre); return; }
+    const st = await fetchUndoState(a.orderId, actor, a.takenAt);
+    setUndoCheck(canUndo(a, actor, st as any));
+  }, [actor]);
+
+  useEffect(() => { void refreshUndo(lastAction); }, [lastAction, now, refreshUndo]);
+  // Expire exactly at the 5-minute mark.
+  useEffect(() => {
+    if (!lastAction) return;
+    const ms = new Date(lastAction.takenAt).getTime() + UNDO_WINDOW_MS - Date.now();
+    const t = setTimeout(() => setNow(Date.now()), Math.max(0, ms + 50));
+    return () => clearTimeout(t);
+  }, [lastAction]);
 
   /** After any action: release lock (also sets queue_last_touched_by) and load the next order. */
-  const finish = async (id: string, outcome: string) => {
+  const finish = async (id: string, outcome: string, action: UndoAction | null) => {
     void endSession("outcome", outcome);
     try { await queueRelease(id); } catch { /* lock will expire */ }
     setOrder(null);
+    if (action) setLastAction(action);
     void loadToday();
     await loadNext();
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -185,23 +250,24 @@ function QueueTab() {
   };
 
   const onConfirm = async () => {
-    if (!order) return;
+    if (!order || busy) return;
     const v = addr.validateForConfirm();
     if (!v.ok) { toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" }); return; }
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
+    const snap = await takeSnapshot("confirmed");
     const ok = await confirmOrderFromQueue(order, actor, currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "ვერ შეინახა", variant: "destructive" }); return; }
-    toast({ title: "დადასტურდა ✓" });
-    await finish(order.id, "confirmed");
+    await finish(order.id, "confirmed", snap);
   };
 
   const onNoAnswer = async () => {
-    if (!order) return;
+    if (!order || busy) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     try {
+      const snap = await takeSnapshot("no_answer");
       const sid = currentSessionId();
       const rec = await recordNoAnswerAttempt(order.id, actor, "call_queue", sid);
       if (!rec) throw new Error("save failed");
@@ -210,11 +276,10 @@ function QueueTab() {
       if (r.action === "cancel") {
         const ok = await cancelOrderWithReason(order.id, actor, "no_answer_after_attempts", null, r.attempt_count, r.max_attempts, "call_queue", sid);
         if (ok) await applyOrderCancelStock(order.id, true);
-        toast({ title: ok ? "გაუქმდა — არ პასუხობს" : "გაუქმება ვერ მოხერხდა", variant: ok ? undefined : "destructive" });
-        await finish(order.id, ok ? "cancelled" : "no_answer");
+        if (!ok) toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" });
+        await finish(order.id, ok ? "cancelled" : "no_answer", snap ? { ...snap, outcome: ok ? "cancelled" : "no_answer" } : null);
       } else {
-        toast({ title: "შენახულია — მოგვიანებით დაირეკება" });
-        await finish(order.id, "no_answer");
+        await finish(order.id, "no_answer", snap);
       }
     } catch (e: any) {
       toast({ title: "ვერ შეინახა", description: e.message, variant: "destructive" });
@@ -225,35 +290,73 @@ function QueueTab() {
     if (!order) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
+    const snap = await takeSnapshot("callback");
     const ok = await scheduleCallback(order.id, actor, whenIso, "call_queue", currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
     markAction("callback");
     setCallbackOpen(false);
-    toast({ title: "გადარეკვა დანიშნულია" });
-    await finish(order.id, "callback");
+    await finish(order.id, "callback", snap);
   };
 
   const onCancel = async (reason: CancelReason, note: string | null) => {
     if (!order) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
+    const snap = await takeSnapshot("cancelled");
     const ok = await cancelOrderWithReason(order.id, actor, reason, note, Number(order.call_attempt_count || 0), undefined, "call_queue", currentSessionId());
     if (ok) await applyOrderCancelStock(order.id, restoreStock);
     setBusy(false);
     if (!ok) { toast({ title: "გაუქმება ვერ მოხერხდა", variant: "destructive" }); return; }
     markAction("cancel");
     setCancelOpen(false);
-    toast({ title: "შეკვეთა გაუქმდა" });
-    await finish(order.id, "cancelled");
+    await finish(order.id, "cancelled", snap);
+  };
+
+  const doUndo = async () => {
+    const a = lastAction;
+    if (!a || undoing) return;
+    setUndoing(true);
+    try {
+      const st = await fetchUndoState(a.orderId, actor, a.takenAt);
+      const chk = canUndo(a, actor, st as any);
+      if (!chk.ok) { setUndoCheck(chk); toast({ title: "Undo not possible", description: chk.reason, variant: "destructive" }); return; }
+      const ids = await fetchActionEventIds(a.orderId, actor, a.takenAt, UNDOABLE_EVENT_TYPES);
+      // Leave the currently open order first; undo re-locks the undone one to me.
+      if (order && order.id !== a.orderId) {
+        void endSession("undo");
+        try { await queueRelease(order.id); } catch { /* expires */ }
+      }
+      const res = await queueUndo(a.orderId, a.snapshot, ids);
+      setLastAction(null);
+      toast({
+        title: `გაუქმდა: ${OUTCOME_LABEL[a.outcome]} · #${a.orderNumber}`,
+        description: res.sms_already_sent ? "SMS was already sent to the customer." : undefined,
+      });
+      void loadToday();
+      await openOrder(a.orderId);
+    } catch (e: any) {
+      toast({ title: "Undo failed", description: e.message, variant: "destructive" });
+    } finally { setUndoing(false); }
   };
 
   const shiftAction = async (a: "start" | "pause" | "end") => {
     const db = supabase as any;
-    if (a === "start") await db.from("operator_shifts").insert({ operator: actor });
-    else if (shift && a === "pause") await db.from("operator_shifts").update({ paused: !shift.paused, updated_at: new Date().toISOString() }).eq("id", shift.id);
-    else if (shift) await db.from("operator_shifts").update({ ended_at: new Date().toISOString(), paused: false, updated_at: new Date().toISOString() }).eq("id", shift.id);
-    await loadShift();
+    setShiftBusy(true);
+    try {
+      const ts = new Date().toISOString();
+      let res: { error: any };
+      if (a === "start") res = await db.from("operator_shifts").insert({ operator: actor });
+      else if (shift && a === "pause") res = await db.from("operator_shifts").update({ paused: !shift.paused, updated_at: ts }).eq("id", shift.id);
+      else if (shift) res = await db.from("operator_shifts").update({ ended_at: ts, paused: false, updated_at: ts }).eq("id", shift.id);
+      else res = { error: { message: "No open shift" } };
+      if (res.error) throw new Error(res.error.message);
+    } catch (e: any) {
+      toast({ title: "ცვლის ქმედება ვერ შესრულდა / Shift action failed", description: e.message, variant: "destructive" });
+    } finally {
+      await loadShift();
+      setShiftBusy(false);
+    }
   };
 
   const doSearch = async () => {
@@ -262,20 +365,64 @@ function QueueTab() {
     else toast({ title: "შეკვეთა ვერ მოიძებნა" });
   };
 
+  // ── Keyboard shortcuts (desktop) ──
+  const keyRef = useRef<(e: KeyboardEvent) => void>();
+  keyRef.current = (e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || cancelOpen || callbackOpen || returnOpen) return;
+    if (isTypingTarget(e.target)) return;
+    if (document.querySelector("[role=dialog]")) return;
+    const k = e.key.toLowerCase();
+    if (!order) {
+      if (k === " " && !loading) { e.preventDefault(); void loadNext(); }
+      else if (k === "z" && undoCheck.ok) { e.preventDefault(); void doUndo(); }
+      return;
+    }
+    if (busy) return;
+    if (k === "enter") { e.preventDefault(); void onConfirm(); }
+    else if (k === "n") { e.preventDefault(); void onNoAnswer(); }
+    else if (k === "c") { e.preventDefault(); setCallbackOpen(true); }
+    else if (k === "x") { e.preventDefault(); setCancelOpen(true); }
+    else if (k === "z" && undoCheck.ok) { e.preventDefault(); void doUndo(); }
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => keyRef.current?.(e);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+
+  const showUndoBar = !!lastAction && now - new Date(lastAction.takenAt).getTime() < UNDO_TOAST_MS + 15000;
+  const itemCount = order?.order_items.reduce((s, i) => s + Number(i.quantity || 0), 0) ?? 0;
+
+  const UndoButton = ({ className = "" }: { className?: string }) => (
+    <Button
+      size="sm" variant="outline" disabled={!undoCheck.ok || undoing} onClick={doUndo}
+      title={undoCheck.ok ? "Undo last (Z)" : undoCheck.reason} className={`gap-1 ${className}`}
+    >
+      {undoing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />} Undo last
+      <Kbd>Z</Kbd>
+    </Button>
+  );
+
   return (
-    <div className="space-y-3 mt-2">
+    <div className={`space-y-3 mt-2 ${order ? "pb-48 lg:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2">
         {!shift ? (
-          <Button size="sm" onClick={() => shiftAction("start")} className="gap-1"><Play className="w-4 h-4" /> ცვლის დაწყება / Start shift</Button>
+          <Button size="sm" disabled={shiftBusy} onClick={() => shiftAction("start")} className="gap-1">
+            {shiftBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} ცვლის დაწყება / Start shift
+          </Button>
         ) : (
           <>
-            <Button size="sm" variant="outline" onClick={() => shiftAction("pause")} className="gap-1">
+            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("pause")} className="gap-1">
               {shift.paused ? <><Play className="w-4 h-4" /> გაგრძელება / Resume</> : <><Pause className="w-4 h-4" /> პაუზა / Pause</>}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+            <span className={`text-xs font-semibold ${shift.paused ? "text-amber-700" : "text-emerald-700"}`}>
+              {shift.paused ? "Paused" : "On shift"} since {tbClock(shift.started_at)} · {fmtDur(Math.max(0, (now - new Date(shift.started_at).getTime()) / 1000))}
+            </span>
           </>
         )}
-        <span className="ml-auto text-sm font-bold">დღეს: {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾</span>
+        <UndoButton className="ml-auto" />
+        <span className="text-sm font-bold">დღეს: {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾</span>
       </div>
 
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void doSearch(); }}>
@@ -284,54 +431,95 @@ function QueueTab() {
       </form>
 
       {!order && (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:max-w-xl lg:mx-auto">
           {idle && <div className="rounded-lg bg-muted px-3 py-2 text-sm text-center">მზად ხარ შემდეგისთვის? / Ready for the next one?</div>}
           {empty && !loading && <div className="text-center text-sm text-muted-foreground py-2">რიგი ცარიელია / Queue is empty</div>}
-          <Button onClick={loadNext} disabled={loading} className="w-full h-16 text-lg font-extrabold">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "შემდეგი შეკვეთა / Next order"}
+          <Button onClick={loadNext} disabled={loading} className="w-full h-16 text-lg font-extrabold gap-2">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>შემდეგი შეკვეთა / Next order <Kbd className="hidden lg:inline-flex">Space</Kbd></>}
           </Button>
         </div>
       )}
 
       {order && (
-        <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
+        <div className="lg:grid lg:grid-cols-[65fr_35fr] lg:gap-4 lg:items-start">
+          {/* Left: order form */}
+          <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="text-xs text-muted-foreground">#{order.public_order_number}</div>
+                <div className="text-lg font-extrabold">{order.customer_name}</div>
+                <div className="text-sm">{order.customer_phone}</div>
+              </div>
+              <div className="text-right lg:hidden">
+                <div className="text-2xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
+                <div className="text-xs text-muted-foreground">{itemCount} ც</div>
+              </div>
+            </div>
+            <PreviousOrdersPanel key={order.id} order={order} currentSkus={order.order_items.map((i) => i.sku)} actor={actor} accordion />
+
+            {(order.notes_customer || order.internal_note) && (
+              <div className="space-y-1 text-sm">
+                {order.notes_customer && <div className="rounded-md bg-muted px-2 py-1.5"><b>კლიენტის შენიშვნა:</b> {order.notes_customer}</div>}
+                {order.internal_note && <div className="rounded-md bg-muted px-2 py-1.5"><b>შენიშვნა:</b> {order.internal_note}</div>}
+              </div>
+            )}
+
+            <AddressFields state={addr} order={order} />
+
+            <OrderItemsEditor
+              key={`items-${order.id}`}
+              order={order}
+              actor={actor}
+              saving={busy}
+              onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
+              onCreateReturn={() => setReturnOpen(true)}
+            />
+          </div>
+
+          {/* Right: sticky action panel (desktop) */}
+          <aside className="hidden lg:block sticky top-20 self-start rounded-2xl border border-border bg-card p-4 space-y-3">
             <div>
-              <div className="text-xs text-muted-foreground">#{order.public_order_number}</div>
-              <div className="text-lg font-extrabold">{order.customer_name}</div>
-              <div className="text-sm">{order.customer_phone}</div>
+              <div className="text-xs text-muted-foreground">სულ / Total · {itemCount} ც</div>
+              <div className="text-3xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
+            <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-12 text-base" />
+            <Button disabled={busy} onClick={onConfirm} className="w-full h-16 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+              <CheckCircle2 className="w-6 h-6" /> დადასტურდა <Kbd>Enter</Kbd>
+            </Button>
+            <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="w-full h-12 text-base font-extrabold border-amber-400 text-amber-800 gap-1">
+              <PhoneOff className="w-5 h-5" /> არ პასუხობს <Kbd>N</Kbd>
+            </Button>
+            <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-blue-400 text-blue-800 gap-1">
+              <RotateCcw className="w-5 h-5" /> გადასარეკია <Kbd>C</Kbd>
+            </Button>
+            <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-red-400 text-red-700 gap-1">
+              <XCircle className="w-5 h-5" /> გაუქმდა <Kbd>X</Kbd>
+            </Button>
+            <UndoButton className="w-full" />
+          </aside>
+
+          {/* Mobile: sticky bottom bar */}
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] space-y-2">
+            <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-11 text-base shadow-lg" />
+            <Button disabled={busy} onClick={onConfirm} className="w-full h-14 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+              <CheckCircle2 className="w-5 h-5" /> დადასტურდა · {Number(order.total).toFixed(2)} ₾
+            </Button>
+            <div className="grid grid-cols-3 gap-2">
+              <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="h-12 text-sm font-extrabold border-amber-400 text-amber-800 px-1"><PhoneOff className="w-4 h-4" /> არ პასუხობს</Button>
+              <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-blue-400 text-blue-800 px-1"><RotateCcw className="w-4 h-4" /> გადარეკვა</Button>
+              <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-red-400 text-red-700 px-1"><XCircle className="w-4 h-4" /> გაუქმდა</Button>
             </div>
           </div>
-          <PreviousOrdersPanel key={order.id} order={order} currentSkus={order.order_items.map((i) => i.sku)} actor={actor} accordion />
-          <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-12 text-base" />
+        </div>
+      )}
 
-          {(order.notes_customer || order.internal_note) && (
-            <div className="space-y-1 text-sm">
-              {order.notes_customer && <div className="rounded-md bg-muted px-2 py-1.5"><b>კლიენტის შენიშვნა:</b> {order.notes_customer}</div>}
-              {order.internal_note && <div className="rounded-md bg-muted px-2 py-1.5"><b>შენიშვნა:</b> {order.internal_note}</div>}
-            </div>
-          )}
-
-          <AddressFields state={addr} order={order} />
-
-          <OrderItemsEditor
-            key={order.id}
-            order={order}
-            actor={actor}
-            saving={busy}
-            onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
-            onCreateReturn={() => setReturnOpen(true)}
-          />
-
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <Button disabled={busy} onClick={onConfirm} className="h-14 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1"><CheckCircle2 className="w-5 h-5" /> დადასტურდა</Button>
-            <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="h-14 text-base font-extrabold border-amber-400 text-amber-800 gap-1"><PhoneOff className="w-5 h-5" /> არ პასუხობს</Button>
-            <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="h-14 text-base font-extrabold border-blue-400 text-blue-800 gap-1"><RotateCcw className="w-5 h-5" /> გადასარეკია</Button>
-            <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="h-14 text-base font-extrabold border-red-400 text-red-700 gap-1"><XCircle className="w-5 h-5" /> გაუქმდა</Button>
-          </div>
+      {showUndoBar && lastAction && (
+        <div className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md rounded-xl border border-border bg-foreground text-background shadow-xl px-3 py-2 flex items-center gap-2 ${order ? "bottom-56 lg:bottom-6" : "bottom-6"}`}>
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-semibold truncate">Saved: {OUTCOME_LABEL[lastAction.outcome]} · #{lastAction.orderNumber}</span>
+          <Button size="sm" variant="secondary" className="ml-auto h-8" disabled={!undoCheck.ok || undoing} title={undoCheck.ok ? undefined : undoCheck.reason} onClick={doUndo}>
+            {undoing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Undo"}
+          </Button>
         </div>
       )}
 
@@ -355,38 +543,87 @@ function QueueTab() {
   );
 }
 
+function Kbd({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <kbd className={`hidden lg:inline-flex ml-1 rounded border border-current/30 px-1 text-[10px] font-mono opacity-70 ${className}`}>{children}</kbd>;
+}
+
 // ───────────────────────── Manager view ─────────────────────────
-function TeamTab({ operators }: { operators: string[] }) {
+async function fetchAllRows(build: (from: number, to: number) => any, max = 20000): Promise<any[]> {
+  const out: any[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const { data, error } = await build(from, from + 999);
+    if (error) throw new Error(error.message);
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
+const BAR_COLORS = ["bg-emerald-500", "bg-blue-500", "bg-amber-500", "bg-fuchsia-500", "bg-cyan-500", "bg-rose-500", "bg-lime-500", "bg-orange-500"];
+
+function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes: number }) {
   const { activeStore } = useStore();
   const { toast } = useToast();
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [locks, setLocks] = useState<{ order_id: string; order_number: string; locked_by: string; locked_until: string }[]>([]);
-  const [shifts, setShifts] = useState<{ operator: string; started_at: string; ended_at: string | null; paused: boolean }[]>([]);
+  const [rows, setRows] = useState<TeamRow[]>([]);
+  const [people, setPeople] = useState<string[]>([]);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [assignTerm, setAssignTerm] = useState("");
   const [assignTo, setAssignTo] = useState("");
   const [overrideTerm, setOverrideTerm] = useState("");
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const reqId = ++requestIdRef.current;
+    setLoading(true);
     try {
-      const [s, l, sh] = await Promise.all([
+      const now = Date.now();
+      const todayStart = tbilisiStartOfDay(new Date(now)).getTime();
+      const todayIso = new Date(todayStart).toISOString();
+      const weekIso = new Date(todayStart - 7 * 86400e3).toISOString();
+      const db = supabase as any;
+      const [s, l, sh, outcomes, extra, sessions] = await Promise.all([
         queueStats(activeStore), queueTeamLocks(),
-        (supabase as any).from("operator_shifts").select("operator, started_at, ended_at, paused")
-          .gte("started_at", new Date(Date.now() - 24 * 3600e3).toISOString()).order("started_at", { ascending: false }),
+        db.from("operator_shifts").select("operator, started_at, ended_at, paused, updated_at")
+          .gte("started_at", new Date(todayStart - 86400e3).toISOString()).order("started_at", { ascending: false }).limit(500),
+        fetchAllRows((a, b) => db.from("order_events").select("id, order_id, actor, created_at, payload")
+          .eq("event_type", "call_outcome").gte("created_at", weekIso).order("created_at").range(a, b)),
+        fetchAllRows((a, b) => db.from("order_events").select("order_id, actor, created_at, event_type, payload")
+          .in("event_type", ["item_added", "item_quantity_change", "landing_qty_discount", "outcome_undone"]).gte("created_at", todayIso).order("created_at").range(a, b)),
+        fetchAllRows((a, b) => db.from("operator_order_sessions").select("order_id, operator, session_started_at, active_duration_seconds, capped_duration_seconds, had_meaningful_action")
+          .gte("session_started_at", todayIso).order("session_started_at").range(a, b)),
       ]);
-      setStats(s); setLocks(l || []);
-      const latest = new Map<string, any>();
-      for (const r of sh.data || []) if (!latest.has(r.operator.toLowerCase())) latest.set(r.operator.toLowerCase(), r);
-      setShifts([...latest.values()]);
-    } catch (e: any) { toast({ title: "Load failed", description: e.message, variant: "destructive" }); }
-  }, [activeStore, toast]);
+      if (sh.error) throw new Error(sh.error.message);
+      const confirmedToday = [...new Set(outcomes.filter((e: any) => e.created_at >= todayIso && e.payload?.outcome === "confirmed").map((e: any) => e.order_id))];
+      const totals = new Map<string, number>();
+      for (let i = 0; i < confirmedToday.length; i += 200) {
+        const { data } = await db.from("orders").select("id, total").in("id", confirmedToday.slice(i, i + 200));
+        for (const o of data || []) totals.set(o.id, Number(o.total || 0));
+      }
+      if (reqId !== requestIdRef.current) return;
+      const built = buildTeamRows({
+        now, todayStart, outcomes, extraEvents: extra, sessions, shifts: sh.data || [],
+        orderTotals: totals, locks: l || [], lockMinutes, operators,
+      });
+      setStats(s); setLocks(l || []); setRows(built);
+      setPeople([...new Set([...operators, ...(sh.data || []).map((x: any) => x.operator), ...built.map((r) => r.operator)].map((e) => e.toLowerCase()))]);
+      setLoadedAt(now);
+    } catch (e: any) {
+      if (reqId === requestIdRef.current) toast({ title: "Load failed", description: e.message, variant: "destructive" });
+    } finally {
+      if (reqId === requestIdRef.current) setLoading(false);
+    }
+  }, [activeStore, toast, operators, lockMinutes]);
 
-  useEffect(() => { void load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { void load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, [load]);
 
-  const people = [...new Set([...operators, ...shifts.map((s) => s.operator)].map((e) => e.toLowerCase()))];
-  const nowTb = new Date(Date.now() + 4 * 3600e3);
+  const nowTb = new Date(Date.now() + TBILISI_OFFSET_MS);
   const hour = nowTb.getUTCHours();
   const inHours = hour >= 10 && hour < 21;
   const oldestMin = stats?.oldest_fresh_seconds != null ? Math.round(stats.oldest_fresh_seconds / 60) : null;
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
 
   const doAssign = async () => {
     const o = await findOrder(assignTerm);
@@ -401,15 +638,17 @@ function TeamTab({ operators }: { operators: string[] }) {
     catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
   };
 
+  const hours = Array.from({ length: 13 }, (_, i) => i + 9); // 09–21
+  const maxHour = Math.max(1, ...rows.flatMap((r) => hours.map((h) => r.hourly[h])));
+
   return (
     <div className="space-y-3 mt-2">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
           ["ახალი / Fresh waiting", stats?.fresh_waiting],
           ["გადარეკვა / Callbacks due", stats?.callbacks_due],
-          ["განმეორება / Retries due", stats?.retries_due],
-          ["დღეს მოგვიანებით / Later today", stats?.retries_later_today],
-          ["ხვალ / Tomorrow", stats?.retries_tomorrow],
+          ["განმეორება / Retries due now", stats?.retries_due],
+          ["მოგვიანებით / Retries later", stats ? (stats.retries_later_today ?? 0) + (stats.retries_tomorrow ?? 0) : undefined],
         ].map(([l, v]) => (
           <div key={l as string} className="rounded-lg border border-border bg-card p-2">
             <div className="text-[11px] text-muted-foreground">{l}</div>
@@ -422,43 +661,112 @@ function TeamTab({ operators }: { operators: string[] }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-        <div className="text-sm font-bold">ოპერატორები / Operators</div>
-        {people.length === 0 && <div className="text-xs text-muted-foreground">—</div>}
-        {people.map((p) => {
-          const s = shifts.find((x) => x.operator.toLowerCase() === p);
-          const state = !s || s.ended_at ? "offline" : s.paused ? "paused" : "on shift";
-          const held = locks.filter((l) => (l.locked_by || "").toLowerCase() === p);
-          return (
-            <div key={p} className="flex flex-wrap items-center gap-2 text-sm border-t border-border pt-2 first:border-0 first:pt-0">
-              <span className={`w-2 h-2 rounded-full ${state === "on shift" ? "bg-emerald-500" : state === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
-              <span className="font-semibold truncate">{p}</span>
-              <span className="text-xs text-muted-foreground">{state}</span>
-              {held.map((l) => (
-                <span key={l.order_id} className="ml-auto flex items-center gap-1 text-xs">
-                  #{l.order_number}
-                  <Button size="sm" variant="ghost" className="h-6 px-2" onClick={async () => { await queueForceRelease(l.order_id); void load(); }}>release</Button>
-                </span>
+      <div className="rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+          <div className="text-sm font-bold">ოპერატორები დღეს / Operators today</div>
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            {loading && <Loader2 className="w-3 h-3 animate-spin" />}
+            {loadedAt ? `updated ${tbClock(new Date(loadedAt).toISOString())} · auto every 60s` : ""}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-xs">
+            <thead className="bg-muted/60 text-muted-foreground">
+              <tr>
+                {["Operator", "Status", "Current order", "Calls", "Confirmed", "Cancelled", "No answer", "Conv.", "Confirmed ₾", "Upsell ₾", "Avg/order", "Orders/h", "Idle now", "Undos", "7d conf/day", "7d conv."].map((h) => (
+                  <th key={h} className="p-2 text-left whitespace-nowrap font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && <tr><td colSpan={16} className="p-3 text-center text-muted-foreground">No operator activity today</td></tr>}
+              {rows.map((r) => {
+                const idl = idleLevel(r.idleSeconds);
+                return (
+                  <tr key={r.operator} className="border-t border-border">
+                    <td className="p-2 font-semibold max-w-[180px] truncate">{r.operator}</td>
+                    <td className="p-2 whitespace-nowrap">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-1 ${r.status === "on_shift" ? "bg-emerald-500" : r.status === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
+                      {r.status === "on_shift" ? "On shift" : r.status === "paused" ? "Paused" : "Off"}
+                      {r.shiftSeconds > 0 && <span className="text-muted-foreground"> · {fmtDur(r.shiftSeconds)}</span>}
+                    </td>
+                    <td className="p-2 whitespace-nowrap">{r.currentOrder ? `#${r.currentOrder.number} · ${fmtDur(r.currentOrder.openSeconds)}` : "—"}</td>
+                    <td className="p-2">{r.calls}</td>
+                    <td className="p-2 font-bold text-emerald-700">{r.confirmed}</td>
+                    <td className="p-2">{r.cancelled}</td>
+                    <td className="p-2">{r.noAnswer}</td>
+                    <td className="p-2 font-bold">{r.confirmed + r.cancelled ? pct(r.conversion) : "—"}</td>
+                    <td className="p-2">{r.confirmedRevenue.toFixed(0)}</td>
+                    <td className="p-2">{r.upsell.toFixed(0)}</td>
+                    <td className="p-2">{r.avgOrderSeconds != null ? fmtDur(r.avgOrderSeconds) : "—"}</td>
+                    <td className="p-2">{r.ordersPerHour != null ? r.ordersPerHour.toFixed(1) : "—"}</td>
+                    <td className={`p-2 font-bold ${idl === "red" ? "text-red-600" : idl === "amber" ? "text-amber-600" : ""}`}>{r.idleSeconds != null ? fmtDur(r.idleSeconds) : "—"}</td>
+                    <td className="p-2">{r.undos || "—"}</td>
+                    <td className="p-2 text-muted-foreground">{r.week.confirmedPerDay.toFixed(1)}</td>
+                    <td className="p-2 text-muted-foreground">{pct(r.week.conversion)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {rows.length > 0 && (
+          <div className="p-3 border-t border-border space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground">Calls per hour today</div>
+            <div className="flex items-end gap-1 h-28">
+              {hours.map((h) => (
+                <div key={h} className="flex-1 flex flex-col items-center gap-0.5">
+                  <div className="flex items-end gap-px h-24 w-full justify-center">
+                    {rows.map((r, i) => (
+                      <div key={r.operator} title={`${r.operator}: ${r.hourly[h]} @ ${h}:00`}
+                        className={`${BAR_COLORS[i % BAR_COLORS.length]} w-full max-w-[10px] rounded-t`}
+                        style={{ height: `${(r.hourly[h] / maxHour) * 100}%` }} />
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{h}</div>
+                </div>
               ))}
             </div>
-          );
-        })}
+            <div className="flex flex-wrap gap-3 text-[11px]">
+              {rows.map((r, i) => (
+                <span key={r.operator} className="flex items-center gap-1"><span className={`w-2 h-2 rounded-sm ${BAR_COLORS[i % BAR_COLORS.length]}`} />{r.operator}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-        <div className="text-sm font-bold">მინიჭება / Assign order</div>
-        <Input value={assignTerm} onChange={(e) => setAssignTerm(e.target.value)} placeholder="შეკვეთის # ან ტელეფონი" className="text-base" />
-        <select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-2 text-base">
-          <option value="">— ოპერატორი —</option>
-          {people.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <Button size="sm" onClick={doAssign}>მინიჭება / Assign (30 min)</Button>
-      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <div className="text-sm font-bold">დაკავებული შეკვეთები / Held orders</div>
+          {locks.length === 0 && <div className="text-xs text-muted-foreground">—</div>}
+          {locks.map((l) => (
+            <div key={l.order_id} className="flex items-center gap-2 text-sm">
+              <span className="font-semibold">#{l.order_number}</span>
+              <span className="text-xs text-muted-foreground truncate">{l.locked_by}</span>
+              <Button size="sm" variant="outline" className="ml-auto h-7 px-2"
+                onClick={async () => { try { await queueForceRelease(l.order_id); void load(); } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); } }}>
+                Release
+              </Button>
+            </div>
+          ))}
+        </div>
 
-      <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-        <div className="text-sm font-bold">კიდევ ერთი ცდა / Allow one more attempt</div>
-        <Input value={overrideTerm} onChange={(e) => setOverrideTerm(e.target.value)} placeholder="შეკვეთის # ან ტელეფონი" className="text-base" />
-        <Button size="sm" variant="outline" onClick={doOverride}>დაშვება / Allow</Button>
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <div className="text-sm font-bold">მინიჭება / Assign order</div>
+          <Input value={assignTerm} onChange={(e) => setAssignTerm(e.target.value)} placeholder="შეკვეთის # ან ტელეფონი" className="text-base" />
+          <select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-2 text-base">
+            <option value="">— ოპერატორი —</option>
+            {people.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <Button size="sm" onClick={doAssign} className="w-full">მინიჭება / Assign (30 min)</Button>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <div className="text-sm font-bold">კიდევ ერთი ცდა / Allow one more attempt</div>
+          <Input value={overrideTerm} onChange={(e) => setOverrideTerm(e.target.value)} placeholder="შეკვეთის # ან ტელეფონი" className="text-base" />
+          <Button size="sm" variant="outline" onClick={doOverride} className="w-full">დაშვება / Allow</Button>
+        </div>
       </div>
     </div>
   );
