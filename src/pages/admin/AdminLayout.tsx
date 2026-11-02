@@ -12,6 +12,7 @@ import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
 import CallSyncPanels from "@/components/admin/CallSyncPanels";
 import { useCourierAlertBadge } from "@/hooks/useCourierAlertBadge";
 import { useCallSync } from "@/hooks/useCallSync";
+import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice } from "@/lib/callSync";
 import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
 import { Headphones } from "lucide-react";
 
@@ -97,12 +98,28 @@ const AdminLayout = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data: alertCount } = useCourierAlertBadge();
   const callSync = useCallSync(user?.id);
+  const [openTelHere, setOpenTelHere] = useState(() => getOpenTelOnThisDevice());
   const callQueue = useCallQueueAccess();
 
   const callSyncBadge = (
-    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-      <span className={`w-2 h-2 rounded-full ${callSync.connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
-      {callSync.connected ? "Call sync: connected" : "Call sync: offline"}
+    <span className="flex flex-col gap-1">
+      <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className={`w-2 h-2 rounded-full ${callSync.connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+        {callSync.connected ? "Call sync: connected" : "Call sync: offline"}
+      </span>
+      {isDesktopDevice() && (
+        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={openTelHere}
+            onChange={(e) => {
+              setOpenTelOnThisDevice(e.target.checked);
+              setOpenTelHere(e.target.checked);
+            }}
+          />
+          Also open calls on this computer (Phone Link / Skype)
+        </label>
+      )}
     </span>
   );
 

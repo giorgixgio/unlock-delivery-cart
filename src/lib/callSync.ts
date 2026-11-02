@@ -57,3 +57,41 @@ export function shouldReactToCall(
   const age = now - new Date(record.created_at).getTime();
   return age >= 0 && age <= CALL_SYNC_MAX_AGE_MS;
 }
+
+export interface DeviceEnv {
+  maxTouchPoints: number;
+  pointerFine: boolean;
+  width: number;
+}
+
+function readDeviceEnv(): DeviceEnv {
+  if (typeof window === "undefined") return { maxTouchPoints: 0, pointerFine: true, width: 1280 };
+  return {
+    maxTouchPoints: typeof navigator !== "undefined" ? navigator.maxTouchPoints || 0 : 0,
+    pointerFine: !!window.matchMedia?.("(pointer: fine)").matches,
+    width: window.innerWidth,
+  };
+}
+
+/** Desktop = no touch, fine pointer, width ≥ 1024. */
+export function isDesktopDevice(env: DeviceEnv = readDeviceEnv()): boolean {
+  return env.maxTouchPoints === 0 && env.pointerFine && env.width >= 1024;
+}
+
+export const OPEN_TEL_PREF_KEY = "callSync.openTelOnThisDevice";
+
+/** Whether tapping Call should also open tel: on this device. Default: false on desktop, true on phones. */
+export function getOpenTelOnThisDevice(desktop: boolean = isDesktopDevice()): boolean {
+  try {
+    const v = window.localStorage.getItem(OPEN_TEL_PREF_KEY);
+    if (v === "true") return true;
+    if (v === "false") return false;
+  } catch { /* ignore */ }
+  return !desktop;
+}
+
+export function setOpenTelOnThisDevice(value: boolean): void {
+  try {
+    window.localStorage.setItem(OPEN_TEL_PREF_KEY, String(value));
+  } catch { /* ignore */ }
+}
