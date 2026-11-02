@@ -65,3 +65,85 @@ export function percentChange(current: number, previous: number): number | null 
   if (previous === 0) return current === 0 ? 0 : null;
   return (current - previous) / previous;
 }
+
+// ---------- Range helpers ----------
+export const DAY_MS = 86_400_000;
+const TBILISI_MS = 4 * 3600 * 1000;
+export type StatsPreset = "today" | "yesterday" | "7d" | "30d" | "custom";
+export interface StatsRange { from: Date; to: Date }
+
+export function tbilisiDayStart(d: Date): Date {
+  const local = d.getTime() + TBILISI_MS;
+  return new Date(local - (((local % DAY_MS) + DAY_MS) % DAY_MS) - TBILISI_MS);
+}
+
+export function rangeFor(preset: StatsPreset, customFrom: string, customTo: string, now = new Date()): StatsRange {
+  const today = tbilisiDayStart(now);
+  if (preset === "today") return { from: today, to: now };
+  if (preset === "yesterday") return { from: new Date(today.getTime() - DAY_MS), to: new Date(today.getTime() - 1) };
+  if (preset === "7d") return { from: new Date(today.getTime() - 6 * DAY_MS), to: now };
+  if (preset === "30d") return { from: new Date(today.getTime() - 29 * DAY_MS), to: now };
+  const parse = (s: string, end = false) => { const [y, m, d] = s.split("-").map(Number); const ms = Date.UTC(y, (m || 1) - 1, d || 1) - TBILISI_MS; return new Date(ms + (end ? DAY_MS - 1 : 0)); };
+  return { from: customFrom ? parse(customFrom) : new Date(today.getTime() - 6 * DAY_MS), to: customTo ? parse(customTo, true) : now };
+}
+
+/** Previous period = same window shifted back by whole days (same clock times). */
+export function previousRangeFor(preset: StatsPreset, range: StatsRange): StatsRange {
+  const fixed: Partial<Record<StatsPreset, number>> = { today: 1, yesterday: 1, "7d": 7, "30d": 30 };
+  const days = fixed[preset] ?? Math.max(1, Math.ceil((range.to.getTime() - range.from.getTime() + 1) / DAY_MS));
+  const shift = days * DAY_MS;
+  return { from: new Date(range.from.getTime() - shift), to: new Date(range.to.getTime() - shift) };
+}
+
+// ---------- Outcome rules ----------
+export interface OutcomeEvent { id?: string; order_id: string; actor: string; created_at: string; payload: any }
+const FINAL_OUTCOMES = new Set(["confirmed", "cancelled"]);
+
+/** Duplicate cleanups (source or reason) never count as operator outcomes. */
+export function isDuplicateCancel(e: OutcomeEvent): boolean {
+  return e.payload?.source === "duplicate_cleanup" || e.payload?.cancel_reason === "duplicate_order";
+}
+export function isFinalOutcome(e: OutcomeEvent): boolean {
+  return FINAL_OUTCOMES.has(e.payload?.outcome) && !isDuplicateCancel(e);
+}
+
+/** Latest final (non-duplicate) outcome per order, by created_at. */
+export function latestFinalByOrder(events: OutcomeEvent[]): Map<string, OutcomeEvent> {
+  const map = new Map<string, OutcomeEvent>();
+  for (const e of events) {
+    if (!isFinalOutcome(e)) continue;
+    const prev = map.get(e.order_id);
+    if (!prev || e.created_at >= prev.created_at) map.set(e.order_id, e);
+  }
+  return map;
+}
+
+/**
+ * Per-operator resolution. A cancel counts only if it is still the order's latest final
+ * outcome across all operators; if anyone confirmed it later, it is "overturned".
+ */
+export function operatorOutcomes(operator: string, periodCalls: OutcomeEvent[], allOutcomes: OutcomeEvent[]) {
+  const own = latestFinalByOrder(periodCalls.filter((e) => e.actor === operator));
+  const latestAll = latestFinalByOrder(allOutcomes);
+  const confirmedIds = new Set<string>(), cancelled: OutcomeEvent[] = [], overturnedIds = new Set<string>();
+  for (const [orderId, e] of own) {
+    if (e.payload?.outcome === "confirmed") { confirmedIds.add(orderId); continue; }
+    const latest = latestAll.get(orderId);
+    if (latest && latest.payload?.outcome === "confirmed" && latest.created_at > e.created_at) overturnedIds.add(orderId);
+    else cancelled.push(e);
+  }
+  const resolved = confirmedIds.size + cancelled.length;
+  return { confirmedIds, cancelled, overturned: overturnedIds.size, resolved, conversion: resolved ? confirmedIds.size / resolved : 0 };
+}
+
+// ---------- Open queue ----------
+export interface QueueOrder { id: string; status: string; is_return: boolean | null; call_attempt_count: number | null; next_call_after: string | null }
+export function openQueue(orders: QueueOrder[], now = Date.now()) {
+  let neverCalled = 0, callbacksDue = 0;
+  for (const o of orders) {
+    if (!["new", "on_hold", "pending_bump"].includes(o.status) || o.is_return) continue;
+    if (!o.call_attempt_count) neverCalled++;
+    else if (!o.next_call_after || new Date(o.next_call_after).getTime() <= now) callbacksDue++;
+  }
+  return { open: neverCalled + callbacksDue, neverCalled, callbacksDue };
+}
