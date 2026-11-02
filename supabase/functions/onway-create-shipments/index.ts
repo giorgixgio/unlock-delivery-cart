@@ -7,7 +7,7 @@ import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
 import { cityKey } from "../_shared/onwayRegions.ts";
 import { finalizeOnwaySent, type FinalizeEntry } from "../_shared/onwayFulfill.ts";
-import { apiBatchName, reviewBatchName } from "../_shared/courierLabel.ts";
+import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag } from "../_shared/courierLabel.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
-    const parsedBody = z.object({ action: z.enum(["account_check","review_list","review_save"]).optional(), dry_run: z.boolean().optional(), order_ids: z.array(z.string().uuid()).max(1000).optional(), wave_id: z.string().uuid().nullable().optional(), round_size: z.coerce.number().int().min(1).max(100).optional(), review: z.object({ order_id: z.string().uuid(), version: z.number().int(), region_id: z.string().max(100), address: z.string().max(300), name: z.string().max(255), phone: z.string().max(20), decision: z.enum(["confirm","exists","not_exists"]), tracking: z.string().max(100).optional() }).optional() }).safeParse(body);
+    const parsedBody = z.object({ action: z.enum(["account_check","review_list","review_save"]).optional(), dry_run: z.boolean().optional(), order_ids: z.array(z.string().uuid()).max(1000).optional(), wave_id: z.string().uuid().nullable().optional(), round_size: z.coerce.number().int().min(1).max(100).optional(), batch_id: z.string().uuid().nullable().optional(), tags: z.record(z.string().uuid(), z.string().max(20)).optional(), chunk: z.object({ final: z.boolean(), prior: z.object({ attempted: z.number().int().min(0), sent: z.number().int().min(0), failed: z.number().int().min(0) }) }).optional(), review: z.object({ order_id: z.string().uuid(), version: z.number().int(), region_id: z.string().max(100), address: z.string().max(300), name: z.string().max(255), phone: z.string().max(20), decision: z.enum(["confirm","exists","not_exists"]), tracking: z.string().max(100).optional() }).optional() }).safeParse(body);
     if (!parsedBody.success) return json({ error: "Invalid request" }, 400);
     body = parsedBody.data;
     const username = Deno.env.get("ONWAY_API_USERNAME") || "";
@@ -202,12 +202,17 @@ Deno.serve(async (req) => {
     }
 
     let targets = onlyIds ? assigned.filter((a) => onlyIds.includes(String(a.order.id))) : assigned;
+    // Chunked sends: earlier chunks leave the selection once fulfilled, so reuse the dry-run tags.
+    if (body.tags) targets = targets.map((a) => ({ ...a, tag: pickTag(String(a.order.id), a.tag, body.tags) }));
     const skipped = targets.filter((a) => alreadySent(a.order) && !retryAllowed(a.order)).map((a) => ({
       order_id: a.order.id, order_number: a.order.public_order_number,
       onway_tracking: a.order.onway_tracking, onway_sent_at: a.order.onway_sent_at, onway_api_status: a.order.onway_api_status,
     }));
     targets = targets.filter((a) => !alreadySent(a.order) || retryAllowed(a.order));
 
+    if (!dryRun && targets.length > ONWAY_MAX_SEND_PER_REQUEST) {
+      return json({ error: `Too many orders in one send request (${targets.length}). Send at most ${ONWAY_MAX_SEND_PER_REQUEST} per request — the send window splits batches automatically.` }, 400);
+    }
     // --- Normalize safety net (same as export-courier) ---
     for (const t of dryRun ? [] : targets.filter(t=>!reasonsFor(t.order).length)) {
       const o = t.order;
@@ -295,7 +300,7 @@ Deno.serve(async (req) => {
     let fulfil: Awaited<ReturnType<typeof finalizeOnwaySent>> | null = null;
     if (toFinalize.length) {
       try {
-        fulfil = await finalizeOnwaySent(supabase, authClient, toFinalize, binBySku, { fileName: apiBatchName(toFinalize.length), actor });
+        fulfil = await finalizeOnwaySent(supabase, authClient, toFinalize, binBySku, { fileName: apiBatchName(toFinalize.length), actor, batchId: body.batch_id ?? null });
       } catch (e) {
         const msg = `Sent to Onway but not fulfilled — fulfil manually: ${String(e)}`;
         for (const t of toFinalize) await supabase.from("orders").update({ onway_error_text: msg.slice(0, 2000) }).eq("id", t.order.id);
@@ -304,8 +309,11 @@ Deno.serve(async (req) => {
       for (const f of fulfil.failed) { const r = results.find((x) => x.order_id === f.order_id); if (r) r.fulfil_error = f.error; }
     }
     // One owner notification per actual API batch, never per order or preview.
-    const counts = onwayBatchCounts(results);
-    if (counts.attempted > 0) {
+    const chunkCounts = onwayBatchCounts(results);
+    const prior = body.chunk?.prior;
+    const counts = prior ? { ...chunkCounts, attempted: chunkCounts.attempted + prior.attempted, sent: chunkCounts.sent + prior.sent, failed: chunkCounts.failed + prior.failed } : chunkCounts;
+    // Chunked sends alert once, on the final chunk, with totals for the whole send.
+    if (counts.attempted > 0 && (!body.chunk || body.chunk.final)) {
       const notify = async () => {
         try {
           const sent = await sendTelegramMessage(`📦 Onway — API ატვირთვა\n👤 ${actor}\n` +
@@ -315,7 +323,7 @@ Deno.serve(async (req) => {
       };
       EdgeRuntime.waitUntil(notify());
     }
-    return json({ dry_run: false, skipped_already_sent: skipped, results, sent_count:results.filter(r=>r.ok).length, review_count:results.filter(r=>!r.ok).length, fulfilled_count: fulfil?.fulfilled_ids.length ?? 0, not_fulfilled_count: fulfil?.failed.length ?? 0, batch_id: fulfil?.batch_id ?? null, batch_name: fulfil?.file_name ?? null });
+    return json({ dry_run: false, skipped_already_sent: skipped, results, sent_count:results.filter(r=>r.ok).length, review_count:results.filter(r=>!r.ok).length, fulfilled_count: fulfil?.fulfilled_ids.length ?? 0, not_fulfilled_count: fulfil?.failed.length ?? 0, batch_id: fulfil?.batch_id ?? body.batch_id ?? null, attempted_count: chunkCounts.attempted, failed_count: chunkCounts.failed, batch_name: fulfil?.file_name ?? null });
   } catch (e) {
     console.error("onway-create-shipments error:", e);
     return json({ error: String(e) }, 500);
