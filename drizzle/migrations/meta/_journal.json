@@ -267,6 +267,13 @@
       "when": 1793642936747,
       "tag": "0037_call_queue_master_switch_night_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793643631862,
+      "tag": "0038_call_queue_shift_gate",
+      "breakpoints": true
     }
   ]
 }

@@ -102,3 +102,38 @@ describe("master switch routing", () => {
     expect(queueOnlyRedirect("/admin/orders", false)).toBeNull();
   });
 });
+
+import { shiftGate, startShiftPlan, releasesLocks, autoEndAt } from "@/lib/callQueuePolicy";
+describe("shift gate", () => {
+  const T = (x: string) => new Date(`${x}+04:00`);
+  const open = { started_at: T("2026-11-03T10:00:00").toISOString(), ended_at: null, paused: false };
+  it("rejects without a shift and while paused", () => {
+    expect(shiftGate(null)).toBe("not_on_shift");
+    expect(shiftGate({ ...open, ended_at: "x" })).toBe("not_on_shift");
+    expect(shiftGate({ ...open, paused: true })).toBe("paused");
+    expect(shiftGate(open)).toBe("ok");
+  });
+  it("releases locks on pause and end only", () => {
+    expect(releasesLocks(open, { ...open, paused: true })).toBe(true);
+    expect(releasesLocks(open, { ...open, ended_at: "x" })).toBe(true);
+    expect(releasesLocks({ ...open, paused: true }, open)).toBe(false);
+  });
+  it("single open shift: start resumes", () => {
+    expect(startShiftPlan(open)).toBe("resume");
+    expect(startShiftPlan(null)).toBe("insert");
+  });
+  it("sticky callback falls through when its operator is off shift", () => {
+    const o = { id: "c", created_at: T("2026-11-03T09:00:00").toISOString(), status: "on_hold", call_outcome: "callback",
+      call_attempt_count: 1, queue_last_touched_by: "a@x.ge", next_call_after: T("2026-11-03T11:00:00").toISOString() };
+    const now = T("2026-11-03T11:05:00");
+    expect(queueTier(o, "b@x.ge", now, 120, undefined, () => true)).toBeNull();
+    expect(queueTier(o, "b@x.ge", now, 120, undefined, () => false)).toBe(3);
+  });
+  it("auto-end rules", () => {
+    expect(autoEndAt(open, T("2026-11-03T11:00:00"), T("2026-11-03T11:30:00"))).toBeNull();
+    expect(autoEndAt(open, T("2026-11-03T11:00:00"), T("2026-11-03T12:01:00"))?.toISOString()).toBe(T("2026-11-03T11:00:00").toISOString());
+    expect(autoEndAt({ ...open, paused: true }, T("2026-11-03T11:00:00"), T("2026-11-03T13:00:00"))).toBeNull();
+    expect(autoEndAt({ ...open, paused: true }, T("2026-11-03T20:30:00"), T("2026-11-03T22:05:00"))).not.toBeNull();
+    expect(autoEndAt(open, T("2026-11-03T20:50:00"), T("2026-11-04T09:00:00"))).not.toBeNull();
+  });
+});

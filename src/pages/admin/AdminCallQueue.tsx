@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle, Undo2,
 } from "lucide-react";
 import CallButton from "@/components/admin/CallButton";
@@ -28,7 +32,7 @@ import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
   queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo,
-  fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, type QueueStats,
+  fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, queueShiftStart, queueAutoEndShifts, type QueueStats,
 } from "@/lib/callQueueService";
 import {
   buildSnapshot, canUndo, UNDO_TOAST_MS, UNDO_WINDOW_MS, UNDOABLE_EVENT_TYPES, OUTCOME_LABEL,
@@ -101,7 +105,7 @@ export default function AdminCallQueue() {
         {access.allowed && <TabsContent value="queue"><QueueTab /></TabsContent>}
         {access.isManager && (
           <TabsContent value="team">
-            <TeamTab operators={access.settings?.enabled_operators ?? []} lockMinutes={access.settings?.lock_minutes ?? 10} />
+            <TeamTab lockMinutes={access.settings?.lock_minutes ?? 10} />
           </TabsContent>
         )}
       </Tabs>
@@ -110,7 +114,7 @@ export default function AdminCallQueue() {
 }
 
 // ───────────────────────── Operator queue ─────────────────────────
-interface ShiftState { id: string; paused: boolean; started_at: string }
+interface ShiftState { id: string; paused: boolean; started_at: string; updated_at: string | null }
 
 function QueueTab() {
   const { user } = useAdminAuth();
@@ -131,6 +135,10 @@ function QueueTab() {
   const [today, setToday] = useState({ count: 0, sum: 0 });
   const [shift, setShift] = useState<ShiftState | null>(null);
   const [shiftBusy, setShiftBusy] = useState(false);
+  const [shiftLoaded, setShiftLoaded] = useState(false);
+  const [endedSummary, setEndedSummary] = useState<{ calls: number } | null>(null);
+  const [yesterday, setYesterday] = useState<{ count: number; sum: number } | null>(null);
+  const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
   const [search, setSearch] = useState("");
   const [returnOpen, setReturnOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -162,14 +170,28 @@ function QueueTab() {
     setToday({ count: (os as any[])?.length ?? 0, sum: ((os as any[]) || []).reduce((s, o) => s + Number(o.total || 0), 0) });
   }, [actor]);
 
+  const loadYesterday = useCallback(async () => {
+    const end = tbilisiStartOfDay(new Date());
+    const start = new Date(end.getTime() - 86400e3);
+    const { data } = await supabase.from("order_events").select("order_id")
+      .eq("actor", actor).eq("event_type", "call_outcome").eq("payload->>outcome", "confirmed")
+      .gte("created_at", start.toISOString()).lt("created_at", end.toISOString()).limit(1000);
+    const ids = [...new Set(((data as any[]) || []).map((r) => r.order_id))];
+    if (!ids.length) { setYesterday({ count: 0, sum: 0 }); return; }
+    const { data: os } = await supabase.from("orders").select("total").in("id", ids).eq("is_confirmed", true);
+    setYesterday({ count: (os as any[])?.length ?? 0, sum: ((os as any[]) || []).reduce((s, o) => s + Number(o.total || 0), 0) });
+  }, [actor]);
+
   const loadShift = useCallback(async () => {
-    const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at")
+    try { await queueAutoEndShifts(); } catch { /* best effort */ }
+    const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at, updated_at")
       .eq("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
     if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return; }
     setShift(data?.[0] ?? null);
+    setShiftLoaded(true);
   }, [actor, toast]);
 
-  useEffect(() => { void loadToday(); void loadShift(); }, [loadToday, loadShift]);
+  useEffect(() => { void loadToday(); void loadShift(); void loadYesterday(); }, [loadToday, loadShift, loadYesterday]);
   useEffect(() => () => { void endSession("unmounted"); if (idleTimer.current) clearTimeout(idleTimer.current); }, []);
 
   const fetchOrder = useCallback(async (id: string) => {
@@ -201,6 +223,12 @@ function QueueTab() {
     setEmpty(false);
     try {
       const res = await queueNext(activeStore);
+      if (res.error) {
+        setOrder(null);
+        toast({ title: res.error === "paused" ? "ცვლა პაუზაზეა / Shift is paused" : "ჯერ დაიწყეთ ცვლა / Start your shift first", variant: "destructive" });
+        void loadShift();
+        return;
+      }
       if (!res.order_id) { setOrder(null); setEmpty(true); return; }
       await openOrder(res.order_id);
     } catch (e: any) {
@@ -208,7 +236,7 @@ function QueueTab() {
     } finally {
       setLoading(false);
     }
-  }, [activeStore, openOrder, toast]);
+  }, [activeStore, openOrder, toast, loadShift]);
 
   // ── Undo bookkeeping ──
   /** Snapshot the fields undo restores. Start time is backdated slightly to tolerate clock skew. */
@@ -340,23 +368,45 @@ function QueueTab() {
     } finally { setUndoing(false); }
   };
 
-  const shiftAction = async (a: "start" | "pause" | "end") => {
+  const runShift = async (a: "start" | "pause" | "end") => {
     const db = supabase as any;
     setShiftBusy(true);
     try {
       const ts = new Date().toISOString();
-      let res: { error: any };
-      if (a === "start") res = await db.from("operator_shifts").insert({ operator: actor });
-      else if (shift && a === "pause") res = await db.from("operator_shifts").update({ paused: !shift.paused, updated_at: ts }).eq("id", shift.id);
-      else if (shift) res = await db.from("operator_shifts").update({ ended_at: ts, paused: false, updated_at: ts }).eq("id", shift.id);
-      else res = { error: { message: "No open shift" } };
-      if (res.error) throw new Error(res.error.message);
+      if (a === "start" || (a === "pause" && shift?.paused)) {
+        await queueShiftStart(); // resumes the open shift or starts a new one
+        setEndedSummary(null);
+      } else if (shift) {
+        const patch = a === "pause" ? { paused: true, updated_at: ts } : { ended_at: ts, paused: false, updated_at: ts };
+        const { error } = await db.from("operator_shifts").update(patch).eq("id", shift.id);
+        if (error) throw new Error(error.message);
+        // Locks are released by the database on pause/end; drop the local card too.
+        setOrder(null); setEmpty(false); setIdle(false);
+        if (a === "end") {
+          const { count } = await supabase.from("order_events").select("id", { count: "exact", head: true })
+            .eq("actor", actor).eq("event_type", "call_outcome").gte("created_at", tbilisiStartOfDay(new Date()).toISOString());
+          await loadToday();
+          setEndedSummary({ calls: count ?? 0 });
+        }
+      } else throw new Error("No open shift");
     } catch (e: any) {
       toast({ title: "ცვლის ქმედება ვერ შესრულდა / Shift action failed", description: e.message, variant: "destructive" });
     } finally {
       await loadShift();
       setShiftBusy(false);
     }
+  };
+
+  /** Pause/End while holding an order asks first. */
+  const shiftAction = (a: "start" | "pause" | "end") => {
+    if (a !== "start" && order && !(a === "pause" && shift?.paused)) { setPendingShift(a); return; }
+    void runShift(a);
+  };
+  const returnAndRunShift = async () => {
+    const a = pendingShift; setPendingShift(null);
+    if (!a) return;
+    if (order) { void endSession("returned_to_queue"); try { await queueRelease(order.id); } catch { /* trigger releases */ } setOrder(null); }
+    await runShift(a);
   };
 
   const doSearch = async () => {
@@ -371,6 +421,7 @@ function QueueTab() {
     if (e.metaKey || e.ctrlKey || e.altKey || cancelOpen || callbackOpen || returnOpen) return;
     if (isTypingTarget(e.target)) return;
     if (document.querySelector("[role=dialog]")) return;
+    if (!shift || shift.paused) return;
     const k = e.key.toLowerCase();
     if (!order) {
       if (k === " " && !loading) { e.preventDefault(); void loadNext(); }
@@ -403,24 +454,50 @@ function QueueTab() {
     </Button>
   );
 
+  const firstName = (user?.email || "").split("@")[0];
+  if (!shiftLoaded) return <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  if (!shift) {
+    return (
+      <div className="mt-6 max-w-md mx-auto text-center space-y-4">
+        <div className="text-2xl font-extrabold">გამარჯობა, {firstName} 👋</div>
+        {endedSummary ? (
+          <div className="rounded-xl border border-border bg-card p-3 text-sm">
+            <div className="font-bold mb-1">დღის შედეგი / Today</div>
+            {endedSummary.calls} ზარი · {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾
+          </div>
+        ) : yesterday && (
+          <div className="text-sm text-muted-foreground">გუშინ: {yesterday.count} დადასტურებული · {yesterday.sum.toFixed(2)} ₾</div>
+        )}
+        <Button disabled={shiftBusy} onClick={() => shiftAction("start")} className="w-full h-16 text-lg font-extrabold gap-2">
+          {shiftBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />} ცვლის დაწყება / Start shift
+        </Button>
+      </div>
+    );
+  }
+  if (shift.paused) {
+    const pausedFor = Math.max(0, (now - new Date(shift.updated_at || shift.started_at).getTime()) / 1000);
+    return (
+      <div className="mt-6 max-w-md mx-auto text-center space-y-4">
+        <div className="text-xl font-extrabold text-amber-700">პაუზა / Paused · {fmtDur(pausedFor)}</div>
+        <Button disabled={shiftBusy} onClick={() => shiftAction("pause")} className="w-full h-16 text-lg font-extrabold gap-2">
+          {shiftBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />} გაგრძელება / Resume
+        </Button>
+        <div className="flex justify-center gap-2">
+          <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+          <UndoButton />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`space-y-3 mt-2 ${order ? "pb-48 lg:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2">
-        {!shift ? (
-          <Button size="sm" disabled={shiftBusy} onClick={() => shiftAction("start")} className="gap-1">
-            {shiftBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} ცვლის დაწყება / Start shift
-          </Button>
-        ) : (
-          <>
-            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("pause")} className="gap-1">
-              {shift.paused ? <><Play className="w-4 h-4" /> გაგრძელება / Resume</> : <><Pause className="w-4 h-4" /> პაუზა / Pause</>}
-            </Button>
-            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
-            <span className={`text-xs font-semibold ${shift.paused ? "text-amber-700" : "text-emerald-700"}`}>
-              {shift.paused ? "Paused" : "On shift"} since {tbClock(shift.started_at)} · {fmtDur(Math.max(0, (now - new Date(shift.started_at).getTime()) / 1000))}
-            </span>
-          </>
-        )}
+        <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("pause")} className="gap-1"><Pause className="w-4 h-4" /> პაუზა / Pause</Button>
+        <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+        <span className="text-xs font-semibold text-emerald-700">
+          On shift since {tbClock(shift.started_at)} · {fmtDur(Math.max(0, (now - new Date(shift.started_at).getTime()) / 1000))}
+        </span>
         <UndoButton className="ml-auto" />
         <span className="text-sm font-bold">დღეს: {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾</span>
       </div>
@@ -523,6 +600,18 @@ function QueueTab() {
         </div>
       )}
 
+      <AlertDialog open={pendingShift !== null} onOpenChange={(o) => !o && setPendingShift(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ჯერ ეს შეკვეთა დაასრულეთ? / Finish this order first?</AlertDialogTitle>
+            <AlertDialogDescription>#{order?.public_order_number} is still open.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Finish order</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void returnAndRunShift()}>Return it to the queue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CancelReasonModal
         open={cancelOpen} orderNumber={order?.public_order_number} callAttemptCount={Number(order?.call_attempt_count || 0)}
         submitting={busy} onCancel={() => setCancelOpen(false)} onConfirm={onCancel}
@@ -561,7 +650,7 @@ async function fetchAllRows(build: (from: number, to: number) => any, max = 2000
 
 const BAR_COLORS = ["bg-emerald-500", "bg-blue-500", "bg-amber-500", "bg-fuchsia-500", "bg-cyan-500", "bg-rose-500", "bg-lime-500", "bg-orange-500"];
 
-function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes: number }) {
+function TeamTab({ lockMinutes }: { lockMinutes: number }) {
   const { activeStore } = useStore();
   const { toast } = useToast();
   const [stats, setStats] = useState<QueueStats | null>(null);
@@ -584,9 +673,10 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
       const todayIso = new Date(todayStart).toISOString();
       const weekIso = new Date(todayStart - 7 * 86400e3).toISOString();
       const db = supabase as any;
+      try { await queueAutoEndShifts(); } catch { /* best effort */ }
       const [s, l, sh, outcomes, extra, sessions] = await Promise.all([
         queueStats(activeStore), queueTeamLocks(),
-        db.from("operator_shifts").select("operator, started_at, ended_at, paused, updated_at")
+        db.from("operator_shifts").select("operator, started_at, ended_at, paused, updated_at, auto_ended")
           .gte("started_at", new Date(todayStart - 86400e3).toISOString()).order("started_at", { ascending: false }).limit(500),
         fetchAllRows((a, b) => db.from("order_events").select("id, order_id, actor, created_at, payload")
           .eq("event_type", "call_outcome").gte("created_at", weekIso).order("created_at").range(a, b)),
@@ -605,17 +695,18 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
       if (reqId !== requestIdRef.current) return;
       const built = buildTeamRows({
         now, todayStart, outcomes, extraEvents: extra, sessions, shifts: sh.data || [],
-        orderTotals: totals, locks: l || [], lockMinutes, operators,
+        orderTotals: totals, locks: l || [], lockMinutes,
       });
       setStats(s); setLocks(l || []); setRows(built);
-      setPeople([...new Set([...operators, ...(sh.data || []).map((x: any) => x.operator), ...built.map((r) => r.operator)].map((e) => e.toLowerCase()))]);
+      // Assign only to people currently on shift (not paused).
+      setPeople([...new Set(((sh.data || []) as any[]).filter((x) => !x.ended_at && !x.paused).map((x) => String(x.operator).toLowerCase()))]);
       setLoadedAt(now);
     } catch (e: any) {
       if (reqId === requestIdRef.current) toast({ title: "Load failed", description: e.message, variant: "destructive" });
     } finally {
       if (reqId === requestIdRef.current) setLoading(false);
     }
-  }, [activeStore, toast, operators, lockMinutes]);
+  }, [activeStore, toast, lockMinutes]);
 
   useEffect(() => { void load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, [load]);
 
@@ -628,6 +719,7 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
   const doAssign = async () => {
     const o = await findOrder(assignTerm);
     if (!o || !assignTo) { toast({ title: "შეკვეთა ან ოპერატორი არ არის" }); return; }
+    if (!people.includes(assignTo.toLowerCase())) { toast({ title: "ოპერატორი ცვლაზე არ არის / Operator is not on shift", variant: "destructive" }); return; }
     try { await queueAssign(o.id, assignTo); toast({ title: "მიენიჭა" }); setAssignTerm(""); void load(); }
     catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
   };
@@ -690,6 +782,7 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
                       <span className={`inline-block w-2 h-2 rounded-full mr-1 ${r.status === "on_shift" ? "bg-emerald-500" : r.status === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
                       {r.status === "on_shift" ? "On shift" : r.status === "paused" ? "Paused" : "Off"}
                       {r.shiftSeconds > 0 && <span className="text-muted-foreground"> · {fmtDur(r.shiftSeconds)}</span>}
+                      {r.autoEnded && <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">auto-ended</span>}
                     </td>
                     <td className="p-2 whitespace-nowrap">{r.currentOrder ? `#${r.currentOrder.number} · ${fmtDur(r.currentOrder.openSeconds)}` : "—"}</td>
                     <td className="p-2">{r.calls}</td>
@@ -757,7 +850,7 @@ function TeamTab({ operators, lockMinutes }: { operators: string[]; lockMinutes:
           <div className="text-sm font-bold">მინიჭება / Assign order</div>
           <Input value={assignTerm} onChange={(e) => setAssignTerm(e.target.value)} placeholder="შეკვეთის # ან ტელეფონი" className="text-base" />
           <select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-2 text-base">
-            <option value="">— ოპერატორი —</option>
+            <option value="">{people.length ? "— ოპერატორი (ცვლაზე) —" : "No one on shift"}</option>
             {people.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <Button size="sm" onClick={doAssign} className="w-full">მინიჭება / Assign (30 min)</Button>

@@ -6,8 +6,8 @@ import {
 import { isQueueOnlyOperator } from "@/lib/adminPermissions";
 
 /**
- * Who may open the Call Queue: admins with test mode on, operators in enabled_operators,
- * or every operator while the master switch (operators_use_queue) is on.
+ * Who may open the Call Queue: admins with test mode on, or (master switch on) operators and managers.
+ * The old per-operator list (enabled_operators) is no longer read.
  * Settings are re-read on load and window focus (cached up to 60 s).
  */
 export function useCallQueueAccess() {
@@ -46,11 +46,10 @@ export function useCallQueueAccess() {
   const email = (user?.email || "").toLowerCase();
   const isAdminRole = role === "admin";
   const masterOn = !!settings?.operators_use_queue;
-  const enabled = masterOn
-    ? role === "operator"
-    : !!settings?.enabled_operators.some((e) => e.toLowerCase() === email);
-  const isManager = isAdminRole || !!settings?.manager_emails.some((e) => e.toLowerCase() === email);
-  const allowed = (isAdminRole && testMode) || enabled || (masterOn && isManager);
+  const isListedManager = !!settings?.manager_emails.some((e) => e.toLowerCase() === email);
+  const isManager = isAdminRole || isListedManager;
+  // Admins: only via their test toggle. Others: master switch + operator role or manager list.
+  const allowed = isAdminRole ? testMode : masterOn && (role === "operator" || isListedManager);
   const queueOnly = isQueueOnlyOperator(role, email, settings);
   return { allowed, loaded, testMode: isAdminRole && testMode, isAdminRole, isManager, settings, queueOnly };
 }

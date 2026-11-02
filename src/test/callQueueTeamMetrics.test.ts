@@ -80,3 +80,12 @@ describe("helpers", () => {
     expect(shiftSecondsToday([{ operator: "a", started_at: new Date(todayStart - 3600e3).toISOString(), ended_at: at(1), paused: false }], todayStart, now)).toBe(3600);
   });
 });
+
+describe("auto-ended shifts", () => {
+  it("flags auto-ended and counts real start → end", () => {
+    const rows = buildTeamRows({ ...base, outcomes: [], shifts: [{ operator: "a@x.ge", started_at: at(10), ended_at: at(11, 30), paused: false, auto_ended: true }] });
+    expect(rows[0].autoEnded).toBe(true);
+    expect(rows[0].shiftSeconds).toBe(5400);
+    expect(rows[0].status).toBe("off");
+  });
+});
