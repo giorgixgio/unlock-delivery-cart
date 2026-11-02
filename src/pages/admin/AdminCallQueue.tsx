@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle, Undo2,
 } from "lucide-react";
 import CallButton from "@/components/admin/CallButton";
@@ -450,24 +454,50 @@ function QueueTab() {
     </Button>
   );
 
+  const firstName = (user?.email || "").split("@")[0];
+  if (!shiftLoaded) return <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  if (!shift) {
+    return (
+      <div className="mt-6 max-w-md mx-auto text-center space-y-4">
+        <div className="text-2xl font-extrabold">გამარჯობა, {firstName} 👋</div>
+        {endedSummary ? (
+          <div className="rounded-xl border border-border bg-card p-3 text-sm">
+            <div className="font-bold mb-1">დღის შედეგი / Today</div>
+            {endedSummary.calls} ზარი · {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾
+          </div>
+        ) : yesterday && (
+          <div className="text-sm text-muted-foreground">გუშინ: {yesterday.count} დადასტურებული · {yesterday.sum.toFixed(2)} ₾</div>
+        )}
+        <Button disabled={shiftBusy} onClick={() => shiftAction("start")} className="w-full h-16 text-lg font-extrabold gap-2">
+          {shiftBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />} ცვლის დაწყება / Start shift
+        </Button>
+      </div>
+    );
+  }
+  if (shift.paused) {
+    const pausedFor = Math.max(0, (now - new Date(shift.updated_at || shift.started_at).getTime()) / 1000);
+    return (
+      <div className="mt-6 max-w-md mx-auto text-center space-y-4">
+        <div className="text-xl font-extrabold text-amber-700">პაუზა / Paused · {fmtDur(pausedFor)}</div>
+        <Button disabled={shiftBusy} onClick={() => shiftAction("pause")} className="w-full h-16 text-lg font-extrabold gap-2">
+          {shiftBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />} გაგრძელება / Resume
+        </Button>
+        <div className="flex justify-center gap-2">
+          <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+          <UndoButton />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`space-y-3 mt-2 ${order ? "pb-48 lg:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2">
-        {!shift ? (
-          <Button size="sm" disabled={shiftBusy} onClick={() => shiftAction("start")} className="gap-1">
-            {shiftBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} ცვლის დაწყება / Start shift
-          </Button>
-        ) : (
-          <>
-            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("pause")} className="gap-1">
-              {shift.paused ? <><Play className="w-4 h-4" /> გაგრძელება / Resume</> : <><Pause className="w-4 h-4" /> პაუზა / Pause</>}
-            </Button>
-            <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
-            <span className={`text-xs font-semibold ${shift.paused ? "text-amber-700" : "text-emerald-700"}`}>
-              {shift.paused ? "Paused" : "On shift"} since {tbClock(shift.started_at)} · {fmtDur(Math.max(0, (now - new Date(shift.started_at).getTime()) / 1000))}
-            </span>
-          </>
-        )}
+        <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("pause")} className="gap-1"><Pause className="w-4 h-4" /> პაუზა / Pause</Button>
+        <Button size="sm" variant="outline" disabled={shiftBusy} onClick={() => shiftAction("end")} className="gap-1"><Square className="w-4 h-4" /> დასრულება / End shift</Button>
+        <span className="text-xs font-semibold text-emerald-700">
+          On shift since {tbClock(shift.started_at)} · {fmtDur(Math.max(0, (now - new Date(shift.started_at).getTime()) / 1000))}
+        </span>
         <UndoButton className="ml-auto" />
         <span className="text-sm font-bold">დღეს: {today.count} დადასტურებული · {today.sum.toFixed(2)} ₾</span>
       </div>
@@ -570,6 +600,18 @@ function QueueTab() {
         </div>
       )}
 
+      <AlertDialog open={pendingShift !== null} onOpenChange={(o) => !o && setPendingShift(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ჯერ ეს შეკვეთა დაასრულეთ? / Finish this order first?</AlertDialogTitle>
+            <AlertDialogDescription>#{order?.public_order_number} is still open.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Finish order</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void returnAndRunShift()}>Return it to the queue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CancelReasonModal
         open={cancelOpen} orderNumber={order?.public_order_number} callAttemptCount={Number(order?.call_attempt_count || 0)}
         submitting={busy} onCancel={() => setCancelOpen(false)} onConfirm={onCancel}

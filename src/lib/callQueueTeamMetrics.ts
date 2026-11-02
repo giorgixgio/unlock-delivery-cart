@@ -5,7 +5,7 @@ import {
 } from "@/lib/operatorStatsEngine";
 import { TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 
-export interface ShiftRow { operator: string; started_at: string; ended_at: string | null; paused: boolean; updated_at?: string | null }
+export interface ShiftRow { operator: string; started_at: string; ended_at: string | null; paused: boolean; updated_at?: string | null; auto_ended?: boolean | null }
 export interface LiteEvent { order_id: string; actor: string; created_at: string; event_type: string; payload: any }
 export interface LockRow { order_id: string; order_number: string; locked_by: string; locked_until: string }
 
@@ -22,13 +22,14 @@ export interface TeamInput {
   locks: LockRow[];
   /** Lock acquisition time is lock_minutes before locked_until. */
   lockMinutes: number;
-  operators?: string[];
 }
 
 export interface TeamRow {
   operator: string;
   status: "on_shift" | "paused" | "off";
   shiftSeconds: number;
+  /** Latest shift was closed automatically (forgotten). */
+  autoEnded: boolean;
   currentOrder: { number: string; openSeconds: number } | null;
   calls: number; confirmed: number; cancelled: number; noAnswer: number; conversion: number;
   confirmedRevenue: number; upsell: number;
@@ -73,7 +74,6 @@ export function buildTeamRows(input: TeamInput): TeamRow[] {
   for (const s of todayShifts) names.add(lc(s.operator));
   for (const e of today) names.add(lc(e.actor));
   for (const e of input.extraEvents) if (e.event_type === "outcome_undone") names.add(lc(e.actor));
-  for (const o of input.operators || []) if (todayShifts.some((s) => lc(s.operator) === lc(o))) names.add(lc(o));
 
   const rows: TeamRow[] = [];
   for (const name of names) {
@@ -115,7 +115,7 @@ export function buildTeamRows(input: TeamInput): TeamRow[] {
     for (const e of calls) hourly[tbilisiHour(e.created_at)]++;
 
     rows.push({
-      operator: name, status, shiftSeconds, currentOrder,
+      operator: name, status, shiftSeconds, autoEnded: !!latest?.auto_ended && !!latest?.ended_at, currentOrder,
       calls: calls.length, confirmed: oc.confirmedIds.size, cancelled: oc.cancelled.length, noAnswer,
       conversion: oc.conversion, confirmedRevenue, upsell, avgOrderSeconds, ordersPerHour, idleSeconds, undos,
       week: { confirmedPerDay: wk.confirmedIds.size / 7, conversion: wk.conversion },
