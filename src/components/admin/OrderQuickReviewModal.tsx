@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 import {
   X, ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
@@ -21,7 +21,7 @@ import { startSession, markAction, endSession, currentSessionId } from "@/lib/op
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
 import CallButton from "@/components/admin/CallButton";
 import { startCallSync } from "@/lib/callSyncService";
-import { toTelHref } from "@/lib/callSync";
+import { toTelHref, isDesktopDevice, getOpenTelOnThisDevice } from "@/lib/callSync";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
 import {
