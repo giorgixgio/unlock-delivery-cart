@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, LayoutTemplate, Wand2, BarChart3, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Printer, Boxes, FileText, AlertTriangle, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
-import { canAccessPath } from "@/lib/adminPermissions";
+import { canAccessPath, queueOnlyRedirect } from "@/lib/adminPermissions";
 import ToggleStore from "@/components/admin/ToggleStore";
 import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
 import CallSyncPanels from "@/components/admin/CallSyncPanels";
@@ -107,7 +107,7 @@ const AdminLayout = () => {
   );
 
   const visibleGroups = navGroups
-    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to)) }))
+    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(callQueue.queueOnly && n.to === "/admin/orders")) }))
     .filter((g) => g.items.length > 0);
 
   const activeGroup =
@@ -226,7 +226,11 @@ const AdminLayout = () => {
           </div>
         )}
         <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
-        <Outlet />
+        {queueOnlyRedirect(pathname, callQueue.queueOnly)
+          ? <Navigate to={queueOnlyRedirect(pathname, callQueue.queueOnly)!} replace />
+          : role === "operator" && !callQueue.loaded && pathname.replace(/\/+$/, "") === "/admin/orders"
+            ? null
+            : <Outlet />}
       </main>
     </div>
   );
