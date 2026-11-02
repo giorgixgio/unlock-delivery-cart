@@ -1754,6 +1754,7 @@ export type Database = {
       }
       operator_shifts: {
         Row: {
+          auto_ended: boolean
           ended_at: string | null
           id: string
           operator: string
@@ -1762,6 +1763,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_ended?: boolean
           ended_at?: string | null
           id?: string
           operator: string
@@ -1770,6 +1772,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_ended?: boolean
           ended_at?: string | null
           id?: string
           operator?: string
@@ -3589,6 +3592,7 @@ export type Database = {
         Args: { p_operator: string; p_order_id: string }
         Returns: undefined
       }
+      call_queue_autoend_shifts: { Args: never; Returns: number }
       call_queue_cfg: {
         Args: never
         Returns: {
@@ -3648,9 +3652,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      call_queue_on_shift: { Args: { p_email: string }; Returns: boolean }
       call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_schedule_retry: { Args: { p_order_id: string }; Returns: Json }
+      call_queue_shift_start: { Args: never; Returns: Json }
       call_queue_stats: { Args: { p_store: string }; Returns: Json }
       call_queue_store_match: {
         Args: { p_order_id: string; p_store: string }
