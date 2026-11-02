@@ -560,15 +560,17 @@ export default function OrderQuickReviewModal({
                     <a
                       href={toTelHref(order.customer_phone)}
                       onClick={(e) => {
-                        if (!user) return;
-                        e.preventDefault();
-                        const { telHref } = startCallSync({
-                          operatorId: user.id,
-                          orderId: order.id,
-                          phone: order.customer_phone,
-                          customerName: order.customer_name,
-                        });
-                        window.location.href = telHref;
+                        const desktopOnly = isDesktopDevice() && !getOpenTelOnThisDevice();
+                        if (desktopOnly) e.preventDefault();
+                        if (user) {
+                          startCallSync({
+                            operatorId: user.id,
+                            orderId: order.id,
+                            phone: order.customer_phone,
+                            customerName: order.customer_name,
+                          });
+                        }
+                        if (desktopOnly) toast({ title: `📱 გაიგზავნა ტელეფონზე — ${order.customer_phone}` });
                       }}
                       className="text-2xl font-extrabold text-primary tracking-wide hover:underline"
                     >
