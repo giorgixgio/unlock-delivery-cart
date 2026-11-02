@@ -288,6 +288,45 @@ export type Database = {
         }
         Relationships: []
       }
+      call_queue_settings: {
+        Row: {
+          enabled_operators: string[]
+          id: boolean
+          lock_minutes: number
+          manager_emails: string[]
+          max_attempts: number
+          retry_gap_minutes: number
+          updated_at: string
+          updated_by: string | null
+          work_end: string
+          work_start: string
+        }
+        Insert: {
+          enabled_operators?: string[]
+          id?: boolean
+          lock_minutes?: number
+          manager_emails?: string[]
+          max_attempts?: number
+          retry_gap_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          work_end?: string
+          work_start?: string
+        }
+        Update: {
+          enabled_operators?: string[]
+          id?: boolean
+          lock_minutes?: number
+          manager_emails?: string[]
+          max_attempts?: number
+          retry_gap_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          work_end?: string
+          work_start?: string
+        }
+        Relationships: []
+      }
       city_aliases: {
         Row: {
           alias_normalized: string
@@ -1698,6 +1737,33 @@ export type Database = {
         }
         Relationships: []
       }
+      operator_shifts: {
+        Row: {
+          ended_at: string | null
+          id: string
+          operator: string
+          paused: boolean
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          operator: string
+          paused?: boolean
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          operator?: string
+          paused?: boolean
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor: string
@@ -1865,6 +1931,10 @@ export type Database = {
           packing_wave_id: string | null
           payment_method: string
           public_order_number: string
+          queue_extra_attempts: number | null
+          queue_last_touched_by: string | null
+          queue_locked_by: string | null
+          queue_locked_until: string | null
           raw_address: string | null
           raw_city: string | null
           region: string
@@ -1964,6 +2034,10 @@ export type Database = {
           packing_wave_id?: string | null
           payment_method?: string
           public_order_number: string
+          queue_extra_attempts?: number | null
+          queue_last_touched_by?: string | null
+          queue_locked_by?: string | null
+          queue_locked_until?: string | null
           raw_address?: string | null
           raw_city?: string | null
           region?: string
@@ -2063,6 +2137,10 @@ export type Database = {
           packing_wave_id?: string | null
           payment_method?: string
           public_order_number?: string
+          queue_extra_attempts?: number | null
+          queue_last_touched_by?: string | null
+          queue_locked_by?: string | null
+          queue_locked_until?: string | null
           raw_address?: string | null
           raw_city?: string | null
           region?: string
@@ -3490,6 +3568,79 @@ export type Database = {
           missing_order_ids: string[]
           updated_count: number
         }[]
+      }
+      call_queue_actor: { Args: never; Returns: string }
+      call_queue_assign: {
+        Args: { p_operator: string; p_order_id: string }
+        Returns: undefined
+      }
+      call_queue_cfg: {
+        Args: never
+        Returns: {
+          enabled_operators: string[]
+          id: boolean
+          lock_minutes: number
+          manager_emails: string[]
+          max_attempts: number
+          retry_gap_minutes: number
+          updated_at: string
+          updated_by: string | null
+          work_end: string
+          work_start: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "call_queue_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      call_queue_compute_retry: {
+        Args: {
+          p_attempts: number
+          p_first_at: string
+          p_gap: number
+          p_max: number
+          p_now: string
+          p_work_end: string
+          p_work_start: string
+        }
+        Returns: string
+      }
+      call_queue_force_release: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      call_queue_is_manager: { Args: never; Returns: boolean }
+      call_queue_is_open: {
+        Args: { o: Database["public"]["Tables"]["orders"]["Row"] }
+        Returns: boolean
+      }
+      call_queue_next: { Args: { p_store: string }; Returns: Json }
+      call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
+      call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
+      call_queue_schedule_retry: { Args: { p_order_id: string }; Returns: Json }
+      call_queue_stats: { Args: { p_store: string }; Returns: Json }
+      call_queue_store_match: {
+        Args: { p_order_id: string; p_store: string }
+        Returns: boolean
+      }
+      call_queue_team_locks: {
+        Args: never
+        Returns: {
+          locked_by: string
+          locked_until: string
+          order_id: string
+          order_number: string
+        }[]
+      }
+      call_queue_tier: {
+        Args: {
+          o: Database["public"]["Tables"]["orders"]["Row"]
+          p_caller: string
+          p_gap_minutes: number
+        }
+        Returns: number
       }
       camera_landing_stats: { Args: never; Returns: Json }
       camera_order_delivered: { Args: { p_order: string }; Returns: boolean }

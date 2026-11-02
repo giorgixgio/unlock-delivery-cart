@@ -246,6 +246,13 @@
       "when": 1793622762455,
       "tag": "0034_operator_delivery_quality",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793639738093,
+      "tag": "0035_call_queue",
+      "breakpoints": true
     }
   ]
 }
