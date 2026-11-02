@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, X, Send, AlertTriangle } from "lucide-react";
 import { loadOnwayCities } from "@/lib/onwayCities";
+import { addChunk, chunkBody, chunkIds, emptyTotals } from "@/lib/onwayChunkSend";
 
 interface DryRunOrder {
   order_id: string;
@@ -55,21 +56,50 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
   };
   useEffect(() => { if (open) { setResults(null); setDry(null); load(); } }, [open]);
 
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [canContinue, setCanContinue] = useState(false);
+
+  // Block tab close/reload while a send is running.
+  useEffect(() => {
+    if (!sending) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [sending]);
+  const tryClose = () => {
+    if (busy.current) { window.alert("Sending to Onway is in progress — please wait until it finishes."); return; }
+    onClose();
+  };
+
   const send = async (orderIds: string[] | null) => {
-    if (busy.current) return;
-    const n = orderIds ? orderIds.length : dry?.ready_count ?? 0;
-    if (!window.confirm(`Really send ${n} order(s) to Onway? This creates real shipments.`)) return;
-    busy.current = true; setSending(true); setErr(null);
+    if (busy.current || !dry) return;
+    const ids = orderIds ?? (orderId ? [orderId] : dry.orders.filter((o) => !o.missing.length && !o.held?.length).map((o) => o.order_id));
+    if (!ids.length) return;
+    if (!window.confirm(`Really send ${ids.length} order(s) to Onway? This creates real shipments.`)) return;
+    busy.current = true; setSending(true); setErr(null); setCanContinue(false); setSummary(null);
+    const tags = Object.fromEntries(dry.orders.map((o) => [o.order_id, o.tag]));
+    const chunks = chunkIds(ids);
+    let totals = emptyTotals();
+    const all: SendResult[] = [];
+    setProgress({ done: 0, total: ids.length }); setResults([]);
     try {
-      const ids = orderIds ?? (orderId ? [orderId] : null);
-      const data = await callFn({ dry_run: false, ...(ids ? { order_ids: ids } : {}) });
-      setResults(data.results || []);
-      setSummary(sendSummary(data));
-      setBatchLink(!!data.batch_id);
+      for (let i = 0; i < chunks.length; i++) {
+        const data = await callFn(chunkBody(chunks[i], tags, totals, i === chunks.length - 1));
+        totals = addChunk(totals, data, chunks[i].length);
+        all.push(...(data.results || []));
+        setResults([...all]);
+        setProgress({ done: totals.done, total: ids.length });
+      }
+    } catch (e: any) {
+      setErr(`Stopped after ${totals.done} / ${ids.length}: ${e?.message || String(e)}`);
+      if (totals.done < ids.length) setCanContinue(true);
+    } finally {
+      setSummary(sendSummary(totals));
+      setBatchLink(!!totals.batch_id);
       window.dispatchEvent(new Event("onway-batch-updated"));
+      busy.current = false; setSending(false); setProgress(null);
       await load();
-    } catch (e: any) { setErr(e?.message || String(e)); }
-    finally { busy.current = false; setSending(false); }
+    }
   };
 
   if (!open) return null;
@@ -78,7 +108,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
       <div className="bg-card rounded-lg border border-border p-6 w-full max-w-2xl mx-4 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Send to Onway (API) — TrendMart</h2>
-          <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}><X className="w-5 h-5" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Close" onClick={tryClose}><X className="w-5 h-5" /></Button>
         </div>
         {dry && orderId && dry.count === 0 && dry.skipped_already_sent.length === 0 && (
           <p className="text-sm text-destructive">This order can't be sent: it must be a confirmed, unfulfilled TrendMart order.</p>
@@ -86,6 +116,15 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
         <p className="text-xs text-muted-foreground">Preview only until you press a send button. Orders already sent are skipped.</p>
 
         {err && <p className="text-sm text-destructive">{err}</p>}
+        {progress && (
+          <div className="space-y-1">
+            <div className="text-sm font-medium flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Sending {progress.done} / {progress.total}… do not close this window</div>
+            <div className="h-2 rounded bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} /></div>
+          </div>
+        )}
+        {canContinue && !sending && dry && !orderId && (
+          <Button onClick={() => send(null)} disabled={!dry.ready_count}>Continue sending the rest ({dry.ready_count})</Button>
+        )}
         {summary && <div role="alertdialog" aria-label="Onway batch result" className="border border-border bg-muted p-4 flex gap-3 justify-between items-center"><div className="space-y-1"><b>{summary}</b>{batchLink && <div><a className="text-primary underline text-sm" href="/admin/courier-labels">Open Courier Labels</a></div>}</div><Button variant="ghost" size="icon" aria-label="Dismiss result" onClick={() => setSummary(null)}><X className="w-4 h-4" /></Button></div>}
         <Button variant="outline" disabled={sending || loading} onClick={async () => { setLoading(true); setErr(null); try { const {data,error}=await supabase.functions.invoke("onway-regions",{body:{}}); if(error || data?.error) throw error || new Error(data.error); await loadOnwayCities(true); await load(); } catch(e) { setErr(e instanceof Error?e.message:"City refresh failed"); } finally { setLoading(false); } }}>Refresh Onway cities</Button>
         {loading ? (
@@ -133,7 +172,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
+              <Button variant="outline" onClick={tryClose} className="flex-1">Close</Button>
               {!orderId && <Button onClick={() => send(null)} disabled={sending || !dry.ready_count} className="flex-1">
                 {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                 Send {dry.ready_count} to Onway
