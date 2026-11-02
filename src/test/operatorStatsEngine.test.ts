@@ -80,3 +80,82 @@ describe("open queue", () => {
     ], now)).toEqual({ open: 2, neverCalled: 1, callbacksDue: 1 });
   });
 });
+
+import { callbackTimeliness, deliverySummary, findGiveUps, findSkips, quickDecisions, reasonMix, scoreColor, speedStats } from "@/lib/operatorStatsEngine";
+
+describe("quality: give-ups", () => {
+  const range = { from: new Date("2026-11-01T00:00:00Z"), to: new Date("2026-11-05T00:00:00Z") };
+  it("counts never-reached cancels; early when <3 no-answers", () => {
+    const evs = [
+      ev("o1", "A", "2026-11-01T08:00:00Z", { outcome: "no_answer" }),
+      ev("o1", "A", "2026-11-01T10:00:00Z", { outcome: "cancelled" }),
+      ev("o2", "A", "2026-11-01T08:00:00Z", { outcome: "callback" }),
+      ev("o2", "A", "2026-11-02T08:00:00Z", { outcome: "cancelled" }),
+      ev("o3", "A", "2026-11-01T08:00:00Z", { outcome: "cancelled", cancel_reason: "duplicate_order" }),
+    ];
+    const g = findGiveUps(evs, range);
+    expect(g.map((x) => x.orderId)).toEqual(["o1"]);
+    expect(g[0].early).toBe(true);
+    expect(g[0].hours).toBe(2);
+  });
+  it("is not early with 3 no-answers over two days", () => {
+    const evs = [
+      ev("o1", "A", "2026-11-01T06:00:00Z", { outcome: "no_answer" }),
+      ev("o1", "A", "2026-11-01T12:00:00Z", { outcome: "no_answer" }),
+      ev("o1", "A", "2026-11-02T08:00:00Z", { outcome: "no_answer" }),
+      ev("o1", "A", "2026-11-02T09:00:00Z", { outcome: "cancelled" }),
+    ];
+    expect(findGiveUps(evs, range)[0].early).toBe(false);
+  });
+});
+
+describe("quality: skips, quick decisions, reasons", () => {
+  const s = (order_id: string, operator: string, at: string, act = false, sec = 10) => ({ order_id, operator, session_started_at: at, active_duration_seconds: sec, capped_duration_seconds: null, had_meaningful_action: act });
+  it("skipped = viewed without action and later done by another operator", () => {
+    const r = findSkips("A", [s("o1", "A", "2026-11-01T08:00:00Z"), s("o2", "A", "2026-11-01T08:00:00Z")], [ev("o1", "B", "2026-11-01T09:00:00Z", { outcome: "confirmed" })]);
+    expect(r.viewed.length).toBe(2);
+    expect(r.skipped).toEqual(["o1"]);
+  });
+  it("quick cancel under 15s, quick confirm under 20s", () => {
+    const sessions = [s("o1", "A", "2026-11-01T08:00:00Z", true, 10), s("o2", "A", "2026-11-01T08:00:00Z", true, 18)];
+    const r = quickDecisions([ev("o1", "A", "2026-11-01T08:00:10Z", { outcome: "cancelled" }), ev("o2", "A", "2026-11-01T08:00:18Z", { outcome: "confirmed" })], sessions);
+    expect(r.quickCancels).toEqual(["o1"]);
+    expect(r.quickConfirms).toEqual(["o2"]);
+  });
+  it("flags vague reasons above 20%", () => {
+    expect(reasonMix([ev("o1", "A", "x", { cancel_reason: "other" }), ev("o2", "A", "x", { cancel_reason: "changed_mind" })]).flagged).toBe(true);
+  });
+});
+
+describe("quality: speed, callbacks, delivery, scoring", () => {
+  it("only counts in-hours leads", () => {
+    const r = speedStats([{ id: "a", created_at: "2026-11-01T08:00:00Z" }, { id: "b", created_at: "2026-11-01T20:00:00Z" }], new Map([["a", Date.parse("2026-11-01T08:10:00Z")]]), 10, 21);
+    expect(r).toEqual({ leads: 1, in15: 1, in60: 1 });
+  });
+  it("callback on time within 60 minutes of next_call_after", () => {
+    const range = { from: new Date("2026-11-01T00:00:00Z"), to: new Date("2026-11-02T00:00:00Z") };
+    const rows = callbackTimeliness([
+      ev("o1", "A", "2026-11-01T08:00:00Z", { outcome: "no_answer", next_call_after: "2026-11-01T10:00:00Z" }),
+      ev("o1", "B", "2026-11-01T12:00:00Z", { outcome: "confirmed" }),
+    ], range, Date.parse("2026-11-03T00:00:00Z"));
+    expect(rows.length).toBe(1);
+    expect(rows[0].onTime).toBe(false);
+    expect(rows[0].recalled).toBe(true);
+  });
+  it("delivery rate = delivered ÷ (delivered + failed)", () => {
+    const d = deliverySummary([
+      { order_id: "1", operator: "A", total: 40, status: "DELIVERED_TO_CUSTOMER", matched: true },
+      { order_id: "2", operator: "A", total: 40, status: "RETURNED_TO_SENDER", matched: true },
+      { order_id: "3", operator: "A", total: 40, status: "IN_TRANSIT", matched: true },
+      { order_id: "4", operator: "A", total: 40, status: "UNMATCHED", matched: false },
+    ]);
+    expect(d.deliveryRate).toBe(0.5);
+    expect(d.revenue).toBe(40);
+    expect(d.coverage).toBe(0.75);
+  });
+  it("colours against the median by direction", () => {
+    expect(scoreColor(0.5, 0.6, true)).toBe("amber");
+    expect(scoreColor(0.3, 0.6, true)).toBe("red");
+    expect(scoreColor(5, 10, false)).toBe("green");
+  });
+});
