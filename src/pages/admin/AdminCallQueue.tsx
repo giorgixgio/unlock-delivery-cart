@@ -132,7 +132,7 @@ function QueueTab() {
   const [shift, setShift] = useState<ShiftState | null>(null);
   const [shiftBusy, setShiftBusy] = useState(false);
   const [shiftLoaded, setShiftLoaded] = useState(false);
-  const [endedSummary, setEndedSummary] = useState<{ calls: number; count: number; sum: number } | null>(null);
+  const [endedSummary, setEndedSummary] = useState<{ calls: number } | null>(null);
   const [yesterday, setYesterday] = useState<{ count: number; sum: number } | null>(null);
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
   const [search, setSearch] = useState("");
@@ -379,13 +379,10 @@ function QueueTab() {
         // Locks are released by the database on pause/end; drop the local card too.
         setOrder(null); setEmpty(false); setIdle(false);
         if (a === "end") {
-          const { data } = await supabase.from("order_events").select("id", { count: "exact", head: false })
-            .eq("actor", actor).eq("event_type", "call_outcome").gte("created_at", tbilisiStartOfDay(new Date()).toISOString()).limit(1);
           const { count } = await supabase.from("order_events").select("id", { count: "exact", head: true })
             .eq("actor", actor).eq("event_type", "call_outcome").gte("created_at", tbilisiStartOfDay(new Date()).toISOString());
-          void data;
           await loadToday();
-          setEndedSummary((prev) => ({ calls: count ?? 0, count: prev?.count ?? 0, sum: prev?.sum ?? 0 }));
+          setEndedSummary({ calls: count ?? 0 });
         }
       } else throw new Error("No open shift");
     } catch (e: any) {
