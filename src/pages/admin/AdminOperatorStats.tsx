@@ -10,7 +10,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { getOrderIdsForStore } from "@/lib/adminStoreFilter";
 import { tbilisiDayKey, tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 import OperatorRatingsCard from "@/components/admin/OperatorRatingsCard";
-import { attemptsPerResolved, calculateCapacity, isDuplicateCancel, isFinalOutcome, latestFinalByOrder, median, openQueue, operatorOutcomes, percentChange, previousRangeFor, rangeFor, workedSeconds } from "@/lib/operatorStatsEngine";
+import { attemptsPerResolved, calculateCapacity, isDuplicateCancel, latestFinalByOrder, median, openQueue, operatorOutcomes, percentChange, previousRangeFor, rangeFor, workedSeconds } from "@/lib/operatorStatsEngine";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
 type Preset = "today" | "yesterday" | "7d" | "30d" | "custom";
@@ -42,7 +42,7 @@ export default function AdminOperatorStats(){
   const [selected,setSelected]=useState<string|null>(null),[lastLoaded,setLastLoaded]=useState<Date|null>(null),[loadedRange,setLoadedRange]=useState<{from:Date;to:Date}|null>(null),[laterOutcomes,setLaterOutcomes]=useState<Event[]>([]);
   const requestIdRef=useRef(0);
   useEffect(()=>{try{localStorage.setItem(LS_KEY,JSON.stringify({preset,tab}));}catch{/* ignore */}},[preset,tab]);
-  const range=useMemo(()=>rangeFor(preset,customFrom,customTo),[preset,customFrom,customTo]);
+  const range=useMemo(()=>rangeFor(preset,customFrom,customTo),[preset,customFrom,customTo,reload]);
   const periodMs=Math.max(1,range.to.getTime()-range.from.getTime()+1);
   const previousRange=useMemo(()=>previousRangeFor(preset,range),[preset,range]);
 
