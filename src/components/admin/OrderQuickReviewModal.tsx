@@ -7,18 +7,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   X, ChevronLeft, ChevronRight, Copy, ExternalLink, Loader2,
   CheckCircle2, PhoneOff, RotateCcw, XCircle, Save, ArrowRight, ChevronDown,
   Search, Plus, Minus, Trash2, AlertTriangle, Check, GitMerge,
 } from "lucide-react";
-import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import { logSystemEvent } from "@/lib/systemEventService";
 import OrderActivityLog from "@/components/admin/OrderActivityLog";
-import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
-import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
 import { startSession, markAction, endSession, currentSessionId } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
 import CallButton from "@/components/admin/CallButton";
