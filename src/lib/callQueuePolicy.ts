@@ -162,7 +162,9 @@ export function autoEndAt(shift: ShiftLike, lastActivity: Date, now: Date, workE
   const last = new Date(Math.max(lastActivity.getTime(), new Date(shift.started_at).getTime()));
   const n = local(now);
   const previousDay = local(new Date(shift.started_at)).day < n.day;
-  const pastWorkEnd = n.minute > hm(workEnd) + 60;
+  // Only a shift started before the cutoff is "forgotten"; a late shift started after it stays open (idle rule still applies).
+  const cutoff = hm(workEnd) + 60;
+  const pastWorkEnd = n.minute > cutoff && local(new Date(shift.started_at)).minute <= cutoff;
   const idle = !shift.paused && now.getTime() - last.getTime() > AUTO_END_IDLE_MS;
   if (previousDay || pastWorkEnd || idle) return new Date(Math.min(last.getTime(), now.getTime()));
   return null;
