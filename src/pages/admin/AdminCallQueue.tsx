@@ -9,19 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle, Minus, Plus, Trash2,
+  Loader2, CheckCircle2, PhoneOff, RotateCcw, XCircle, Search, Play, Pause, Square, AlertTriangle,
 } from "lucide-react";
 import CallButton from "@/components/admin/CallButton";
-import EditableOrderFields from "@/components/admin/EditableOrderFields";
-import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
+import AddressFields, { useAddressFields } from "@/components/admin/order-review/AddressFields";
+import OrderItemsEditor from "@/components/admin/order-review/OrderItemsEditor";
+import PreviousOrdersPanel from "@/components/admin/order-review/PreviousOrdersPanel";
+import { persistOrderEdits } from "@/components/admin/order-review/persistOrderEdits";
+import CreateReturnModal from "@/components/admin/CreateReturnModal";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { startSession, endSession, markAction, currentSessionId } from "@/lib/operatorSession";
 import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "@/lib/callAttemptService";
 import { applyOrderCancelStock } from "@/lib/stockService";
-import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
-import { isTbilisiCity, splitDistrict } from "@/lib/tbilisiDistricts";
 import { tbilisiStartOfDay } from "@/lib/tbilisiTime";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
@@ -38,11 +39,11 @@ interface QOrder {
   address_line1: string; address_line2: string | null; raw_address: string | null; normalized_address: string | null;
   notes_customer: string | null; internal_note: string | null; normalization_confidence: number | null; review_required: boolean;
   subtotal: number; shipping_fee: number; discount_total: number; total: number;
-  call_attempt_count: number | null; operator_viewed_at: string | null; operator_review_status: string | null;
+  call_attempt_count: number | null; is_fulfilled: boolean | null; operator_viewed_at: string | null; operator_review_status: string | null;
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
 async function findOrder(term: string): Promise<{ id: string } | null> {
   const t = term.trim();
@@ -104,6 +105,19 @@ function QueueTab() {
   const [today, setToday] = useState({ count: 0, sum: 0 });
   const [shift, setShift] = useState<{ id: string; paused: boolean } | null>(null);
   const [search, setSearch] = useState("");
+  const [returnOpen, setReturnOpen] = useState(false);
+  const addr = useAddressFields();
+
+  /** Save address edits with the pop-up's diff rules; runs before every outcome. */
+  const saveEdits = async (): Promise<boolean> => {
+    if (!order) return false;
+    const updates = addr.collectUpdates(order);
+    if (Object.keys(updates).length === 0) return true;
+    const res = await persistOrderEdits(order.id, updates, actor);
+    if (!res.ok) { toast({ title: "შენახვა ვერ მოხერხდა", description: res.error, variant: "destructive" }); return false; }
+    setOrder({ ...order, ...(updates as Partial<QOrder>) });
+    return true;
+  };
 
   const loadToday = useCallback(async () => {
     const { data } = await supabase.from("order_events").select("order_id")
@@ -139,6 +153,7 @@ function QueueTab() {
       if (!res.order_id) { setOrder(null); setEmpty(true); return; }
       const o = await fetchOrder(res.order_id);
       setOrder(o);
+      if (o) addr.reset(o);
       if (o) {
         // Same as OrderQuickReviewModal on open
         supabase.from("order_events").insert({ order_id: o.id, actor, event_type: "order_opened", payload: {} as any });
@@ -155,9 +170,8 @@ function QueueTab() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStore, actor, fetchOrder, toast]);
-
-  const reload = useCallback(async () => { if (order) setOrder(await fetchOrder(order.id)); }, [order, fetchOrder]);
 
   /** After any action: release lock (also sets queue_last_touched_by) and load the next order. */
   const finish = async (id: string, outcome: string) => {
@@ -172,12 +186,10 @@ function QueueTab() {
 
   const onConfirm = async () => {
     if (!order) return;
-    const addr = order.normalized_address || order.address_line1 || "";
-    if (isTbilisiCity(order.normalized_city || order.city || "") && !splitDistrict(addr).district.trim()) {
-      toast({ title: "მიუთითეთ რაიონი", description: "თბილისის შეკვეთისთვის რაიონი სავალდებულოა.", variant: "destructive" });
-      return;
-    }
+    const v = addr.validateForConfirm();
+    if (!v.ok) { toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" }); return; }
     setBusy(true);
+    if (!(await saveEdits())) { setBusy(false); return; }
     const ok = await confirmOrderFromQueue(order, actor, currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "ვერ შეინახა", variant: "destructive" }); return; }
@@ -188,6 +200,7 @@ function QueueTab() {
   const onNoAnswer = async () => {
     if (!order) return;
     setBusy(true);
+    if (!(await saveEdits())) { setBusy(false); return; }
     try {
       const sid = currentSessionId();
       const rec = await recordNoAnswerAttempt(order.id, actor, "call_queue", sid);
@@ -211,6 +224,7 @@ function QueueTab() {
   const onCallback = async (whenIso: string) => {
     if (!order) return;
     setBusy(true);
+    if (!(await saveEdits())) { setBusy(false); return; }
     const ok = await scheduleCallback(order.id, actor, whenIso, "call_queue", currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
@@ -223,6 +237,7 @@ function QueueTab() {
   const onCancel = async (reason: CancelReason, note: string | null) => {
     if (!order) return;
     setBusy(true);
+    if (!(await saveEdits())) { setBusy(false); return; }
     const ok = await cancelOrderWithReason(order.id, actor, reason, note, Number(order.call_attempt_count || 0), undefined, "call_queue", currentSessionId());
     if (ok) await applyOrderCancelStock(order.id, restoreStock);
     setBusy(false);
@@ -231,39 +246,6 @@ function QueueTab() {
     setCancelOpen(false);
     toast({ title: "შეკვეთა გაუქმდა" });
     await finish(order.id, "cancelled");
-  };
-
-  // Item edits — same writes as OrderQuickReviewModal
-  const refreshTotals = async () => {
-    if (!order) return;
-    const { data: items } = await supabase.from("order_items").select("line_total").eq("order_id", order.id);
-    const sub = ((items as any[]) || []).reduce((s, i) => s + Number(i.line_total), 0);
-    const total = sub + Number(order.shipping_fee || 0) - Number(order.discount_total || 0);
-    await supabase.from("orders").update({ subtotal: sub, total }).eq("id", order.id);
-    await reload();
-  };
-  const changeQty = async (item: QItem, next: number) => {
-    if (!order || next < 1) return;
-    let base = Number(item.unit_price);
-    const { data: prod } = await supabase.from("products").select("price").eq("sku", item.sku).limit(1).maybeSingle();
-    if (prod?.price != null) base = Number(prod.price);
-    const { error } = await supabase.from("order_items").update({
-      quantity: next, line_total: getTieredLineTotal(base, next, item.sku), unit_price: getTieredUnitPrice(base, next, item.sku),
-    }).eq("id", item.id);
-    if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
-    await supabase.from("order_events").insert({ order_id: order.id, actor, event_type: "item_quantity_change",
-      payload: { item_id: item.id, sku: item.sku, from: item.quantity, to: next } as any });
-    markAction("item_quantity_change");
-    await refreshTotals();
-  };
-  const removeItem = async (item: QItem) => {
-    if (!order || !confirm(`${item.title} — წავშალო შეკვეთიდან?`)) return;
-    const { error } = await supabase.from("order_items").delete().eq("id", item.id);
-    if (error) { toast({ title: "Failed", variant: "destructive" }); return; }
-    await supabase.from("order_events").insert({ order_id: order.id, actor, event_type: "item_removed",
-      payload: { item_id: item.id, sku: item.sku, title: item.title } as any });
-    markAction("item_removed");
-    await refreshTotals();
   };
 
   const shiftAction = async (a: "start" | "pause" | "end") => {
@@ -323,6 +305,7 @@ function QueueTab() {
               <div className="text-2xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
             </div>
           </div>
+          <PreviousOrdersPanel key={order.id} order={order} currentSkus={order.order_items.map((i) => i.sku)} actor={actor} accordion />
           <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-12 text-base" />
 
           {(order.notes_customer || order.internal_note) && (
@@ -332,28 +315,16 @@ function QueueTab() {
             </div>
           )}
 
-          <EditableOrderFields key={order.id} orderId={order.id} order={order} actor={actor} onSaved={reload} />
+          <AddressFields state={addr} order={order} />
 
-          <div className="space-y-2">
-            {order.order_items.map((it) => (
-              <div key={it.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
-                {it.image_url && <img src={it.image_url} alt="" className="w-12 h-12 rounded object-cover" />}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{it.title}</div>
-                  <div className="text-xs text-muted-foreground">{it.sku} · {Number(it.line_total).toFixed(2)} ₾</div>
-                </div>
-                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => changeQty(it, it.quantity - 1)} disabled={it.quantity <= 1}><Minus className="w-3 h-3" /></Button>
-                <span className="w-6 text-center font-bold">{it.quantity}</span>
-                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => changeQty(it, it.quantity + 1)}><Plus className="w-3 h-3" /></Button>
-                {order.order_items.length > 1 && (
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeItem(it)}><Trash2 className="w-3 h-3" /></Button>
-                )}
-              </div>
-            ))}
-            <LandingQtyDiscountActions orderId={order.id} actor={actor} disabled={busy}
-              items={order.order_items.map((i) => ({ id: i.id, sku: i.sku, title: i.title, quantity: i.quantity, unit_price: i.unit_price, line_total: i.line_total }))}
-              onApplied={reload} />
-          </div>
+          <OrderItemsEditor
+            key={order.id}
+            order={order}
+            actor={actor}
+            saving={busy}
+            onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
+            onCreateReturn={() => setReturnOpen(true)}
+          />
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Button disabled={busy} onClick={onConfirm} className="h-14 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1"><CheckCircle2 className="w-5 h-5" /> დადასტურდა</Button>
@@ -371,6 +342,15 @@ function QueueTab() {
         hiddenReasons={["no_answer_after_attempts"]} minOtherNoteLength={5}
       />
       <CallbackPickerModal open={callbackOpen} submitting={busy} onCancel={() => setCallbackOpen(false)} onConfirm={onCallback} />
+      {order && (
+        <CreateReturnModal
+          open={returnOpen}
+          orderId={order.id}
+          actor={actor}
+          onClose={() => setReturnOpen(false)}
+          onCreated={() => toast({ title: "დაბრუნება შექმნილია ✓" })}
+        />
+      )}
     </div>
   );
 }
