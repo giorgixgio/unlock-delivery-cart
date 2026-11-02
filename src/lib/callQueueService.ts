@@ -13,11 +13,17 @@ export interface CallQueueSettings {
   work_start: string;
   work_end: string;
   lock_minutes: number;
+  operators_use_queue: boolean;
+  night_from: string;
+  night_to: string;
+  night_first_call_after: string;
+  night_retry_slot: string;
 }
 
 export const DEFAULT_CALL_QUEUE_SETTINGS: CallQueueSettings = {
   enabled_operators: [], manager_emails: ["eto@bigmart.ge"], retry_gap_minutes: 120,
   max_attempts: 3, work_start: "10:00", work_end: "21:00", lock_minutes: 10,
+  operators_use_queue: false, night_from: "00:00", night_to: "07:00", night_first_call_after: "12:00", night_retry_slot: "18:00",
 };
 
 const TEST_KEY = "callQueueTestMode";
@@ -35,7 +41,17 @@ const db = supabase as any;
 
 export async function fetchCallQueueSettings(): Promise<CallQueueSettings> {
   const { data } = await db.from("call_queue_settings").select("*").eq("id", true).maybeSingle();
-  return { ...DEFAULT_CALL_QUEUE_SETTINGS, ...(data || {}) };
+  const s = { ...DEFAULT_CALL_QUEUE_SETTINGS, ...(data || {}) };
+  settingsCache = { at: Date.now(), value: s };
+  return s;
+}
+
+export const SETTINGS_CACHE_MS = 60_000;
+let settingsCache: { at: number; value: CallQueueSettings } | null = null;
+/** Settings with a short cache so routing changes apply without a redeploy (max 60 s stale). */
+export async function fetchCallQueueSettingsCached(maxAgeMs = SETTINGS_CACHE_MS): Promise<CallQueueSettings> {
+  if (settingsCache && Date.now() - settingsCache.at < maxAgeMs) return settingsCache.value;
+  return fetchCallQueueSettings();
 }
 
 export async function saveCallQueueSettings(patch: Partial<CallQueueSettings>, actor: string): Promise<boolean> {
@@ -43,6 +59,7 @@ export async function saveCallQueueSettings(patch: Partial<CallQueueSettings>, a
   const { error } = await db.from("call_queue_settings").upsert({
     id: true, ...current, ...patch, updated_at: new Date().toISOString(), updated_by: actor,
   });
+  settingsCache = null;
   return !error;
 }
 
@@ -62,6 +79,7 @@ export interface QueueStats {
   fresh_waiting: number; callbacks_due: number; retries_due: number;
   retries_later_today: number; retries_tomorrow: number; locked_now: number;
   oldest_fresh_seconds: number | null;
+  night_waiting?: number;
 }
 export const queueStats = (store: string) => rpc<QueueStats>("call_queue_stats", { p_store: store });
 export const queueTeamLocks = () =>

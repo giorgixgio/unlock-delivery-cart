@@ -58,3 +58,47 @@ describe("queue priority", () => {
     expect(queueTier({ ...base, is_confirmed: true }, me, now)).toBeNull();
   });
 });
+
+describe("night leads", () => {
+  const tb2 = (day: string, hhmm: string) => new Date(`${day}T${hhmm}:00+04:00`);
+  const base = { id: "n", status: "new", call_attempt_count: 0 };
+  it("lead at 02:30 is not eligible at 10:15, eligible at 12:00", () => {
+    const o = { ...base, created_at: tb2("2026-11-03", "02:30").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:15"))).toBeNull();
+    expect(queueTier(o, "op", tb2("2026-11-03", "12:00"))).toBe(2);
+  });
+  it("first no-answer at 12:30 retries at 18:00", () => {
+    const r = computeRetry(1, tb2("2026-11-03", "12:30"), tb2("2026-11-03", "12:30"), undefined, 0, tb2("2026-11-03", "02:30"));
+    expect(r).toEqual({ action: "retry", at: tb2("2026-11-03", "18:00") });
+  });
+  it("after 18:00 the normal rule applies", () => {
+    const r = computeRetry(1, tb2("2026-11-03", "18:30"), tb2("2026-11-03", "18:30"), undefined, 0, tb2("2026-11-03", "02:30"));
+    expect(r).toEqual({ action: "retry", at: tb2("2026-11-03", "20:30") });
+  });
+  it("lead at 22:00 is eligible at 10:00 next day", () => {
+    const o = { ...base, created_at: tb2("2026-11-02", "22:00").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:00"))).toBe(2);
+  });
+  it("lead at 08:00 is normal", () => {
+    const o = { ...base, created_at: tb2("2026-11-03", "08:00").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:00"))).toBe(2);
+  });
+});
+
+import { isQueueOnlyOperator, queueOnlyRedirect } from "@/lib/adminPermissions";
+describe("master switch routing", () => {
+  const on = { operators_use_queue: true, manager_emails: ["eto@bigmart.ge"] };
+  it("plain operators are queue-only only when the switch is on", () => {
+    expect(isQueueOnlyOperator("operator", "a@x.ge", on)).toBe(true);
+    expect(isQueueOnlyOperator("operator", "a@x.ge", { ...on, operators_use_queue: false })).toBe(false);
+  });
+  it("managers and admins keep Orders", () => {
+    expect(isQueueOnlyOperator("operator", "ETO@bigmart.ge", on)).toBe(false);
+    expect(isQueueOnlyOperator("admin", "a@x.ge", on)).toBe(false);
+  });
+  it("orders list redirects, single order stays", () => {
+    expect(queueOnlyRedirect("/admin/orders", true)).toBe("/admin/call-queue");
+    expect(queueOnlyRedirect("/admin/orders/abc", true)).toBeNull();
+    expect(queueOnlyRedirect("/admin/orders", false)).toBeNull();
+  });
+});
