@@ -49,3 +49,24 @@ describe("buildSnapshot", () => {
     expect(s.actor).toBe("op");
   });
 });
+
+describe("undo bar timing", () => {
+  it("shows the bar for 15 seconds, well under the 5-minute undo window", () => {
+    expect(UNDO_TOAST_MS).toBe(15_000);
+    expect(UNDO_TOAST_MS).toBeLessThan(UNDO_WINDOW_MS);
+  });
+  it("counts the bar from the real action moment, not the backdated snapshot", () => {
+    const takenAt = new Date(T0).toISOString();
+    // Snapshot time is backdated, so the bar must last the full ttl from when the operator acted.
+    expect(undoBarDeadlineMs(takenAt) - (T0 + SNAPSHOT_BACKDATE_MS)).toBe(UNDO_TOAST_MS);
+    expect(undoBarDeadlineMs(takenAt) - T0).toBe(SNAPSHOT_BACKDATE_MS + UNDO_TOAST_MS);
+  });
+  it("keeps the countdown line between 0 and 1", () => {
+    expect(undoBarFraction(UNDO_TOAST_MS)).toBe(1);
+    expect(undoBarFraction(UNDO_TOAST_MS / 2)).toBeCloseTo(0.5);
+    expect(undoBarFraction(0)).toBe(0);
+    expect(undoBarFraction(-5000)).toBe(0);
+    expect(undoBarFraction(999999)).toBe(1);
+  });
+});
+
