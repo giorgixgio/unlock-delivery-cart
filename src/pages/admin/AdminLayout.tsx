@@ -106,8 +106,11 @@ const AdminLayout = () => {
     </span>
   );
 
+  const OPERATOR_HIDDEN_GROUPS = ["Warehouse", "Courier", "Catalog", "Wholesale", "System"];
+  const isOperator = role === "operator";
   const visibleGroups = navGroups
-    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(callQueue.queueOnly && n.to === "/admin/orders")) }))
+    .filter((g) => !(isOperator && OPERATOR_HIDDEN_GROUPS.includes(g.label)))
+    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(callQueue.queueOnly && n.to === "/admin/orders") && !(isOperator && n.to === "/admin/dashboard")) }))
     .filter((g) => g.items.length > 0);
 
   const activeGroup =
