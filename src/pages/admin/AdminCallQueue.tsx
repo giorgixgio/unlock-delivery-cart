@@ -460,7 +460,7 @@ function QueueTab() {
     return () => window.removeEventListener("keydown", h);
   }, []);
 
-  const showUndoBar = !!lastAction && now - new Date(lastAction.takenAt).getTime() < UNDO_TOAST_MS + 15000;
+  const showUndoBar = !!lastAction && (barRemaining > 0 || undoing);
   const itemCount = order?.order_items.reduce((s, i) => s + Number(i.quantity || 0), 0) ?? 0;
 
   const UndoButton = ({ className = "" }: { className?: string }) => (
@@ -610,14 +610,21 @@ function QueueTab() {
       )}
 
       {showUndoBar && lastAction && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md rounded-xl border border-border bg-foreground text-background shadow-xl px-3 py-2 flex items-center gap-2 ${order ? "bottom-56 lg:bottom-6" : "bottom-6"}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-md rounded-xl border border-border bg-foreground text-background shadow-xl px-3 py-2 flex items-center gap-2 overflow-hidden ${order ? "bottom-56 lg:bottom-6" : "bottom-6"}`}>
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span className="text-sm font-semibold truncate">Saved: {OUTCOME_LABEL[lastAction.outcome]} · #{lastAction.orderNumber}</span>
           <Button size="sm" variant="secondary" className="ml-auto h-8" disabled={!undoCheck.ok || undoing} title={undoCheck.ok ? undefined : undoCheck.reason} onClick={doUndo}>
             {undoing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Undo"}
           </Button>
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-background/20">
+            <div
+              className="h-full bg-emerald-400 transition-[width] duration-100 ease-linear"
+              style={{ width: `${undoBarFraction(barRemaining) * 100}%` }}
+            />
+          </div>
         </div>
       )}
+
 
       <AlertDialog open={pendingShift !== null} onOpenChange={(o) => !o && setPendingShift(null)}>
         <AlertDialogContent>
