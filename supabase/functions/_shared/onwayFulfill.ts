@@ -1,7 +1,7 @@
 // Finish an Onway API send exactly like Excel export + Mass Fulfill:
 // label/zone/date + courier_export event, one import batch with staging rows,
 // then the same bulk_fulfill_orders RPC (run as the signed-in admin).
-import { buildZoneMap, canFinalize, courierLabelText, tbilisiDateIso, zoneForOrder } from "./courierLabel.ts";
+import { buildZoneMap, canFinalize, courierLabelText, renameBatchCount, tbilisiDateIso, zoneForOrder } from "./courierLabel.ts";
 
 export interface FinalizeEntry {
   order: any; tag: string; tracking: string;
@@ -15,7 +15,7 @@ export interface FinalizeResult {
 
 export async function finalizeOnwaySent(
   supabase: any, userClient: any, entries: FinalizeEntry[], binBySku: Record<string, string>,
-  opts: { fileName: string; actor: string; appendToExisting?: boolean },
+  opts: { fileName: string; actor: string; appendToExisting?: boolean; batchId?: string | null },
 ): Promise<FinalizeResult> {
   const out: FinalizeResult = { batch_id: null, file_name: opts.fileName, fulfilled_ids: [], skipped_ids: [], failed: [] };
   if (!entries.length) return out;
@@ -53,7 +53,17 @@ export async function finalizeOnwaySent(
 
   // 2) Batch (new, or append for review decisions).
   let batchId: string | null = null; let startRow = 0;
-  if (opts.appendToExisting) {
+  if (opts.batchId) {
+    // Later chunk of the same send: append rows, continue row numbers, update totals and name.
+    const { data: existing } = await supabase.from("import_batches").select("id, total_rows, file_name").eq("id", opts.batchId).eq("store", "B").maybeSingle();
+    if (existing) {
+      batchId = existing.id; startRow = Number(existing.total_rows || 0);
+      const total = startRow + todo.length;
+      const name = renameBatchCount(String(existing.file_name || opts.fileName), total);
+      out.file_name = name;
+      await supabase.from("import_batches").update({ total_rows: total, matched: total, status: "applying", file_name: name }).eq("id", batchId);
+    }
+  } else if (opts.appendToExisting) {
     const { data: existing } = await supabase.from("import_batches").select("id, total_rows").eq("file_name", opts.fileName).eq("store", "B").order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (existing) {
       batchId = existing.id; startRow = Number(existing.total_rows || 0);
@@ -80,7 +90,7 @@ export async function finalizeOnwaySent(
   try {
     const { data, error } = await userClient.rpc("bulk_fulfill_orders", {
       p_rows: todo.map((e) => ({ order_id: e.order.id, tracking_number: e.tracking, order_ref: e.order.public_order_number })),
-      p_batch_id: batchId, p_source_file: opts.fileName, p_actor: opts.actor,
+      p_batch_id: batchId, p_source_file: out.file_name || opts.fileName, p_actor: opts.actor,
     });
     if (error) throw error;
     const r = Array.isArray(data) ? data[0] : data;

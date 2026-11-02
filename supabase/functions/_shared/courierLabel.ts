@@ -57,3 +57,14 @@ export function canFinalize(order: { id: string; is_fulfilled?: boolean | null }
 export function sentViaApi(order: { onway_api_status?: string | null; onway_tracking?: string | null }): boolean {
   return order.onway_api_status === "sent" || order.onway_api_status === "unclear" || !!String(order.onway_tracking || "").trim();
 }
+
+/** Max orders one real-send request may contain (keeps each request well inside the edge time limit). */
+export const ONWAY_MAX_SEND_PER_REQUEST = 40;
+/** Rewrite the trailing "<n> orders" of an API batch name after more chunks were appended. */
+export const renameBatchCount = (name: string, total: number) =>
+  /· \d+ orders$/.test(name) ? name.replace(/· \d+ orders$/, `· ${total} orders`) : name;
+/** Prefer the tag the client took from the full-selection dry run, so later chunks never renumber. */
+export const pickTag = (orderId: string, computed: string, tags?: Record<string, string> | null) => {
+  const t = tags?.[orderId];
+  return t && /^(S-\d{4}|R\d{2}-\d{2})$/.test(t) ? t : computed;
+};
