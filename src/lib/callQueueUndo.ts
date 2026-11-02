@@ -38,7 +38,7 @@ export interface UndoOrderState {
   touchedByOther: boolean;
 }
 
-export type UndoCheck = { ok: true } | { ok: false; reason: string };
+export type UndoCheck = { ok: true; reason?: undefined } | { ok: false; reason: string };
 
 export function buildSnapshot(order: Record<string, unknown>, outcome: QueueOutcome, actor: string, takenAt: string) {
   const snap: Record<string, unknown> = { outcome, actor, taken_at: takenAt };
