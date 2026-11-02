@@ -246,7 +246,7 @@ function QueueTab() {
     if (!order) return null;
     const src = await fetchUndoSnapshotSource(order.id);
     if (!src) return null;
-    const takenAt = new Date(Date.now() - 15000).toISOString();
+    const takenAt = new Date(Date.now() - SNAPSHOT_BACKDATE_MS).toISOString();
     return { orderId: order.id, orderNumber: order.public_order_number, outcome, actor, takenAt, snapshot: buildSnapshot(src, outcome, actor, takenAt) };
   };
 
@@ -266,6 +266,23 @@ function QueueTab() {
     const t = setTimeout(() => setNow(Date.now()), Math.max(0, ms + 50));
     return () => clearTimeout(t);
   }, [lastAction]);
+
+  // The bottom bar ticks fast enough for its countdown line to move smoothly.
+  const barDeadline = lastAction ? undoBarDeadlineMs(lastAction.takenAt) : 0;
+  const [barNow, setBarNow] = useState(Date.now());
+  useEffect(() => {
+    if (!lastAction) return;
+    setBarNow(Date.now());
+    if (Date.now() >= barDeadline) return;
+    const t = setInterval(() => {
+      const n = Date.now();
+      setBarNow(n);
+      if (n >= barDeadline) clearInterval(t);
+    }, 100);
+    return () => clearInterval(t);
+  }, [lastAction, barDeadline]);
+  const barRemaining = Math.max(0, barDeadline - barNow);
+
 
   /** After any action: release lock (also sets queue_last_touched_by) and load the next order. */
   const finish = async (id: string, outcome: string, action: UndoAction | null) => {
