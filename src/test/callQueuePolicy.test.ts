@@ -60,28 +60,27 @@ describe("queue priority", () => {
 });
 
 describe("night leads", () => {
-  const { computeRetry, queueTier } = await_import();
-  const tb = (day: string, hhmm: string) => new Date(`${day}T${hhmm}:00+04:00`);
+  const tb2 = (day: string, hhmm: string) => new Date(`${day}T${hhmm}:00+04:00`);
   const base = { id: "n", status: "new", call_attempt_count: 0 };
   it("lead at 02:30 is not eligible at 10:15, eligible at 12:00", () => {
-    const o = { ...base, created_at: tb("2026-11-03", "02:30").toISOString() };
-    expect(queueTier(o, "op", tb("2026-11-03", "10:15"))).toBeNull();
-    expect(queueTier(o, "op", tb("2026-11-03", "12:00"))).toBe(2);
+    const o = { ...base, created_at: tb2("2026-11-03", "02:30").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:15"))).toBeNull();
+    expect(queueTier(o, "op", tb2("2026-11-03", "12:00"))).toBe(2);
   });
   it("first no-answer at 12:30 retries at 18:00", () => {
-    const r = computeRetry(1, tb("2026-11-03", "12:30"), tb("2026-11-03", "12:30"), undefined, 0, tb("2026-11-03", "02:30"));
-    expect(r).toEqual({ action: "retry", at: tb("2026-11-03", "18:00") });
+    const r = computeRetry(1, tb2("2026-11-03", "12:30"), tb2("2026-11-03", "12:30"), undefined, 0, tb2("2026-11-03", "02:30"));
+    expect(r).toEqual({ action: "retry", at: tb2("2026-11-03", "18:00") });
   });
   it("after 18:00 the normal rule applies", () => {
-    const r = computeRetry(1, tb("2026-11-03", "18:30"), tb("2026-11-03", "18:30"), undefined, 0, tb("2026-11-03", "02:30"));
-    expect(r).toEqual({ action: "retry", at: tb("2026-11-03", "20:30") });
+    const r = computeRetry(1, tb2("2026-11-03", "18:30"), tb2("2026-11-03", "18:30"), undefined, 0, tb2("2026-11-03", "02:30"));
+    expect(r).toEqual({ action: "retry", at: tb2("2026-11-03", "20:30") });
   });
   it("lead at 22:00 is eligible at 10:00 next day", () => {
-    const o = { ...base, created_at: tb("2026-11-02", "22:00").toISOString() };
-    expect(queueTier(o, "op", tb("2026-11-03", "10:00"))).toBe(2);
+    const o = { ...base, created_at: tb2("2026-11-02", "22:00").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:00"))).toBe(2);
   });
   it("lead at 08:00 is normal", () => {
-    const o = { ...base, created_at: tb("2026-11-03", "08:00").toISOString() };
-    expect(queueTier(o, "op", tb("2026-11-03", "10:00"))).toBe(2);
+    const o = { ...base, created_at: tb2("2026-11-03", "08:00").toISOString() };
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:00"))).toBe(2);
   });
 });
