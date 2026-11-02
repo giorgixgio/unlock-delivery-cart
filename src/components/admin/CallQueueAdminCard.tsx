@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ export default function CallQueueAdminCard() {
   const { toast } = useToast();
   const [testMode, setTestMode] = useState(getCallQueueTestMode());
   const [settings, setSettings] = useState<CallQueueSettings | null>(null);
-  const [operators, setOperators] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [masterAsk, setMasterAsk] = useState<boolean | null>(null);
   const [night, setNight] = useState({ night_from: "", night_to: "", night_first_call_after: "", night_retry_slot: "" });
@@ -33,26 +31,11 @@ export default function CallQueueAdminCard() {
   useEffect(() => {
     if (role !== "admin") return;
     fetchCallQueueSettings().then(setSettings).catch(() => {});
-    supabase.from("admin_users").select("email, role, is_active").eq("role", "operator").eq("is_active", true)
-      .then(({ data }) => setOperators(((data as any[]) || []).map((r) => r.email).filter(Boolean).sort()));
   }, [role]);
 
   if (role !== "admin") return null;
 
   const toggleTest = (on: boolean) => { setCallQueueTestMode(on); setTestMode(on); };
-
-  const toggleOperator = async (email: string, on: boolean) => {
-    if (!settings) return;
-    setBusy(email);
-    const lower = email.toLowerCase();
-    const list = settings.enabled_operators.filter((e) => e.toLowerCase() !== lower);
-    if (on) list.push(email);
-    const ok = await saveCallQueueSettings({ enabled_operators: list }, user?.email || "admin");
-    setBusy(null);
-    if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
-    setSettings({ ...settings, enabled_operators: list });
-    setCallQueueTestMode(getCallQueueTestMode()); // notify listeners to refetch
-  };
 
   const saveMaster = async (on: boolean) => {
     if (!settings) return;
@@ -84,7 +67,7 @@ export default function CallQueueAdminCard() {
           <Headphones className="w-4 h-4" />
           <div>
             <div className="text-sm font-bold">Call Queue (test)</div>
-            <div className="text-xs text-muted-foreground">Off by default. Only affects people switched on here.</div>
+            <div className="text-xs text-muted-foreground">Operators get orders only after pressing Start shift.</div>
           </div>
         </div>
         <label className="flex items-center gap-2 text-xs font-semibold">
@@ -103,21 +86,6 @@ export default function CallQueueAdminCard() {
           <div className="text-xs text-muted-foreground">On: every operator (not managers/admins) works only from the queue; Orders list hidden for them.</div>
         </div>
         <Switch checked={!!settings?.operators_use_queue} disabled={!settings || busy === "master"} onCheckedChange={(v) => setMasterAsk(v)} />
-      </div>
-      <div className="mt-3 border-t border-border pt-2 space-y-1.5">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">
-          Operators {settings?.operators_use_queue && <span className="normal-case font-normal">(ignored while the switch above is on)</span>}
-        </div>
-        {operators.length === 0 && <div className="text-xs text-muted-foreground">No active operators.</div>}
-        {operators.map((email) => {
-          const on = !!settings?.enabled_operators.some((e) => e.toLowerCase() === email.toLowerCase());
-          return (
-            <div key={email} className="flex items-center justify-between gap-2 text-sm">
-              <span className="truncate">{email}</span>
-              <Switch checked={on} disabled={!settings || busy === email} onCheckedChange={(v) => toggleOperator(email, v)} />
-            </div>
-          );
-        })}
       </div>
       <div className="mt-3 border-t border-border pt-2 space-y-2">
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">Night leads (Tbilisi time)</div>

@@ -70,7 +70,9 @@ const rpc = async <T,>(fn: string, args?: Record<string, unknown>): Promise<T> =
 };
 
 export const queueNext = (store: string) =>
-  rpc<{ order_id: string | null; resumed?: boolean; locked_until?: string }>("call_queue_next", { p_store: store });
+  rpc<{ order_id: string | null; resumed?: boolean; locked_until?: string; error?: "not_on_shift" | "paused" }>("call_queue_next", { p_store: store });
+export const queueShiftStart = () => rpc<{ id: string; resumed: boolean }>("call_queue_shift_start");
+export const queueAutoEndShifts = () => rpc<number>("call_queue_autoend_shifts");
 export const queueRelease = (orderId: string) => rpc<void>("call_queue_release", { p_order_id: orderId });
 export const queueScheduleRetry = (orderId: string) =>
   rpc<{ action: "retry" | "cancel"; next_call_after?: string; attempt_count: number; max_attempts: number }>(
