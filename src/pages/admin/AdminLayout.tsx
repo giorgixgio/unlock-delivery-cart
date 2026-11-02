@@ -12,6 +12,8 @@ import DefaultStorePicker from "@/components/admin/DefaultStorePicker";
 import CallSyncPanels from "@/components/admin/CallSyncPanels";
 import { useCourierAlertBadge } from "@/hooks/useCourierAlertBadge";
 import { useCallSync } from "@/hooks/useCallSync";
+import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
+import { Headphones } from "lucide-react";
 
 const navGroups = [
   {
@@ -95,6 +97,7 @@ const AdminLayout = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data: alertCount } = useCourierAlertBadge();
   const callSync = useCallSync(user?.id);
+  const callQueue = useCallQueueAccess();
 
   const callSyncBadge = (
     <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -132,6 +135,20 @@ const AdminLayout = () => {
         <ToggleStore className="mt-3 w-full" compact />
       </div>
       <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2">
+        {callQueue.allowed && (
+          <NavLink
+            to="/admin/call-queue"
+            onClick={() => setSheetOpen(false)}
+            className={({ isActive }) =>
+              `mb-1 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+                isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+              }`
+            }
+          >
+            <Headphones className="w-4 h-4 shrink-0" />
+            Call Queue
+          </NavLink>
+        )}
         <Accordion type="multiple" defaultValue={activeGroup ? [activeGroup] : []} className="space-y-1">
           {visibleGroups.map((group) => (
             <AccordionItem key={group.label} value={group.label} className="border-0">
