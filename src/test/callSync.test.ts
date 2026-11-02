@@ -41,3 +41,37 @@ describe("shouldReactToCall", () => {
     expect(shouldReactToCall({ device_id: "dev-2", created_at: edge }, "dev-1", now)).toBe(true);
   });
 });
+
+import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice, OPEN_TEL_PREF_KEY } from "@/lib/callSync";
+import { beforeEach } from "vitest";
+
+describe("isDesktopDevice", () => {
+  it("true for no-touch fine pointer ≥1024", () => {
+    expect(isDesktopDevice({ maxTouchPoints: 0, pointerFine: true, width: 1280 })).toBe(true);
+  });
+  it("false with touch points", () => {
+    expect(isDesktopDevice({ maxTouchPoints: 5, pointerFine: true, width: 1280 })).toBe(false);
+  });
+  it("false for coarse pointer", () => {
+    expect(isDesktopDevice({ maxTouchPoints: 0, pointerFine: false, width: 1280 })).toBe(false);
+  });
+  it("false under 1024 wide", () => {
+    expect(isDesktopDevice({ maxTouchPoints: 0, pointerFine: true, width: 1023 })).toBe(false);
+  });
+});
+
+describe("openTelOnThisDevice preference", () => {
+  beforeEach(() => window.localStorage.removeItem(OPEN_TEL_PREF_KEY));
+  it("defaults false on desktop", () => {
+    expect(getOpenTelOnThisDevice(true)).toBe(false);
+  });
+  it("defaults true on phones", () => {
+    expect(getOpenTelOnThisDevice(false)).toBe(true);
+  });
+  it("stored value overrides default", () => {
+    setOpenTelOnThisDevice(true);
+    expect(getOpenTelOnThisDevice(true)).toBe(true);
+    setOpenTelOnThisDevice(false);
+    expect(getOpenTelOnThisDevice(false)).toBe(false);
+  });
+});
