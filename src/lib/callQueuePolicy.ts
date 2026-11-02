@@ -11,10 +11,15 @@ export interface QueuePolicySettings {
   maxAttempts: number;
   workStart: string; // "HH:MM"
   workEnd: string;   // "HH:MM"
+  nightFrom?: string;
+  nightTo?: string;
+  nightFirstCallAfter?: string;
+  nightRetrySlot?: string;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
   retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00",
+  nightFrom: "00:00", nightTo: "07:00", nightFirstCallAfter: "12:00", nightRetrySlot: "18:00",
 };
 
 const hm = (s: string) => { const [h, m] = s.split(":").map(Number); return h * 60 + (m || 0); };
@@ -25,6 +30,20 @@ function local(d: Date) {
 }
 const atLocal = (day: number, minute: number) => new Date(day * 86400000 + minute * 60000 - TBILISI_OFFSET_MS);
 
+/** Order created inside [nightFrom, nightTo) Tbilisi time (window may wrap past midnight). ↔ call_queue_is_night */
+export function isNightLead(createdAt: Date, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS): boolean {
+  const from = hm(s.nightFrom ?? "00:00"), to = hm(s.nightTo ?? "07:00"), m = local(createdAt).minute;
+  return from <= to ? m >= from && m < to : m >= from || m < to;
+}
+
+/** When a fresh night lead becomes eligible, or null if it is not a night lead. ↔ call_queue_night_held */
+export function nightReleaseAt(createdAt: Date, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS): Date | null {
+  if (!isNightLead(createdAt, s)) return null;
+  const from = hm(s.nightFrom ?? "00:00"), to = hm(s.nightTo ?? "07:00"), c = local(createdAt);
+  const day = from > to && c.minute >= from ? c.day + 1 : c.day;
+  return atLocal(day, hm(s.nightFirstCallAfter ?? "12:00"));
+}
+
 export type RetryDecision = { action: "retry"; at: Date } | { action: "cancel" };
 
 /**
@@ -33,10 +52,15 @@ export type RetryDecision = { action: "retry"; at: Date } | { action: "cancel" }
  */
 export function computeRetry(
   attemptCount: number, firstAttemptAt: Date, now: Date,
-  s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS, extraAttempts = 0,
+  s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS, extraAttempts = 0, createdAt?: Date,
 ): RetryDecision {
   if (attemptCount >= s.maxAttempts + extraAttempts) return { action: "cancel" };
   const n = local(now);
+  // Night lead, first no-answer: retry at nightRetrySlot today if it is still ahead.
+  if (attemptCount <= 1 && createdAt && isNightLead(createdAt, s)) {
+    const slot = atLocal(n.day, hm(s.nightRetrySlot ?? "18:00"));
+    if (slot.getTime() > now.getTime()) return { action: "retry", at: slot };
+  }
   const otherHalf = local(firstAttemptAt).hour < 14 ? 15 * 60 : 11 * 60;
   if (attemptCount <= 1) {
     const cand = new Date(now.getTime() + s.retryGapMinutes * 60000);
@@ -67,7 +91,10 @@ export interface QueueOrderLike {
 }
 
 /** 1 = my sticky callback, 2 = fresh, 3 = other callback, 4 = no-answer retry; null = not eligible now. */
-export function queueTier(o: QueueOrderLike, caller: string, now: Date, gapMinutes = DEFAULT_QUEUE_SETTINGS.retryGapMinutes): number | null {
+export function queueTier(
+  o: QueueOrderLike, caller: string, now: Date, gapMinutes = DEFAULT_QUEUE_SETTINGS.retryGapMinutes,
+  s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+): number | null {
   const t = now.getTime();
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!["new", "on_hold", "pending_bump"].includes(o.status)) return null;
@@ -78,6 +105,10 @@ export function queueTier(o: QueueOrderLike, caller: string, now: Date, gapMinut
   const lockUntil = ts(o.queue_locked_until);
   const me = caller.toLowerCase();
   if (lockUntil !== null && lockUntil > t && (o.queue_locked_by ?? "").toLowerCase() !== me) return null;
+  if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") {
+    const rel = nightReleaseAt(new Date(o.created_at), s);
+    if (rel && t < rel.getTime()) return null;
+  }
   if (o.call_outcome === "callback" && (o.queue_last_touched_by ?? "").toLowerCase() === me) return 1;
   if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") return 2;
   if (o.call_outcome === "callback") {
