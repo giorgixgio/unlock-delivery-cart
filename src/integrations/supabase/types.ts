@@ -3642,6 +3642,10 @@ export type Database = {
         }
         Returns: number
       }
+      call_queue_undo: {
+        Args: { p_event_ids: string[]; p_order_id: string; p_snapshot: Json }
+        Returns: Json
+      }
       camera_landing_stats: { Args: never; Returns: Json }
       camera_order_delivered: { Args: { p_order: string }; Returns: boolean }
       camera_review_feed: { Args: { p_preview?: boolean }; Returns: Json }
