@@ -1,5 +1,15 @@
 export const WORK_BREAK_MINUTES = 15;
 
+/** Accounts excluded from operator stats (same list as the Operator Stats page). */
+export const EXCLUDED_OPERATORS = ["info@bigmart.ge"];
+
+/** Upsell revenue of one item event — same formula as the Operator Stats page. */
+export function upsellDelta(e: { event_type: string; payload: any }): number {
+  if (e.event_type === "item_added") return Number(e.payload?.added_revenue ?? e.payload?.unit_price ?? 0) * Number(e.payload?.quantity ?? 1);
+  if (e.event_type === "item_quantity_change" || e.event_type === "landing_qty_discount") return Number(e.payload?.delta_total ?? 0);
+  return 0;
+}
+
 export interface TimedAction {
   operator: string;
   at: string;
