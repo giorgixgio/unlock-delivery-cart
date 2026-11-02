@@ -19,13 +19,21 @@ interface DryRun {
   skipped_already_sent: { order_id: string; order_number: string; onway_api_status: string | null }[];
   orders: DryRunOrder[];
 }
-interface SendResult { order_id: string; order_number: string; ok: boolean; tracking?: string | null; error?: string | null; http_status?: number | null }
+interface SendResult { order_id: string; order_number: string; ok: boolean; tracking?: string | null; error?: string | null; http_status?: number | null; fulfil_error?: string | null }
 
 async function callFn(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke("onway-create-shipments", { body });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
   return data;
+}
+
+export function sendSummary(d: { sent_count?: number; review_count?: number; fulfilled_count?: number; not_fulfilled_count?: number; batch_id?: string | null }): string {
+  const parts = [`${d.fulfilled_count || 0} sent & fulfilled`];
+  if (d.batch_id) parts.push("batch created in Courier Labels");
+  if (d.not_fulfilled_count) parts.push(`${d.not_fulfilled_count} sent but not fulfilled — fulfil manually`);
+  parts.push(`${d.review_count || 0} need review`);
+  return parts.join(" · ");
 }
 
 /** TrendMart-only Onway API sender. Always shows a dry-run preview before any real send. */
@@ -37,6 +45,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [batchLink, setBatchLink] = useState(false);
   const busy = useRef(false);
 
   const load = async () => {
@@ -55,7 +64,8 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
       const ids = orderIds ?? (orderId ? [orderId] : null);
       const data = await callFn({ dry_run: false, ...(ids ? { order_ids: ids } : {}) });
       setResults(data.results || []);
-      setSummary(`${data.sent_count || 0} sent, ${data.review_count || 0} need review`);
+      setSummary(sendSummary(data));
+      setBatchLink(!!data.batch_id);
       window.dispatchEvent(new Event("onway-batch-updated"));
       await load();
     } catch (e: any) { setErr(e?.message || String(e)); }
@@ -76,7 +86,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
         <p className="text-xs text-muted-foreground">Preview only until you press a send button. Orders already sent are skipped.</p>
 
         {err && <p className="text-sm text-destructive">{err}</p>}
-        {summary && <div role="alertdialog" aria-label="Onway batch result" className="border border-border bg-muted p-4 flex gap-3 justify-between items-center"><b>{summary}</b><Button variant="ghost" size="icon" aria-label="Dismiss result" onClick={() => setSummary(null)}><X className="w-4 h-4" /></Button></div>}
+        {summary && <div role="alertdialog" aria-label="Onway batch result" className="border border-border bg-muted p-4 flex gap-3 justify-between items-center"><div className="space-y-1"><b>{summary}</b>{batchLink && <div><a className="text-primary underline text-sm" href="/admin/courier-labels">Open Courier Labels</a></div>}</div><Button variant="ghost" size="icon" aria-label="Dismiss result" onClick={() => setSummary(null)}><X className="w-4 h-4" /></Button></div>}
         <Button variant="outline" disabled={sending || loading} onClick={async () => { setLoading(true); setErr(null); try { const {data,error}=await supabase.functions.invoke("onway-regions",{body:{}}); if(error || data?.error) throw error || new Error(data.error); await loadOnwayCities(true); await load(); } catch(e) { setErr(e instanceof Error?e.message:"City refresh failed"); } finally { setLoading(false); } }}>Refresh Onway cities</Button>
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
@@ -94,7 +104,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
                 <div className="font-bold">Send results</div>
                 {results.map((r) => (
                   <div key={r.order_id} className={r.ok ? "text-primary" : "text-destructive"}>
-                    #{r.order_number}: {r.ok ? `sent${r.tracking ? ` — ${r.tracking}` : ""}` : `failed — ${r.error || `HTTP ${r.http_status}`}`}
+                    #{r.order_number}: {r.ok ? `sent${r.tracking ? ` — ${r.tracking}` : ""}${r.fulfil_error ? ` · ${r.fulfil_error}` : ""}` : `failed — ${r.error || `HTTP ${r.http_status}`}`}
                   </div>
                 ))}
               </div>

@@ -61,6 +61,7 @@ interface ExportPreview {
   earliest: string | null;
   latest: string | null;
   totalSum: number;
+  api_sent_excluded?: number;
   orders?: OrderPreview[];
 }
 
@@ -319,6 +320,9 @@ const OrdersExportModal = ({ open, onClose }: OrdersExportModalProps) => {
                   <span className="text-muted-foreground">Total sum</span>
                   <span className="font-bold">{preview.totalSum.toFixed(1)} ₾</span>
                 </div>
+                {!!preview.api_sent_excluded && (
+                  <p className="text-xs text-muted-foreground">{preview.api_sent_excluded} already sent via API — not included</p>
+                )}
               </div>
 
               {preview.count === 0 ? (

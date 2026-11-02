@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildZoneMap, sentViaApi, zoneForOrder } from "../_shared/courierLabel.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,7 +114,10 @@ Deno.serve(async (req) => {
         .eq("status", "confirmed");
     }
 
-    const { data: ordersRaw, error: ordersErr } = await query;
+    const { data: ordersFetched, error: ordersErr } = await query;
+    // Never export an order already (or possibly) created via the Onway API.
+    const apiSentExcluded = (ordersFetched || []).filter((o: any) => sentViaApi(o)).length;
+    const ordersRaw = (ordersFetched || []).filter((o: any) => !sentViaApi(o));
     if (ordersErr) {
       return new Response(JSON.stringify({ error: ordersErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -263,6 +267,7 @@ Deno.serve(async (req) => {
       cut_guide: cutGuide,
       rounds,
       singles: singlesMeta,
+      api_sent_excluded: apiSentExcluded,
     };
 
     if (action === "preview") {
@@ -340,13 +345,10 @@ Deno.serve(async (req) => {
 
     // ── Zone code lookup (city_name -> zone_id), case-insensitive / trimmed.
     //    Best-effort: a missing table or unmatched city never fails the export.
-    const zoneByCity: Record<string, string> = {};
+    let zoneByCity: Record<string, string> = {};
     try {
       const { data: zones } = await supabase.from("courier_zone_codes").select("city_name, zone_id");
-      for (const z of zones || []) {
-        const key = String((z as any).city_name || "").trim().toLowerCase();
-        if (key) zoneByCity[key] = String((z as any).zone_id ?? "");
-      }
+      zoneByCity = buildZoneMap(zones);
     } catch (_e) { /* ignore — export continues without zone codes */ }
 
     const labelUpdates: { id: string; courier_zone_id: string | null; courier_label_text: string }[] = [];
@@ -420,8 +422,7 @@ Deno.serve(async (req) => {
         rows.push(row);
       } else {
         const labelText = `${tag} ${skuWithQty}`;
-        const cityKey = String(order.normalized_city || order.raw_city || "").trim().toLowerCase();
-        const zoneId = cityKey && zoneByCity[cityKey] !== undefined ? zoneByCity[cityKey] : null;
+        const zoneId = zoneForOrder(order, zoneByCity);
         labelUpdates.push({ id: order.id, courier_zone_id: zoneId, courier_label_text: labelText });
 
         const dynamicValues: Record<string, string> = {
