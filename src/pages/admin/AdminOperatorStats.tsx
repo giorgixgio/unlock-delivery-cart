@@ -39,7 +39,7 @@ export default function AdminOperatorStats(){
   const [preset,setPreset]=useState<Preset>(()=>readPrefs().preset??"today"),[customFrom,setCustomFrom]=useState(""),[customTo,setCustomTo]=useState("");
   const [tab,setTab]=useState<Tab>(()=>readPrefs().tab??"overview"),[operator,setOperator]=useState("all"),[reload,setReload]=useState(0),[loading,setLoading]=useState(true);
   const [orders,setOrders]=useState<Order[]>([]),[previousOrders,setPreviousOrders]=useState<Order[]>([]),[events,setEvents]=useState<Event[]>([]),[previousEvents,setPreviousEvents]=useState<Event[]>([]),[sessions,setSessions]=useState<Session[]>([]),[firstTouches,setFirstTouches]=useState<Session[]>([]),[openOrders,setOpenOrders]=useState<Order[]>([]);
-  const [selected,setSelected]=useState<string|null>(null),[lastLoaded,setLastLoaded]=useState<Date|null>(null),[loadedRange,setLoadedRange]=useState<{from:Date;to:Date}|null>(null),[laterOutcomes,setLaterOutcomes]=useState<Event[]>([]);
+  const [selected,setSelected]=useState<string|null>(null),[lastLoaded,setLastLoaded]=useState<Date|null>(null),[loadedRange,setLoadedRange]=useState<{from:Date;to:Date}|null>(null),[laterOutcomes,setLaterOutcomes]=useState<Event[]>([]),[contextOrders,setContextOrders]=useState<ContextOrder[]>([]),[deliveryRows,setDeliveryRows]=useState<DeliveryRow[]>([]),[courierFreshAt,setCourierFreshAt]=useState<string|null>(null);
   const requestIdRef=useRef(0);
   useEffect(()=>{try{localStorage.setItem(LS_KEY,JSON.stringify({preset,tab}));}catch{/* ignore */}},[preset,tab]);
   const range=useMemo(()=>rangeFor(preset,customFrom,customTo),[preset,customFrom,customTo,reload]);
@@ -53,6 +53,8 @@ export default function AdminOperatorStats(){
       const orderSelect="id,created_at,status,total,is_confirmed,is_fulfilled,auto_confirmed,is_return,next_call_after,call_attempt_count,last_call_attempt_at";
       const eventSelect="id,order_id,actor,created_at,event_type,payload";
       const sessionSelect="id,order_id,operator,session_started_at,session_ended_at,active_duration_seconds,capped_duration_seconds,outcome,had_meaningful_action";
+      const deliveryP=supabase.rpc("operator_delivery_quality" as any,{p_from:range.from.toISOString(),p_to:range.to.toISOString()}).then(r=>{if(r.error)console.error("delivery quality",r.error);return (r.data||[]) as unknown as DeliveryRow[];});
+      const freshP=supabase.from("courier_shipments").select("last_seen_at").order("last_seen_at",{ascending:false,nullsFirst:false}).limit(1).then(r=>(r.data?.[0] as any)?.last_seen_at??null);
       const [curOrders,prevOrders,curEvents,prevEvents,curSessions,queue]=await Promise.all([
         allPages<Order>((f,t)=>supabase.from("orders").select(orderSelect).gte("created_at",range.from.toISOString()).lte("created_at",range.to.toISOString()).range(f,t) as any),
         allPages<Order>((f,t)=>supabase.from("orders").select(orderSelect).gte("created_at",previousRange.from.toISOString()).lte("created_at",previousRange.to.toISOString()).range(f,t) as any),
@@ -66,16 +68,21 @@ export default function AdminOperatorStats(){
       const allowed=await getOrderIdsForStore(ids,activeStore);
       if(stale()) return;
       const first:Session[]=[], later:Event[]=[];
-      const outcomeIds=Array.from(new Set(curEvents.filter(e=>e.event_type==="call_outcome"&&allowed.has(e.order_id)).map(e=>e.order_id)));
+      const outcomeIds=Array.from(new Set(curEvents.filter(e=>e.event_type==="call_outcome").map(e=>e.order_id).concat(curSessions.map(x=>x.order_id)).filter(id=>allowed.has(id))));
+      const ctx:ContextOrder[]=[];
       await Promise.all(chunks(outcomeIds).map(async batch=>{
-        const rows=await allPages<Event>((f,t)=>supabase.from("order_events").select(eventSelect).eq("event_type","call_outcome").in("order_id",batch).gt("created_at",range.to.toISOString()).range(f,t) as any);
+        const rows=await allPages<Event>((f,t)=>supabase.from("order_events").select(eventSelect).eq("event_type","call_outcome").in("order_id",batch).range(f,t) as any);
         later.push(...rows);
+        const {data}=await supabase.from("orders").select("id,public_order_number,created_at,customer_phone,total").in("id",batch);
+        ctx.push(...((data||[]) as any));
       }));
       await Promise.all(chunks(ids.filter(id=>allowed.has(id))).map(async batch=>{
         const rows=await allPages<Session>((f,t)=>supabase.from("operator_order_sessions" as any).select(sessionSelect).in("order_id",batch).order("session_started_at",{ascending:true}).range(f,t) as any);
         first.push(...rows);
       }));
+      const [delivery,freshAt]=await Promise.all([deliveryP,freshP]);
       if(stale()) return;
+      setContextOrders(ctx); setDeliveryRows(delivery.filter(r=>allowed.has(r.order_id))); setCourierFreshAt(freshAt);
       setOrders(curOrders.filter(o=>allowed.has(o.id))); setPreviousOrders(prevOrders.filter(o=>allowed.has(o.id)));
       setEvents(curEvents.filter(e=>allowed.has(e.order_id))); setPreviousEvents(prevEvents.filter(e=>allowed.has(e.order_id)));
       setSessions(curSessions.filter(s=>allowed.has(s.order_id))); setFirstTouches(first); setOpenOrders(queue.filter(o=>allowed.has(o.id)));
@@ -123,7 +130,7 @@ export default function AdminOperatorStats(){
   const hourData=useMemo(()=>Array.from({length:24},(_,hour)=>({hour:`${String(hour).padStart(2,"0")}:00`,leads:visibleOrders.filter(o=>hourKey(o.created_at)===hour).length,calls:visibleCalls.filter(e=>hourKey(e.created_at)===hour).length})),[visibleOrders,visibleCalls]);
 
   const upsells=useMemo(()=>{const map=new Map<string,{orders:Set<string>;amount:number}>();for(const e of events.filter(e=>["item_added","item_quantity_change","landing_qty_discount"].includes(e.event_type))){const delta=e.event_type==="item_added"?Number(e.payload?.added_revenue??e.payload?.unit_price??0)*Number(e.payload?.quantity??1):Number(e.payload?.delta_total??0);if(delta<=0||EXCLUDED_OPERATORS.has(e.actor??""))continue;const m=map.get(e.actor)??{orders:new Set(),amount:0};m.orders.add(e.order_id);m.amount+=delta;map.set(e.actor,m);}return map;},[events,EXCLUDED_OPERATORS]);
-  const allOutcomes=useMemo(()=>[...events.filter(e=>e.event_type==="call_outcome"),...laterOutcomes],[events,laterOutcomes]);
+  const allOutcomes=useMemo(()=>{const m=new Map<string,Event>();for(const e of [...events.filter(e=>e.event_type==="call_outcome"),...laterOutcomes])m.set(e.id,e);return Array.from(m.values());},[events,laterOutcomes]);
   const operatorRows=useMemo(()=>operators.map(name=>{
     const calls=callEvents.filter(e=>e.actor===name), oc=operatorOutcomes(name,calls,allOutcomes);
     const confirmed=oc.confirmedIds.size,cancelled=oc.cancelled.length,overturned=oc.overturned,noAnswer=calls.filter(e=>e.payload?.outcome==="no_answer").length;
