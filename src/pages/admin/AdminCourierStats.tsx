@@ -24,10 +24,12 @@ const tbilisiDay = (iso: string): string =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tbilisi" }).format(new Date(iso));
 
 export default function AdminCourierStats() {
-  const { data: ds, isLoading } = useCourierDataset();
   // Start on today's parcels (Tbilisi day) so the page doesn't crunch the whole history on open.
   const [from, setFrom] = useState(() => defaultStatsFromDate());
   const [to, setTo] = useState("");
+  // The download itself follows the start date (with a safety buffer inside the hook),
+  // so the default view no longer pulls the whole shipment history.
+  const { data: ds, isLoading } = useCourierDataset(from || undefined);
 
   const [dir, setDir] = useState<Dir>("outbound");
   const [dateMode, setDateMode] = useState<DateMode>("lead");
