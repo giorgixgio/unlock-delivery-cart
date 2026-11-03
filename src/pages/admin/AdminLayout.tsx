@@ -15,6 +15,7 @@ import { useCallSync } from "@/hooks/useCallSync";
 import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice } from "@/lib/callSync";
 import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
 import { Headphones } from "lucide-react";
+import NewVersionBanner from "@/components/admin/NewVersionBanner";
 
 const navGroups = [
   {
