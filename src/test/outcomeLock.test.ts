@@ -14,8 +14,11 @@ describe("outcomeLockFor", () => {
   it("admin → unlocked even if listed as manager", () => {
     expect(outcomeLockFor("admin", "eto@bigmart.ge", on).locked).toBe(false);
   });
-  it("plain operator → not locked here (redirected to the queue instead)", () => {
-    expect(outcomeLockFor("operator", "a@x.ge", on).locked).toBe(false);
+  it("plain operator + switch on → locked", () => {
+    expect(outcomeLockFor("operator", "a@x.ge", on).locked).toBe(true);
+  });
+  it("plain operator + switch off → unlocked", () => {
+    expect(outcomeLockFor("operator", "a@x.ge", { ...on, operators_use_queue: false }).locked).toBe(false);
   });
   it("settings not loaded → unlocked", () => {
     expect(outcomeLockFor("operator", "eto@bigmart.ge", null).locked).toBe(false);
