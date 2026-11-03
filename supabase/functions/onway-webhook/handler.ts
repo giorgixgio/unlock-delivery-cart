@@ -49,7 +49,8 @@ export function createWebhookHandler(deps: Dependencies) {
           (query[key] ??= []).push(sensitive.test(key) ? '[REDACTED]' : redact(value, token));
         });
         let bodyRaw: string | null = null;
-        try { bodyRaw = redact(await req.text(), token); } catch { /* Still log metadata. */ }
+        let bodyError: string | null = null;
+        try { bodyRaw = redact(await req.text(), token); } catch (e) { bodyError = e instanceof Error ? e.name : 'unknown'; }
         let bodyJson: unknown = null;
         if (bodyRaw) {
           try { bodyJson = JSON.parse(bodyRaw); } catch { /* Unknown payload formats are expected. */ }
@@ -59,7 +60,7 @@ export function createWebhookHandler(deps: Dependencies) {
           || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
           || null;
         await deps.save({ method: req.method, headers, query, body_raw: bodyRaw,
-          body_json: bodyJson, source_ip: sourceIp ? redact(sourceIp, token) : null });
+          body_json: bodyJson ?? (bodyError ? { _body_read_error: bodyError } : null), source_ip: sourceIp ? redact(sourceIp, token) : null });
       } catch {
         // Do not print request data, database errors or secrets.
         console.error('onway-webhook: capture failed');
