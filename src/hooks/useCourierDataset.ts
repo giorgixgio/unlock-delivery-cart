@@ -72,9 +72,15 @@ export type CourierDataset = {
   statusMap: Map<string, StatusMapRow>;
 };
 
-export function useCourierDataset() {
+/**
+ * Fetches the courier dataset. When `fromDate` (YYYY-MM-DD) is given, only shipments
+ * touched since 30 days before it are downloaded — plus every still-open shipment,
+ * however old, so in-progress counts never silently drop parcels. The 30-day buffer
+ * keeps parcels whose last status predates the window but whose order date is inside it.
+ */
+export function useCourierDataset(fromDate?: string) {
   return useQuery<CourierDataset>({
-    queryKey: ["courier-dataset"],
+    queryKey: ["courier-dataset", fromDate || "all"],
     // Onway webhook updates arrive every few minutes: refresh while the tab is visible.
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -84,20 +90,33 @@ export function useCourierDataset() {
     queryFn: async () => {
       const PAGE = 1000;
 
-      // How many shipment rows exist -> fetch all pages in parallel instead of one by one.
-      const { count } = await supabase
-        .from("courier_shipments")
-        .select("id", { count: "exact", head: true });
+      // Server-side cutoff: 30 days before the requested start, or no cutoff for full history.
+      let cutoff: string | null = null;
+      if (fromDate) {
+        const d = new Date(`${fromDate}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - 30);
+        cutoff = d.toISOString();
+      }
+
+      const baseQuery = () => {
+        let q = supabase.from("courier_shipments").select(SHIPMENT_COLS);
+        if (cutoff) {
+          // Recent activity OR still open (no final status yet).
+          q = q.or(`latest_status_date.gte.${cutoff},final_status_date.is.null`);
+        }
+        return q.order("tracking_number");
+      };
+
+      // How many shipment rows match -> fetch all pages in parallel instead of one by one.
+      let countQ = supabase.from("courier_shipments").select("id", { count: "exact", head: true });
+      if (cutoff) countQ = countQ.or(`latest_status_date.gte.${cutoff},final_status_date.is.null`);
+      const { count } = await countQ;
       const total = count || 0;
       const pages = Array.from({ length: Math.max(1, Math.ceil(total / PAGE)) }, (_, i) => i);
 
       const [shipmentPages, smRes] = await Promise.all([
         pooled(pages, 6, async (p) => {
-          const { data, error } = await supabase
-            .from("courier_shipments")
-            .select(SHIPMENT_COLS)
-            .order("tracking_number")
-            .range(p * PAGE, p * PAGE + PAGE - 1);
+          const { data, error } = await baseQuery().range(p * PAGE, p * PAGE + PAGE - 1);
           if (error) throw error;
           return (data as any as Shipment[]) || [];
         }),
