@@ -2,6 +2,11 @@
 // Modes: "start" (create batch) | "chunk" (process rows) | "finalize" (close batch).
 // Always returns JSON: { success, message, details }
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  senderIsCustomer, parseCommentItems, normPhone, pickCustomerPhone, parseNum, parseDate,
+  legacyOf, FINAL_STATES, type StatusMapRow,
+} from "../_shared/courierShipment.ts";
+export { pickCustomerPhone };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,98 +99,11 @@ function buildHeaderMap(headers: string[], mappings: MappingRow[]): Partial<Reco
   return map;
 }
 
-// ---------- Helpers shared with the client lib ----------
-function senderIsCustomer(sender: string | null): boolean {
-  const s = (sender || "").trim();
-  if (!s) return false;
-  if (/^customer[-\s]?\d+/i.test(s)) return true;
-  const digits = s.replace(/[^0-9]/g, "");
-  return digits.length >= 6 && digits.length >= s.replace(/\s/g, "").length - 3;
-}
-
-function parseCommentItems(comment: string | null): { code: string; qty: number }[] {
-  const s = (comment || "").trim();
-  if (!s) return [];
-  const body = s.replace(/\[[^\]]*\]/g, " ");
-  const out: { code: string; qty: number }[] = [];
-  for (const part of body.split(/[,;]+/)) {
-    const m = part.trim().match(/^([A-Za-z0-9_\-\/.]+)\s*[-–xX*]\s*(\d+)$/);
-    if (m) out.push({ code: m[1], qty: parseInt(m[2], 10) || 1 });
-    else {
-      const only = part.trim().match(/^([A-Za-z0-9_\-\/.]+)$/);
-      if (only) out.push({ code: only[1], qty: 1 });
-    }
-  }
-  return out;
-}
-
-const itemsKey = (items: { code: string; qty: number }[]) =>
-  items.map((i) => `${i.code}:${i.qty}`).sort().join("|");
-
-/** Courier placeholder number used for Bigmart itself — never a customer phone. */
-const PLACEHOLDER_PHONE = "555555555";
-
-function normPhone(p: string | null): string | null {
-  const d = (p || "").replace(/[^0-9]/g, "");
-  if (!d) return null;
-  const n = d.length > 9 ? d.slice(-9) : d;
-  return n === PLACEHOLDER_PHONE ? null : n;
-}
-
-/**
- * Customer phone for a row. On RETURN shipments the receiver is Bigmart
- * (placeholder 555555555) and the customer sits in the sender columns.
- */
-export function pickCustomerPhone(opts: {
-  isReturn: boolean;
-  receiverPhone: string | null;
-  senderPhone: string | null;
-  senderName: string | null;
-}): string | null {
-  const clean = (v: string | null) => {
-    const n = normPhone(v);
-    return n ? v!.toString().trim() : null;
-  };
-  if (opts.isReturn) {
-    return clean(opts.senderPhone) || clean(opts.senderName) || clean(opts.receiverPhone);
-  }
-  return clean(opts.receiverPhone) || clean(opts.senderPhone);
-}
-
-function parseNum(v: any): number {
-  if (v == null || v === "") return 0;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^\d.\-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function parseDate(v: any): string | null {
-  if (v == null || v === "") return null;
-  if (v instanceof Date) return isNaN(+v) ? null : v.toISOString();
-  const s = String(v).trim();
-  if (!s) return null;
-  const m = s.match(/^(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-  if (m) {
-    const [, dd, mm, yy, hh, mi, ss] = m;
-    let year = parseInt(yy); if (year < 100) year += 2000;
-    const d = new Date(Date.UTC(year, parseInt(mm) - 1, parseInt(dd),
-      parseInt(hh || "0"), parseInt(mi || "0"), parseInt(ss || "0")));
-    return isNaN(+d) ? null : d.toISOString();
-  }
-  const d = new Date(s);
-  return isNaN(+d) ? null : d.toISOString();
-}
-
 function chunk<T>(a: T[], n: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n));
   return out;
 }
-
-type StatusMapRow = {
-  courier_status: string;
-  outbound_state: string; outbound_is_final: boolean;
-  return_state: string; return_is_final: boolean;
-};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -354,22 +272,6 @@ Deno.serve(async (req) => {
     const statusMap = new Map<string, StatusMapRow>();
     for (const r of (smRows || []) as StatusMapRow[]) statusMap.set(r.courier_status.trim(), r);
 
-    // Legacy derived_status kept in sync so old pages keep working.
-    const legacyOf = (state: string, isReturn: boolean): { derived: string; type: string } => {
-      const type = isReturn ? "RETURN_TO_SENDER" : "CUSTOMER_DELIVERY";
-      switch (state) {
-        case "DELIVERED": return { derived: "DELIVERED_TO_CUSTOMER", type };
-        case "FAILED_FINAL": return { derived: "FINAL_NOT_DELIVERED", type };
-        case "FAILED_ATTEMPT": return { derived: "IN_TRANSIT", type };
-        case "RETURNED_FAILED": return { derived: "RETURNED_TO_SENDER", type };
-        case "CANCELLED_EXCLUDED": return { derived: "CANCELLED_BEFORE_COURIER", type };
-        case "RETURN_COLLECTED":
-        case "RETURN_FAILED": return { derived: "RETURNED_TO_SENDER", type };
-        case "RETURN_CANCELLED": return { derived: "CANCELLED_BEFORE_COURIER", type };
-        default: return { derived: "IN_TRANSIT", type };
-      }
-    };
-
     stage = "transform_rows";
     const get = (row: any[], f: Field) => { const i = hmap[f]; return i === undefined ? null : row[i]; };
     const nowISO = new Date().toISOString();
@@ -455,7 +357,7 @@ Deno.serve(async (req) => {
     const existingMap = new Map<string, any>();
     for (const t of chunk(parsed.map((p) => p.tracking), 400)) {
       const { data, error } = await admin.from("courier_shipments")
-        .select("id, tracking_number, current_courier_status, derived_state, derived_status, latest_status_date, cod_amount, company_receives, order_number, phone, customer_name, city, address, sku, quantity, is_return, original_order_id, comment_raw")
+        .select("id, tracking_number, current_courier_status, derived_state, source_status_at, derived_status, latest_status_date, cod_amount, company_receives, order_number, phone, customer_name, city, address, sku, quantity, is_return, original_order_id, comment_raw")
         .in("tracking_number", t);
       if (error) throw error;
       for (const r of data || []) existingMap.set(r.tracking_number, r);
@@ -468,10 +370,8 @@ Deno.serve(async (req) => {
     const toUpsert: any[] = [];
     const historyCandidates: Parsed[] = [];
 
-    const finalStates = new Set([
-      "DELIVERED", "FAILED_FINAL", "RETURNED_FAILED", "CANCELLED_EXCLUDED",
-      "RETURN_COLLECTED", "RETURN_FAILED", "RETURN_CANCELLED",
-    ]);
+    const finalStates = FINAL_STATES;
+    const finalizedTrackings = new Set<string>();
 
     for (const p of parsed) {
       const ex = existingMap.get(p.tracking);
@@ -488,8 +388,11 @@ Deno.serve(async (req) => {
               stored_state: ex.derived_state,
             });
           }
+          finalizedTrackings.add(p.tracking);
           continue; // never modify a finalized shipment
         }
+        // Newer-wins: never let an older file overwrite a newer (e.g. API webhook) status.
+        if (ex.source_status_at && (!p.statusDate || p.statusDate < ex.source_status_at)) { unchanged++; continue; }
         const dateDifferent = (ex.latest_status_date || null) !== (p.statusDate || null);
         if (!statusDifferent && !dateDifferent) { unchanged++; continue; }
         updatedCount++;
@@ -520,6 +423,8 @@ Deno.serve(async (req) => {
           last_seen_at: nowISO,
           latest_status_date: p.statusDate ?? ex.latest_status_date,
           status_changed_at: statusDifferent ? nowISO : undefined,
+          source_status_at: p.statusDate ?? undefined,
+          source: "excel",
         });
         historyCandidates.push(p);
       } else {
@@ -544,6 +449,8 @@ Deno.serve(async (req) => {
           first_seen_at: nowISO, last_seen_at: nowISO,
           latest_status_date: p.statusDate,
           status_changed_at: nowISO,
+          source_status_at: p.statusDate,
+          source: "excel",
         });
         historyCandidates.push(p);
       }
@@ -564,7 +471,7 @@ Deno.serve(async (req) => {
     // ---- Match outbound rows to orders (set-based, one RPC) ----
     stage = "match_orders";
     let ordersUpdated = 0, unmatchedRows = 0;
-    const outbound = parsed.filter((p) => !p.isReturn);
+    const outbound = parsed.filter((p) => !p.isReturn && !finalizedTrackings.has(p.tracking));
     if (outbound.length) {
       const syncRows = outbound.map((p) => ({
         tracking: p.tracking,
@@ -584,12 +491,12 @@ Deno.serve(async (req) => {
     // ---- Link returns to their original outbound shipment (set-based, one RPC) ----
     stage = "link_returns";
     let linkedReturns = 0, unlinkedReturns = 0;
-    const returns = parsed.filter((p) => p.isReturn);
+    const returns = parsed.filter((p) => p.isReturn && !finalizedTrackings.has(p.tracking));
     if (returns.length) {
       for (const part of chunk(returns.map((r) => r.tracking), 1000)) {
         const { data: res, error } = await admin.rpc("courier_link_returns", { p_trackings: part });
         if (error) throw error;
-        linkedReturns += Number((res as any)?.linked || 0);
+        linkedReturns += Number((res as any)?.linked ?? (Number((res as any)?.linked_exact || 0) + Number((res as any)?.linked_phone_only || 0)));
         unlinkedReturns += Number((res as any)?.unlinked || 0);
       }
     }

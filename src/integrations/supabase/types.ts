@@ -606,6 +606,7 @@ export type Database = {
           latest_status_date: string | null
           linked_original_tracking_number: string | null
           linked_return_tracking_number: string | null
+          onway_parent_tracking: string | null
           order_date: string | null
           order_number: string | null
           original_order_id: string | null
@@ -617,6 +618,8 @@ export type Database = {
           sender_name: string | null
           shipment_type: string | null
           sku: string | null
+          source: string
+          source_status_at: string | null
           status_changed_at: string | null
           tracking_number: string
           updated_at: string
@@ -641,6 +644,7 @@ export type Database = {
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          onway_parent_tracking?: string | null
           order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null
@@ -652,6 +656,8 @@ export type Database = {
           sender_name?: string | null
           shipment_type?: string | null
           sku?: string | null
+          source?: string
+          source_status_at?: string | null
           status_changed_at?: string | null
           tracking_number: string
           updated_at?: string
@@ -676,6 +682,7 @@ export type Database = {
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          onway_parent_tracking?: string | null
           order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null
@@ -687,6 +694,8 @@ export type Database = {
           sender_name?: string | null
           shipment_type?: string | null
           sku?: string | null
+          source?: string
+          source_status_at?: string | null
           status_changed_at?: string | null
           tracking_number?: string
           updated_at?: string
@@ -712,6 +721,7 @@ export type Database = {
           id: string
           import_batch_id: string | null
           raw_row_json: Json | null
+          source: string
           status_date: string | null
           tracking_number: string | null
         }
@@ -725,6 +735,7 @@ export type Database = {
           id?: string
           import_batch_id?: string | null
           raw_row_json?: Json | null
+          source?: string
           status_date?: string | null
           tracking_number?: string | null
         }
@@ -738,6 +749,7 @@ export type Database = {
           id?: string
           import_batch_id?: string | null
           raw_row_json?: Json | null
+          source?: string
           status_date?: string | null
           tracking_number?: string | null
         }
@@ -766,6 +778,7 @@ export type Database = {
           is_return_in_transit: boolean
           label_en: string | null
           label_ka: string | null
+          needs_review: boolean
           outbound_counts_as: string
           outbound_is_final: boolean
           outbound_state: string
@@ -782,6 +795,7 @@ export type Database = {
           is_return_in_transit?: boolean
           label_en?: string | null
           label_ka?: string | null
+          needs_review?: boolean
           outbound_counts_as?: string
           outbound_is_final?: boolean
           outbound_state?: string
@@ -798,6 +812,7 @@ export type Database = {
           is_return_in_transit?: boolean
           label_en?: string | null
           label_ka?: string | null
+          needs_review?: boolean
           outbound_counts_as?: string
           outbound_is_final?: boolean
           outbound_state?: string
@@ -3711,10 +3726,15 @@ export type Database = {
           unpacked: number
         }[]
       }
+      courier_feed_status: { Args: never; Returns: Json }
       courier_items_key: { Args: { p: Json }; Returns: string }
       courier_link_returns: { Args: { p_trackings: string[] }; Returns: Json }
       courier_sync_orders: {
         Args: { p_batch_id: string; p_rows: Json }
+        Returns: Json
+      }
+      courier_upsert_shipment: {
+        Args: { p_history: Json; p_row: Json; p_source?: string }
         Returns: Json
       }
       create_packing_wave: {

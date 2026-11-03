@@ -4,9 +4,14 @@ import { createWebhookHandler } from './handler.ts';
 import { parseOnwayEvent } from './process.ts';
 import { actionForReason, classifyComment } from './classify.ts';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
+import { upsertOnwayShipment } from '../_shared/courierApiUpsert.ts';
 
 // Status actions only come from the admin-mapped onway_status_map; unmapped statuses do nothing.
 async function processEvent(db: any, logId: string, body: unknown) {
+  // Courier stats feed (courier_shipments + history). Independent of SMS/Telegram below; failures only logged.
+  try { await upsertOnwayShipment(db, body); }
+  catch (e) { console.error('onway-webhook: courier upsert failed', e instanceof Error ? e.message : e); }
+
   const ev = parseOnwayEvent(body);
   if (!ev) { await db.from('onway_webhook_log').update({ match_status: 'unparsed', processed_at: new Date().toISOString() }).eq('id', logId); return; }
   const now = new Date().toISOString();

@@ -34,7 +34,7 @@ export default function AdminCourierStatuses() {
 
   async function save(courier_status: string, patch: Record<string, any>) {
     const { error } = await supabase.from("courier_status_map")
-      .update({ ...patch, updated_at: new Date().toISOString() }).eq("courier_status", courier_status);
+      .update({ ...patch, needs_review: false, updated_at: new Date().toISOString() }).eq("courier_status", courier_status);
     if (error) { toast({ title: "ვერ შეინახა", description: error.message, variant: "destructive" }); return; }
     setRows((prev) => prev.map((r) => (r.courier_status === courier_status ? { ...r, ...patch } as StatusMapRow : r)));
   }

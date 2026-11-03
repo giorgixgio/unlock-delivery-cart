@@ -1,3 +1,4 @@
+import { CourierFeedStatus } from "@/components/admin/CourierFeedStatus";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,6 +28,7 @@ export default function AdminCourierRestock() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold">Restock</h1>
+      <CourierFeedStatus />
         <p className="text-sm text-muted-foreground">რამდენი ცალი ბრუნდება უკან საწყობში, პროდუქტების მიხედვით.</p>
       </div>
 
