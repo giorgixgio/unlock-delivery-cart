@@ -137,3 +137,24 @@ describe("shift gate", () => {
     expect(autoEndAt(open, T("2026-11-03T20:50:00"), T("2026-11-04T09:00:00"))).not.toBeNull();
   });
 });
+
+import { isOutsideWorkHours } from "@/lib/callQueuePolicy";
+describe("late shift start (23:30 Tbilisi)", () => {
+  const start = new Date("2026-11-02T19:30:00Z"); // 23:30 Tbilisi
+  const open = { started_at: start.toISOString(), ended_at: null, paused: false };
+  it("is on shift right after Start shift", () => {
+    expect(autoEndAt(open, start, new Date(start.getTime() + 1000))).toBeNull();
+    expect(shiftGate(open)).toBe("ok");
+  });
+  it("is never auto-ended within 60 minutes of start", () => {
+    expect(autoEndAt(open, start, new Date(start.getTime() + 59 * 60000))).toBeNull();
+  });
+  it("day shift started before work_end+1h is still closed after the cutoff", () => {
+    const day = { started_at: "2026-11-02T06:00:00Z", ended_at: null, paused: true };
+    expect(autoEndAt(day, new Date("2026-11-02T17:50:00Z"), new Date("2026-11-02T18:10:00Z"))).not.toBeNull();
+  });
+  it("flags outside work hours", () => {
+    expect(isOutsideWorkHours(start)).toBe(true);
+    expect(isOutsideWorkHours(new Date("2026-11-02T08:00:00Z"))).toBe(false); // 12:00
+  });
+});

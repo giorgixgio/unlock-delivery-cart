@@ -159,6 +159,7 @@ export const AUTO_END_IDLE_MS = 60 * 60000;
 /** End time for a forgotten shift, or null to keep it open. */
 export function autoEndAt(shift: ShiftLike, lastActivity: Date, now: Date, workEnd = DEFAULT_QUEUE_SETTINGS.workEnd): Date | null {
   if (shift.ended_at) return null;
+  if (now.getTime() - new Date(shift.started_at).getTime() < AUTO_END_IDLE_MS) return null; // never within 60 min of start
   const last = new Date(Math.max(lastActivity.getTime(), new Date(shift.started_at).getTime()));
   const n = local(now);
   const previousDay = local(new Date(shift.started_at)).day < n.day;
@@ -168,4 +169,10 @@ export function autoEndAt(shift: ShiftLike, lastActivity: Date, now: Date, workE
   const idle = !shift.paused && now.getTime() - last.getTime() > AUTO_END_IDLE_MS;
   if (previousDay || pastWorkEnd || idle) return new Date(Math.min(last.getTime(), now.getTime()));
   return null;
+}
+
+/** Start shift pressed outside work hours (Tbilisi) → info toast, shift still starts. */
+export function isOutsideWorkHours(now: Date, s: Pick<QueuePolicySettings, "workStart" | "workEnd"> = DEFAULT_QUEUE_SETTINGS): boolean {
+  const m = local(now).minute;
+  return m < hm(s.workStart) || m >= hm(s.workEnd);
 }

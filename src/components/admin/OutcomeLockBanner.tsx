@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Headphones, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { queueAssign } from "@/lib/callQueueService";
 import { OUTCOME_LOCK_REASON } from "@/lib/outcomeLock";
 
@@ -11,9 +12,19 @@ export default function OutcomeLockBanner({ orderId, onNavigate }: { orderId?: s
   const { user } = useAdminAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
   const open = async () => {
     setBusy(true);
-    if (orderId && user?.email) { try { await queueAssign(orderId, user.email); } catch { /* still open the queue */ } }
+    if (orderId && user?.email) {
+      try { await queueAssign(orderId, user.email); }
+      catch (e: any) {
+        setBusy(false);
+        const msg = String(e?.message || "");
+        toast({ title: /not on shift/i.test(msg) ? "ჯერ დაიწყეთ ცვლა / Start your shift first" : "Couldn't open in Call Queue", description: /not on shift/i.test(msg) ? undefined : msg, variant: "destructive" });
+        if (/not on shift/i.test(msg)) { onNavigate?.(); navigate("/admin/call-queue"); }
+        return;
+      }
+    }
     setBusy(false);
     onNavigate?.();
     navigate("/admin/call-queue");
