@@ -103,7 +103,7 @@ export function queueTier(
   const t = now.getTime();
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!QUEUE_STATUSES.includes(o.status)) return null;
-  if (o.status === "pending_details" && ts((o as any).created_at) !== null && t - ts((o as any).created_at)! < PENDING_DETAILS_GRACE_MS) return null;
+  if (o.status === "pending_details" && ts(o.created_at) !== null && t - ts(o.created_at)! < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
   const next = ts(o.next_call_after);
