@@ -62,6 +62,7 @@ import AdminWholesaleOrders from "./pages/admin/AdminWholesaleOrders";
 import AdminWholesaleCustoms from "./pages/admin/AdminWholesaleCustoms";
 import AdminFastInventoryCheck from "./pages/admin/AdminFastInventoryCheck";
 import AdminCourierStats from "./pages/admin/AdminCourierStats";
+import AdminCourierToday from "./pages/admin/AdminCourierToday";
 import AdminCourierAlerts from "./pages/admin/AdminCourierAlerts";
 import AdminCourierStatuses from "./pages/admin/AdminCourierStatuses";
 import AdminCourierRestock from "./pages/admin/AdminCourierRestock";
@@ -221,6 +222,7 @@ const App = () => (
                       <Route path="courier-import/mapping" element={<AdminCourierImportMapping />} />
                       <Route path="courier/statuses" element={<AdminCourierStatuses />} />
                       <Route path="courier/stats" element={<AdminCourierStats />} />
+                      <Route path="courier/today" element={<AdminCourierToday />} />
                       <Route path="courier/alerts" element={<AdminCourierAlerts />} />
                       <Route path="courier/restock" element={<AdminCourierRestock />} />
                       <Route path="test-sku" element={<AdminTestSku />} />
