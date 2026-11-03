@@ -12,7 +12,9 @@ import { useCourierDataset, unitsFor, type Shipment } from "@/hooks/useCourierDa
 import {
   rateBlock, isDelivered, isFailedFinal, isOutbound, isExcluded, pct, weekKey, shipmentDate,
   recoveryOf, emptyRecovery, addRecovery, unitCount, type RecoveryTotals,
+  defaultStatsFromDate,
 } from "@/lib/courierAnalytics";
+
 import { STATE_LABEL, STATE_BADGE } from "@/lib/courierStates";
 
 type Dir = "all" | "outbound" | "return";
@@ -23,8 +25,10 @@ const tbilisiDay = (iso: string): string =>
 
 export default function AdminCourierStats() {
   const { data: ds, isLoading } = useCourierDataset();
-  const [from, setFrom] = useState("");
+  // Start on today's parcels (Tbilisi day) so the page doesn't crunch the whole history on open.
+  const [from, setFrom] = useState(() => defaultStatsFromDate());
   const [to, setTo] = useState("");
+
   const [dir, setDir] = useState<Dir>("outbound");
   const [dateMode, setDateMode] = useState<DateMode>("lead");
   const [minSample, setMinSample] = useState(5);
