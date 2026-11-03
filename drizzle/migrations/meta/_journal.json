@@ -309,6 +309,13 @@
       "when": 1793692443814,
       "tag": "0043_call_queue_include_pending_details",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793731236446,
+      "tag": "0044_courier_pickup_cancel_reopen",
+      "breakpoints": true
     }
   ]
 }
