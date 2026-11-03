@@ -302,6 +302,13 @@
       "when": 1793691435497,
       "tag": "0042_call_queue_shift_guard_self_assign",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793692443814,
+      "tag": "0043_call_queue_include_pending_details",
+      "breakpoints": true
     }
   ]
 }

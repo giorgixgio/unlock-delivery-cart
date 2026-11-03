@@ -158,3 +158,13 @@ describe("late shift start (23:30 Tbilisi)", () => {
     expect(isOutsideWorkHours(new Date("2026-11-02T08:00:00Z"))).toBe(false); // 12:00
   });
 });
+
+describe("phone-only leads (pending_details)", () => {
+  const now = new Date("2026-11-03T08:00:00Z"); // 12:00 Tbilisi
+  it("are served once 10 minutes old", () => {
+    expect(queueTier({ id: "p", created_at: "2026-11-03T07:45:00Z", status: "pending_details" }, "a@x.ge", now)).toBe(2);
+  });
+  it("wait while the customer may still be typing the address", () => {
+    expect(queueTier({ id: "p", created_at: "2026-11-03T07:55:00Z", status: "pending_details" }, "a@x.ge", now)).toBeNull();
+  });
+});
