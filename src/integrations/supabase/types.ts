@@ -606,7 +606,9 @@ export type Database = {
           latest_status_date: string | null
           linked_original_tracking_number: string | null
           linked_return_tracking_number: string | null
+          onway_extra_services_price: number | null
           onway_parent_tracking: string | null
+          onway_shipping_price: number | null
           order_date: string | null
           order_number: string | null
           original_order_id: string | null
@@ -644,7 +646,9 @@ export type Database = {
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          onway_extra_services_price?: number | null
           onway_parent_tracking?: string | null
+          onway_shipping_price?: number | null
           order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null
@@ -682,7 +686,9 @@ export type Database = {
           latest_status_date?: string | null
           linked_original_tracking_number?: string | null
           linked_return_tracking_number?: string | null
+          onway_extra_services_price?: number | null
           onway_parent_tracking?: string | null
+          onway_shipping_price?: number | null
           order_date?: string | null
           order_number?: string | null
           original_order_id?: string | null

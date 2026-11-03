@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, RefreshCw } from "lucide-react";
 import { tbilisiDayKey } from "@/lib/tbilisiTime";
-import { summarizeDay, bucketOf, changedInRange, changedAt, type Bucket, type TodayShipment } from "@/lib/courierToday";
+import { summarizeDay, bucketOf, changedInRange, changedAt, type Bucket, type Tally, type TodayShipment } from "@/lib/courierToday";
 import { STATE_LABEL, STATE_BADGE } from "@/lib/courierStates";
 
-const COLS = "tracking_number, order_number, current_courier_status, derived_state, is_return, customer_name, phone, city, cod_amount, latest_status_date, status_changed_at, final_status_date, created_at";
+const COLS = "tracking_number, order_number, current_courier_status, derived_state, is_return, customer_name, phone, city, cod_amount, company_receives, latest_status_date, status_changed_at, final_status_date, created_at";
 const PAGE = 50;
 const P = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 const R = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)} : 1`);
@@ -69,14 +69,15 @@ export default function AdminCourierToday() {
   useEffect(() => setPage(0), [filter, q, day, to]);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
 
-  const Tile = ({ label, t, bucket, tone }: { label: string; t: { count: number; cod: number }; bucket: Bucket; tone: string }) => (
+  const Tile = ({ label, t, bucket, tone }: { label: string; t: Tally; bucket: Bucket; tone: string }) => (
     <button
       onClick={() => setFilter({ kind: "today", bucket })}
       className={`rounded-lg border p-4 text-left transition hover:shadow ${tone} ${filter?.kind === "today" && filter.bucket === bucket ? "ring-2 ring-primary" : ""}`}
     >
       <div className="text-sm font-medium">{label}</div>
       <div className="text-3xl font-bold">{t.count}</div>
-      <div className="text-sm opacity-80">{gel(t.cod)}</div>
+      <div className="text-sm opacity-90">{gel(t.net)}</div>
+      <div className="text-xs opacity-60">შეკვეთა {gel(t.cod)}</div>
     </button>
   );
 
@@ -86,6 +87,9 @@ export default function AdminCourierToday() {
         <div className="mr-auto">
           <h1 className="text-2xl font-bold">Onway — {day === to ? day : `${day} — ${to}`}</h1>
           <p className="text-xs text-muted-foreground">მხოლოდ API-ით გაგზავნილი ამანათები</p>
+          <p className="text-xs text-muted-foreground">
+            თანხა = <span className="font-medium">კომპანიას ერიცხება</span> (Onway-ის გადასახადის გარეშე) · ფურცლის ქვევით ჩანს შეკვეთის თანხაც
+          </p>
           <p className="text-sm text-muted-foreground">
             განახლდა: {dataUpdatedAt ? time(new Date(dataUpdatedAt).toISOString()) : "—"} · ავტომატურად ყოველ 2 წუთში
           </p>
@@ -138,9 +142,10 @@ export default function AdminCourierToday() {
               <CardTitle className="flex items-center justify-between text-lg">
                 <span>ახლა გზაშია / ღიაა</span>
                 <button className="text-base underline" onClick={() => setFilter({ kind: "open" })}>
-                  {sum.open.count} ამანათი · {gel(sum.open.cod)}
+                  {sum.open.count} ამანათი · {gel(sum.open.net)}
                 </button>
               </CardTitle>
+              <p className="text-xs text-muted-foreground">კომპანიას ერიცხება · შეკვეთების თანხა {gel(sum.open.cod)}</p>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {sum.byStatus.map((r) => (
@@ -150,7 +155,8 @@ export default function AdminCourierToday() {
                   className={`rounded-md border px-3 py-2 text-left ${STATE_BADGE[r.bucket === "failed_attempt" ? "FAILED_ATTEMPT" : "IN_PROGRESS"]} ${filter?.kind === "status" && filter.status === r.status ? "ring-2 ring-primary" : ""}`}
                 >
                   <div className="text-sm">{r.status}</div>
-                  <div className="font-bold">{r.count} · {gel(r.cod)}</div>
+                  <div className="font-bold">{r.count} · {gel(r.net)}</div>
+                  <div className="text-xs opacity-70">შეკვეთა {gel(r.cod)}</div>
                 </button>
               ))}
               {!sum.byStatus.length && <div className="text-muted-foreground">ღია ამანათი არ არის</div>}
@@ -173,7 +179,7 @@ export default function AdminCourierToday() {
                   <TableRow>
                     <TableHead>შეკვეთა</TableHead><TableHead>ტრეკინგი</TableHead><TableHead>Onway სტატუსი</TableHead>
                     <TableHead>მდგომარეობა</TableHead><TableHead>ქალაქი</TableHead><TableHead>კლიენტი</TableHead>
-                    <TableHead className="text-right">თანხა</TableHead><TableHead>შეიცვალა</TableHead>
+                    <TableHead className="text-right">კომპანიას ერიცხება</TableHead><TableHead>შეიცვალა</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -189,7 +195,7 @@ export default function AdminCourierToday() {
                       </TableCell>
                       <TableCell>{s.city || "—"}</TableCell>
                       <TableCell>{s.customer_name || "—"}<div className="text-xs text-muted-foreground">{s.phone}</div></TableCell>
-                      <TableCell className="text-right">{gel(Number(s.cod_amount) || 0)}</TableCell>
+                      <TableCell className="text-right">{gel(Number(s.company_receives) || 0)}<div className="text-xs text-muted-foreground">შეკვეთა {gel(Number(s.cod_amount) || 0)}</div></TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{time(changedAt(s))}</TableCell>
                     </TableRow>
                   ))}

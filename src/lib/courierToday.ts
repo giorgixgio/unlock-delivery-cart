@@ -10,6 +10,8 @@ export type TodayShipment = {
   phone: string | null;
   city: string | null;
   cod_amount: number | null;
+  /** What Onway remits to us: collected cash minus Onway's own delivery charge. */
+  company_receives: number | null;
   latest_status_date: string | null;
   status_changed_at: string | null;
   final_status_date: string | null;
@@ -46,19 +48,24 @@ export const changedInRange = (s: TodayShipment, from: string, to: string) => {
 
 const pct = (a: number, b: number) => (b ? a / b : null);
 
-export type Tally = { count: number; cod: number };
-const add = (t: Tally, s: TodayShipment) => { t.count++; t.cod += Number(s.cod_amount) || 0; };
+export type Tally = { count: number; cod: number; net: number };
+const add = (t: Tally, s: TodayShipment) => {
+  t.count++;
+  t.cod += Number(s.cod_amount) || 0;
+  t.net += Number(s.company_receives) || 0;
+};
 
 /**
  * Daily summary: what finished today (delivered / final fail / failed attempt / cancelled)
  * and what is still out right now, grouped by the raw Onway status.
+ * `cod` is the order total collected from the customer, `net` is what Onway remits to us.
  */
 export function summarizeDay(list: TodayShipment[], day: string, to: string = day) {
   const today: Record<Bucket, Tally> = {
-    delivered: { count: 0, cod: 0 }, failed_final: { count: 0, cod: 0 }, failed_attempt: { count: 0, cod: 0 },
-    in_progress: { count: 0, cod: 0 }, cancelled: { count: 0, cod: 0 }, other: { count: 0, cod: 0 },
+    delivered: { count: 0, cod: 0, net: 0 }, failed_final: { count: 0, cod: 0, net: 0 }, failed_attempt: { count: 0, cod: 0, net: 0 },
+    in_progress: { count: 0, cod: 0, net: 0 }, cancelled: { count: 0, cod: 0, net: 0 }, other: { count: 0, cod: 0, net: 0 },
   };
-  const open: Tally = { count: 0, cod: 0 };
+  const open: Tally = { count: 0, cod: 0, net: 0 };
   const byStatus = new Map<string, Tally & { bucket: Bucket }>();
   for (const s of list) {
     if (s.is_return) continue;
@@ -68,7 +75,7 @@ export function summarizeDay(list: TodayShipment[], day: string, to: string = da
     if (isOpen) {
       add(open, s);
       const k = (s.current_courier_status || "—").trim();
-      const row = byStatus.get(k) || { count: 0, cod: 0, bucket: b };
+      const row = byStatus.get(k) || { count: 0, cod: 0, net: 0, bucket: b };
       add(row, s);
       byStatus.set(k, row);
     }

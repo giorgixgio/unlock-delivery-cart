@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  onwayPayloadToShipment, parseOnwayStamp, parseCommentItems, stateFor, legacyOf, type StatusMapRow,
+  netReceives, onwayPayloadToShipment, parseOnwayStamp, parseCommentItems, stateFor, legacyOf, type StatusMapRow,
 } from "../../supabase/functions/_shared/courierShipment";
 
 const map = new Map<string, StatusMapRow>([
@@ -76,6 +76,24 @@ describe("Onway payload -> courier shipment", () => {
     const r = onwayPayloadToShipment({ ...real, order_info: { ...real.order_info, status: "ახალი" }, history: [h("ახალი", "01.11.2026", "10:00")] }, map)!;
     expect(r.unknownStatuses).toEqual(["ახალი"]);
     expect(r.row.derived_state).toBe("IN_PROGRESS");
+  });
+
+  it("records what Onway remits to us: collected cash minus Onway's own delivery charge", () => {
+    // Real payload shape logged today for tracking 106159461 (order 123899).
+    const r = onwayPayloadToShipment({
+      ...real,
+      order_info: { ...real.order_info, cash_amount: "34.00", shipping_price: "8.50", additional_services_price: "0.0" },
+    }, map)!;
+    expect(r.row.cod_amount).toBe(34);
+    expect(r.row.company_receives).toBe(25.5);
+    expect(r.row.onway_shipping_price).toBe(8.5);
+    expect(r.row.onway_extra_services_price).toBe(0);
+  });
+
+  it("keeps the net figure honest at the edges", () => {
+    expect(netReceives(34, 8.5, 1.25)).toBe(24.25);
+    expect(netReceives(0, 8.5, 0)).toBe(0); // nothing collected -> nothing remitted
+    expect(netReceives(5, 8.5, 0)).toBe(-3.5); // we subsidise delivery above what the customer paid
   });
 
   it("keeps the importer's comment parsing", () => {
