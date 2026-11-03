@@ -30,6 +30,8 @@ export type SkuRecovery = {
   inTransitOrders: number;
   notRegisteredOrders: number;
   inProgressOrders: number;
+  /** READ-ONLY: collected returns sitting at ფილიალიდან გაცემა (subset of collectedUnits). No stock is changed. */
+  readyToRestockUnits: number;
   details: RecoveryDetail[];
 };
 
@@ -38,7 +40,10 @@ export type RecoveryGrandTotals = {
   inTransitUnits: number;
   notRegisteredUnits: number;
   inProgressUnits: number;
+  readyToRestockUnits?: number;
 };
+
+export const READY_TO_RESTOCK_STATUS = "ფილიალიდან გაცემა";
 
 export function buildTrackingIndex(ds: CourierDataset | undefined): Map<string, Shipment> {
   const m = new Map<string, Shipment>();
@@ -51,6 +56,7 @@ function emptySku(sku: string, title: string): SkuRecovery {
     sku, title,
     collectedUnits: 0, inTransitUnits: 0, notRegisteredUnits: 0, inProgressUnits: 0,
     collectedOrders: 0, inTransitOrders: 0, notRegisteredOrders: 0, inProgressOrders: 0,
+    readyToRestockUnits: 0,
     details: [],
   };
 }
@@ -89,9 +95,12 @@ export function recoveryBySku(
       const rec = recoveryOf(ds, s, byTracking);
       const bucket: RecoveryBucket =
         rec === "collected" ? "collected" : rec === "on_the_way" ? "in_transit" : "not_registered";
+      const ret = s.linked_return_tracking_number ? byTracking.get(s.linked_return_tracking_number) : undefined;
+      const atBranch = bucket === "collected" &&
+        ((ret?.current_courier_status || s.current_courier_status || "").trim() === READY_TO_RESTOCK_STATUS);
       for (const u of unitsFor(ds, s)) {
         const r = ensure(u.sku, u.title);
-        if (bucket === "collected") { r.collectedUnits += u.qty; r.collectedOrders++; }
+        if (bucket === "collected") { r.collectedUnits += u.qty; r.collectedOrders++; if (atBranch) r.readyToRestockUnits += u.qty; }
         else if (bucket === "in_transit") { r.inTransitUnits += u.qty; r.inTransitOrders++; }
         else { r.notRegisteredUnits += u.qty; r.notRegisteredOrders++; }
         r.details.push({ bucket, orderNumber, tracking: s.tracking_number, status: s.current_courier_status, units: u.qty });
@@ -110,12 +119,13 @@ export function recoveryBySku(
 }
 
 export function recoveryTotals(map: Map<string, SkuRecovery>): RecoveryGrandTotals {
-  const t: RecoveryGrandTotals = { collectedUnits: 0, inTransitUnits: 0, notRegisteredUnits: 0, inProgressUnits: 0 };
+  const t: RecoveryGrandTotals = { collectedUnits: 0, inTransitUnits: 0, notRegisteredUnits: 0, inProgressUnits: 0, readyToRestockUnits: 0 };
   for (const r of map.values()) {
     t.collectedUnits += r.collectedUnits;
     t.inTransitUnits += r.inTransitUnits;
     t.notRegisteredUnits += r.notRegisteredUnits;
     t.inProgressUnits += r.inProgressUnits;
+    t.readyToRestockUnits = (t.readyToRestockUnits || 0) + r.readyToRestockUnits;
   }
   return t;
 }

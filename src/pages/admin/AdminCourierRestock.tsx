@@ -32,10 +32,11 @@ export default function AdminCourierRestock() {
         <p className="text-sm text-muted-foreground">რამდენი ცალი ბრუნდება უკან საწყობში, პროდუქტების მიხედვით.</p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-6">
         {[
           ["ვერ ჩაბარებული ცალი", failedUnits],
           ["ავიღეთ", totals.collectedUnits],
+          ["თაროზე დასაბრუნებელი", totals.readyToRestockUnits || 0],
           ["გზაშია უკან", totals.inTransitUnits],
           ["დაბრუნება არ აქვს", totals.notRegisteredUnits],
           ["შესაძლო დამატებითი", totals.inProgressUnits],
@@ -55,6 +56,7 @@ export default function AdminCourierRestock() {
               <TableHead>SKU</TableHead><TableHead>დასახელება</TableHead>
               <TableHead className="text-right">ვერ ჩაბარდა (ც.)</TableHead>
               <TableHead className="text-right">ავიღეთ</TableHead>
+              <TableHead className="text-right">თაროზე დასაბრუნებელი</TableHead>
               <TableHead className="text-right">გზაშია</TableHead>
               <TableHead className="text-right">არ არის</TableHead>
               <TableHead className="text-right">ავიღეთ %</TableHead>
@@ -69,6 +71,7 @@ export default function AdminCourierRestock() {
                     <TableCell className="text-xs max-w-[280px] truncate">{r.title}</TableCell>
                     <TableCell className="text-right font-semibold">{failed}</TableCell>
                     <TableCell className="text-right text-green-700">{r.collectedUnits}</TableCell>
+                    <TableCell className="text-right font-semibold">{r.readyToRestockUnits}</TableCell>
                     <TableCell className="text-right text-blue-700">{r.inTransitUnits}</TableCell>
                     <TableCell className="text-right text-red-700">{r.notRegisteredUnits}</TableCell>
                     <TableCell className="text-right">{pct(failed ? r.collectedUnits / failed : 0)}</TableCell>
@@ -77,7 +80,7 @@ export default function AdminCourierRestock() {
                 );
               })}
               {rows.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">მონაცემები არ არის</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">მონაცემები არ არის</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

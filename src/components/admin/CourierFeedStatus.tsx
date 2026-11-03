@@ -37,7 +37,7 @@ export function CourierFeedStatus({ showBackfill = false }: { showBackfill?: boo
 
   const backfill = async () => {
     setBusy(true);
-    const { data: r, error } = await supabase.functions.invoke("onway-status-pull", { body: { mode: "backfill" } });
+    const { data: r, error } = await supabase.functions.invoke("onway-status-pull", { body: { action: "backfill" } });
     setBusy(false);
     if (error) { toast({ title: "Backfill failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Backfill done", description: `${r?.trackings ?? 0} shipments · ${r?.history_added ?? 0} history rows added` });
@@ -60,6 +60,7 @@ export function CourierFeedStatus({ showBackfill = false }: { showBackfill?: boo
           </Button>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">Status pull not enabled — waiting for Onway endpoint. Live updates come from the Onway webhook; silence over 3h (Mon–Sat 10:00–20:00) alerts Telegram.</p>
       {unmapped.length > 0 && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm">
           <AlertTriangle className="h-4 w-4 text-destructive" />
