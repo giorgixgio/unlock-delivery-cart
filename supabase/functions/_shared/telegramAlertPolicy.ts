@@ -1,6 +1,6 @@
 // Keep the owner's explicitly requested notification scope in one pure rule.
 export function isOwnerAlertEnabled(type: string): boolean {
-  return type === "billing" || type === "bulk_fulfilled" || type === "onway_api_batch";
+  return type === "billing" || type === "bulk_fulfilled" || type === "onway_api_batch" || type === "webhook_silent";
 }
 
 export type OnwaySendResult = { ok: boolean; skipped?: boolean };

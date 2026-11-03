@@ -811,6 +811,7 @@ const AdminProducts = () => {
               </button>
             </th>
             <th className="text-left px-3 py-3 font-bold text-muted-foreground">პროცესში</th>
+            <th className="text-left px-3 py-3 font-bold" title="ფილიალიდან გაცემული დაბრუნებები — მხოლოდ ინფორმაცია, მარაგი ავტომატურად არ იცვლება">თაროზე დასაბრუნებელი</th>
             <th className="text-left px-3 py-3 font-bold">Status</th>
             <th className="text-left px-3 py-3 font-bold">Priority</th>
             <th className="text-left px-3 py-3 font-bold">Vendor</th>
@@ -1078,6 +1079,7 @@ const AdminProducts = () => {
                 <td className="px-3 py-2">
                   <ReturnCell value={rec?.inProgressUnits || 0} tone="muted" rec={rec} buckets={["in_progress"]} />
                 </td>
+                <td className="px-3 py-2 font-semibold">{rec?.readyToRestockUnits || 0}</td>
                 <td className="px-3 py-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleToggleStock(row.productId, row.available); }}
