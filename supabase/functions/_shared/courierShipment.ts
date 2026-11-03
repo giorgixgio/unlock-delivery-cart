@@ -64,6 +64,16 @@ export function parseNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * What Onway actually remits to us: collected cash minus Onway's own delivery
+ * charge (and any extra services). Customers pay 5 GEL towards delivery, we
+ * subsidise the rest, so this is always below the order total.
+ */
+export function netReceives(cash: number, shipping: number, extra: number): number {
+  if (!(cash > 0)) return 0;
+  return Math.round((cash - shipping - extra) * 100) / 100;
+}
+
 /** Excel dates (kept exactly as before: wall time stored as UTC). */
 export function parseDate(v: unknown): string | null {
   if (v == null || v === "") return null;
@@ -158,6 +168,9 @@ export function onwayPayloadToShipment(body: any, statusMap: Map<string, StatusM
   const comment = str(oi?.order_detail);
   const statusAt = newest?.status_date ?? null;
   const pickup = history.find((h) => PICKUP_STATUSES.has(h.courier_status));
+  const cash = parseNum(oi?.cash_amount);
+  const ship = parseNum(oi?.shipping_price);
+  const extra = parseNum(oi?.additional_services_price);
   const finalEntry = isFinal ? [...history].reverse().find((h) => h.courier_status === status) : undefined;
   const unknownStatuses = [...new Set(history.map((h) => h.courier_status).concat(status ? [status] : []))]
     .filter((s) => !statusMap.has(s));
@@ -170,8 +183,10 @@ export function onwayPayloadToShipment(body: any, statusMap: Map<string, StatusM
       customer_name: isReturn ? senderName : str(oi?.to_name),
       city: isReturn ? str(oi?.from_city) : str(oi?.to_city),
       address: isReturn ? str(oi?.from_address) : str(oi?.to_address),
-      cod_amount: parseNum(oi?.cash_amount),
-      company_receives: parseNum(oi?.cash_amount),
+      cod_amount: cash,
+      company_receives: netReceives(cash, ship, extra),
+      onway_shipping_price: ship,
+      onway_extra_services_price: extra,
       current_courier_status: status,
       derived_state: state,
       derived_status: legacy.derived,
