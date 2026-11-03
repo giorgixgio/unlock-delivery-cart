@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDeployBusy } from "@/components/admin/NewVersionBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, X, Send, AlertTriangle } from "lucide-react";
@@ -43,6 +44,7 @@ const OnwayApiSendModal = ({ open, onClose, orderId }: { open: boolean; onClose:
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  useDeployBusy("onway-send", sending, "hard");
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);

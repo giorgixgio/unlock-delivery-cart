@@ -246,6 +246,7 @@ const AdminLayout = () => {
             <span className="ml-auto">{callSyncBadge}</span>
           </div>
         )}
+        <NewVersionBanner />
         <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
         {queueOnlyRedirect(pathname, callQueue.queueOnly)
           ? <Navigate to={queueOnlyRedirect(pathname, callQueue.queueOnly)!} replace />
