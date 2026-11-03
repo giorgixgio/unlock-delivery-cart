@@ -24,5 +24,15 @@ export async function upsertOnwayShipment(db: any, body: unknown, source: "api" 
   }
   const { data, error } = await db.rpc("courier_upsert_shipment", { p_row: built.row, p_history: built.history, p_source: source });
   if (error) throw new Error(`courier_upsert_shipment: ${error.message}`);
+  // Onway's own charges are not part of the upsert RPC's column list — keep them on the row
+  // so the net "company receives" figure can be audited per parcel.
+  if (built.row.onway_shipping_price != null || built.row.onway_extra_services_price != null) {
+    await db.from("courier_shipments")
+      .update({
+        onway_shipping_price: built.row.onway_shipping_price ?? null,
+        onway_extra_services_price: built.row.onway_extra_services_price ?? null,
+      })
+      .eq("tracking_number", built.row.tracking_number);
+  }
   return data as { result: string; history_added: number };
 }
