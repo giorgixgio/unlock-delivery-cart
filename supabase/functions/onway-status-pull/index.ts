@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
     const username = Deno.env.get("ONWAY_API_USERNAME") || "", apiKey = Deno.env.get("ONWAY_API_KEY") || "";
     if (!username || !apiKey) return json({ error: "Onway API credentials missing" }, 500);
     const { data: ords } = await db.from("orders").select("onway_tracking, onway_sent_at").not("onway_tracking", "is", null)
-      .gte("onway_sent_at", "2026-11-02T00:00:00+04:00").lt("onway_sent_at", "2026-11-03T00:00:00+04:00").limit(3);
+      .not("onway_sent_at", "is", null).order("onway_sent_at", { ascending: false }).limit(3);
     const trackings = (ords || []).map((o: any) => String(o.onway_tracking)).slice(0, 3);
-    if (!trackings.length) return json({ error: "No Nov 2 API trackings found" }, 404);
+    if (!trackings.length) return json({ error: "No API trackings found" }, 404);
     const results: any[] = [];
     const t0 = trackings[0];
     const hashA = await sha256(`${username}:${apiKey}:${t0}`);
