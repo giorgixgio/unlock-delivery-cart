@@ -28,6 +28,7 @@ import { startSession, endSession, markAction, currentSessionId } from "@/lib/op
 import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "@/lib/callAttemptService";
 import { applyOrderCancelStock } from "@/lib/stockService";
 import { tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
+import { isOutsideWorkHours } from "@/lib/callQueuePolicy";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
@@ -138,6 +139,7 @@ function QueueTab() {
   const [shift, setShift] = useState<ShiftState | null>(null);
   const [shiftBusy, setShiftBusy] = useState(false);
   const [shiftLoaded, setShiftLoaded] = useState(false);
+  const { settings: queueCfg } = useCallQueueAccess();
   const [endedSummary, setEndedSummary] = useState<{ calls: number } | null>(null);
   const [yesterday, setYesterday] = useState<{ count: number; sum: number } | null>(null);
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
@@ -188,9 +190,10 @@ function QueueTab() {
     try { await queueAutoEndShifts(); } catch { /* best effort */ }
     const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at, updated_at")
       .eq("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
-    if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return; }
+    if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return undefined; }
     setShift(data?.[0] ?? null);
     setShiftLoaded(true);
+    return (data?.[0] ?? null) as ShiftState | null;
   }, [actor, toast]);
 
   useEffect(() => { void loadToday(); void loadShift(); void loadYesterday(); }, [loadToday, loadShift, loadYesterday]);
@@ -390,11 +393,16 @@ function QueueTab() {
   const runShift = async (a: "start" | "pause" | "end") => {
     const db = supabase as any;
     setShiftBusy(true);
+    let started = false;
     try {
       const ts = new Date().toISOString();
       if (a === "start" || (a === "pause" && shift?.paused)) {
         await queueShiftStart(); // resumes the open shift or starts a new one
         setEndedSummary(null);
+        started = true;
+        const ws = queueCfg?.work_start || "10:00", we = queueCfg?.work_end || "21:00";
+        if (a === "start" && isOutsideWorkHours(new Date(), { workStart: ws, workEnd: we }))
+          toast({ title: `Outside working hours (${ws}–${we}) — shift started anyway` });
       } else if (shift) {
         const patch = a === "pause" ? { paused: true, updated_at: ts } : { ended_at: ts, paused: false, updated_at: ts };
         const { error } = await db.from("operator_shifts").update(patch).eq("id", shift.id);
@@ -411,7 +419,8 @@ function QueueTab() {
     } catch (e: any) {
       toast({ title: "ცვლის ქმედება ვერ შესრულდა / Shift action failed", description: e.message, variant: "destructive" });
     } finally {
-      await loadShift();
+      const now = await loadShift();
+      if (started && now === null) toast({ title: "ცვლა ვერ დაიწყო / Shift did not start", description: "Please try again.", variant: "destructive" });
       setShiftBusy(false);
     }
   };
