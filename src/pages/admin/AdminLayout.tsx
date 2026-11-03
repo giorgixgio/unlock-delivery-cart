@@ -54,6 +54,7 @@ const navGroups = [
     label: "Courier",
     items: [
       { to: "/admin/courier-import", label: "Import", icon: Upload },
+      { to: "/admin/courier/today", label: "Today (Onway)", icon: Radio },
       { to: "/admin/courier/stats", label: "Statistics", icon: BarChart3 },
       { to: "/admin/courier/alerts", label: "Alerts", icon: AlertTriangle },
       { to: "/admin/courier/restock", label: "Restock", icon: PackageCheck },
