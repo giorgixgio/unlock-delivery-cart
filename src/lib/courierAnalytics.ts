@@ -1,6 +1,14 @@
 import type { CourierDataset, Shipment } from "@/hooks/useCourierDataset";
 import { unitsFor } from "@/hooks/useCourierDataset";
 import { RETURN_IN_TRANSIT_STATUSES } from "@/lib/courierStates";
+import { tbilisiDayKey } from "@/lib/tbilisiTime";
+
+/**
+ * Default starting date ("დან") for the courier statistics screen: today's Tbilisi day.
+ * Keeps the first render cheap instead of crunching the whole shipment history.
+ */
+export const defaultStatsFromDate = (now: Date = new Date()): string => tbilisiDayKey(now);
+
 
 export type Recovery = "collected" | "on_the_way" | "not_registered";
 
