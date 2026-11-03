@@ -1,3 +1,4 @@
+import { CourierFeedStatus } from "@/components/admin/CourierFeedStatus";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -471,6 +472,10 @@ export default function AdminCourierImport() {
         <p className="text-sm text-muted-foreground">
           ატვირთე კურიერის ფაილი (.xlsx / .csv). დასრულებული გზავნილები აღარასდროს იცვლება.
         </p>
+        <p className="text-sm font-semibold mt-1">
+          Fallback / backfill — API shipments update automatically from the Onway webhook. Use this page for the old Onway account (no API) and historical data. Older files never overwrite newer API statuses.
+        </p>
+        <div className="mt-3"><CourierFeedStatus showBackfill /></div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

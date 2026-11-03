@@ -1,3 +1,4 @@
+import { CourierFeedStatus } from "@/components/admin/CourierFeedStatus";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -54,6 +55,7 @@ export default function AdminCourierAlerts() {
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-extrabold">Courier Alerts</h1>
+      <CourierFeedStatus />
         <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
           {alerts.length}
         </span>

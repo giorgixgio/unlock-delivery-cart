@@ -1,3 +1,4 @@
+import { CourierFeedStatus } from "@/components/admin/CourierFeedStatus";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -236,6 +237,7 @@ export default function AdminCourierStats() {
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-extrabold">Courier Statistics</h1>
+      <CourierFeedStatus />
 
       <Card><CardContent className="p-4 flex flex-wrap gap-3 items-end">
         <div><Label className="text-xs">დან</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" /></div>

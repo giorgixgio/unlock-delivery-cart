@@ -75,8 +75,11 @@ export type CourierDataset = {
 export function useCourierDataset() {
   return useQuery<CourierDataset>({
     queryKey: ["courier-dataset"],
-    staleTime: 10 * 60 * 1000,
+    // Onway webhook updates arrive every few minutes: refresh while the tab is visible.
+    staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    refetchInterval: 90 * 1000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const PAGE = 1000;
