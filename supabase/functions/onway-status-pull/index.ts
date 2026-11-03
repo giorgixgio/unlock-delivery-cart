@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
   if (action === "silent_check") {
     const { data: last } = await db.from("onway_webhook_log").select("received_at").order("received_at", { ascending: false }).limit(1).maybeSingle();
-    const { count } = await db.from("courier_shipments").select("id", { count: "exact", head: true }).eq("source", "api").eq("is_finalized", false);
+    const { count } = await db.from("courier_shipments").select("id", { count: "exact", head: true }).eq("source", "api").is("final_status_date", null);
     const now = new Date();
     const lastAt = last?.received_at ? new Date(last.received_at) : null;
     const silent = isWebhookSilent(now, lastAt, count || 0);
