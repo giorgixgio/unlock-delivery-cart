@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -57,7 +56,7 @@ export default function AdminCourierStatuses() {
       <div>
         <h1 className="text-2xl font-extrabold">Courier Statuses</h1>
         <p className="text-sm text-muted-foreground">
-          კურიერის ორიგინალი სტატუსის მნიშვნელობა ჩვენთვის. ცალკე გასული და ცალკე დაბრუნებული გზავნილისთვის.
+          კურიერის ორიგინალი სტატუსის მნიშვნელობა ჩვენთვის. ცალკე გასული და ცალკე დაბრუნებული გზავნილისთვის. მხოლოდ სტატისტიკისთვისაა — შეკვეთებს, SMS-ს და კურიერს არ ცვლის.
         </p>
       </div>
 
@@ -75,10 +74,7 @@ export default function AdminCourierStatuses() {
               <TableHead>კურიერის სტატუსი</TableHead>
               <TableHead className="text-right">გზავნილი</TableHead>
               <TableHead>გასული → მდგომარეობა</TableHead>
-              <TableHead>საბოლოო?</TableHead>
               <TableHead>დაბრუნება → მდგომარეობა</TableHead>
-              <TableHead>ავიღეთ?</TableHead>
-              <TableHead>უკან გზაშია?</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {rows.map((r) => (
@@ -94,19 +90,7 @@ export default function AdminCourierStatuses() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Switch checked={r.outbound_is_final}
-                      onCheckedChange={(v) => save(r.courier_status, { outbound_is_final: v })} />
-                  </TableCell>
-                  <TableCell>
                     <StateSelect value={r.return_state} onChange={(v) => save(r.courier_status, { return_state: v })} />
-                  </TableCell>
-                  <TableCell>
-                    <Switch checked={r.is_return_collected}
-                      onCheckedChange={(v) => save(r.courier_status, { is_return_collected: v })} />
-                  </TableCell>
-                  <TableCell>
-                    <Switch checked={r.is_return_in_transit}
-                      onCheckedChange={(v) => save(r.courier_status, { is_return_in_transit: v })} />
                   </TableCell>
                 </TableRow>
               ))}
