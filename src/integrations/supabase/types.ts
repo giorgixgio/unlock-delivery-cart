@@ -3726,6 +3726,7 @@ export type Database = {
           unpacked: number
         }[]
       }
+      courier_feed_status: { Args: never; Returns: Json }
       courier_items_key: { Args: { p: Json }; Returns: string }
       courier_link_returns: { Args: { p_trackings: string[] }; Returns: Json }
       courier_sync_orders: {

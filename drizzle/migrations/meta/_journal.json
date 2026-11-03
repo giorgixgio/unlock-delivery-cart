@@ -288,6 +288,13 @@
       "when": 1793685411286,
       "tag": "0040_courier_live_onway",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793685468342,
+      "tag": "0041_courier_feed_status",
+      "breakpoints": true
     }
   ]
 }
