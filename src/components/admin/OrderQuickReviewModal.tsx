@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { applyOrderConfirmStock, applyOrderCancelStock } from "@/lib/stockService";
 import { useOutcomeLock } from "@/hooks/useOutcomeLock";
+import { useDeployBusy } from "@/components/admin/NewVersionBanner";
 import OutcomeLockBanner from "@/components/admin/OutcomeLockBanner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -258,6 +259,7 @@ export default function OrderQuickReviewModal({
 
 
   const outcomeLock = useOutcomeLock();
+  useDeployBusy("order-popup", !!orderId);
 
   // Keyboard navigation
   useEffect(() => {

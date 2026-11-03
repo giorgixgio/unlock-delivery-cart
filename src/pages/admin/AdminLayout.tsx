@@ -15,6 +15,7 @@ import { useCallSync } from "@/hooks/useCallSync";
 import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice } from "@/lib/callSync";
 import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
 import { Headphones } from "lucide-react";
+import NewVersionBanner from "@/components/admin/NewVersionBanner";
 
 const navGroups = [
   {
@@ -245,6 +246,7 @@ const AdminLayout = () => {
             <span className="ml-auto">{callSyncBadge}</span>
           </div>
         )}
+        <NewVersionBanner />
         <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
         {queueOnlyRedirect(pathname, callQueue.queueOnly)
           ? <Navigate to={queueOnlyRedirect(pathname, callQueue.queueOnly)!} replace />

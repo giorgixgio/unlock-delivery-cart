@@ -1,4 +1,5 @@
 import { trackFunnel } from "@/lib/funnelTracker";
+import { lazyWithRetry } from "@/lib/deployGuard";
 import { useMemo, useEffect, useState, lazy, Suspense } from "react";
 import logoSrc from "@/assets/logo.png";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
@@ -45,7 +46,7 @@ import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
 import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } from '@/lib/miniCameraConfig';
-const MiniCameraLanding = lazy(() => import('@/components/landing/MiniCameraLanding'));
+const MiniCameraLanding = lazyWithRetry(() => import('@/components/landing/MiniCameraLanding'));
 
 
 

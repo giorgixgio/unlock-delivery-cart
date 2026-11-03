@@ -29,6 +29,9 @@ import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "
 import { applyOrderCancelStock } from "@/lib/stockService";
 import { tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
 import { isOutsideWorkHours } from "@/lib/callQueuePolicy";
+import { isRefreshableError, refreshNow } from "@/lib/deployGuard";
+import { useDeployBusy } from "@/components/admin/NewVersionBanner";
+import { ToastAction } from "@/components/ui/toast";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
@@ -140,6 +143,16 @@ function QueueTab() {
   const [shiftBusy, setShiftBusy] = useState(false);
   const [shiftLoaded, setShiftLoaded] = useState(false);
   const { settings: queueCfg } = useCallQueueAccess();
+  useDeployBusy("call-queue-order", !!order);
+  /** Never silent: red toast, plus a Refresh button when it looks like a network/version problem. */
+  const queueError = (title: string, e: any) => {
+    const refreshable = isRefreshableError(e);
+    toast({
+      title, variant: "destructive",
+      description: refreshable ? `${e?.message || e} — Please refresh the page (Ctrl+Shift+R)` : (e?.message || String(e)),
+      action: refreshable ? <ToastAction altText="Refresh" onClick={refreshNow}>Refresh</ToastAction> : undefined,
+    });
+  };
   const [endedSummary, setEndedSummary] = useState<{ calls: number } | null>(null);
   const [yesterday, setYesterday] = useState<{ count: number; sum: number } | null>(null);
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
@@ -187,10 +200,10 @@ function QueueTab() {
   }, [actor]);
 
   const loadShift = useCallback(async () => {
-    try { await queueAutoEndShifts(); } catch { /* best effort */ }
+    try { await queueAutoEndShifts(); } catch (e) { queueError("Shift check failed", e); }
     const { data, error } = await (supabase as any).from("operator_shifts").select("id, paused, started_at, updated_at")
       .eq("operator", actor).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
-    if (error) { toast({ title: "ცვლა ვერ ჩაიტვირთა / Shift load failed", description: error.message, variant: "destructive" }); return undefined; }
+    if (error) { queueError("ცვლა ვერ ჩაიტვირთა / Shift load failed", error); return undefined; }
     setShift(data?.[0] ?? null);
     setShiftLoaded(true);
     return (data?.[0] ?? null) as ShiftState | null;
@@ -237,7 +250,7 @@ function QueueTab() {
       if (!res.order_id) { setOrder(null); setEmpty(true); return; }
       await openOrder(res.order_id);
     } catch (e: any) {
-      toast({ title: "რიგი ვერ ჩაიტვირთა", description: e.message, variant: "destructive" });
+      queueError("რიგი ვერ ჩაიტვირთა", e);
     } finally {
       setLoading(false);
     }
@@ -332,7 +345,7 @@ function QueueTab() {
         await finish(order.id, "no_answer", snap);
       }
     } catch (e: any) {
-      toast({ title: "ვერ შეინახა", description: e.message, variant: "destructive" });
+      queueError("ვერ შეინახა", e);
     } finally { setBusy(false); }
   };
 
@@ -386,7 +399,7 @@ function QueueTab() {
       void loadToday();
       await openOrder(a.orderId);
     } catch (e: any) {
-      toast({ title: "Undo failed", description: e.message, variant: "destructive" });
+      queueError("Undo failed", e);
     } finally { setUndoing(false); }
   };
 
@@ -417,7 +430,7 @@ function QueueTab() {
         }
       } else throw new Error("No open shift");
     } catch (e: any) {
-      toast({ title: "ცვლის ქმედება ვერ შესრულდა / Shift action failed", description: e.message, variant: "destructive" });
+      queueError("ცვლის ქმედება ვერ შესრულდა / Shift action failed", e);
     } finally {
       const now = await loadShift();
       if (started && now === null) toast({ title: "ცვლა ვერ დაიწყო / Shift did not start", description: "Please try again.", variant: "destructive" });

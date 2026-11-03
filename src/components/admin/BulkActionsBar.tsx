@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDeployBusy } from "@/components/admin/NewVersionBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { applyOrderConfirmStock, applyOrderCancelStock } from "@/lib/stockService";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const BulkActionsBar = ({ selectedIds, orders, onComplete, onClearSelection, onM
   const { user } = useAdminAuth();
   const actor = user?.email || "admin";
   const [loading, setLoading] = useState(false);
+  useDeployBusy("bulk-actions", loading, "hard");
   const outcomeLock = useOutcomeLock();
   const [confirmAction, setConfirmAction] = useState<"confirm" | "cancel" | "delete" | null>(null);
   const [restoreStock, setRestoreStock] = useState(true);
