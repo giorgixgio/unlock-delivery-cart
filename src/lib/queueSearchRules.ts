@@ -97,7 +97,9 @@ export function orderActions(o: OrderStageLike): OrderActions {
 export type BadgeTone = "blue" | "orange" | "amber" | "sky" | "green" | "red" | "purple" | "gray";
 /** Our status as a short colored badge (call outcome shown for open orders). */
 export function statusBadge(o: OrderStageLike & { call_outcome?: string | null; call_attempt_count?: number | null }): { label: string; tone: BadgeTone } {
+  if ((o as { tags?: string[] | null }).tags?.includes("replacement")) return { label: "🔁 შეცვლა", tone: "amber" };
   if (o.is_return || o.status === "return_review") return { label: "დაბრუნება", tone: "gray" };
+  if ((o as { tags?: string[] | null }).tags?.includes("converted_to_replacement")) return { label: "🔁 გადაკეთდა შეცვლად", tone: "gray" };
   if (o.status === "merged" || o.merged_into_order_id) return { label: "შერწყმული", tone: "gray" };
   if (o.status === "canceled" || o.status === "cancelled") return { label: "გაუქმებული", tone: "red" };
   if (o.status === "delivered") return { label: "ჩაბარებული", tone: "green" };

@@ -3764,6 +3764,17 @@ export type Database = {
           wave_number: number
         }[]
       }
+      create_replacement_order: {
+        Args: {
+          p_actor: string
+          p_items: Json
+          p_lead_id: string
+          p_note: string
+          p_original_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       create_wholesale_item: {
         Args: { p_batch_id: string }
         Returns: {
@@ -3865,6 +3876,7 @@ export type Database = {
         Args: { p_email: string; p_order_id: string }
         Returns: boolean
       }
+      order_is_delivered: { Args: { p_order_id: string }; Returns: boolean }
       record_stockout_attempt: {
         Args: {
           p_payload: Json
