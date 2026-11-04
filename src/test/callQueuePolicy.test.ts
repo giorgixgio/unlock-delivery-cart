@@ -96,10 +96,11 @@ describe("master switch routing", () => {
     expect(isQueueOnlyOperator("operator", "ETO@bigmart.ge", on)).toBe(false);
     expect(isQueueOnlyOperator("admin", "a@x.ge", on)).toBe(false);
   });
-  it("orders list redirects, single order stays", () => {
-    expect(queueOnlyRedirect("/admin/orders", true)).toBe("/admin/call-queue");
+  it("orders list and single orders stay reachable (view-only); admin home goes to the queue", () => {
+    expect(queueOnlyRedirect("/admin/orders", true)).toBeNull();
     expect(queueOnlyRedirect("/admin/orders/abc", true)).toBeNull();
-    expect(queueOnlyRedirect("/admin/orders", false)).toBeNull();
+    expect(queueOnlyRedirect("/admin", true)).toBe("/admin/call-queue");
+    expect(queueOnlyRedirect("/admin", false)).toBeNull();
   });
 });
 
