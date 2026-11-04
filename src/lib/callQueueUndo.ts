@@ -27,7 +27,7 @@ export const UNDO_SNAPSHOT_FIELDS = [
 ] as const;
 
 /** Event types created by an outcome that undo renames to `<type>_undone`. */
-export const UNDOABLE_EVENT_TYPES = ["call_outcome", "call_attempt", "callback_scheduled", "order_canceled"];
+export const UNDOABLE_EVENT_TYPES = ["call_outcome", "call_attempt", "callback_scheduled", "order_canceled", "order_reopened"];
 
 export type QueueOutcome = "confirmed" | "no_answer" | "callback" | "cancelled";
 
