@@ -26,4 +26,4 @@ Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mi
 - RLS policies must read the caller's email from `auth.jwt()->>'email'`, never `auth.users`, because the authenticated role cannot read auth.users and the policy silently fails.
 - Call Queue Team-tab metrics live in pure `src/lib/callQueueTeamMetrics.ts` and reuse `operatorStatsEngine` outcome rules, so the tab and Operator Stats never disagree.
 
-- Subdirectories have their own `AGENTS.md` (e.g. `supabase/functions/AGENTS.md` for Onway, SMS and courier rules); read it before changing files there.
+- Subdirectories have their own `AGENTS.md` (e.g. `supabase/functions/AGENTS.md` for Onway, SMS and courier rules); read it before changing files there.- Fire-and-forget order_events inserts go through `logOrderEventSafe` (`src/lib/orderEventLog.ts`), because an un-awaited Supabase builder is never sent; Call Queue search-open and direct status-change rules live in pure `src/lib/queueSearchRules.ts` (`isQueueOpen` mirrors DB `call_queue_is_open`).
