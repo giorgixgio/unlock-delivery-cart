@@ -38,6 +38,8 @@ import AddressFields, { useAddressFields } from "@/components/admin/order-review
 import OrderItemsEditor from "@/components/admin/order-review/OrderItemsEditor";
 import PreviousOrdersPanel from "@/components/admin/order-review/PreviousOrdersPanel";
 import { persistOrderEdits } from "@/components/admin/order-review/persistOrderEdits";
+import { logOrderEventSafe, logConfirmBlocked } from "@/lib/orderEventLog";
+import { classifyConfirmError } from "@/lib/queueSearchRules";
 
 
 type Outcome = "confirmed" | "no_answer" | "callback" | "cancelled";
@@ -218,9 +220,7 @@ export default function OrderQuickReviewModal({
         setOperatorNote(o.internal_note || "");
 
         // Always log a per-session "order_opened" event for operator stats
-        supabase.from("order_events").insert({
-          order_id: o.id, actor, event_type: "order_opened", payload: {} as any,
-        });
+        void logOrderEventSafe(o.id, actor, "order_opened", { source: "quick_review" });
 
         // Begin a fresh operator session — switching orders ends the previous one.
         void startSession(o.id, actor);
@@ -329,6 +329,7 @@ export default function OrderQuickReviewModal({
       const v = addr.validateForConfirm();
       if (!v.ok) {
         toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
+        void logConfirmBlocked(order.id, actor, { reason: "address_missing", missing_fields: v.field ? [v.field] : [], error_message: v.message, source: "quick_review" });
         return;
       }
     }
@@ -392,7 +393,22 @@ export default function OrderQuickReviewModal({
     if (def.isConfirmed !== undefined) updates.is_confirmed = def.isConfirmed;
     if (def.reviewRequired !== undefined) updates.review_required = def.reviewRequired;
 
-    const ok = await persistUpdates(updates);
+    let ok = false;
+    try {
+      const res = await persistOrderEdits(order.id, updates, actor);
+      ok = res.ok;
+      if (!res.ok) {
+        toast({ title: "შენახვა ვერ მოხერხდა", description: res.error, variant: "destructive" });
+        void logConfirmBlocked(order.id, actor, { reason: classifyConfirmError(res.error), error_message: res.error ?? null, source: "quick_review" });
+      } else {
+        onOrderUpdated(order.id, updates);
+        setOrder({ ...order, ...(updates as Partial<OrderFull>) });
+      }
+    } catch (e) {
+      const msg = (e as Error)?.message || String(e);
+      toast({ title: "შენახვა ვერ მოხერხდა", description: msg, variant: "destructive" });
+      void logConfirmBlocked(order.id, actor, { reason: "network", error_message: msg, source: "quick_review" });
+    }
     if (!ok) { setSaving(false); return; }
 
     if (def.isConfirmed === true) await applyOrderConfirmStock(order.id);
