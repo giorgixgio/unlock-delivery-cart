@@ -46,10 +46,11 @@ import {
 } from "@/lib/callQueueUndo";
 import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
 import {
-  searchOpenDecision, operatorName, phoneLast9, orderActions, statusBadge,
-  type SearchOrderLike, type OrderStageLike, type BadgeTone, type OutcomeKey,
+  searchOpenDecision, operatorName, phoneLast9, orderActions,
+  type SearchOrderLike, type OrderStageLike, type OutcomeKey,
 } from "@/lib/queueSearchRules";
 import { logOrderEventSafe, logConfirmBlocked } from "@/lib/orderEventLog";
+import StatusChip, { fmtDateTime } from "@/components/admin/OrderStatusChip";
 
 const IDLE_MS = 3 * 60 * 1000;
 
@@ -78,23 +79,6 @@ type SearchHit = SearchOrderLike & OrderStageLike & {
   current_courier_status: string | null; courier_status: string | null;
   order_items: { title: string; quantity: number }[] | null;
 };
-
-const TONE_CLS: Record<BadgeTone, string> = {
-  blue: "bg-blue-100 text-blue-800 border-blue-300",
-  orange: "bg-orange-100 text-orange-800 border-orange-300",
-  amber: "bg-amber-100 text-amber-800 border-amber-300",
-  sky: "bg-sky-100 text-sky-800 border-sky-300",
-  green: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  red: "bg-red-100 text-red-800 border-red-300",
-  purple: "bg-purple-100 text-purple-800 border-purple-300",
-  gray: "bg-muted text-muted-foreground border-border",
-};
-const StatusChip = ({ o }: { o: Parameters<typeof statusBadge>[0] }) => {
-  const b = statusBadge(o);
-  return <span className={`rounded-full border px-2 py-0.5 text-xs font-bold whitespace-nowrap ${TONE_CLS[b.tone]}`}>{b.label}</span>;
-};
-const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /** All orders for a phone (same last-9-digit match as customer history), newest first; or an exact order number. */
 async function findOrders(term: string): Promise<SearchHit[]> {
