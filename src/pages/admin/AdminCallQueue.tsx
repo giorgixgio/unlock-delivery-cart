@@ -197,7 +197,10 @@ function QueueTab() {
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
-  const [readonlyHit, setReadonlyHit] = useState<SearchHit | null>(null);
+  /** "search": the open card came from phone search, not from the queue. */
+  const [openedFrom, setOpenedFrom] = useState<"queue" | "search">("queue");
+  const act = order ? orderActions(order) : null;
+  const can = (k: OutcomeKey) => !!act?.enabled[k];
   const [returnOpen, setReturnOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
@@ -210,6 +213,7 @@ function QueueTab() {
   /** Save address edits with the pop-up's diff rules; runs before every outcome. */
   const saveEdits = async (): Promise<boolean> => {
     if (!order) return false;
+    if (!orderActions(order).canEdit) return true;
     const updates = addr.collectUpdates(order);
     if (Object.keys(updates).length === 0) return true;
     const res = await persistOrderEdits(order.id, updates, actor);
@@ -258,13 +262,14 @@ function QueueTab() {
     return data as unknown as QOrder | null;
   }, []);
 
-  const openOrder = useCallback(async (id: string) => {
+  const openOrder = useCallback(async (id: string, source: "call_queue" | "call_queue_search" = "call_queue") => {
     const o = await fetchOrder(id);
     setOrder(o);
+    setOpenedFrom(source === "call_queue_search" ? "search" : "queue");
     if (!o) return;
     addr.reset(o);
     // Same as OrderQuickReviewModal on open
-    void logOrderEventSafe(o.id, actor, "order_opened", { source: "call_queue" });
+    void logOrderEventSafe(o.id, actor, "order_opened", { source });
     void startSession(o.id, actor);
     if (!o.operator_viewed_at) {
       supabase.from("orders").update({
@@ -346,6 +351,7 @@ function QueueTab() {
     void endSession("outcome", outcome);
     try { await queueRelease(id); } catch { /* lock will expire */ }
     setOrder(null);
+    setOpenedFrom("queue");
     if (action) setLastAction(action);
     void loadToday();
     await loadNext();
@@ -353,8 +359,15 @@ function QueueTab() {
     idleTimer.current = setTimeout(() => setIdle(true), IDLE_MS);
   };
 
+  /** Cancelled order opened from search: reopen it (logged as order_reopened) before the new outcome. */
+  const reopenIfCancelled = async (): Promise<boolean> => {
+    if (!order || !orderActions(order).reopens) return true;
+    try { await queueReopen(order.id); return true; }
+    catch (e) { queueError("ხელახლა გახსნა ვერ მოხერხდა / Could not reopen", e); return false; }
+  };
+
   const onConfirm = async () => {
-    if (!order || busy) return;
+    if (!order || busy || !orderActions(order).enabled.confirm) return;
     const v = addr.validateForConfirm();
     if (!v.ok) {
       toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
@@ -370,6 +383,7 @@ function QueueTab() {
         setBusy(false); return;
       }
       snap = await takeSnapshot("confirmed");
+      if (!(await reopenIfCancelled())) { setBusy(false); return; }
       ok = await confirmOrderFromQueue(order, actor, currentSessionId());
     } catch (e) {
       void logConfirmBlocked(order.id, actor, { reason: "network", error_message: (e as Error)?.message || String(e), source: "call_queue" });
@@ -380,7 +394,7 @@ function QueueTab() {
   };
 
   const onNoAnswer = async () => {
-    if (!order || busy) return;
+    if (!order || busy || !orderActions(order).enabled.no_answer) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     try {
@@ -404,10 +418,11 @@ function QueueTab() {
   };
 
   const onCallback = async (whenIso: string) => {
-    if (!order) return;
+    if (!order || !orderActions(order).enabled.callback) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     const snap = await takeSnapshot("callback");
+    if (!(await reopenIfCancelled())) { setBusy(false); return; }
     const ok = await scheduleCallback(order.id, actor, whenIso, "call_queue", currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
@@ -417,7 +432,7 @@ function QueueTab() {
   };
 
   const onCancel = async (reason: CancelReason, note: string | null) => {
-    if (!order) return;
+    if (!order || !orderActions(order).enabled.cancel) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     const snap = await takeSnapshot("cancelled");
