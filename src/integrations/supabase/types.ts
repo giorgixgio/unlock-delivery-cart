@@ -1970,6 +1970,7 @@ export type Database = {
           packing_status: string
           packing_wave_id: string | null
           payment_method: string
+          phone_last9: string | null
           public_order_number: string
           queue_extra_attempts: number | null
           queue_last_touched_by: string | null
@@ -2074,6 +2075,7 @@ export type Database = {
           packing_status?: string
           packing_wave_id?: string | null
           payment_method?: string
+          phone_last9?: string | null
           public_order_number: string
           queue_extra_attempts?: number | null
           queue_last_touched_by?: string | null
@@ -2178,6 +2180,7 @@ export type Database = {
           packing_status?: string
           packing_wave_id?: string | null
           payment_method?: string
+          phone_last9?: string | null
           public_order_number?: string
           queue_extra_attempts?: number | null
           queue_last_touched_by?: string | null
@@ -3841,6 +3844,7 @@ export type Database = {
         }
         Returns: Json
       }
+      operator_customer_history: { Args: { p_order_id: string }; Returns: Json }
       operator_delivery_quality: {
         Args: { p_from: string; p_to: string }
         Returns: {
