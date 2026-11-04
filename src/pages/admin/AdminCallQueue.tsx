@@ -520,7 +520,6 @@ function QueueTab() {
   };
 
   const doSearch = async () => {
-    setReadonlyHit(null);
     let found: SearchHit[];
     try { found = await findOrders(search); }
     catch (e) { setHits([]); toast({ title: "ძიება ვერ მოხერხდა / Search failed", description: (e as Error)?.message || String(e), variant: "destructive" }); return; }
@@ -528,12 +527,14 @@ function QueueTab() {
     if (!found.length) toast({ title: "შეკვეთა ვერ მოიძებნა" });
   };
 
-  /** Open a searched order inside the queue card (open → assign to me; locked → refuse; closed → read-only). */
+  /**
+   * Open any searched order in the regular queue card (assigned to me). Only a live lock by another
+   * operator refuses. Leaving without an outcome releases with call_queue_release_view (queue position untouched).
+   */
   const openHit = async (h: SearchHit) => {
     const { data: fresh } = await supabase.from("orders").select(SEARCH_SELECT).eq("id", h.id).maybeSingle();
     const hit = ((fresh as any) || h) as SearchHit;
     const d = searchOpenDecision(hit, actor);
-    if (d.kind === "readonly") { setReadonlyHit(hit); setHits([]); return; }
     if (d.kind === "locked") {
       toast({ title: `${operatorName(d.by)} is working on this order right now`, description: `${operatorName(d.by)} ახლა ამ შეკვეთაზე მუშაობს`, variant: "destructive" });
       return;
@@ -543,13 +544,22 @@ function QueueTab() {
     try {
       if (order) {
         void endSession("switched_order");
-        try { await queueRelease(order.id); } catch { /* lock will expire */ }
+        try { await queueReleaseView(order.id); } catch { /* lock will expire */ }
         setOrder(null);
       }
       await queueAssign(hit.id, actor);
     } catch (e) { queueError("შეკვეთა ვერ გაიხსნა / Could not open order", e); return; }
-    setHits([]); setReadonlyHit(null); setSearch("");
-    await openOrder(hit.id);
+    setHits([]); setSearch("");
+    await openOrder(hit.id, "call_queue_search");
+  };
+
+  /** Close a search-opened order without an outcome: no skip, no queue change. */
+  const closeSearchOrder = async () => {
+    if (!order) return;
+    void endSession("closed_view");
+    try { await queueReleaseView(order.id); } catch { /* lock will expire */ }
+    setOrder(null);
+    setOpenedFrom("queue");
   };
 
   // ── Keyboard shortcuts (desktop) ──
@@ -566,10 +576,10 @@ function QueueTab() {
       return;
     }
     if (busy) return;
-    if (k === "enter") { e.preventDefault(); void onConfirm(); }
-    else if (k === "n") { e.preventDefault(); void onNoAnswer(); }
-    else if (k === "c") { e.preventDefault(); setCallbackOpen(true); }
-    else if (k === "x") { e.preventDefault(); setCancelOpen(true); }
+    if (k === "enter" && can("confirm")) { e.preventDefault(); void onConfirm(); }
+    else if (k === "n" && can("no_answer")) { e.preventDefault(); void onNoAnswer(); }
+    else if (k === "c" && can("callback")) { e.preventDefault(); setCallbackOpen(true); }
+    else if (k === "x" && can("cancel")) { e.preventDefault(); setCancelOpen(true); }
     else if (k === "z" && undoCheck.ok) { e.preventDefault(); void doUndo(); }
   };
   useEffect(() => {
