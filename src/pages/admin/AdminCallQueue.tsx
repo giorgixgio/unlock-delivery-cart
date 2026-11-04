@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useStore } from "@/contexts/StoreContext";
@@ -45,6 +45,8 @@ import {
 
 } from "@/lib/callQueueUndo";
 import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
+import { searchOpenDecision, operatorName, type SearchOrderLike } from "@/lib/queueSearchRules";
+import { logOrderEventSafe, logConfirmBlocked } from "@/lib/orderEventLog";
 
 const IDLE_MS = 3 * 60 * 1000;
 
@@ -61,18 +63,29 @@ interface QOrder {
 const ORDER_SELECT =
   "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
-async function findOrder(term: string): Promise<{ id: string } | null> {
+const SEARCH_SELECT =
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, city, address_line1, address_line2, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, current_courier_status, order_items(title, quantity)";
+type SearchHit = SearchOrderLike & {
+  id: string; public_order_number: string; created_at: string; total: number | null;
+  customer_name: string | null; customer_phone: string | null; city: string | null;
+  address_line1: string | null; address_line2: string | null; current_courier_status: string | null;
+  order_items: { title: string; quantity: number }[] | null;
+};
+
+/** Orders matching the last 9 phone digits, or an exact order number. */
+async function findOrders(term: string): Promise<SearchHit[]> {
   const t = term.trim();
-  if (!t) return null;
+  if (!t) return [];
   const digits = t.replace(/\D/g, "");
-  if (digits.length >= 9) {
-    const { data } = await supabase.from("orders").select("id").ilike("customer_phone", `%${digits.slice(-9)}%`)
-      .order("created_at", { ascending: false }).limit(1);
-    return (data?.[0] as any) ?? null;
-  }
-  const { data } = await supabase.from("orders").select("id").eq("public_order_number", t.replace(/^#/, "")).limit(1);
-  return (data?.[0] as any) ?? null;
+  const q = supabase.from("orders").select(SEARCH_SELECT);
+  const { data } = digits.length >= 9
+    ? await q.ilike("customer_phone", `%${digits.slice(-9)}%`).order("created_at", { ascending: false }).limit(15)
+    : await q.eq("public_order_number", t.replace(/^#/, "")).limit(5);
+  return ((data as any[]) || []) as SearchHit[];
 }
+/** Newest single match (Team tab tools). */
+const findOrder = async (term: string): Promise<{ id: string } | null> => (await findOrders(term))[0] ?? null;
+const itemsLine = (h: SearchHit) => (h.order_items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ");
 
 const fmtDur = (sec: number) => {
   const m = Math.floor(sec / 60);
@@ -123,11 +136,12 @@ export default function AdminCallQueue() {
 interface ShiftState { id: string; paused: boolean; started_at: string; updated_at: string | null }
 
 function QueueTab() {
-  const { user } = useAdminAuth();
+  const { user, role } = useAdminAuth();
+  const isAdmin = role === "admin";
   const actor = user?.email || "admin";
   const { activeStore } = useStore();
   const { toast } = useToast();
-  const navigate = useNavigate();
+
 
   const [order, setOrder] = useState<QOrder | null>(null);
   const [loading, setLoading] = useState(false);
@@ -157,6 +171,8 @@ function QueueTab() {
   const [yesterday, setYesterday] = useState<{ count: number; sum: number } | null>(null);
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
   const [search, setSearch] = useState("");
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [readonlyHit, setReadonlyHit] = useState<SearchHit | null>(null);
   const [returnOpen, setReturnOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
@@ -223,7 +239,7 @@ function QueueTab() {
     if (!o) return;
     addr.reset(o);
     // Same as OrderQuickReviewModal on open
-    supabase.from("order_events").insert({ order_id: o.id, actor, event_type: "order_opened", payload: {} as any });
+    void logOrderEventSafe(o.id, actor, "order_opened", { source: "call_queue" });
     void startSession(o.id, actor);
     if (!o.operator_viewed_at) {
       supabase.from("orders").update({
@@ -315,14 +331,27 @@ function QueueTab() {
   const onConfirm = async () => {
     if (!order || busy) return;
     const v = addr.validateForConfirm();
-    if (!v.ok) { toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" }); return; }
+    if (!v.ok) {
+      toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
+      void logConfirmBlocked(order.id, actor, { reason: "address_missing", missing_fields: v.field ? [v.field] : [], error_message: v.message, source: "call_queue" });
+      return;
+    }
     setBusy(true);
-    if (!(await saveEdits())) { setBusy(false); return; }
-    const snap = await takeSnapshot("confirmed");
-    const ok = await confirmOrderFromQueue(order, actor, currentSessionId());
+    let ok = false;
+    let snap: Awaited<ReturnType<typeof takeSnapshot>> | undefined;
+    try {
+      if (!(await saveEdits())) {
+        void logConfirmBlocked(order.id, actor, { reason: "db_error", error_message: "address/edit save failed", source: "call_queue" });
+        setBusy(false); return;
+      }
+      snap = await takeSnapshot("confirmed");
+      ok = await confirmOrderFromQueue(order, actor, currentSessionId());
+    } catch (e) {
+      void logConfirmBlocked(order.id, actor, { reason: "network", error_message: (e as Error)?.message || String(e), source: "call_queue" });
+    }
     setBusy(false);
     if (!ok) { toast({ title: "ვერ შეინახა", variant: "destructive" }); return; }
-    await finish(order.id, "confirmed", snap);
+    await finish(order.id, "confirmed", snap!);
   };
 
   const onNoAnswer = async () => {
@@ -451,9 +480,34 @@ function QueueTab() {
   };
 
   const doSearch = async () => {
-    const found = await findOrder(search);
-    if (found) navigate(`/admin/orders/${found.id}`);
-    else toast({ title: "შეკვეთა ვერ მოიძებნა" });
+    setReadonlyHit(null);
+    const found = await findOrders(search);
+    setHits(found);
+    if (!found.length) toast({ title: "შეკვეთა ვერ მოიძებნა" });
+  };
+
+  /** Open a searched order inside the queue card (open → assign to me; locked → refuse; closed → read-only). */
+  const openHit = async (h: SearchHit) => {
+    const { data: fresh } = await supabase.from("orders").select(SEARCH_SELECT).eq("id", h.id).maybeSingle();
+    const hit = ((fresh as any) || h) as SearchHit;
+    const d = searchOpenDecision(hit, actor);
+    if (d.kind === "readonly") { setReadonlyHit(hit); setHits([]); return; }
+    if (d.kind === "locked") {
+      toast({ title: `${operatorName(d.by)} is working on this order right now`, description: `${operatorName(d.by)} ახლა ამ შეკვეთაზე მუშაობს`, variant: "destructive" });
+      return;
+    }
+    if (order?.id === hit.id) { setHits([]); return; }
+    if (order && !window.confirm("Switch to this order? / გადავიდეთ ამ შეკვეთაზე?")) return;
+    try {
+      if (order) {
+        void endSession("switched_order");
+        try { await queueRelease(order.id); } catch { /* lock will expire */ }
+        setOrder(null);
+      }
+      await queueAssign(hit.id, actor);
+    } catch (e) { queueError("შეკვეთა ვერ გაიხსნა / Could not open order", e); return; }
+    setHits([]); setReadonlyHit(null); setSearch("");
+    await openOrder(hit.id);
   };
 
   // ── Keyboard shortcuts (desktop) ──
@@ -547,6 +601,49 @@ function QueueTab() {
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ტელეფონი ან შეკვეთის # / phone or order #" className="text-base" />
         <Button type="submit" variant="outline" size="icon"><Search className="w-4 h-4" /></Button>
       </form>
+
+      {hits.length > 0 && (
+        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          {hits.map((h) => (
+            <div key={h.id} className="flex items-start gap-2 p-2">
+              <button type="button" onClick={() => void openHit(h)} className="flex-1 min-w-0 text-left">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <b>#{h.public_order_number}</b>
+                  <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", dateStyle: "short", timeStyle: "short" })}</span>
+                  <span className="rounded bg-muted px-1.5 text-xs">{h.status}</span>
+                  <b className="ml-auto">{Number(h.total || 0).toFixed(2)} ₾</b>
+                </div>
+                <div className="truncate text-xs text-muted-foreground">{itemsLine(h)}</div>
+              </button>
+              {isAdmin && <Link to={`/admin/orders/${h.id}`} className="text-xs underline text-muted-foreground whitespace-nowrap pt-0.5">Open full page</Link>}
+            </div>
+          ))}
+          <button type="button" onClick={() => setHits([])} className="w-full p-2 text-xs text-muted-foreground">დახურვა / Close</button>
+        </div>
+      )}
+
+      {readonlyHit && (
+        <div className="rounded-2xl border border-border bg-card p-3 space-y-2 lg:max-w-xl lg:mx-auto">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-xs text-muted-foreground">#{readonlyHit.public_order_number} · მხოლოდ ნახვა / read-only</div>
+              <div className="font-extrabold">{readonlyHit.customer_name}</div>
+              <div className="text-sm">{readonlyHit.customer_phone}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-extrabold">{Number(readonlyHit.total || 0).toFixed(2)} ₾</div>
+              <span className="rounded bg-muted px-1.5 text-xs">{readonlyHit.status}</span>
+            </div>
+          </div>
+          <div className="text-sm"><span className="text-muted-foreground">მისამართი: </span>{[readonlyHit.city, readonlyHit.address_line1, readonlyHit.address_line2].filter(Boolean).join(", ") || "—"}</div>
+          <div className="text-sm"><span className="text-muted-foreground">პროდუქტები: </span>{itemsLine(readonlyHit) || "—"}</div>
+          <div className="text-sm"><span className="text-muted-foreground">კურიერი: </span>{readonlyHit.current_courier_status || "—"}</div>
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="outline" onClick={() => setReadonlyHit(null)}>დახურვა / Close</Button>
+            {isAdmin && <Link to={`/admin/orders/${readonlyHit.id}`} className="text-xs underline text-muted-foreground">Open full page</Link>}
+          </div>
+        </div>
+      )}
 
       {!order && (
         <div className="space-y-2 lg:max-w-xl lg:mx-auto">

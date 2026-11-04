@@ -4,6 +4,8 @@ import { applyOrderConfirmStock } from "@/lib/stockService";
 import { logCallOutcome } from "@/lib/callAttemptService";
 import { logSystemEvent } from "@/lib/systemEventService";
 import { markAction } from "@/lib/operatorSession";
+import { logConfirmBlocked } from "@/lib/orderEventLog";
+import { classifyConfirmError } from "@/lib/queueSearchRules";
 
 export interface CallQueueSettings {
   enabled_operators: string[];
@@ -144,8 +146,16 @@ export async function confirmOrderFromQueue(
     is_confirmed: true,
     review_required: false,
   };
-  const { error } = await supabase.from("orders").update(updates as any).eq("id", order.id);
-  if (error) return false;
+  let error: { message: string } | null = null;
+  try {
+    ({ error } = await supabase.from("orders").update(updates as any).eq("id", order.id));
+  } catch (e) {
+    error = { message: (e as Error)?.message || String(e) };
+  }
+  if (error) {
+    await logConfirmBlocked(order.id, actor, { reason: classifyConfirmError(error.message), error_message: error.message, source: "call_queue" });
+    return false;
+  }
   await supabase.from("order_events").insert({
     order_id: order.id, actor, event_type: "manual_edit",
     payload: { section: "quick_review", changed: Object.keys(updates) } as any,
