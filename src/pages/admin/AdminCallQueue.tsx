@@ -139,7 +139,7 @@ function QueueTab() {
   const actor = user?.email || "admin";
   const { activeStore } = useStore();
   const { toast } = useToast();
-  const navigate = useNavigate();
+
 
   const [order, setOrder] = useState<QOrder | null>(null);
   const [loading, setLoading] = useState(false);
@@ -349,7 +349,7 @@ function QueueTab() {
     }
     setBusy(false);
     if (!ok) { toast({ title: "ვერ შეინახა", variant: "destructive" }); return; }
-    await finish(order.id, "confirmed", snap);
+    await finish(order.id, "confirmed", snap!);
   };
 
   const onNoAnswer = async () => {
