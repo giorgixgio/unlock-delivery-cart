@@ -83,6 +83,8 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
 
   const cancellablePrev = useMemo(() => prevOrders.filter((p) => !NON_CANCELLABLE.includes(p.status)), [prevOrders]);
   const summary = useMemo(() => summarizePreviousOrders(prevOrders, currentSkus, new Date()), [prevOrders, currentSkus]);
+  const badge = useMemo(() => historyBadge(prevOrders), [prevOrders]);
+  const counts = useMemo(() => historyCounts(prevOrders), [prevOrders]);
 
   const handleBulkCancelPrev = useCallback(async () => {
     if (cancellablePrev.length === 0) return;
@@ -148,7 +150,7 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
             <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-0" : "-rotate-90"}`} />
             <span className="text-xs font-bold uppercase tracking-wider">წინა შეკვეთები</span>
             <span className={`text-xs ${summary.level === "none" ? "text-muted-foreground" : "font-bold"} truncate`}>
-              {prevLoading ? "იტვირთება…" : summary.line}
+              {prevLoading ? "იტვირთება…" : counts}
             </span>
           </button>
         ) : (
@@ -164,6 +166,12 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
           </Button>
         )}
       </div>
+      {!prevLoading && badge && (
+        <div className={`mt-1.5 ${open ? "mb-2" : ""} rounded-md border px-2 py-1 text-xs flex flex-wrap items-center gap-x-2 ${BADGE_CLS[badge.kind]}`}>
+          <span className="font-bold">{badge.title}</span>
+          <span className="opacity-80">{badge.hint}</span>
+        </div>
+      )}
       {open && (prevLoading ? (
         <div className="text-xs text-muted-foreground">იტვირთება…</div>
       ) : (
@@ -208,6 +216,21 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
                     </button>
                   </div>
                 </div>
+                {(() => {
+                  const st = stageOf(p);
+                  if (st === "none" && p.match_type !== "device") return null;
+                  return (
+                    <div className="px-2.5 pb-1 -mt-0.5 pl-8 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      {p.match_type === "device" && <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 font-bold">შესაძლო დამთხვევა (მოწყობილობა)</span>}
+                      {st !== "none" && <span className={`px-1.5 py-0.5 rounded font-bold ${STAGE_CLS[st] || "bg-blue-100 text-blue-800"}`}>Onway: {STAGE_LABEL[st]}</span>}
+                      {p.failures.map((f, i) => (
+                        <span key={i} className="text-muted-foreground" title={f.comment || undefined}>
+                          ✗ {new Date(f.at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short" })}: <b>{REASON_LABEL[reasonOf(f)]}</b>
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {titles && !isExpanded && (
                   <div className="px-2.5 pb-1.5 -mt-0.5 pl-8 text-[11px] text-muted-foreground truncate">{titles}</div>
                 )}
