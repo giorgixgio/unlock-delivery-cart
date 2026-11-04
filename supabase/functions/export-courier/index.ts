@@ -383,7 +383,7 @@ Deno.serve(async (req) => {
       }
       if (order.internal_note) notes.push(order.internal_note);
       let noteText = notes.join(" | ");
-      if (order.is_return) noteText = `RETURN — ${noteText}`.trim();
+      if (order.is_return && !String(order.internal_note || "").startsWith("REPLACEMENT")) noteText = `RETURN — ${noteText}`.trim();
 
 
       orderIds.push(order.id);

@@ -823,7 +823,7 @@ function QueueTab() {
           orderId={order.id}
           actor={actor}
           onClose={() => setReturnOpen(false)}
-          onCreated={() => toast({ title: "დაბრუნება შექმნილია ✓" })}
+          onCreated={(_id, _num, leadClosed) => { if (leadClosed) void loadNext(); }}
         />
       )}
     </div>

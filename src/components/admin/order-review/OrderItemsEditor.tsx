@@ -143,7 +143,7 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">პროდუქტები</h3>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={onCreateReturn}>
-            <RotateCcw className="w-3.5 h-3.5" /> Create Return
+            <RotateCcw className="w-3.5 h-3.5" /> Make Replacement
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => setSearchOpen((v) => !v)}>
             <Plus className="w-3.5 h-3.5" /> პროდუქტის დამატება
