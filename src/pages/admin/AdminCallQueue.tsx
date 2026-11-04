@@ -35,7 +35,7 @@ import { ToastAction } from "@/components/ui/toast";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
-  queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo,
+  queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo, queueReleaseView, queueReopen,
   fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, queueShiftStart, queueAutoEndShifts, type QueueStats,
 } from "@/lib/callQueueService";
 import {
@@ -45,7 +45,10 @@ import {
 
 } from "@/lib/callQueueUndo";
 import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
-import { searchOpenDecision, operatorName, type SearchOrderLike } from "@/lib/queueSearchRules";
+import {
+  searchOpenDecision, operatorName, phoneLast9, orderActions, statusBadge,
+  type SearchOrderLike, type OrderStageLike, type BadgeTone, type OutcomeKey,
+} from "@/lib/queueSearchRules";
 import { logOrderEventSafe, logConfirmBlocked } from "@/lib/orderEventLog";
 
 const IDLE_MS = 3 * 60 * 1000;
@@ -58,28 +61,49 @@ interface QOrder {
   notes_customer: string | null; internal_note: string | null; normalization_confidence: number | null; review_required: boolean;
   subtotal: number; shipping_fee: number; discount_total: number; total: number;
   call_attempt_count: number | null; is_fulfilled: boolean | null; operator_viewed_at: string | null; operator_review_status: string | null;
+  is_return: boolean | null; is_confirmed: boolean | null; auto_confirmed: boolean | null; call_outcome: string | null;
+  onway_sent_at: string | null; onway_tracking: string | null; tracking_number: string | null; packed_at: string | null;
+  packing_wave_id: string | null; merged_into_order_id: string | null; onway_last_status: string | null; final_cancel_reason: string | null;
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
 export const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, city, address_line1, address_line2, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
-type SearchHit = SearchOrderLike & {
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, call_outcome, call_attempt_count, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
+type SearchHit = SearchOrderLike & OrderStageLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
-  customer_name: string | null; customer_phone: string | null; city: string | null;
-  address_line1: string | null; address_line2: string | null; current_courier_status: string | null; courier_status: string | null;
+  customer_name: string | null; customer_phone: string | null;
+  call_outcome: string | null; call_attempt_count: number | null;
+  current_courier_status: string | null; courier_status: string | null;
   order_items: { title: string; quantity: number }[] | null;
 };
 
-/** Orders matching the last 9 phone digits, or an exact order number. */
+const TONE_CLS: Record<BadgeTone, string> = {
+  blue: "bg-blue-100 text-blue-800 border-blue-300",
+  orange: "bg-orange-100 text-orange-800 border-orange-300",
+  amber: "bg-amber-100 text-amber-800 border-amber-300",
+  sky: "bg-sky-100 text-sky-800 border-sky-300",
+  green: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  red: "bg-red-100 text-red-800 border-red-300",
+  purple: "bg-purple-100 text-purple-800 border-purple-300",
+  gray: "bg-muted text-muted-foreground border-border",
+};
+const StatusChip = ({ o }: { o: Parameters<typeof statusBadge>[0] }) => {
+  const b = statusBadge(o);
+  return <span className={`rounded-full border px-2 py-0.5 text-xs font-bold whitespace-nowrap ${TONE_CLS[b.tone]}`}>{b.label}</span>;
+};
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/** All orders for a phone (same last-9-digit match as customer history), newest first; or an exact order number. */
 async function findOrders(term: string): Promise<SearchHit[]> {
   const t = term.trim();
   if (!t) return [];
-  const digits = t.replace(/\D/g, "");
+  const last9 = phoneLast9(t);
   const q = supabase.from("orders").select(SEARCH_SELECT);
-  const { data, error } = digits.length >= 9
-    ? await q.ilike("customer_phone", `%${digits.slice(-9)}%`).order("created_at", { ascending: false }).limit(15)
+  const { data, error } = last9
+    ? await q.eq("phone_last9", last9).order("created_at", { ascending: false }).limit(50)
     : await q.eq("public_order_number", t.replace(/^#/, "")).limit(5);
   if (error) throw new Error(error.message);
   return ((data as any[]) || []) as SearchHit[];
