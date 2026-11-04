@@ -35,7 +35,7 @@ import { ToastAction } from "@/components/ui/toast";
 import type { CancelReason } from "@/lib/cancelReasons";
 import {
   queueNext, queueRelease, queueScheduleRetry, queueStats, queueTeamLocks, queueAssign,
-  queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo,
+  queueForceRelease, queueOverride, confirmOrderFromQueue, queueUndo, queueReleaseView, queueReopen,
   fetchUndoSnapshotSource, fetchUndoState, fetchActionEventIds, queueShiftStart, queueAutoEndShifts, type QueueStats,
 } from "@/lib/callQueueService";
 import {
@@ -45,8 +45,12 @@ import {
 
 } from "@/lib/callQueueUndo";
 import { buildTeamRows, idleLevel, type TeamRow } from "@/lib/callQueueTeamMetrics";
-import { searchOpenDecision, operatorName, type SearchOrderLike } from "@/lib/queueSearchRules";
+import {
+  searchOpenDecision, operatorName, phoneLast9, orderActions,
+  type SearchOrderLike, type OrderStageLike, type OutcomeKey,
+} from "@/lib/queueSearchRules";
 import { logOrderEventSafe, logConfirmBlocked } from "@/lib/orderEventLog";
+import StatusChip, { fmtDateTime } from "@/components/admin/OrderStatusChip";
 
 const IDLE_MS = 3 * 60 * 1000;
 
@@ -58,28 +62,32 @@ interface QOrder {
   notes_customer: string | null; internal_note: string | null; normalization_confidence: number | null; review_required: boolean;
   subtotal: number; shipping_fee: number; discount_total: number; total: number;
   call_attempt_count: number | null; is_fulfilled: boolean | null; operator_viewed_at: string | null; operator_review_status: string | null;
+  is_return: boolean | null; is_confirmed: boolean | null; auto_confirmed: boolean | null; call_outcome: string | null;
+  onway_sent_at: string | null; onway_tracking: string | null; tracking_number: string | null; packed_at: string | null;
+  packing_wave_id: string | null; merged_into_order_id: string | null; onway_last_status: string | null; final_cancel_reason: string | null;
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
 export const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, city, address_line1, address_line2, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
-type SearchHit = SearchOrderLike & {
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, call_outcome, call_attempt_count, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
+type SearchHit = SearchOrderLike & OrderStageLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
-  customer_name: string | null; customer_phone: string | null; city: string | null;
-  address_line1: string | null; address_line2: string | null; current_courier_status: string | null; courier_status: string | null;
+  customer_name: string | null; customer_phone: string | null;
+  call_outcome: string | null; call_attempt_count: number | null;
+  current_courier_status: string | null; courier_status: string | null;
   order_items: { title: string; quantity: number }[] | null;
 };
 
-/** Orders matching the last 9 phone digits, or an exact order number. */
+/** All orders for a phone (same last-9-digit match as customer history), newest first; or an exact order number. */
 async function findOrders(term: string): Promise<SearchHit[]> {
   const t = term.trim();
   if (!t) return [];
-  const digits = t.replace(/\D/g, "");
+  const last9 = phoneLast9(t);
   const q = supabase.from("orders").select(SEARCH_SELECT);
-  const { data, error } = digits.length >= 9
-    ? await q.ilike("customer_phone", `%${digits.slice(-9)}%`).order("created_at", { ascending: false }).limit(15)
+  const { data, error } = last9
+    ? await q.eq("phone_last9", last9).order("created_at", { ascending: false }).limit(50)
     : await q.eq("public_order_number", t.replace(/^#/, "")).limit(5);
   if (error) throw new Error(error.message);
   return ((data as any[]) || []) as SearchHit[];
@@ -173,7 +181,10 @@ function QueueTab() {
   const [pendingShift, setPendingShift] = useState<"pause" | "end" | null>(null);
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
-  const [readonlyHit, setReadonlyHit] = useState<SearchHit | null>(null);
+  /** "search": the open card came from phone search, not from the queue. */
+  const [openedFrom, setOpenedFrom] = useState<"queue" | "search">("queue");
+  const act = order ? orderActions(order) : null;
+  const can = (k: OutcomeKey) => !!act?.enabled[k];
   const [returnOpen, setReturnOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
@@ -186,6 +197,7 @@ function QueueTab() {
   /** Save address edits with the pop-up's diff rules; runs before every outcome. */
   const saveEdits = async (): Promise<boolean> => {
     if (!order) return false;
+    if (!orderActions(order).canEdit) return true;
     const updates = addr.collectUpdates(order);
     if (Object.keys(updates).length === 0) return true;
     const res = await persistOrderEdits(order.id, updates, actor);
@@ -234,13 +246,14 @@ function QueueTab() {
     return data as unknown as QOrder | null;
   }, []);
 
-  const openOrder = useCallback(async (id: string) => {
+  const openOrder = useCallback(async (id: string, source: "call_queue" | "call_queue_search" = "call_queue") => {
     const o = await fetchOrder(id);
     setOrder(o);
+    setOpenedFrom(source === "call_queue_search" ? "search" : "queue");
     if (!o) return;
     addr.reset(o);
     // Same as OrderQuickReviewModal on open
-    void logOrderEventSafe(o.id, actor, "order_opened", { source: "call_queue" });
+    void logOrderEventSafe(o.id, actor, "order_opened", { source });
     void startSession(o.id, actor);
     if (!o.operator_viewed_at) {
       supabase.from("orders").update({
@@ -322,6 +335,7 @@ function QueueTab() {
     void endSession("outcome", outcome);
     try { await queueRelease(id); } catch { /* lock will expire */ }
     setOrder(null);
+    setOpenedFrom("queue");
     if (action) setLastAction(action);
     void loadToday();
     await loadNext();
@@ -329,8 +343,15 @@ function QueueTab() {
     idleTimer.current = setTimeout(() => setIdle(true), IDLE_MS);
   };
 
+  /** Cancelled order opened from search: reopen it (logged as order_reopened) before the new outcome. */
+  const reopenIfCancelled = async (): Promise<boolean> => {
+    if (!order || !orderActions(order).reopens) return true;
+    try { await queueReopen(order.id); return true; }
+    catch (e) { queueError("ხელახლა გახსნა ვერ მოხერხდა / Could not reopen", e); return false; }
+  };
+
   const onConfirm = async () => {
-    if (!order || busy) return;
+    if (!order || busy || !orderActions(order).enabled.confirm) return;
     const v = addr.validateForConfirm();
     if (!v.ok) {
       toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
@@ -346,6 +367,7 @@ function QueueTab() {
         setBusy(false); return;
       }
       snap = await takeSnapshot("confirmed");
+      if (!(await reopenIfCancelled())) { setBusy(false); return; }
       ok = await confirmOrderFromQueue(order, actor, currentSessionId());
     } catch (e) {
       void logConfirmBlocked(order.id, actor, { reason: "network", error_message: (e as Error)?.message || String(e), source: "call_queue" });
@@ -356,7 +378,7 @@ function QueueTab() {
   };
 
   const onNoAnswer = async () => {
-    if (!order || busy) return;
+    if (!order || busy || !orderActions(order).enabled.no_answer) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     try {
@@ -380,10 +402,11 @@ function QueueTab() {
   };
 
   const onCallback = async (whenIso: string) => {
-    if (!order) return;
+    if (!order || !orderActions(order).enabled.callback) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     const snap = await takeSnapshot("callback");
+    if (!(await reopenIfCancelled())) { setBusy(false); return; }
     const ok = await scheduleCallback(order.id, actor, whenIso, "call_queue", currentSessionId());
     setBusy(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
@@ -393,7 +416,7 @@ function QueueTab() {
   };
 
   const onCancel = async (reason: CancelReason, note: string | null) => {
-    if (!order) return;
+    if (!order || !orderActions(order).enabled.cancel) return;
     setBusy(true);
     if (!(await saveEdits())) { setBusy(false); return; }
     const snap = await takeSnapshot("cancelled");
@@ -481,7 +504,6 @@ function QueueTab() {
   };
 
   const doSearch = async () => {
-    setReadonlyHit(null);
     let found: SearchHit[];
     try { found = await findOrders(search); }
     catch (e) { setHits([]); toast({ title: "ძიება ვერ მოხერხდა / Search failed", description: (e as Error)?.message || String(e), variant: "destructive" }); return; }
@@ -489,12 +511,14 @@ function QueueTab() {
     if (!found.length) toast({ title: "შეკვეთა ვერ მოიძებნა" });
   };
 
-  /** Open a searched order inside the queue card (open → assign to me; locked → refuse; closed → read-only). */
+  /**
+   * Open any searched order in the regular queue card (assigned to me). Only a live lock by another
+   * operator refuses. Leaving without an outcome releases with call_queue_release_view (queue position untouched).
+   */
   const openHit = async (h: SearchHit) => {
     const { data: fresh } = await supabase.from("orders").select(SEARCH_SELECT).eq("id", h.id).maybeSingle();
     const hit = ((fresh as any) || h) as SearchHit;
     const d = searchOpenDecision(hit, actor);
-    if (d.kind === "readonly") { setReadonlyHit(hit); setHits([]); return; }
     if (d.kind === "locked") {
       toast({ title: `${operatorName(d.by)} is working on this order right now`, description: `${operatorName(d.by)} ახლა ამ შეკვეთაზე მუშაობს`, variant: "destructive" });
       return;
@@ -504,13 +528,22 @@ function QueueTab() {
     try {
       if (order) {
         void endSession("switched_order");
-        try { await queueRelease(order.id); } catch { /* lock will expire */ }
+        try { await queueReleaseView(order.id); } catch { /* lock will expire */ }
         setOrder(null);
       }
       await queueAssign(hit.id, actor);
     } catch (e) { queueError("შეკვეთა ვერ გაიხსნა / Could not open order", e); return; }
-    setHits([]); setReadonlyHit(null); setSearch("");
-    await openOrder(hit.id);
+    setHits([]); setSearch("");
+    await openOrder(hit.id, "call_queue_search");
+  };
+
+  /** Close a search-opened order without an outcome: no skip, no queue change. */
+  const closeSearchOrder = async () => {
+    if (!order) return;
+    void endSession("closed_view");
+    try { await queueReleaseView(order.id); } catch { /* lock will expire */ }
+    setOrder(null);
+    setOpenedFrom("queue");
   };
 
   // ── Keyboard shortcuts (desktop) ──
@@ -527,10 +560,10 @@ function QueueTab() {
       return;
     }
     if (busy) return;
-    if (k === "enter") { e.preventDefault(); void onConfirm(); }
-    else if (k === "n") { e.preventDefault(); void onNoAnswer(); }
-    else if (k === "c") { e.preventDefault(); setCallbackOpen(true); }
-    else if (k === "x") { e.preventDefault(); setCancelOpen(true); }
+    if (k === "enter" && can("confirm")) { e.preventDefault(); void onConfirm(); }
+    else if (k === "n" && can("no_answer")) { e.preventDefault(); void onNoAnswer(); }
+    else if (k === "c" && can("callback")) { e.preventDefault(); setCallbackOpen(true); }
+    else if (k === "x" && can("cancel")) { e.preventDefault(); setCancelOpen(true); }
     else if (k === "z" && undoCheck.ok) { e.preventDefault(); void doUndo(); }
   };
   useEffect(() => {
@@ -601,50 +634,49 @@ function QueueTab() {
       </div>
 
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void doSearch(); }}>
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ტელეფონი ან შეკვეთის # / phone or order #" className="text-base" />
-        <Button type="submit" variant="outline" size="icon"><Search className="w-4 h-4" /></Button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search} onChange={(e) => setSearch(e.target.value)} inputMode="tel" aria-label="Search by phone"
+            placeholder="კლიენტის ტელეფონი (ან შეკვეთის #) / customer phone"
+            className="pl-9 h-11 text-base"
+          />
+        </div>
+        <Button type="submit" className="h-11 px-4 font-bold gap-1"><Search className="w-4 h-4" /> ძებნა</Button>
       </form>
 
       {hits.length > 0 && (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
-          {hits.map((h) => (
-            <div key={h.id} className="flex items-start gap-2 p-2">
-              <button type="button" onClick={() => void openHit(h)} className="flex-1 min-w-0 text-left">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <b>#{h.public_order_number}</b>
-                  <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", dateStyle: "short", timeStyle: "short" })}</span>
-                  <span className="rounded bg-muted px-1.5 text-xs">{h.status}</span>
-                  <b className="ml-auto">{Number(h.total || 0).toFixed(2)} ₾</b>
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{itemsLine(h)}</div>
-              </button>
-              {isAdmin && <Link to={`/admin/orders/${h.id}`} className="text-xs underline text-muted-foreground whitespace-nowrap pt-0.5">Open full page</Link>}
-            </div>
-          ))}
-          <button type="button" onClick={() => setHits([])} className="w-full p-2 text-xs text-muted-foreground">დახურვა / Close</button>
-        </div>
-      )}
-
-      {readonlyHit && (
-        <div className="rounded-2xl border border-border bg-card p-3 space-y-2 lg:max-w-xl lg:mx-auto">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-xs text-muted-foreground">#{readonlyHit.public_order_number} · მხოლოდ ნახვა / read-only</div>
-              <div className="font-extrabold">{readonlyHit.customer_name}</div>
-              <div className="text-sm">{readonlyHit.customer_phone}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-extrabold">{Number(readonlyHit.total || 0).toFixed(2)} ₾</div>
-              <span className="rounded bg-muted px-1.5 text-xs">{readonlyHit.status}</span>
-            </div>
+        <div className="rounded-xl border border-border bg-card p-2 space-y-2">
+          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+            <span className="font-bold">{hits.length} შეკვეთა · ახლიდან ძველისკენ / newest first</span>
+            <button type="button" onClick={() => setHits([])} className="underline">დახურვა / Close</button>
           </div>
-          <div className="text-sm"><span className="text-muted-foreground">მისამართი: </span>{[readonlyHit.city, readonlyHit.address_line1, readonlyHit.address_line2].filter(Boolean).join(", ") || "—"}</div>
-          <div className="text-sm"><span className="text-muted-foreground">პროდუქტები: </span>{itemsLine(readonlyHit) || "—"}</div>
-          <div className="text-sm"><span className="text-muted-foreground">კურიერი: </span>{readonlyHit.current_courier_status || readonlyHit.courier_status || "—"}</div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" variant="outline" onClick={() => setReadonlyHit(null)}>დახურვა / Close</Button>
-            {isAdmin && <Link to={`/admin/orders/${readonlyHit.id}`} className="text-xs underline text-muted-foreground">Open full page</Link>}
-          </div>
+          {hits.map((h, i) => {
+            const courier = h.current_courier_status || h.courier_status;
+            const lockedByOther = searchOpenDecision(h, actor).kind === "locked";
+            return (
+              <div key={h.id} className="relative">
+                <button
+                  type="button" onClick={() => void openHit(h)} aria-label={`Open order ${h.public_order_number}`}
+                  className={`w-full text-left rounded-lg border p-2.5 transition-colors hover:bg-muted/60 hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${i === 0 ? "border-primary/60 bg-primary/5" : "border-border bg-background"}`}
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <b>{fmtDateTime(h.created_at)}</b>
+                    <span className="text-muted-foreground">#{h.public_order_number}</span>
+                    {i === 0 && <span className="rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[11px] font-bold">უახლესი / newest</span>}
+                    <b className="ml-auto text-base">{Number(h.total || 0).toFixed(2)} ₾</b>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <StatusChip o={h} />
+                    {courier && <span className="rounded-full border border-purple-300 bg-purple-50 text-purple-800 px-2 py-0.5 text-xs font-semibold">Onway: {courier}</span>}
+                    {lockedByOther && <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs">🔒 {operatorName(h.queue_locked_by || "")}</span>}
+                  </div>
+                  <div className="mt-1 truncate text-xs text-muted-foreground">{itemsLine(h) || "—"}</div>
+                </button>
+                {isAdmin && <Link to={`/admin/orders/${h.id}`} className="absolute right-2 bottom-1.5 text-[11px] underline text-muted-foreground">Open full page</Link>}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -662,9 +694,19 @@ function QueueTab() {
         <div className="lg:grid lg:grid-cols-[65fr_35fr] lg:gap-4 lg:items-start">
           {/* Left: order form */}
           <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3 min-w-0">
+            {openedFrom === "search" && (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-2 py-1.5 text-xs">
+                <span className="font-semibold">ძებნიდან გახსნილი / opened from search</span>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={() => void closeSearchOrder()}>← რიგში დაბრუნება / Back to queue</Button>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-xs text-muted-foreground">#{order.public_order_number}</div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>#{order.public_order_number} · {fmtDateTime(order.created_at)}</span>
+                  <StatusChip o={order} />
+                  {order.onway_last_status && <span className="rounded-full border border-purple-300 bg-purple-50 text-purple-800 px-2 py-0.5 font-semibold">Onway: {order.onway_last_status}</span>}
+                </div>
                 <div className="text-lg font-extrabold">{order.customer_name}</div>
                 <div className="text-sm">{order.customer_phone}</div>
               </div>
@@ -682,16 +724,22 @@ function QueueTab() {
               </div>
             )}
 
-            <AddressFields state={addr} order={order} />
+            {act?.note && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-2 py-1.5 text-sm font-semibold">{act.note}</div>
+            )}
 
-            <OrderItemsEditor
-              key={`items-${order.id}`}
-              order={order}
-              actor={actor}
-              saving={busy}
-              onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
-              onCreateReturn={() => setReturnOpen(true)}
-            />
+            <fieldset disabled={!act?.canEdit} className="space-y-3 min-w-0 disabled:opacity-70">
+              <AddressFields state={addr} order={order} />
+
+              <OrderItemsEditor
+                key={`items-${order.id}`}
+                order={order}
+                actor={actor}
+                saving={busy}
+                onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
+                onCreateReturn={() => setReturnOpen(true)}
+              />
+            </fieldset>
           </div>
 
           {/* Right: sticky action panel (desktop) */}
@@ -701,16 +749,17 @@ function QueueTab() {
               <div className="text-3xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
             </div>
             <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-12 text-base" />
-            <Button disabled={busy} onClick={onConfirm} className="w-full h-16 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+            {act?.note && <div className="text-xs font-semibold text-amber-800">{act.note}</div>}
+            <Button disabled={busy || !can("confirm")} onClick={onConfirm} className="w-full h-16 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
               <CheckCircle2 className="w-6 h-6" /> დადასტურდა <Kbd>Enter</Kbd>
             </Button>
-            <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="w-full h-12 text-base font-extrabold border-amber-400 text-amber-800 gap-1">
+            <Button disabled={busy || !can("no_answer")} onClick={onNoAnswer} variant="outline" className="w-full h-12 text-base font-extrabold border-amber-400 text-amber-800 gap-1">
               <PhoneOff className="w-5 h-5" /> არ პასუხობს <Kbd>N</Kbd>
             </Button>
-            <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-blue-400 text-blue-800 gap-1">
+            <Button disabled={busy || !can("callback")} onClick={() => setCallbackOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-blue-400 text-blue-800 gap-1">
               <RotateCcw className="w-5 h-5" /> გადასარეკია <Kbd>C</Kbd>
             </Button>
-            <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-red-400 text-red-700 gap-1">
+            <Button disabled={busy || !can("cancel")} onClick={() => setCancelOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-red-400 text-red-700 gap-1">
               <XCircle className="w-5 h-5" /> გაუქმდა <Kbd>X</Kbd>
             </Button>
             <UndoButton className="w-full" />
@@ -719,13 +768,14 @@ function QueueTab() {
           {/* Mobile: sticky bottom bar */}
           <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] space-y-2">
             <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-11 text-base shadow-lg" />
-            <Button disabled={busy} onClick={onConfirm} className="w-full h-14 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+            {act?.note && <div className="text-xs font-semibold text-amber-800 truncate">{act.note}</div>}
+            <Button disabled={busy || !can("confirm")} onClick={onConfirm} className="w-full h-14 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
               <CheckCircle2 className="w-5 h-5" /> დადასტურდა · {Number(order.total).toFixed(2)} ₾
             </Button>
             <div className="grid grid-cols-3 gap-2">
-              <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="h-12 text-sm font-extrabold border-amber-400 text-amber-800 px-1"><PhoneOff className="w-4 h-4" /> არ პასუხობს</Button>
-              <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-blue-400 text-blue-800 px-1"><RotateCcw className="w-4 h-4" /> გადარეკვა</Button>
-              <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-red-400 text-red-700 px-1"><XCircle className="w-4 h-4" /> გაუქმდა</Button>
+              <Button disabled={busy || !can("no_answer")} onClick={onNoAnswer} variant="outline" className="h-12 text-sm font-extrabold border-amber-400 text-amber-800 px-1"><PhoneOff className="w-4 h-4" /> არ პასუხობს</Button>
+              <Button disabled={busy || !can("callback")} onClick={() => setCallbackOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-blue-400 text-blue-800 px-1"><RotateCcw className="w-4 h-4" /> გადარეკვა</Button>
+              <Button disabled={busy || !can("cancel")} onClick={() => setCancelOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-red-400 text-red-700 px-1"><XCircle className="w-4 h-4" /> გაუქმდა</Button>
             </div>
           </div>
         </div>

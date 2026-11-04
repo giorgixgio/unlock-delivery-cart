@@ -149,7 +149,8 @@ Deno.serve(async (req) => {
       .ilike("email", userEmail)
       .maybeSingle();
     const role = String(staffRow?.role ?? "").toLowerCase();
-    const canImport = !staffErr && staffRow?.is_active === true && role !== "warehouse" && role !== "scanner";
+    const { data: viewOnly } = await admin.rpc("is_queue_only_operator", { p_uid: userId });
+    const canImport = !staffErr && staffRow?.is_active === true && role !== "warehouse" && role !== "scanner" && !viewOnly;
     if (!canImport) {
       console.warn("[import-courier] staff authorization denied", {
         userId,

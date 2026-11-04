@@ -1,3 +1,5 @@
+import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
+import OrderViewOnly from "@/components/admin/OrderViewOnly";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,6 +133,23 @@ interface PreviousOrder {
   customer_phone: string;
   order_items: { sku: string; title: string; quantity: number }[];
 }
+
+/** Queue-only operators get the view-only order screen; everyone else the full page. */
+const AdminOrderDetailGate = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const access = useCallQueueAccess();
+  if (!access.loaded) return <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  if (access.queueOnly && id) {
+    return (
+      <div className="p-3 sm:p-6 max-w-3xl mx-auto space-y-3">
+        <Button variant="ghost" size="sm" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/admin/orders"))}>← უკან / Back</Button>
+        <OrderViewOnly orderId={id} />
+      </div>
+    );
+  }
+  return <AdminOrderDetail />;
+};
 
 const AdminOrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -1186,4 +1205,4 @@ const AdminOrderDetail = () => {
   );
 };
 
-export default AdminOrderDetail;
+export default AdminOrderDetailGate;

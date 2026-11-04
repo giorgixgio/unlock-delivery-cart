@@ -41,6 +41,9 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
     const { data: isAdmin } = await supabase.rpc("is_active_admin", { user_id: userData.user.id });
     if (!isAdmin) return json({ error: "Forbidden" }, 403);
+    // Queue-only operators are view-only outside the Call Queue (no Send to Onway / review save).
+    const { data: viewOnly } = await supabase.rpc("is_queue_only_operator", { p_uid: userData.user.id });
+    if (viewOnly) return json({ error: "View only: operators cannot send to Onway" }, 403);
     const actor = userData.user.email || userData.user.id;
 
     let body: any = {};

@@ -90,6 +90,11 @@ export const queueTeamLocks = () =>
   rpc<{ order_id: string; order_number: string; locked_by: string; locked_until: string }[]>("call_queue_team_locks");
 export const queueAssign = (orderId: string, operator: string) =>
   rpc<void>("call_queue_assign", { p_order_id: orderId, p_operator: operator });
+/** Drop a lock taken only to look at a searched order; queue position is not touched. */
+export const queueReleaseView = (orderId: string) => rpc<void>("call_queue_release_view", { p_order_id: orderId });
+/** Reopen a cancelled order (stock bookkeeping + `order_reopened` event) before a new outcome. */
+export const queueReopen = (orderId: string) =>
+  rpc<{ reopened: boolean; event_id?: string }>("call_queue_reopen", { p_order_id: orderId });
 export const queueForceRelease = (orderId: string) => rpc<void>("call_queue_force_release", { p_order_id: orderId });
 export const queueOverride = (orderId: string) => rpc<void>("call_queue_override", { p_order_id: orderId });
 export const queueIsManager = () => rpc<boolean>("call_queue_is_manager");

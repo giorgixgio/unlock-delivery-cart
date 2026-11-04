@@ -83,6 +83,8 @@ Deno.serve(async (req) => {
     if (adminErr || !isAdmin) {
       return json(403, { error: "Forbidden" });
     }
+    const { data: viewOnly } = await supabase.rpc("is_queue_only_operator", { p_uid: claimsRes.claims.sub });
+    if (viewOnly) return json(403, { error: "View only" });
 
     let body: any = {};
     try { body = await req.json(); } catch { /* allow empty */ }

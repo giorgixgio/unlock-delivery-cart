@@ -48,9 +48,11 @@ interface Props {
   actor: string;
   /** Queue: collapsed accordion with one-line summary. Pop-up: always open (original layout). */
   accordion?: boolean;
+  /** View-only screens: hide cancel / merge buttons. */
+  readOnly?: boolean;
 }
 
-export default function PreviousOrdersPanel({ order, currentSkus, actor, accordion = false }: Props) {
+export default function PreviousOrdersPanel({ order, currentSkus, actor, accordion = false, readOnly = false }: Props) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
@@ -159,7 +161,7 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
             წინა შეკვეთები ({prevOrders.length})
           </h3>
         )}
-        {open && cancellablePrev.length > 0 && (
+        {open && !readOnly && cancellablePrev.length > 0 && (
           <Button size="sm" variant="destructive" className="h-7 gap-1.5 text-xs" disabled={bulkCanceling} onClick={handleBulkCancelPrev}>
             {bulkCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
             ყველა წინა გააუქმე ({cancellablePrev.length})
@@ -179,7 +181,7 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
           {prevOrders.map((p) => {
             const isExpanded = expandedPrevId === p.id;
             const items = prevItemsById[p.id];
-            const canCancelRow = !NON_CANCELLABLE.includes(p.status);
+            const canCancelRow = !readOnly && !NON_CANCELLABLE.includes(p.status);
             const canMergeRow = canCancelRow && !order.is_fulfilled;
             const titles = (p.order_items || []).map((i) => `${i.title}${i.quantity > 1 ? ` ×${i.quantity}` : ""}`).join(", ");
             return (

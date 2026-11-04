@@ -129,7 +129,7 @@ const AdminLayout = () => {
   const isOperator = role === "operator";
   const visibleGroups = navGroups
     .filter((g) => !(isOperator && OPERATOR_HIDDEN_GROUPS.includes(g.label)))
-    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(callQueue.queueOnly && n.to === "/admin/orders") && !(isOperator && n.to === "/admin/dashboard")) }))
+    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(isOperator && n.to === "/admin/dashboard")) }))
     .filter((g) => g.items.length > 0);
 
   const activeGroup =
@@ -251,7 +251,7 @@ const AdminLayout = () => {
         <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
         {queueOnlyRedirect(pathname, callQueue.queueOnly)
           ? <Navigate to={queueOnlyRedirect(pathname, callQueue.queueOnly)!} replace />
-          : role === "operator" && !callQueue.loaded && pathname.replace(/\/+$/, "") === "/admin/orders"
+          : role === "operator" && !callQueue.loaded && pathname.startsWith("/admin/orders")
             ? null
             : <Outlet />}
       </main>

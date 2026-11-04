@@ -48,9 +48,18 @@ export function isQueueOnlyOperator(
 
 export const CALL_QUEUE_PATH = "/admin/call-queue";
 
-/** Redirect target for queue-only operators: the orders list goes to the queue; single orders stay open. */
+/**
+ * Redirect target for queue-only operators: the admin home goes to the queue.
+ * The Orders list and single orders stay reachable, view-only (see `ordersViewOnly`).
+ */
 export function queueOnlyRedirect(pathname: string, queueOnly: boolean): string | null {
   if (!queueOnly) return null;
   const p = pathname.replace(/\/+$/, "");
-  return p === "/admin/orders" || p === "/admin" ? CALL_QUEUE_PATH : null;
+  return p === "/admin" ? CALL_QUEUE_PATH : null;
 }
+
+/**
+ * Orders page is view-only for queue-only operators (no status/address edits, bulk actions,
+ * Send to Onway or other CTAs). Mirrors DB `is_queue_only_operator`, which the order triggers enforce.
+ */
+export const ordersViewOnly = isQueueOnlyOperator;

@@ -21,6 +21,9 @@ import { normalizePhone } from "@/lib/phoneUtils";
 import ToggleStore from "@/components/admin/ToggleStore";
 import { useStore } from "@/contexts/StoreContext";
 import { filterOrdersForStore } from "@/lib/adminStoreFilter";
+import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import OrderViewOnly from "@/components/admin/OrderViewOnly";
 
 type Tab = "review" | "ready" | "fulfilled" | "returns" | "merged" | "canceled" | "all";
 
@@ -141,7 +144,9 @@ const AdminOrders = () => {
   const { applyToCount, hasModifier } = useViewModifier();
   const { activeStore } = useStore();
   const { isAdmin } = useAdminAuth();
-  const onwayReview = useOnwayReview(isAdmin && activeStore !== "A");
+  // Queue-only operators: view-only list (no bulk actions, status/address edits, Send to Onway or other CTAs).
+  const viewOnly = useCallQueueAccess().queueOnly;
+  const onwayReview = useOnwayReview(isAdmin && !viewOnly && activeStore !== "A");
 
   const fetchCounts = useCallback(async () => {
     const [reviewRes, readyRes, fulfilledRes, returnsRes] = await Promise.all([
@@ -366,14 +371,18 @@ const AdminOrders = () => {
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             განახლება
           </Button>
-          <Button onClick={() => setFulfillOpen(true)} variant="outline" className="gap-2">
-            <Upload className="w-4 h-4" />
-            Mass Fulfill
-          </Button>
-          <Button onClick={() => setExportOpen(true)} variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export to Courier
-          </Button>
+          {!viewOnly && (
+            <>
+              <Button onClick={() => setFulfillOpen(true)} variant="outline" className="gap-2">
+                <Upload className="w-4 h-4" />
+                Mass Fulfill
+              </Button>
+              <Button onClick={() => setExportOpen(true)} variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Export to Courier
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -469,7 +478,12 @@ const AdminOrders = () => {
       </div>
 
       {/* Bulk Actions */}
-      {selectedIds.length > 0 && (
+      {viewOnly && (
+        <div className="rounded-lg border border-border bg-muted px-3 py-2 text-sm font-semibold">
+          მხოლოდ ნახვა / View only — ზარები და ცვლილებები ზარების რიგიდან / calls and changes are made from the Call Queue
+        </div>
+      )}
+      {!viewOnly && selectedIds.length > 0 && (
         <BulkActionsBar
           selectedIds={selectedIds}
           orders={orders.map(o => ({ id: o.id, status: o.status, is_confirmed: o.is_confirmed, version: 0 }))}
@@ -527,10 +541,10 @@ const AdminOrders = () => {
       </div>
 
       {/* Table */}
-      <CustomerRequestsPanel />
-      <DeliveryProblemsPanel />
-      {activeTab === "ready" && onwayReview.error && <p className="text-destructive text-sm">{onwayReview.error}</p>}
-      {activeTab === "ready" && <OnwayReviewPanel rows={onwayReview.rows} onUpdated={() => { void onwayReview.refresh(); void fetchOrders(true); void fetchCounts(); }} />}
+      {!viewOnly && <CustomerRequestsPanel />}
+      {!viewOnly && <DeliveryProblemsPanel />}
+      {!viewOnly && activeTab === "ready" && onwayReview.error && <p className="text-destructive text-sm">{onwayReview.error}</p>}
+      {!viewOnly && activeTab === "ready" && <OnwayReviewPanel rows={onwayReview.rows} onUpdated={() => { void onwayReview.refresh(); void fetchOrders(true); void fetchCounts(); }} />}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -544,14 +558,16 @@ const AdminOrders = () => {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-3 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={orders.length > 0 && selectedIds.length === orders.length}
-                    onChange={toggleSelectAll}
-                    className="accent-primary"
-                  />
-                </th>
+                {!viewOnly && (
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={orders.length > 0 && selectedIds.length === orders.length}
+                      onChange={toggleSelectAll}
+                      className="accent-primary"
+                    />
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 font-bold">Order</th>
                 <th className="text-left px-4 py-3 font-bold">Date</th>
                 <th className="text-left px-4 py-3 font-bold">Customer</th>
@@ -573,15 +589,17 @@ const AdminOrders = () => {
                     selectedIds.includes(order.id) ? "bg-primary/5" : ""
                   } ${isUnviewed ? "bg-amber-50/40 dark:bg-amber-950/10 border-l-4 border-l-amber-400" : ""}`}
                 >
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(order.id)}
-                      onChange={() => {}}
-                      onClick={(e) => toggleSelect(order.id, rowIndex, e.shiftKey)}
-                      className="accent-primary"
-                    />
-                  </td>
+                  {!viewOnly && (
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(order.id)}
+                        onChange={() => {}}
+                        onClick={(e) => toggleSelect(order.id, rowIndex, e.shiftKey)}
+                        className="accent-primary"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <span className="font-bold text-primary">{order.public_order_number}</span>
                     {isUnviewed && (
@@ -611,13 +629,13 @@ const AdminOrders = () => {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground">{order.customer_phone}</span>
-                      <CallButton
+                      {!viewOnly && <CallButton
                         orderId={order.id}
                         phone={order.customer_phone}
                         customerName={order.customer_name}
                         label=""
                         className="h-9 w-9 p-0 rounded-full shrink-0"
-                      />
+                      />}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -637,7 +655,7 @@ const AdminOrders = () => {
                   <td className="px-4 py-3 font-bold">{Number(order.total).toFixed(1)} ₾</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
-                      {order.status === "return_review" && (
+                      {!viewOnly && order.status === "return_review" && (
                         <button
                           onClick={(e) => { e.stopPropagation(); approveReturn(order.id); }}
                           className="px-2.5 py-1 rounded-full text-xs font-bold w-fit bg-emerald-600 text-white hover:bg-emerald-700"
@@ -719,7 +737,15 @@ const AdminOrders = () => {
         onClose={() => setMergeOpen(false)}
         onComplete={() => { setSelectedIds([]); fetchOrders(); fetchCounts(); }}
       />
-      <OrderQuickReviewModal
+      {viewOnly && (
+        <Dialog open={!!activeOrderId} onOpenChange={(o) => !o && setActiveOrderId(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogTitle className="sr-only">Order (view only)</DialogTitle>
+            {activeOrderId && <OrderViewOnly orderId={activeOrderId} />}
+          </DialogContent>
+        </Dialog>
+      )}
+      {!viewOnly && <OrderQuickReviewModal
         orderId={activeOrderId}
         onClose={() => setActiveOrderId(null)}
         onPrev={goPrev}
@@ -727,7 +753,7 @@ const AdminOrders = () => {
         hasPrev={activeIndex > 0}
         hasNext={activeIndex >= 0 && activeIndex < orders.length - 1}
         onOrderUpdated={handleOrderUpdated}
-      />
+      />}
     </div>
   );
 };
