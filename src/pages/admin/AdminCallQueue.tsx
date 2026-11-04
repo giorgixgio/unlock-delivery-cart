@@ -710,9 +710,19 @@ function QueueTab() {
         <div className="lg:grid lg:grid-cols-[65fr_35fr] lg:gap-4 lg:items-start">
           {/* Left: order form */}
           <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3 min-w-0">
+            {openedFrom === "search" && (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-2 py-1.5 text-xs">
+                <span className="font-semibold">ძებნიდან გახსნილი / opened from search</span>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={() => void closeSearchOrder()}>← რიგში დაბრუნება / Back to queue</Button>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-xs text-muted-foreground">#{order.public_order_number}</div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>#{order.public_order_number} · {fmtDateTime(order.created_at)}</span>
+                  <StatusChip o={order} />
+                  {order.onway_last_status && <span className="rounded-full border border-purple-300 bg-purple-50 text-purple-800 px-2 py-0.5 font-semibold">Onway: {order.onway_last_status}</span>}
+                </div>
                 <div className="text-lg font-extrabold">{order.customer_name}</div>
                 <div className="text-sm">{order.customer_phone}</div>
               </div>
@@ -730,16 +740,22 @@ function QueueTab() {
               </div>
             )}
 
-            <AddressFields state={addr} order={order} />
+            {act?.note && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-2 py-1.5 text-sm font-semibold">{act.note}</div>
+            )}
 
-            <OrderItemsEditor
-              key={`items-${order.id}`}
-              order={order}
-              actor={actor}
-              saving={busy}
-              onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
-              onCreateReturn={() => setReturnOpen(true)}
-            />
+            <fieldset disabled={!act?.canEdit} className="space-y-3 min-w-0 disabled:opacity-70">
+              <AddressFields state={addr} order={order} />
+
+              <OrderItemsEditor
+                key={`items-${order.id}`}
+                order={order}
+                actor={actor}
+                saving={busy}
+                onChanged={(patch) => setOrder((o) => (o ? { ...o, ...patch } : o))}
+                onCreateReturn={() => setReturnOpen(true)}
+              />
+            </fieldset>
           </div>
 
           {/* Right: sticky action panel (desktop) */}
@@ -749,16 +765,17 @@ function QueueTab() {
               <div className="text-3xl font-extrabold">{Number(order.total).toFixed(2)} ₾</div>
             </div>
             <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-12 text-base" />
-            <Button disabled={busy} onClick={onConfirm} className="w-full h-16 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+            {act?.note && <div className="text-xs font-semibold text-amber-800">{act.note}</div>}
+            <Button disabled={busy || !can("confirm")} onClick={onConfirm} className="w-full h-16 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
               <CheckCircle2 className="w-6 h-6" /> დადასტურდა <Kbd>Enter</Kbd>
             </Button>
-            <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="w-full h-12 text-base font-extrabold border-amber-400 text-amber-800 gap-1">
+            <Button disabled={busy || !can("no_answer")} onClick={onNoAnswer} variant="outline" className="w-full h-12 text-base font-extrabold border-amber-400 text-amber-800 gap-1">
               <PhoneOff className="w-5 h-5" /> არ პასუხობს <Kbd>N</Kbd>
             </Button>
-            <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-blue-400 text-blue-800 gap-1">
+            <Button disabled={busy || !can("callback")} onClick={() => setCallbackOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-blue-400 text-blue-800 gap-1">
               <RotateCcw className="w-5 h-5" /> გადასარეკია <Kbd>C</Kbd>
             </Button>
-            <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-red-400 text-red-700 gap-1">
+            <Button disabled={busy || !can("cancel")} onClick={() => setCancelOpen(true)} variant="outline" className="w-full h-12 text-base font-extrabold border-red-400 text-red-700 gap-1">
               <XCircle className="w-5 h-5" /> გაუქმდა <Kbd>X</Kbd>
             </Button>
             <UndoButton className="w-full" />
@@ -767,13 +784,14 @@ function QueueTab() {
           {/* Mobile: sticky bottom bar */}
           <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] space-y-2">
             <CallButton orderId={order.id} phone={order.customer_phone} customerName={order.customer_name} className="w-full h-11 text-base shadow-lg" />
-            <Button disabled={busy} onClick={onConfirm} className="w-full h-14 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+            {act?.note && <div className="text-xs font-semibold text-amber-800 truncate">{act.note}</div>}
+            <Button disabled={busy || !can("confirm")} onClick={onConfirm} className="w-full h-14 text-lg font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
               <CheckCircle2 className="w-5 h-5" /> დადასტურდა · {Number(order.total).toFixed(2)} ₾
             </Button>
             <div className="grid grid-cols-3 gap-2">
-              <Button disabled={busy} onClick={onNoAnswer} variant="outline" className="h-12 text-sm font-extrabold border-amber-400 text-amber-800 px-1"><PhoneOff className="w-4 h-4" /> არ პასუხობს</Button>
-              <Button disabled={busy} onClick={() => setCallbackOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-blue-400 text-blue-800 px-1"><RotateCcw className="w-4 h-4" /> გადარეკვა</Button>
-              <Button disabled={busy} onClick={() => setCancelOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-red-400 text-red-700 px-1"><XCircle className="w-4 h-4" /> გაუქმდა</Button>
+              <Button disabled={busy || !can("no_answer")} onClick={onNoAnswer} variant="outline" className="h-12 text-sm font-extrabold border-amber-400 text-amber-800 px-1"><PhoneOff className="w-4 h-4" /> არ პასუხობს</Button>
+              <Button disabled={busy || !can("callback")} onClick={() => setCallbackOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-blue-400 text-blue-800 px-1"><RotateCcw className="w-4 h-4" /> გადარეკვა</Button>
+              <Button disabled={busy || !can("cancel")} onClick={() => setCancelOpen(true)} variant="outline" className="h-12 text-sm font-extrabold border-red-400 text-red-700 px-1"><XCircle className="w-4 h-4" /> გაუქმდა</Button>
             </div>
           </div>
         </div>
