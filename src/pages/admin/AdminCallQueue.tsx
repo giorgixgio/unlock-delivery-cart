@@ -83,6 +83,8 @@ async function findOrders(term: string): Promise<SearchHit[]> {
     : await q.eq("public_order_number", t.replace(/^#/, "")).limit(5);
   return ((data as any[]) || []) as SearchHit[];
 }
+/** Newest single match (Team tab tools). */
+const findOrder = async (term: string): Promise<{ id: string } | null> => (await findOrders(term))[0] ?? null;
 const itemsLine = (h: SearchHit) => (h.order_items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ");
 
 const fmtDur = (sec: number) => {
