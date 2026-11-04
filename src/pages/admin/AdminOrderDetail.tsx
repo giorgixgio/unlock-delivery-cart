@@ -321,7 +321,7 @@ const AdminOrderDetail = () => {
   };
 
   const handleKeepOnHold = async () => {
-    if (!order || !id) return;
+    if (!order || !id || outcomeLock.locked) return;
     setSaving(true);
     try {
       await versionedOrderUpdate(id, order.version, { status: "on_hold" });
@@ -347,7 +347,7 @@ const AdminOrderDetail = () => {
   };
 
   const handleCancelDuplicate = async () => {
-    if (!order || !id) return;
+    if (!order || !id || outcomeLock.locked) return;
     setSaving(true);
     try {
       const newTags = [...(order.tags || [])];
@@ -937,6 +937,7 @@ const AdminOrderDetail = () => {
       )}
 
       {/* Quick actions */}
+      {outcomeLock.locked && !needsReview && <OutcomeLockBanner orderId={order.id} />}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <Label className="text-xs">Status</Label>
