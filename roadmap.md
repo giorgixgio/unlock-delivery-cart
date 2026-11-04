@@ -106,3 +106,8 @@
 - [x] Low-stock digest every 15 min at ≤50 pieces, 24h re-reminder, gift SKUs excluded — live run delivered 40-product alert
 - [x] Billing reminders now also send to Telegram as SMS backup; milestone advances when either channel delivers
 - [x] New-order alert observation retired — owner disabled all lead/order Telegram alerts.
+
+# Roadmap — Make Replacement
+- [x] Replacement-only flow: pick delivered order + items + reason; one atomic step creates free replacement linked to the old order and closes the lead as converted.
+- [x] Courier note "REPLACEMENT for #old — free"; history panel shows 🔁; tests and rolled-back DB test pass.
+- [x] Listed existing return records that point at a cancelled lead (left unchanged).
