@@ -4,7 +4,7 @@ import { phoneLast9, orderActions, statusBadge } from "@/lib/queueSearchRules";
 describe("phone search matching (last 9 digits)", () => {
   it("normalises +995 / 995 / 0 / spaces / dashes to the same 9 digits", () => {
     for (const t of ["+995 555 12-34-56", "995555123456", "0555123456", "555 12 34 56", "555-123-456"])
-      expect(phoneLast9(t)).toMatch(/^5551234(56|56)$|^555123456$/);
+      expect(phoneLast9(t)).toBe("555123456");
     expect(phoneLast9("+995 555 12-34-56")).toBe("555123456");
     expect(phoneLast9("0555123456")).toBe("555123456");
   });
