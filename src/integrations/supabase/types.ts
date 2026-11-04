@@ -3682,6 +3682,11 @@ export type Database = {
       call_queue_on_shift: { Args: { p_email: string }; Returns: boolean }
       call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
+      call_queue_release_view: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      call_queue_reopen: { Args: { p_order_id: string }; Returns: Json }
       call_queue_schedule_retry: { Args: { p_order_id: string }; Returns: Json }
       call_queue_shift_start: { Args: never; Returns: Json }
       call_queue_stats: { Args: { p_store: string }; Returns: Json }
@@ -3810,6 +3815,7 @@ export type Database = {
       ip_geo_refresh: { Args: { p_order_id: string }; Returns: undefined }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
+      is_queue_only_operator: { Args: { p_uid: string }; Returns: boolean }
       mark_stockout_waitlist: {
         Args: { p_attempt_id: string }
         Returns: undefined
@@ -3854,6 +3860,10 @@ export type Database = {
           status: string
           total: number
         }[]
+      }
+      operator_holds_customer_lock: {
+        Args: { p_email: string; p_order_id: string }
+        Returns: boolean
       }
       record_stockout_attempt: {
         Args: {
