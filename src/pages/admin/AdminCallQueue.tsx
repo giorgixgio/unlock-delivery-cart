@@ -650,50 +650,49 @@ function QueueTab() {
       </div>
 
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void doSearch(); }}>
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ტელეფონი ან შეკვეთის # / phone or order #" className="text-base" />
-        <Button type="submit" variant="outline" size="icon"><Search className="w-4 h-4" /></Button>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search} onChange={(e) => setSearch(e.target.value)} inputMode="tel" aria-label="Search by phone"
+            placeholder="კლიენტის ტელეფონი (ან შეკვეთის #) / customer phone"
+            className="pl-9 h-11 text-base"
+          />
+        </div>
+        <Button type="submit" className="h-11 px-4 font-bold gap-1"><Search className="w-4 h-4" /> ძებნა</Button>
       </form>
 
       {hits.length > 0 && (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
-          {hits.map((h) => (
-            <div key={h.id} className="flex items-start gap-2 p-2">
-              <button type="button" onClick={() => void openHit(h)} className="flex-1 min-w-0 text-left">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <b>#{h.public_order_number}</b>
-                  <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", dateStyle: "short", timeStyle: "short" })}</span>
-                  <span className="rounded bg-muted px-1.5 text-xs">{h.status}</span>
-                  <b className="ml-auto">{Number(h.total || 0).toFixed(2)} ₾</b>
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{itemsLine(h)}</div>
-              </button>
-              {isAdmin && <Link to={`/admin/orders/${h.id}`} className="text-xs underline text-muted-foreground whitespace-nowrap pt-0.5">Open full page</Link>}
-            </div>
-          ))}
-          <button type="button" onClick={() => setHits([])} className="w-full p-2 text-xs text-muted-foreground">დახურვა / Close</button>
-        </div>
-      )}
-
-      {readonlyHit && (
-        <div className="rounded-2xl border border-border bg-card p-3 space-y-2 lg:max-w-xl lg:mx-auto">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-xs text-muted-foreground">#{readonlyHit.public_order_number} · მხოლოდ ნახვა / read-only</div>
-              <div className="font-extrabold">{readonlyHit.customer_name}</div>
-              <div className="text-sm">{readonlyHit.customer_phone}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-extrabold">{Number(readonlyHit.total || 0).toFixed(2)} ₾</div>
-              <span className="rounded bg-muted px-1.5 text-xs">{readonlyHit.status}</span>
-            </div>
+        <div className="rounded-xl border border-border bg-card p-2 space-y-2">
+          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+            <span className="font-bold">{hits.length} შეკვეთა · ახლიდან ძველისკენ / newest first</span>
+            <button type="button" onClick={() => setHits([])} className="underline">დახურვა / Close</button>
           </div>
-          <div className="text-sm"><span className="text-muted-foreground">მისამართი: </span>{[readonlyHit.city, readonlyHit.address_line1, readonlyHit.address_line2].filter(Boolean).join(", ") || "—"}</div>
-          <div className="text-sm"><span className="text-muted-foreground">პროდუქტები: </span>{itemsLine(readonlyHit) || "—"}</div>
-          <div className="text-sm"><span className="text-muted-foreground">კურიერი: </span>{readonlyHit.current_courier_status || readonlyHit.courier_status || "—"}</div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" variant="outline" onClick={() => setReadonlyHit(null)}>დახურვა / Close</Button>
-            {isAdmin && <Link to={`/admin/orders/${readonlyHit.id}`} className="text-xs underline text-muted-foreground">Open full page</Link>}
-          </div>
+          {hits.map((h, i) => {
+            const courier = h.current_courier_status || h.courier_status;
+            const lockedByOther = searchOpenDecision(h, actor).kind === "locked";
+            return (
+              <div key={h.id} className="relative">
+                <button
+                  type="button" onClick={() => void openHit(h)} aria-label={`Open order ${h.public_order_number}`}
+                  className={`w-full text-left rounded-lg border p-2.5 transition-colors hover:bg-muted/60 hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${i === 0 ? "border-primary/60 bg-primary/5" : "border-border bg-background"}`}
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <b>{fmtDateTime(h.created_at)}</b>
+                    <span className="text-muted-foreground">#{h.public_order_number}</span>
+                    {i === 0 && <span className="rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[11px] font-bold">უახლესი / newest</span>}
+                    <b className="ml-auto text-base">{Number(h.total || 0).toFixed(2)} ₾</b>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <StatusChip o={h} />
+                    {courier && <span className="rounded-full border border-purple-300 bg-purple-50 text-purple-800 px-2 py-0.5 text-xs font-semibold">Onway: {courier}</span>}
+                    {lockedByOther && <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs">🔒 {operatorName(h.queue_locked_by || "")}</span>}
+                  </div>
+                  <div className="mt-1 truncate text-xs text-muted-foreground">{itemsLine(h) || "—"}</div>
+                </button>
+                {isAdmin && <Link to={`/admin/orders/${h.id}`} className="absolute right-2 bottom-1.5 text-[11px] underline text-muted-foreground">Open full page</Link>}
+              </div>
+            );
+          })}
         </div>
       )}
 
