@@ -41,3 +41,8 @@ export function searchOnwayCities(cities: CityOption[], query: string, limit = 8
 export function selectedCityValid(cities: CityOption[], id: string | null, name: string) {
   return cities.some(c => c.id === id && c.name === name);
 }
+/** Operator rule: the city field must be exactly an Onway destination name (picked from the list), never free text. */
+export function findExactOnwayCity(cities: CityOption[], name: string): CityOption | undefined {
+  const n = (name || "").trim();
+  return n ? cities.find(c => c.name === n) : undefined;
+}
