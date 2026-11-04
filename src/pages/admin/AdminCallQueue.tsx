@@ -63,12 +63,12 @@ interface QOrder {
 const ORDER_SELECT =
   "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
-const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, city, address_line1, address_line2, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, current_courier_status, order_items(title, quantity)";
+export const SEARCH_SELECT =
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, city, address_line1, address_line2, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
 type SearchHit = SearchOrderLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
   customer_name: string | null; customer_phone: string | null; city: string | null;
-  address_line1: string | null; address_line2: string | null; current_courier_status: string | null;
+  address_line1: string | null; address_line2: string | null; current_courier_status: string | null; courier_status: string | null;
   order_items: { title: string; quantity: number }[] | null;
 };
 
@@ -78,9 +78,10 @@ async function findOrders(term: string): Promise<SearchHit[]> {
   if (!t) return [];
   const digits = t.replace(/\D/g, "");
   const q = supabase.from("orders").select(SEARCH_SELECT);
-  const { data } = digits.length >= 9
+  const { data, error } = digits.length >= 9
     ? await q.ilike("customer_phone", `%${digits.slice(-9)}%`).order("created_at", { ascending: false }).limit(15)
     : await q.eq("public_order_number", t.replace(/^#/, "")).limit(5);
+  if (error) throw new Error(error.message);
   return ((data as any[]) || []) as SearchHit[];
 }
 /** Newest single match (Team tab tools). */
@@ -481,7 +482,9 @@ function QueueTab() {
 
   const doSearch = async () => {
     setReadonlyHit(null);
-    const found = await findOrders(search);
+    let found: SearchHit[];
+    try { found = await findOrders(search); }
+    catch (e) { setHits([]); toast({ title: "ძიება ვერ მოხერხდა / Search failed", description: (e as Error)?.message || String(e), variant: "destructive" }); return; }
     setHits(found);
     if (!found.length) toast({ title: "შეკვეთა ვერ მოიძებნა" });
   };
@@ -637,7 +640,7 @@ function QueueTab() {
           </div>
           <div className="text-sm"><span className="text-muted-foreground">მისამართი: </span>{[readonlyHit.city, readonlyHit.address_line1, readonlyHit.address_line2].filter(Boolean).join(", ") || "—"}</div>
           <div className="text-sm"><span className="text-muted-foreground">პროდუქტები: </span>{itemsLine(readonlyHit) || "—"}</div>
-          <div className="text-sm"><span className="text-muted-foreground">კურიერი: </span>{readonlyHit.current_courier_status || "—"}</div>
+          <div className="text-sm"><span className="text-muted-foreground">კურიერი: </span>{readonlyHit.current_courier_status || readonlyHit.courier_status || "—"}</div>
           <div className="flex items-center gap-3">
             <Button size="sm" variant="outline" onClick={() => setReadonlyHit(null)}>დახურვა / Close</Button>
             {isAdmin && <Link to={`/admin/orders/${readonlyHit.id}`} className="text-xs underline text-muted-foreground">Open full page</Link>}
