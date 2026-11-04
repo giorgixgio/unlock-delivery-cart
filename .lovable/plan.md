@@ -1,35 +1,45 @@
-# Call Queue rules check: last 30 days (Oct 5 – Nov 4)
+# Returns from a new lead — how it works today, and a simpler flow
 
-Based on about 5,900 call results. Nothing has been changed.
+## What happens today (checked in the code and live data)
 
-## Findings
+1. **Which order is used for the return:** the order that is currently open, which is **the new lead**. Nothing looks up the customer's old delivered order, and the operator can't pick one. The return is marked "from #<new lead>", so the link points to the wrong order. In the data, 4 return records already point at a lead or a cancelled order instead of a delivered one.
+2. **What happens to the new lead:** nothing. It stays open in the queue with its status and call history unchanged. Someone then has to cancel it by hand, using any cancel reason; there is no "converted to return" reason.
+3. **Link between the lead and the old order:** none. The only link saved is return → the order it was created from (the lead). The old delivered order is never linked.
+4. **Courier and stock:** a separate return order is created with status "return review", the lead's address, its items copied, price 0 and the note "გაცვლა". After an admin presses Approve, it goes to Onway as a normal parcel with "RETURN —" added to the note. There is no special pickup type, so whether the courier collects the old item depends on the note. Stock: confirming a return does not reduce stock. There are still 30 stock entries tied to return orders, probably from the packing/sending step; I haven't confirmed this. No step puts the returned item back into stock.
+5. **Several delivered orders, or different products:** the system doesn't handle this. It always copies the open lead's items, which may not be what was delivered. The operator has to remember the old order and edit the items by hand.
+6. **Where it goes wrong:**
+   - The lead stays in the queue, so it gets called again or is cancelled with a random reason. This lowers operators' confirm rates.
+   - The return points at the lead, so courier stats can't connect it to the real delivery.
+   - Nobody can see a single "return from #old" history.
+   - An operator can create a return and also confirm the lead. That sends two parcels and can take stock twice.
 
-1. **Speed to first call.** Confirm rate by time from order to first call: <15 min **69%**, 15–60 min **63%**, 1–3 h **65%**, 3–12 h **60%**, 12–24 h **54%**, >24 h **54%**. Calling within 15 minutes gets about 15 points more confirmations than calling the next day.
-2. **Value of each attempt.**
-   - Of orders confirmed after a no-answer, **79% were confirmed on attempt 2** and **21% on attempt 3**.
-   - Customers answer **75%** of first calls, **64%** of second calls and **52%** of third calls.
-3. **Retry timing.** The exact scheduled time isn't stored, so I measured the time since the previous call.
-   - Attempt 2 made within 3 h (on time): **71%** answered, **42%** confirmed.
-   - Attempt 2 made 3–12 h later: **49%** answered, **25%** confirmed.
-   - Attempt 3 within 3 h: **26%** confirmed. Attempt 3 made 3–12 h later: **23%** confirmed.
-   - So the 2-hour gap works. Being late is what hurts.
-4. **Best hours.** Answer rate stays at 72–77% from 10:00 to 15:00, drops to about 67% from 16:00 to 18:00 and to 56% at 19:00. Confirm rate falls steadily over the day: **55% at 10:00**, 49% at 11:00, 42% at 15:00, 29–31% at 17–18. The 11:00 slot is good; 15:00 is weaker.
-5. **Night leads (00–07).** First call at 10–12: **61%** confirmed. At 12–17: **54%**. At 17:00 or later (the 18:00 slot): **56%**. The morning beats 18:00.
-6. **Max attempts.** Attempt 3 still recovers about 25% of the orders it reaches, so it's worth keeping. About 200 orders got a 4th call (mostly callbacks). Most of them answered, but only **10%** confirmed. A 4th no-answer retry would add little, roughly 1–2% of no-answer orders.
-7. **Delivery outcome.** There isn't enough data yet. Only about 270 confirmed orders are linked to a parcel, and most of those parcels haven't finished delivery. Among the few that did, the fast-confirmed ones look fine. I can't make a fair comparison yet; check again in about 2 weeks.
+## Proposed simple flow (only if you approve)
 
-## Verdict: keep the basic rules, change four things
+**Return**
+1. On a lead, "Make Return" opens a list of this customer's **delivered orders**, newest first (same phone matching as the history panel), showing date, number and products. If there's only one, it's already selected.
+2. The operator ticks the items and quantities being returned, then picks a reason: broken / wrong item / didn't like / other.
+3. One button: **"Create return"**. In a single safe step, the system:
+   - creates the return on the **old delivered order** (linked to it), with the return items;
+   - closes the new lead with status "canceled" and the reason **"converted to return"**. It is linked to the return, takes no stock, is not counted as a cancel in operator stats, and leaves the queue;
+   - writes a history entry on all three orders with who did it and when.
+4. The courier gets the return as a pickup ("RETURN — pick up: items…"). When the parcel arrives back at the warehouse, the returned items are added back to stock (or marked as damaged and not added back).
 
-1. **Late retries come first.** A retry that is more than 30 minutes past its time goes ahead of new orders. Otherwise, alternate one new order and one retry. Retries made 3+ hours late confirm about 17 points less (42% vs 25%).
-2. **Newest first among new orders.** Fresh leads confirm 69% versus 54% the next day, so call them while they're fresh. Leads older than 24 h will lose a little, but they already convert at about 54% either way.
-3. **Night leads in the morning.** Call them from 10:00 and drop the 18:00 slot. The first call goes from about 56% to 61%.
-4. **Next-day retry slots: 10:00–11:00 and 14:00**, instead of 11:00/15:00. Afternoon and evening confirm rates are clearly lower.
+**Exchange**
+- Same screen with a toggle: **"Return + send replacement"**. The operator picks replacement products, which default to the same items.
+- A single courier job handles both: the courier delivers the new item and picks up the old one. Replacement stock is taken when it's sent. The price is 0, or only the difference if the replacement costs more.
 
-Keep the **2-hour gap** and the **3-attempt limit**. A 4th attempt isn't worth the calls.
+**Safety**
+- If the customer has no delivered orders, the button shows "No delivered order to return" and the operator handles it as a normal lead.
+- The lead can't be both confirmed and converted.
+- Admins keep the current Approve step before anything goes to Onway.
 
-**Expected impact:** about 3–5 more confirmed orders per 100 leads. Most of it comes from calling fresh and on time.
+## Questions for you
+- Should returned items go back into stock automatically when they arrive, or only after someone checks them?
+- Exchange price difference: charge it at the door, or always free?
 
-## Technical notes (if approved)
-- Change the order inside `call_queue_tier` / `call_queue_next` and keep `callQueuePolicy.ts` matching it, as the project rules require.
-- Make the night-lead slot and retry slots settings, so they can be changed later without code.
-- Add tests for the new ordering.
+## Technical notes
+- New staff-only RPC `create_return_from_lead(lead_id, original_order_id, items, reason, replacement_items?)`. It runs in a single database transaction: it inserts the return, sets the lead to `canceled` with `final_cancel_reason='converted_to_return'`, adds a new link column `return_order_id` to the lead, writes the history entries, and releases the queue lock.
+- Operator stats and the queue exclude `converted_to_return` from cancel counts.
+- `CreateReturnModal` gets a step for choosing the delivered order (reusing `operator_customer_history`).
+- Restocking happens on the Onway "returned to warehouse" status update, through a once-only stock function.
+- Add tests for the convert rules and for excluding conversions from stats.
