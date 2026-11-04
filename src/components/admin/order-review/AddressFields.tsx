@@ -4,6 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { TBILISI_DISTRICTS, isTbilisiCity, splitDistrict, composeAddress } from "@/lib/tbilisiDistricts";
+import OnwayCityPicker from "@/components/OnwayCityPicker";
+import { useOnwayCities } from "@/hooks/useOnwayCities";
+import { findExactOnwayCity } from "@/lib/onwayCities";
 import { validateConfirmAddress, type ConfirmAddressField, type ConfirmAddressResult } from "@/lib/confirmAddressValidation";
 
 export interface AddressOrder {
@@ -31,6 +34,8 @@ export function useAddressFields() {
   const cityRef = useRef<HTMLInputElement | null>(null);
   const districtRef = useRef<HTMLInputElement | null>(null);
   const addressRef = useRef<HTMLInputElement | null>(null);
+  const { cities, loading: citiesLoading } = useOnwayCities();
+  const onwayCity = findExactOnwayCity(cities, city);
 
   const reset = useCallback((o: AddressOrder) => {
     setCity(o.normalized_city || o.city || "");
@@ -53,7 +58,8 @@ export function useAddressFields() {
     const trimmedCity = city.trim();
     const trimmedAddr = isTbilisiCity(city) ? composeAddress(district, address) : address.trim();
 
-    if (trimmedCity !== (order.normalized_city || order.city || "")) {
+    // Only an exact Onway destination may be saved as the city; free text is never written.
+    if (trimmedCity !== (order.normalized_city || order.city || "") && findExactOnwayCity(cities, trimmedCity)) {
       updates.city = trimmedCity;
       updates.raw_city = trimmedCity;
       updates.normalized_city = trimmedCity;
@@ -76,20 +82,22 @@ export function useAddressFields() {
       if (advNormAddr !== (order.normalized_address || "")) updates.normalized_address = advNormAddr || null;
     }
     return updates;
-  }, [city, address, district, courierNote, advancedOpen, advRawCity, advNormCity, advRawAddr, advNormAddr]);
+  }, [city, address, district, courierNote, advancedOpen, advRawCity, advNormCity, advRawAddr, advNormAddr, cities]);
 
   /** Validate for confirm; on failure highlight + focus the missing field. */
   const validateForConfirm = useCallback((): ConfirmAddressResult => {
-    const r = validateConfirmAddress(city, district, address);
+    let r = validateConfirmAddress(city, district, address);
+    if (city.trim() && !findExactOnwayCity(cities, city)) r = { ok: false, field: "city", message: "აირჩიეთ ქალაქი / სოფელი სიიდან (Onway)" };
     if (!r.ok) {
       setInvalidField(r.field);
       const ref = r.field === "city" ? cityRef : r.field === "district" ? districtRef : addressRef;
       setTimeout(() => { ref.current?.focus(); ref.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, 0);
     } else setInvalidField(null);
     return r;
-  }, [city, district, address]);
+  }, [city, district, address, cities]);
 
   return {
+    cities, citiesLoading, onwayCity,
     city, setCity, address, setAddress, district, setDistrict, courierNote, setCourierNote,
     advancedOpen, setAdvancedOpen, advRawCity, setAdvRawCity, advNormCity, setAdvNormCity,
     advRawAddr, setAdvRawAddr, advNormAddr, setAdvNormAddr,
@@ -109,8 +117,10 @@ export default function AddressFields({ state: s, order }: { state: AddressField
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">მისამართი</h3>
       <div>
         <Label className="text-xs">ქალაქი / რეგიონი</Label>
-        <Input ref={s.cityRef} value={s.city} onChange={(e) => { s.setCity(e.target.value); clear("city"); }} placeholder="მაგ: თბილისი / ქუთაისი"
-          className={`h-11 text-base ${s.invalidField === "city" ? ERR : ""}`} />
+        <OnwayCityPicker inputRef={s.cityRef} value={s.city} cities={s.cities} loading={s.citiesLoading} selectedId={s.onwayCity?.id ?? null}
+          onChange={(v) => { s.setCity(v); clear("city"); }} onSelect={(c) => { s.setCity(c.name); clear("city"); }}
+          className={s.invalidField === "city" || (s.city.trim() && !s.onwayCity && !s.citiesLoading) ? ERR : ""}
+          error={s.city.trim() && !s.onwayCity && !s.citiesLoading ? "აირჩიეთ სიიდან — თავისუფალი ტექსტი არ შეინახება" : undefined} />
         {(order.raw_city || order.city) && (order.raw_city || order.city) !== s.city && <p className="mt-1 text-xs text-muted-foreground">Raw: {order.raw_city || order.city}</p>}
       </div>
       {isTbilisiCity(s.city) && (
