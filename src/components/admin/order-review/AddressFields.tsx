@@ -77,7 +77,7 @@ export function useAddressFields() {
     if (extra) Object.assign(updates, extra);
     if (advancedOpen) {
       if (advRawCity !== (order.raw_city || "")) updates.raw_city = advRawCity || null;
-      if (advNormCity !== (order.normalized_city || "")) updates.normalized_city = advNormCity || null;
+      if (advNormCity !== (order.normalized_city || "") && findExactOnwayCity(cities, advNormCity)) updates.normalized_city = advNormCity || null;
       if (advRawAddr !== (order.raw_address || "")) updates.raw_address = advRawAddr || null;
       if (advNormAddr !== (order.normalized_address || "")) updates.normalized_address = advNormAddr || null;
     }
