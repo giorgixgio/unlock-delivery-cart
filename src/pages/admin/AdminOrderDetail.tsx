@@ -33,6 +33,8 @@ import { checkIdempotency, recordIdempotency, versionedOrderUpdate } from "@/lib
 import { isTbilisiCity, hasDistrict } from "@/lib/tbilisiDistricts";
 import { logCallOutcome } from "@/lib/callAttemptService";
 import { useOutcomeLock } from "@/hooks/useOutcomeLock";
+import { directStatusChangeBlocked, validateOrderAddressForConfirm } from "@/lib/queueSearchRules";
+import { logConfirmBlocked } from "@/lib/orderEventLog";
 import OutcomeLockBanner from "@/components/admin/OutcomeLockBanner";
 // normalizePhone used in AdminOrders grouping; imported here for consistency
 
@@ -239,6 +241,15 @@ const AdminOrderDetail = () => {
   // === DECISION ACTIONS (with audit logging) ===
   const handleConfirmOrder = async () => {
     if (!order || !id) return;
+    if (outcomeLock.locked) { toast({ title: outcomeLock.reason ?? "Calls are made from the Call Queue", variant: "destructive" }); return; }
+    {
+      const v = validateOrderAddressForConfirm(order);
+      if (!v.ok) {
+        toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
+        void logConfirmBlocked(order.id, actor, { reason: "address_missing", missing_fields: v.field ? [v.field] : [], error_message: v.message, source: "order_detail" });
+        return;
+      }
+    }
     // Tbilisi orders need a district written at the start of the address.
     if (isTbilisiCity(order.city) && !hasDistrict(order.address_line1)) {
       toast({
@@ -405,6 +416,16 @@ const AdminOrderDetail = () => {
 
   const handleSave = async () => {
     if (!order || !id) return;
+    const blocked = directStatusChangeBlocked(outcomeLock, order.status, status);
+    if (blocked) { toast({ title: blocked, variant: "destructive" }); setStatus(order.status); return; }
+    if (status === "confirmed" && order.status !== "confirmed") {
+      const v = validateOrderAddressForConfirm(order);
+      if (!v.ok) {
+        toast({ title: "მიუთითეთ მისამართი", description: v.message, variant: "destructive" });
+        void logConfirmBlocked(order.id, actor, { reason: "address_missing", missing_fields: v.field ? [v.field] : [], error_message: v.message, source: "order_detail_status" });
+        return;
+      }
+    }
     setSaving(true);
     try {
       const updates: Record<string, unknown> = {};
@@ -921,9 +942,10 @@ const AdminOrderDetail = () => {
           <Label className="text-xs">Status</Label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 px-3 rounded-lg border border-border bg-card text-sm font-medium">
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replace("_", " ")}</option>
+              <option key={s} value={s} disabled={!!directStatusChangeBlocked(outcomeLock, order.status, s)}>{s.replace("_", " ")}</option>
             ))}
           </select>
+          {outcomeLock.locked && <div className="mt-1 text-[11px] text-muted-foreground">confirmed / canceled / on hold: {outcomeLock.reason}</div>}
         </div>
         <div>
           <Label className="text-xs">Assign to</Label>
