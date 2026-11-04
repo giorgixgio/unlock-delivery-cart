@@ -85,8 +85,12 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
 
   const cancellablePrev = useMemo(() => prevOrders.filter((p) => !NON_CANCELLABLE.includes(p.status)), [prevOrders]);
   const summary = useMemo(() => summarizePreviousOrders(prevOrders, currentSkus, new Date()), [prevOrders, currentSkus]);
-  const badge = useMemo(() => historyBadge(prevOrders), [prevOrders]);
-  const counts = useMemo(() => historyCounts(prevOrders), [prevOrders]);
+  const realOrders = useMemo(() => prevOrders.filter((p) => !p.is_replacement), [prevOrders]);
+  const badge = useMemo(() => historyBadge(realOrders), [realOrders]);
+  const counts = useMemo(() => {
+    const rep = prevOrders.length - realOrders.length;
+    return historyCounts(realOrders) + (rep ? ` · ${rep} 🔁 შეცვლა` : "");
+  }, [prevOrders, realOrders]);
 
   const handleBulkCancelPrev = useCallback(async () => {
     if (cancellablePrev.length === 0) return;
@@ -220,9 +224,10 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
                 </div>
                 {(() => {
                   const st = stageOf(p);
-                  if (st === "none" && p.match_type !== "device") return null;
+                  if (st === "none" && p.match_type !== "device" && !p.is_replacement) return null;
                   return (
                     <div className="px-2.5 pb-1 -mt-0.5 pl-8 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      {p.is_replacement && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">🔁 შეცვლა #{p.replacement_for || "?"}-ისთვის / replacement for #{p.replacement_for || "?"}</span>}
                       {p.match_type === "device" && <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 font-bold">შესაძლო დამთხვევა (მოწყობილობა)</span>}
                       {st !== "none" && <span className={`px-1.5 py-0.5 rounded font-bold ${STAGE_CLS[st] || "bg-blue-100 text-blue-800"}`}>Onway: {STAGE_LABEL[st]}</span>}
                       {p.failures.map((f, i) => (

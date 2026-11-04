@@ -16,6 +16,9 @@ export interface HistOrder {
   order_items?: { title: string; sku: string; quantity: number }[];
   shipment: HistShipment | null;
   failures: HistFailure[];
+  /** Free replacement order (linked to the delivered order it replaces). */
+  is_replacement?: boolean;
+  replacement_for?: string | null;
 }
 
 export type Stage =
