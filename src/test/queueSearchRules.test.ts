@@ -22,11 +22,10 @@ describe("queue search open rules", () => {
   it("expired lock by another → assign", () => {
     expect(searchOpenDecision({ ...open, queue_locked_by: "mariam@x.ge", queue_locked_until: "2026-11-04T11:59:00Z" }, "me@x.ge", now).kind).toBe("assign");
   });
-  it("confirmed / fulfilled / cancelled → read-only", () => {
-    expect(searchOpenDecision({ status: "confirmed", is_confirmed: true }, "me", now).kind).toBe("readonly");
-    expect(searchOpenDecision({ status: "new", is_fulfilled: true }, "me", now).kind).toBe("readonly");
-    expect(searchOpenDecision({ status: "canceled" }, "me", now).kind).toBe("readonly");
-    expect(searchOpenDecision({ status: "new", auto_confirmed: true }, "me", now).kind).toBe("readonly");
+  it("any status (cancelled, confirmed, shipped) opens in the regular card", () => {
+    expect(searchOpenDecision({ status: "confirmed", is_confirmed: true }, "me", now).kind).toBe("assign");
+    expect(searchOpenDecision({ status: "shipped", is_fulfilled: true }, "me", now).kind).toBe("assign");
+    expect(searchOpenDecision({ status: "canceled" }, "me", now).kind).toBe("assign");
   });
 });
 
