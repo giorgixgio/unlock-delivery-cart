@@ -142,6 +142,30 @@ export type ShipmentUpsert = { row: Record<string, unknown>; history: OnwayHisto
 
 const PICKUP_STATUSES = new Set(["აღებული", "აღებულია", "საწყობშია", "გზაშია"]);
 
+/**
+ * Statuses proving Onway physically has the parcel. A pickup problem ("sender doesn't answer",
+ * pickup cancelled) is moot once one of these arrives, because the parcel was collected anyway.
+ * "ასაღები" (waiting to be picked up) and "გაფორმებული" (label only) are NOT here: the courier
+ * does not have the parcel yet.
+ */
+export const IN_ONWAY_HANDS_STATUSES = new Set([
+  "აღებული", "აღებულია", "საწყობში", "საწყობშია", "გაგზავნილი ფილიალში", "ელოდება ვიზირებას",
+  "გატანილი ჩასაბარებლად", "ჩაბარებული", "ჩაბარდა", "ხელმეორედ გატანა",
+]);
+
+export function hasMovedPastPickup(statusName: string | null | undefined): boolean {
+  const s = (statusName || "").trim();
+  return !!s && IN_ONWAY_HANDS_STATUSES.has(s);
+}
+
+/**
+ * Can an open problem flag be closed by this incoming status? Only pickup problems, and only when
+ * the parcel is demonstrably in Onway's hands — delivery problems stay open for the operator to call.
+ */
+export function closesProblemFlag(flagOriginAction: string | null | undefined, incomingStatusName: string | null | undefined): boolean {
+  return flagOriginAction === "pickup_problem" && hasMovedPastPickup(incomingStatusName);
+}
+
 export function onwayPayloadToShipment(body: any, statusMap: Map<string, StatusMapRow>): ShipmentUpsert | null {
   const oi = body?.order_info;
   const tracking = String(oi?.trackingnumber ?? oi?.traking ?? "").trim();
