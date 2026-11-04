@@ -5,6 +5,7 @@ import { parseOnwayEvent } from './process.ts';
 import { actionForReason, classifyComment } from './classify.ts';
 import { sendTelegramMessage } from '../_shared/telegram.ts';
 import { upsertOnwayShipment } from '../_shared/courierApiUpsert.ts';
+import { closesProblemFlag } from '../_shared/courierShipment.ts';
 
 // Status actions only come from the admin-mapped onway_status_map; unmapped statuses do nothing.
 async function processEvent(db: any, logId: string, body: unknown) {
@@ -23,7 +24,7 @@ async function processEvent(db: any, logId: string, body: unknown) {
   const action: string = known?.action || 'none';
 
   // Match ONLY by the tracking number stored by onway-create-shipments.
-  const { data: order } = await db.from('orders').select('id, public_order_number, onway_planned_date, status, onway_last_status, onway_problem_at, onway_problem_resolved_at').eq('onway_tracking', ev.tracking).maybeSingle();
+  const { data: order } = await db.from('orders').select('id, public_order_number, onway_planned_date, status, onway_last_status, onway_problem_at, onway_problem_resolved_at, onway_problem_status').eq('onway_tracking', ev.tracking).maybeSingle();
   await db.from('onway_webhook_log').update({ match_status: order ? 'matched' : 'unmatched', order_id: order?.id ?? null, processed_at: now }).eq('id', logId);
 
   // AI reason for problem statuses, and for any commented status not mapped yet.
@@ -42,11 +43,16 @@ async function processEvent(db: any, logId: string, body: unknown) {
   if (action === 'delivery_failed' || action === 'pickup_problem') Object.assign(patch, {
     onway_problem_comment: ev.comment || ev.reason, onway_problem_image: ev.image, onway_problem_at: ev.eventTime || now, onway_problem_resolved_at: null,
     onway_problem_reason: ai?.reason ?? (ev.comment ? 'other' : null), onway_problem_summary: ai?.summary ?? null,
+    onway_problem_status: ev.statusName,
   });
   // Parcel moved on after a pickup problem (Onway scanned it later): close that problem automatically.
-  if (action !== 'pickup_problem' && action !== 'delivery_failed' && order.onway_problem_at && !order.onway_problem_resolved_at && order.onway_last_status) {
-    const { data: prev } = await db.from('onway_status_map').select('action').eq('status_name', order.onway_last_status).limit(1).maybeSingle();
-    if (prev?.action === 'pickup_problem' && !['ასაღები', 'გაფორმებული'].includes(ev.statusName)) patch.onway_problem_resolved_at = now;
+  // The flag's own status decides, because the status right before this one may be an unrelated step (ასაღები).
+  if (action !== 'pickup_problem' && action !== 'delivery_failed' && order.onway_problem_at && !order.onway_problem_resolved_at) {
+    const origin = order.onway_problem_status || order.onway_last_status;
+    const { data: prev } = origin
+      ? await db.from('onway_status_map').select('action').eq('status_name', origin).limit(1).maybeSingle()
+      : { data: null };
+    if (closesProblemFlag(prev?.action ?? null, ev.statusName)) patch.onway_problem_resolved_at = now;
   }
   await db.from('orders').update(patch).eq('id', order.id);
 

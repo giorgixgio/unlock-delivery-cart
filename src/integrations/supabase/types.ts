@@ -1957,6 +1957,7 @@ export type Database = {
           onway_problem_image: string | null
           onway_problem_reason: string | null
           onway_problem_resolved_at: string | null
+          onway_problem_status: string | null
           onway_problem_summary: string | null
           onway_sent_at: string | null
           onway_tracking: string | null
@@ -2060,6 +2061,7 @@ export type Database = {
           onway_problem_image?: string | null
           onway_problem_reason?: string | null
           onway_problem_resolved_at?: string | null
+          onway_problem_status?: string | null
           onway_problem_summary?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
@@ -2163,6 +2165,7 @@ export type Database = {
           onway_problem_image?: string | null
           onway_problem_reason?: string | null
           onway_problem_resolved_at?: string | null
+          onway_problem_status?: string | null
           onway_problem_summary?: string | null
           onway_sent_at?: string | null
           onway_tracking?: string | null
