@@ -81,7 +81,8 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, serviceKey);
     const { data: isAdmin } = await supabase.rpc("is_active_admin", { user_id: userData.user.id });
-    if (!isAdmin) {
+    const { data: viewOnly } = await supabase.rpc("is_queue_only_operator", { p_uid: userData.user.id });
+    if (!isAdmin || viewOnly) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
