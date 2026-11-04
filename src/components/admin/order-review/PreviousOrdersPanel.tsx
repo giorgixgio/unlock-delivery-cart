@@ -8,6 +8,7 @@ import ManualMergeModal from "@/components/admin/ManualMergeModal";
 import { cancelOrderWithReason } from "@/lib/callAttemptService";
 import { currentSessionId } from "@/lib/operatorSession";
 import { summarizePreviousOrders } from "@/lib/previousOrdersSummary";
+import { type HistOrder, type Stage, STAGE_LABEL, REASON_LABEL, historyBadge, historyCounts, reasonOf, stageOf } from "@/lib/customerHistory";
 
 const statusColor: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
@@ -24,15 +25,22 @@ const statusColor: Record<string, string> = {
 
 const NON_CANCELLABLE = ["canceled", "delivered", "shipped", "packed", "returned", "merged"];
 
-interface PrevOrder {
-  id: string;
-  public_order_number: string;
-  created_at: string;
-  status: string;
-  total: number;
-  call_attempt_count: number | null;
-  order_items?: { title: string; sku: string; quantity: number }[];
-}
+type PrevOrder = HistOrder;
+
+const STAGE_CLS: Partial<Record<Stage, string>> = {
+  delivered: "bg-green-100 text-green-800",
+  final_failed: "bg-red-100 text-red-800",
+  returned: "bg-red-100 text-red-800",
+  failed_attempt: "bg-orange-100 text-orange-800",
+  pickup_cancelled: "bg-gray-100 text-gray-700",
+};
+
+const BADGE_CLS: Record<string, string> = {
+  refused: "bg-red-100 text-red-800 border-red-300",
+  on_the_way: "bg-orange-100 text-orange-800 border-orange-300",
+  failed_not_refusal: "bg-muted text-foreground border-border",
+  delivered: "bg-green-100 text-green-800 border-green-300",
+};
 
 interface Props {
   order: { id: string; customer_phone: string; is_fulfilled?: boolean | null };
@@ -64,15 +72,10 @@ export default function PreviousOrdersPanel({ order, currentSkus, actor, accordi
     let cancelled = false;
     setPrevLoading(true);
     (async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, public_order_number, created_at, status, total, call_attempt_count, order_items(title, sku, quantity)")
-        .ilike("customer_phone", `%${last9}%`)
-        .neq("id", order.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      const { data, error } = await supabase.rpc("operator_customer_history" as any, { p_order_id: order.id });
       if (cancelled) return;
-      setPrevOrders((data || []) as unknown as PrevOrder[]);
+      if (error) console.warn("customer history failed", error.message);
+      setPrevOrders(((data as unknown) || []) as PrevOrder[]);
       setPrevLoading(false);
     })();
     return () => { cancelled = true; };
