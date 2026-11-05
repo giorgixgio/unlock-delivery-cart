@@ -886,36 +886,57 @@ export type Database = {
       }
       customer_requests: {
         Row: {
+          assigned_to: string | null
           created_at: string
+          created_by: string | null
           id: string
           kind: string
+          last_admin_update_at: string | null
+          last_customer_reply_at: string | null
           order_id: string
           payload: Json
           priority: boolean
+          resolution: string | null
           resolved_at: string | null
           resolved_by: string | null
+          sla_due_at: string | null
+          staff_seen_at: string | null
           status: string
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           kind: string
+          last_admin_update_at?: string | null
+          last_customer_reply_at?: string | null
           order_id: string
           payload?: Json
           priority?: boolean
+          resolution?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          sla_due_at?: string | null
+          staff_seen_at?: string | null
           status?: string
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           kind?: string
+          last_admin_update_at?: string | null
+          last_customer_reply_at?: string | null
           order_id?: string
           payload?: Json
           priority?: boolean
+          resolution?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          sla_due_at?: string | null
+          staff_seen_at?: string | null
           status?: string
         }
         Relationships: []
@@ -1991,6 +2012,7 @@ export type Database = {
           source: string
           status: string
           subtotal: number
+          support_hold: boolean
           tags: string[]
           total: number
           tracking_first_seen_at: string | null
@@ -2096,6 +2118,7 @@ export type Database = {
           source?: string
           status?: string
           subtotal?: number
+          support_hold?: boolean
           tags?: string[]
           total?: number
           tracking_first_seen_at?: string | null
@@ -2201,6 +2224,7 @@ export type Database = {
           source?: string
           status?: string
           subtotal?: number
+          support_hold?: boolean
           tags?: string[]
           total?: number
           tracking_first_seen_at?: string | null
@@ -3052,6 +3076,7 @@ export type Database = {
           last_error: string | null
           order_id: string
           order_number: string
+          request_id: string | null
           send_after: string
           sent_at: string | null
           seq: number
@@ -3065,6 +3090,7 @@ export type Database = {
           last_error?: string | null
           order_id: string
           order_number: string
+          request_id?: string | null
           send_after?: string
           sent_at?: string | null
           seq?: number
@@ -3078,6 +3104,7 @@ export type Database = {
           last_error?: string | null
           order_id?: string
           order_number?: string
+          request_id?: string | null
           send_after?: string
           sent_at?: string | null
           seq?: number
@@ -3244,6 +3271,110 @@ export type Database = {
           utm_term?: string | null
           variant_id?: string | null
           waitlist_requested?: boolean
+        }
+        Relationships: []
+      }
+      support_ticket_messages: {
+        Row: {
+          author: string | null
+          author_type: string
+          body: string
+          created_at: string
+          id: string
+          link_url: string | null
+          notify_customer: boolean
+          request_id: string
+          status_set: string | null
+          video_url: string | null
+        }
+        Insert: {
+          author?: string | null
+          author_type: string
+          body: string
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          notify_customer?: boolean
+          request_id: string
+          status_set?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          author?: string | null
+          author_type?: string
+          body?: string
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          notify_customer?: boolean
+          request_id?: string
+          status_set?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "customer_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_settings: {
+        Row: {
+          ack_delay_min: number
+          enabled: boolean
+          followup_working_days: number
+          id: number
+          max_auto_sms: number
+          min_gap_min: number
+          quiet_from: string
+          quiet_to: string
+          sla_working_days: number
+          sms_ack: string
+          sms_followup: string
+          sms_update: string
+          tz: string
+          updated_at: string
+          updated_by: string | null
+          working_days: number[]
+        }
+        Insert: {
+          ack_delay_min?: number
+          enabled?: boolean
+          followup_working_days?: number
+          id?: number
+          max_auto_sms?: number
+          min_gap_min?: number
+          quiet_from?: string
+          quiet_to?: string
+          sla_working_days?: number
+          sms_ack?: string
+          sms_followup?: string
+          sms_update?: string
+          tz?: string
+          updated_at?: string
+          updated_by?: string | null
+          working_days?: number[]
+        }
+        Update: {
+          ack_delay_min?: number
+          enabled?: boolean
+          followup_working_days?: number
+          id?: number
+          max_auto_sms?: number
+          min_gap_min?: number
+          quiet_from?: string
+          quiet_to?: string
+          sla_working_days?: number
+          sms_ack?: string
+          sms_followup?: string
+          sms_update?: string
+          tz?: string
+          updated_at?: string
+          updated_by?: string | null
+          working_days?: number[]
         }
         Relationships: []
       }
@@ -4012,6 +4143,52 @@ export type Database = {
           p_subtotal: number
           p_total: number
         }
+        Returns: undefined
+      }
+      support_actor: { Args: never; Returns: string }
+      support_add_working_days: {
+        Args: { p_n: number; p_ts: string }
+        Returns: string
+      }
+      support_enqueue_sms: {
+        Args: { p_after: string; p_request_id: string; p_type: string }
+        Returns: boolean
+      }
+      support_quiet_shift: { Args: { p_ts: string }; Returns: string }
+      support_ticket_assign: {
+        Args: { p_request_id: string; p_to: string }
+        Returns: undefined
+      }
+      support_ticket_create: {
+        Args: {
+          p_order_id: string
+          p_reason: string
+          p_source?: string
+          p_text: string
+        }
+        Returns: Json
+      }
+      support_ticket_mark_seen: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
+      support_ticket_post_update: {
+        Args: {
+          p_body: string
+          p_link: string
+          p_notify: boolean
+          p_request_id: string
+          p_status: string
+          p_video: string
+        }
+        Returns: Json
+      }
+      support_ticket_release: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      support_ticket_resolve: {
+        Args: { p_note: string; p_request_id: string; p_resolution: string }
         Returns: undefined
       }
       telegram_operator_daily_stats: {

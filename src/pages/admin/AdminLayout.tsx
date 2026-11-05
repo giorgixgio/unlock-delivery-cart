@@ -16,6 +16,7 @@ import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice } from 
 import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
 import { Headphones } from "lucide-react";
 import NewVersionBanner from "@/components/admin/NewVersionBanner";
+import { useOpenIssueCount } from "@/hooks/useOpenIssueCount";
 
 const navGroups = [
   {
@@ -102,6 +103,7 @@ const AdminLayout = () => {
   const callSync = useCallSync(user?.id);
   const [openTelHere, setOpenTelHere] = useState(() => getOpenTelOnThisDevice());
   const callQueue = useCallQueueAccess();
+  const issueCount = useOpenIssueCount();
 
   const callSyncBadge = (
     <span className="flex flex-col gap-1">
@@ -171,6 +173,19 @@ const AdminLayout = () => {
             Call Queue
           </NavLink>
         )}
+        <NavLink
+          to="/admin/issues"
+          onClick={() => setSheetOpen(false)}
+          className={({ isActive }) =>
+            `mb-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+            }`
+          }
+        >
+          <span className="w-4 text-center">⚑</span>
+          Issues
+          {!!issueCount && <span className="ml-auto rounded-full bg-destructive px-2 text-xs font-bold text-destructive-foreground">{issueCount}</span>}
+        </NavLink>
         <Accordion type="multiple" defaultValue={activeGroup ? [activeGroup] : []} className="space-y-1">
           {visibleGroups.map((group) => (
             <AccordionItem key={group.label} value={group.label} className="border-0">

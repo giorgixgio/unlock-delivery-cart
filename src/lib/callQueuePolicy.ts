@@ -85,6 +85,7 @@ export interface QueueOrderLike {
   is_confirmed?: boolean | null;
   is_fulfilled?: boolean | null;
   tags?: string[] | null;
+  support_hold?: boolean | null;
   call_outcome?: string | null;
   call_attempt_count?: number | null;
   next_call_after?: string | null;
@@ -106,6 +107,7 @@ export function queueTier(
   if (o.status === "pending_details" && ts(o.created_at) !== null && t - ts(o.created_at)! < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
+  if (o.support_hold) return null; // handed to support (operator issue ticket)
   const next = ts(o.next_call_after);
   if (next !== null && next > t) return null;
   const lockUntil = ts(o.queue_locked_until);

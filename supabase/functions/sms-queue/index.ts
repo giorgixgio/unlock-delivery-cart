@@ -6,6 +6,7 @@ import { normalizeGePhone, sendSms, senderApiKey } from "../_shared/senderGe.ts"
 import { applyQuietHours, deliveryWhen, isTbilisiCity, renderSms, trackingLink, type SeqType } from "../_shared/smsTemplates.ts";
 import { loadSmsContext, STOPPED_STATUSES } from "../_shared/smsOrderContext.ts";
 import { logBlockedSms } from "../_shared/smsGuard.ts";
+import { DEFAULT_SUPPORT_TEXTS, isSupportType, renderSupportSms, type SupportSmsType } from "../_shared/supportSms.ts";
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const MAX_ATTEMPTS = 3;
@@ -46,6 +47,39 @@ Deno.serve(async (req) => {
     const finish = (patch: Record<string, unknown>) => db.from("sms_queue").update(patch).eq("id", item.id);
     const skip = async (why: string) => { stats.skipped++; await finish({ status: "skipped", last_error: why }); };
     try {
+      if (isSupportType(item.type)) {
+        // Support-ticket texts: own settings, own quiet hours (applied at enqueue), ticket must still be open.
+        const [{ data: req }, { data: st }, ctx] = await Promise.all([
+          db.from("customer_requests").select("status").eq("id", item.request_id).maybeSingle(),
+          db.from("support_ticket_settings").select("*").eq("id", 1).maybeSingle(),
+          loadSmsContext(db, { id: item.order_id }),
+        ]);
+        if (!st?.enabled) { await skip("support_disabled"); continue; }
+        if (!req || !["open", "in_review", "waiting_customer"].includes(req.status)) { await skip("ticket_resolved"); continue; }
+        if (!ctx) { await skip("order_missing"); continue; }
+        if (STOPPED_STATUSES.has(String(ctx.order.status))) { await skip(`order_${ctx.order.status}`); continue; }
+        const phone = normalizeGePhone(ctx.order.customer_phone);
+        if (!phone) { await skip("invalid_phone"); continue; }
+        const tpl = String((st as any)[item.type === "support_ack" ? "sms_ack" : item.type === "support_followup" ? "sms_followup" : "sms_update"] || DEFAULT_SUPPORT_TEXTS[item.type as SupportSmsType]);
+        const { text } = renderSupportSms(tpl, { link: trackingLink(ctx.store, ctx.order.tracking_token), store: ctx.store, days: st.sla_working_days, n: String(ctx.order.public_order_number) });
+        const logType = item.seq > 1 ? `${item.type}_${item.seq}` : item.type;
+        const { data: log, error: logErr } = await db.from("sms_logs").insert({
+          order_number: item.order_number, phone, type: logType, sender: "sender.ge", provider: "sender.ge", content: text, status: "pending", attempts: 1,
+        }).select("id").maybeSingle();
+        if (logErr) {
+          if ((logErr as any).code === "23505") { stats.skipped++; await finish({ status: "sent", last_error: "already_sent", sent_at: new Date().toISOString() }); continue; }
+          throw new Error(logErr.message);
+        }
+        const r = await sendSms(apiKey, phone, text);
+        await db.from("sms_logs").update({
+          error_code: r.httpStatus, api_message: r.apiMessage, status: r.status, message_id: r.messageId, segments: r.segments,
+          delivery_status: r.status === "sent" ? "pending" : null, attempts: r.attempts,
+        }).eq("id", log!.id);
+        if (r.status === "sent") { stats.sent++; await finish({ status: "sent", sent_at: new Date().toISOString(), last_error: null }); }
+        else if (r.status === "skipped") await skip("unsubscribed");
+        else { stats.failed++; await finish({ status: "failed", last_error: r.apiMessage || `HTTP ${r.httpStatus}` }); }
+        continue;
+      }
       const quiet = applyQuietHours(now);
       if (quiet.getTime() !== now.getTime()) { stats.deferred++; await finish({ status: "pending", attempts: item.attempts, send_after: quiet.toISOString() }); continue; }
       const ctx = await loadSmsContext(db, { id: item.order_id });

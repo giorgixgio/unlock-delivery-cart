@@ -8,6 +8,7 @@ import { getPolicySections, TRENDMART_RETURNS } from "@/lib/storePolicies";
 import OnwayCityPicker from "@/components/OnwayCityPicker";
 import { useOnwayCities } from "@/hooks/useOnwayCities";
 import { selectedCityValid } from "@/lib/onwayCities";
+import SupportTicketCard, { type TicketView } from "@/components/tracking/SupportTicketCard";
 
 const TrackingMap = lazy(() => import("@/components/tracking/TrackingMap"));
 
@@ -18,6 +19,7 @@ interface Tracking {
   handed: boolean; status: "active" | "delivered" | "canceled"; can_cancel: boolean; operator_phone: string | null;
   can_rate_operator: boolean; rated: boolean; review_token: string | null;
   confirmed: boolean; needs_address: boolean; shipping_fee: number;
+  ticket: TicketView | null;
 }
 
 async function call(body: Record<string, unknown>) {
@@ -50,6 +52,14 @@ export default function OrderTracking() {
   const load = () => call({ action: "get", token }).then((d) => { setData(d); setState("ok"); })
     .catch((e) => setState(e.status === 404 || e.status === 400 ? "not_found" : "error"));
   useEffect(() => { load(); }, [token]);
+  // Ticket updates show up without a reload while a request is open.
+  useEffect(() => {
+    if (!data?.ticket?.open) return;
+    const refresh = () => { if (document.visibilityState === "visible") call({ action: "get", token }).then(setData).catch(() => {}); };
+    const t = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(t); window.removeEventListener("focus", refresh); };
+  }, [token, data?.ticket?.open]);
 
   if (state === "loading") return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (state !== "ok" || !data) return (
@@ -82,7 +92,8 @@ export default function OrderTracking() {
       )}
 
       {data.status === "active" && data.needs_address && <AddressForm token={token} onDone={load} />}
-      {data.status === "active" && !data.confirmed && (
+      {data.ticket && <SupportTicketCard ticket={data.ticket} onComment={async (text) => { await call({ action: "ticket_comment", token, text }); await load(); }} />}
+      {data.status === "active" && !data.confirmed && !data.ticket?.open && (
         <section className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 text-center text-lg font-bold">ოპერატორი დაგირეკავთ დასადასტურებლად</section>
       )}
       {data.status === "active" && (data.needs_address || !data.confirmed) && <ShippingInfo />}
