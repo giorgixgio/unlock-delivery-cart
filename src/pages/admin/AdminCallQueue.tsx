@@ -57,6 +57,7 @@ const IDLE_MS = 3 * 60 * 1000;
 
 interface QItem { id: string; product_id: string | null; title: string; sku: string; quantity: number; unit_price: number; line_total: number; image_url: string }
 interface QOrder {
+  support_hold?: boolean | null; tags?: string[] | null;
   id: string; public_order_number: string; created_at: string; status: string;
   customer_name: string; customer_phone: string; city: string; raw_city: string | null; normalized_city: string | null;
   address_line1: string; address_line2: string | null; raw_address: string | null; normalized_address: string | null;
