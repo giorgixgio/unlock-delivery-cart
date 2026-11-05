@@ -21,6 +21,7 @@ import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import { startSession, markAction, endSession, currentSessionId } from "@/lib/operatorSession";
 import CallAttemptsPanel from "@/components/admin/CallAttemptsPanel";
 import CallButton from "@/components/admin/CallButton";
+import IssueFlagButton from "@/components/admin/IssueFlagButton";
 import { startCallSync } from "@/lib/callSyncService";
 import { toTelHref, isDesktopDevice, getOpenTelOnThisDevice } from "@/lib/callSync";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
@@ -604,6 +605,7 @@ export default function OrderQuickReviewModal({
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={copyPhone}>
                       <Copy className="w-4 h-4" /> კოპირება
                     </Button>
+                    <IssueFlagButton orderId={order.id} source="quick_review" />
                   </div>
                 </div>
                 {order.notes_customer && (
