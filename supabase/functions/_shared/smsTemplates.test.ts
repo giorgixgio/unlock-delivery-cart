@@ -100,6 +100,18 @@ Deno.test("link goes on lead/confirmed/out-for-delivery and fits one SMS in the 
 Deno.test("no link on call-us texts", () => {
   for (const t of ["call_no_answer", "delivery_failed", "address_problem"] as const) assertEquals(renderSms(t, worst).text.includes("/t/"), false, t);
 });
+Deno.test("out_for_delivery says the courier will call today and to keep the phone on", () => {
+  const r = renderSms("out_for_delivery", { ...v, link: "https://trendmart.ge/t/Ab3x9K" });
+  assertEquals(r.text, "Dghes kurieri dagirekavts! Iqavit kuradgebit, telephone gqondet chartuli. Shekveta #122579 - 34 GEL. Tvali adevnet: https://trendmart.ge/t/Ab3x9K TRENDMART");
+  assertEquals(r.skip, undefined);
+});
+Deno.test("out_for_delivery drops the product name before the link, never two segments", () => {
+  const r = renderSms("out_for_delivery", { ...worst, product: "X".repeat(20) });
+  assertEquals(r.warnings.includes("product_dropped"), true);
+  assertEquals(r.text.endsWith(" Tvali adevnet: https://trendmart.ge/t/Ab3x9K TRENDMART"), true);
+  assertEquals(r.text.length <= 160, true, `len ${r.text.length}`);
+  assertEquals(r.skip, undefined);
+});
 Deno.test("drop order: product first, then link, never two segments", () => {
   const long = { ...worst, product: "X".repeat(60) };
   const r = renderSms("order_confirmed", long);
