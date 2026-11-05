@@ -69,10 +69,10 @@ interface QOrder {
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, support_hold, tags, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
 export const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, call_outcome, call_attempt_count, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, support_hold, call_outcome, call_attempt_count, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
 type SearchHit = SearchOrderLike & OrderStageLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
   customer_name: string | null; customer_phone: string | null;

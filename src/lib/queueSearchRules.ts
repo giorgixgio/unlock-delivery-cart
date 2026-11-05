@@ -12,6 +12,7 @@ export interface SearchOrderLike {
   is_confirmed?: boolean | null;
   is_fulfilled?: boolean | null;
   tags?: string[] | null;
+  support_hold?: boolean | null;
   queue_locked_by?: string | null;
   queue_locked_until?: string | null;
 }
@@ -20,7 +21,7 @@ export interface SearchOrderLike {
 export function isQueueOpen(o: SearchOrderLike): boolean {
   return ["new", "on_hold", "pending_bump", "pending_details"].includes(o.status)
     && !o.is_return && !o.auto_confirmed && !o.is_confirmed && !o.is_fulfilled
-    && !(o.tags || []).includes("test_sku");
+    && !o.support_hold && !(o.tags || []).includes("test_sku");
 }
 
 export type SearchOpenDecision =
@@ -81,6 +82,8 @@ export function orderActions(o: OrderStageLike): OrderActions {
     return { enabled: all(false), canEdit: false, note: "სხვა შეკვეთასთან შერწყმულია / merged into another order", reopens: false };
   if (isPastCallStage(o))
     return { enabled: all(false), canEdit: false, note: "უკვე გადაეცა კურიერს / already sent to courier", reopens: false };
+  if (o.support_hold)
+    return { enabled: all(false), canEdit: false, note: "⚑ მხარდაჭერაშია — რიგში დაბრუნება Issues-დან / in support — release from Issues", reopens: false };
   if (o.status === "canceled" || o.status === "cancelled")
     return {
       enabled: { confirm: true, no_answer: false, callback: true, cancel: false }, canEdit: true, reopens: true,
