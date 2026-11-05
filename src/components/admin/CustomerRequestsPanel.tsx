@@ -15,6 +15,7 @@ export default function CustomerRequestsPanel({ orderId }: { orderId?: string })
   const [rows, setRows] = useState<Row[]>([]);
   const load = () => {
     let q = supabase.from("customer_requests").select("*, orders(public_order_number, customer_name, customer_phone)").order("created_at", { ascending: false }).limit(100);
+    q = q.neq("kind", "operator_flag"); // issue tickets live on the Issues page
     q = orderId ? q.eq("order_id", orderId) : q.eq("status", "open");
     q.then(({ data }) => setRows(((data as any) || []).sort((a: Row, b: Row) => Number(b.priority) - Number(a.priority))));
   };
