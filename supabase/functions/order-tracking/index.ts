@@ -17,6 +17,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("call_me"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), reason: z.string().max(40), text: z.string().trim().max(300).optional() }),
   z.object({ action: z.literal("cancel"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), reason: z.string().max(40), text: z.string().trim().max(300).optional() }),
   z.object({ action: z.literal("set_address"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), region_id: z.string().max(100), address: z.string().trim().min(3).max(300), name: z.string().trim().max(100).optional() }),
+  z.object({ action: z.literal("ticket_comment"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), text: z.string().trim().min(1).max(500) }),
   z.object({ action: z.literal("rate_operator"), token: z.string().regex(/^[0-9A-Za-z]{6}$/), stars: z.number().int().min(1).max(5), comment: z.string().trim().max(1000).optional() }),
 ]);
 
@@ -79,7 +80,9 @@ Deno.serve(async (req) => {
         reviewUrlToken = r?.token ?? null;
       }
     }
+    const ticket = await loadTicket(db, o.id);
     return json({
+      ticket,
       number: o.public_order_number, store, logo: store === "BIGMART" ? s.logo_url_bigmart ?? null : s.logo_url_trendmart ?? null,
       first_name: firstName(o.customer_name), city: o.normalized_city || o.city || null, street: streetOnly(o.normalized_address || o.address_line1),
       is_tbilisi: isTbs, total: Number(o.total || 0), delivery_text: deliveryText, planned_date: o.onway_planned_date ?? null,
@@ -91,6 +94,20 @@ Deno.serve(async (req) => {
       rated: !!fb, review_token: reviewUrlToken,
       confirmed: stages[1]?.done === true, needs_address: needsAddress(o), shipping_fee: Number(o.shipping_fee || 0),
     });
+  }
+
+  if (b.action === "ticket_comment") {
+    const { data: t } = await db.from("customer_requests").select("id").eq("order_id", o.id).eq("kind", "operator_flag")
+      .in("status", ["open", "in_review", "waiting_customer"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!t) return json({ error: "no_open_ticket" }, 409);
+    const since = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count: recent } = await db.from("support_ticket_messages").select("id", { count: "exact", head: true })
+      .eq("request_id", t.id).eq("author_type", "customer").gte("created_at", since);
+    if ((recent ?? 0) >= 5) return json({ error: "rate_limited" }, 429);
+    const { error } = await db.from("support_ticket_messages").insert({ request_id: t.id, author_type: "customer", author: "customer", body: b.text });
+    if (error) return json({ error: "failed" }, 500);
+    await db.from("customer_requests").update({ last_customer_reply_at: new Date().toISOString() }).eq("id", t.id);
+    return json({ ok: true });
   }
 
   if (isClosed(o)) return json({ error: "closed" }, 409);
@@ -152,3 +169,17 @@ Deno.serve(async (req) => {
   }
   return json({ error: "invalid_request" }, 400);
 });
+
+// Customer-safe ticket view: no operator/admin names, no internal notes.
+async function loadTicket(db: any, orderId: string) {
+  const { data: t } = await db.from("customer_requests").select("id, status, created_at, resolved_at")
+    .eq("order_id", orderId).eq("kind", "operator_flag").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!t) return null;
+  const { data: msgs } = await db.from("support_ticket_messages").select("author_type, body, link_url, video_url, created_at")
+    .eq("request_id", t.id).in("author_type", ["admin", "customer"]).order("created_at");
+  const open = ["open", "in_review", "waiting_customer"].includes(t.status);
+  return {
+    step: !open ? 3 : t.status === "open" ? 1 : 2, open, created_at: t.created_at, resolved_at: t.resolved_at,
+    messages: (msgs || []).map((m: any) => ({ from: m.author_type === "customer" ? "customer" : "support", body: m.body, link: m.link_url, video: m.video_url, at: m.created_at })),
+  };
+}
