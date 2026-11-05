@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 
 const GSM = new Set([..."@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà^{}\\[~]|€"]);
 const SAMPLE_LINK = "https://trendmart.ge/t/Ab3x9K";
-const preview = (t: string, days: number) => t.replaceAll("{link}", SAMPLE_LINK).replaceAll("{store}", "TRENDMART").replaceAll("{days}", String(days)).replaceAll("{order}", "125712");
+const preview = (t: string, days: number) => t.split("{link}").join(SAMPLE_LINK).split("{store}").join("TRENDMART").split("{days}").join(String(days)).split("{order}").join("125712");
 
 /** Support ticket SMS and timing settings. Only admins can save (database rule). */
 export default function SupportSettingsCard() {
