@@ -103,6 +103,7 @@ const AdminLayout = () => {
   const callSync = useCallSync(user?.id);
   const [openTelHere, setOpenTelHere] = useState(() => getOpenTelOnThisDevice());
   const callQueue = useCallQueueAccess();
+  const issueCount = useOpenIssueCount();
 
   const callSyncBadge = (
     <span className="flex flex-col gap-1">
