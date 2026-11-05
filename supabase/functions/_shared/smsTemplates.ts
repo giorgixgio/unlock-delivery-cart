@@ -82,8 +82,8 @@ function baseTemplate(type: SeqType, v: TemplateVars, withProduct: boolean): str
       ? `Shekveta dadasturda! ${p} - ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`
       : `Shekveta dadasturda! Jami ${total}, gadakhda kurierTan. Mitana: ${v.when}. ${v.store}`;
     case "out_for_delivery": return p
-      ? `Dghes kurieri mogitant ${p}-s! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`
-      : `Dghes kurieri mogitant shekvetas! Telefoni chartuli gqondet. Gadasakhdeli: ${total}. ${v.store}`;
+      ? `Dghes kurieri dagirekavts! Iqavit kuradgebit, telephone gqondet chartuli. Shekveta #${v.n} (${p}) - ${total}. ${v.store}`
+      : `Dghes kurieri dagirekavts! Iqavit kuradgebit, telephone gqondet chartuli. Shekveta #${v.n} - ${total}. ${v.store}`;
     case "delivery_failed": return nums.length
       ? `Kurierma ver dagikavshirdat. Dagvikavshirdit ${numsText}, rom shekveta xelaxla mogitanot. ${v.store}`
       : `Kurierma ver dagikavshirdat. Gtxovt upasukhot shemdeg zars an gadmogvirekt, rom shekveta xelaxla mogitanot. ${v.store}`;
