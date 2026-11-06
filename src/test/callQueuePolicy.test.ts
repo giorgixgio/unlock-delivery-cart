@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRetry, sortQueue, queueTier, type QueueOrderLike } from "@/lib/callQueuePolicy";
+import { computeRetry, sortQueue, queueTier, isRetryTurn, type QueueOrderLike } from "@/lib/callQueuePolicy";
 
 // Tbilisi = UTC+4
 const tb = (s: string) => new Date(`${s}+04:00`);
@@ -9,19 +9,19 @@ describe("computeRetry", () => {
     const r = computeRetry(1, tb("2026-11-02T11:00:00"), tb("2026-11-02T11:00:00"));
     expect(r).toEqual({ action: "retry", at: tb("2026-11-02T13:00:00") });
   });
-  it("1st no-answer at 20:00 → next day 11:00 (first call was afternoon)", () => {
+  it("1st no-answer at 20:00 → next day 10:00 (work_start)", () => {
     const r = computeRetry(1, tb("2026-11-02T20:00:00"), tb("2026-11-02T20:00:00"));
-    expect(r).toEqual({ action: "retry", at: tb("2026-11-03T11:00:00") });
+    expect(r).toEqual({ action: "retry", at: tb("2026-11-03T10:00:00") });
   });
-  it("1st no-answer at 13:30 rolling past 21:00 with long gap → next day 15:00 (first call was morning)", () => {
+  it("1st no-answer rolling past 21:00 with long gap → next day 10:00", () => {
     const r = computeRetry(1, tb("2026-11-02T13:30:00"), tb("2026-11-02T13:30:00"), { retryGapMinutes: 600, maxAttempts: 3, workStart: "10:00", workEnd: "21:00" });
-    expect(r).toEqual({ action: "retry", at: tb("2026-11-03T15:00:00") });
+    expect(r).toEqual({ action: "retry", at: tb("2026-11-03T10:00:00") });
   });
-  it("2nd no-answer → next working day, opposite half from the 1st", () => {
+  it("2nd no-answer (final attempt) → next day 10:00", () => {
     expect(computeRetry(2, tb("2026-11-02T11:00:00"), tb("2026-11-02T13:05:00")))
-      .toEqual({ action: "retry", at: tb("2026-11-03T15:00:00") });
+      .toEqual({ action: "retry", at: tb("2026-11-03T10:00:00") });
     expect(computeRetry(2, tb("2026-11-02T16:00:00"), tb("2026-11-02T18:10:00")))
-      .toEqual({ action: "retry", at: tb("2026-11-03T11:00:00") });
+      .toEqual({ action: "retry", at: tb("2026-11-03T10:00:00") });
   });
   it("3rd no-answer → cancel", () => {
     expect(computeRetry(3, tb("2026-11-02T11:00:00"), tb("2026-11-04T15:00:00"))).toEqual({ action: "cancel" });
@@ -35,15 +35,16 @@ describe("queue priority", () => {
   const now = new Date("2026-11-02T10:00:00Z");
   const base: QueueOrderLike = { id: "x", created_at: "2026-11-02T08:00:00Z", status: "new" };
   const me = "op@x.ge";
-  it("orders: my callback, fresh oldest first, other callback, retries", () => {
+  it("orders: my callback, other callback, then fresh newest first, then retries", () => {
+    // 14:00 Tbilisi, nothing older than 3 h
     const orders: QueueOrderLike[] = [
-      { ...base, id: "retry", call_attempt_count: 1, call_outcome: "no_answer", next_call_after: "2026-11-02T09:00:00Z" },
+      { ...base, id: "retry", call_attempt_count: 1, call_outcome: "no_answer", last_call_attempt_at: "2026-11-02T07:00:00Z", next_call_after: "2026-11-02T09:00:00Z" },
       { ...base, id: "otherCb", status: "on_hold", call_outcome: "callback", next_call_after: "2026-11-02T09:00:00Z", queue_last_touched_by: "b@x.ge" },
       { ...base, id: "freshNew", created_at: "2026-11-02T09:00:00Z" },
-      { ...base, id: "freshOld", created_at: "2026-11-02T07:00:00Z" },
+      { ...base, id: "freshOld", created_at: "2026-11-02T08:00:00Z" },
       { ...base, id: "myCb", status: "on_hold", call_outcome: "callback", next_call_after: "2026-11-02T09:55:00Z", queue_last_touched_by: me },
     ];
-    expect(sortQueue(orders, me, now).map((o) => o.id)).toEqual(["myCb", "freshOld", "freshNew", "otherCb", "retry"]);
+    expect(sortQueue(orders, me, now).map((o) => o.id)).toEqual(["myCb", "otherCb", "freshNew", "freshOld", "retry"]);
   });
   it("another operator's callback is sticky for 30 minutes", () => {
     const o = { ...base, status: "on_hold", call_outcome: "callback", next_call_after: "2026-11-02T09:45:00Z", queue_last_touched_by: "b@x.ge" };
@@ -167,5 +168,66 @@ describe("phone-only leads (pending_details)", () => {
   });
   it("wait while the customer may still be typing the address", () => {
     expect(queueTier({ id: "p", created_at: "2026-11-03T07:55:00Z", status: "pending_details" }, "a@x.ge", now)).toBeNull();
+  });
+});
+
+describe("ordering v2", () => {
+  const T = (x: string) => new Date(`${x}+04:00`);
+  const me = "op@x.ge";
+  const fresh = (id: string, at: string): QueueOrderLike => ({ id, status: "new", created_at: T(at).toISOString() });
+  const retry = (id: string, lastAt: string, dueAt: string): QueueOrderLike => ({
+    id, status: "new", created_at: T("2026-11-01T12:00:00").toISOString(), call_attempt_count: 1, call_outcome: "no_answer",
+    last_call_attempt_at: T(lastAt).toISOString(), next_call_after: T(dueAt).toISOString() });
+
+  it("morning block: callback, carried-over retries oldest first, off-hours fresh newest, then the rest", () => {
+    const now = T("2026-11-04T10:30:00");
+    const cb: QueueOrderLike = { id: "cb", status: "on_hold", created_at: T("2026-11-03T12:00:00").toISOString(), call_outcome: "callback",
+      next_call_after: T("2026-11-04T10:00:00").toISOString(), queue_last_touched_by: me };
+    const list = [
+      fresh("dayFresh", "2026-11-04T10:20:00"),
+      fresh("eve21", "2026-11-03T21:30:00"),
+      fresh("eve23", "2026-11-03T23:10:00"),
+      retry("rNew", "2026-11-03T19:00:00", "2026-11-04T10:00:00"),
+      retry("rOld", "2026-11-02T15:00:00", "2026-11-03T11:00:00"),
+      cb,
+    ];
+    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["cb", "rOld", "rNew", "eve23", "eve21", "dayFresh"]);
+  });
+
+  it("afternoon: fresh newest first", () => {
+    const now = T("2026-11-04T15:00:00");
+    const list = [fresh("a", "2026-11-04T13:00:00"), fresh("b", "2026-11-04T14:30:00"), fresh("c", "2026-11-04T14:00:00")];
+    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("every 4th hand-out is a due retry if one exists", () => {
+    const now = T("2026-11-04T15:00:00");
+    const list = [fresh("f", "2026-11-04T14:50:00"), retry("r", "2026-11-04T12:00:00", "2026-11-04T14:00:00")];
+    expect(sortQueue(list, me, now, 0)[0].id).toBe("f");
+    expect(sortQueue(list, me, now, 2)[0].id).toBe("f");
+    expect(sortQueue(list, me, now, 3)[0].id).toBe("r"); // 4th pick
+    expect(sortQueue(list, me, now, 7)[0].id).toBe("r"); // 8th pick
+    expect(sortQueue([fresh("f", "2026-11-04T14:50:00")], me, now, 3)[0].id).toBe("f"); // no retry → fresh
+  });
+
+  it("no fresh lead → retries oldest due first", () => {
+    const now = T("2026-11-04T15:00:00");
+    const list = [retry("r2", "2026-11-04T12:30:00", "2026-11-04T14:30:00"), retry("r1", "2026-11-04T12:00:00", "2026-11-04T14:00:00")];
+    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["r1", "r2"]);
+  });
+
+  it("starvation guard: >3 h fresh or overdue retry jumps ahead of newer fresh, oldest first", () => {
+    const now = T("2026-11-04T17:00:00");
+    const list = [
+      fresh("new", "2026-11-04T16:50:00"),
+      fresh("starvedFresh", "2026-11-04T13:30:00"),
+      retry("starvedRetry", "2026-11-04T11:00:00", "2026-11-04T13:00:00"),
+      fresh("waiting2h", "2026-11-04T15:00:00"),
+    ];
+    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["starvedRetry", "starvedFresh", "new", "waiting2h"]);
+  });
+
+  it("isRetryTurn counts today's hand-outs", () => {
+    expect([0, 1, 2, 3, 4, 7].map((n) => isRetryTurn(n, 4))).toEqual([false, false, false, true, false, true]);
   });
 });

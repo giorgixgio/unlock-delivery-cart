@@ -288,6 +288,24 @@ export type Database = {
         }
         Relationships: []
       }
+      call_queue_pick_counts: {
+        Row: {
+          day: string
+          operator: string
+          picks: number
+        }
+        Insert: {
+          day: string
+          operator: string
+          picks?: number
+        }
+        Update: {
+          day?: string
+          operator?: string
+          picks?: number
+        }
+        Relationships: []
+      }
       call_queue_settings: {
         Row: {
           enabled_operators: string[]
@@ -295,11 +313,13 @@ export type Database = {
           lock_minutes: number
           manager_emails: string[]
           max_attempts: number
+          morning_block_until: string
           night_first_call_after: string
           night_from: string
           night_retry_slot: string
           night_to: string
           operators_use_queue: boolean
+          retry_every_n: number
           retry_gap_minutes: number
           updated_at: string
           updated_by: string | null
@@ -312,11 +332,13 @@ export type Database = {
           lock_minutes?: number
           manager_emails?: string[]
           max_attempts?: number
+          morning_block_until?: string
           night_first_call_after?: string
           night_from?: string
           night_retry_slot?: string
           night_to?: string
           operators_use_queue?: boolean
+          retry_every_n?: number
           retry_gap_minutes?: number
           updated_at?: string
           updated_by?: string | null
@@ -329,11 +351,13 @@ export type Database = {
           lock_minutes?: number
           manager_emails?: string[]
           max_attempts?: number
+          morning_block_until?: string
           night_first_call_after?: string
           night_from?: string
           night_retry_slot?: string
           night_to?: string
           operators_use_queue?: boolean
+          retry_every_n?: number
           retry_gap_minutes?: number
           updated_at?: string
           updated_by?: string | null
@@ -3759,11 +3783,13 @@ export type Database = {
           lock_minutes: number
           manager_emails: string[]
           max_attempts: number
+          morning_block_until: string
           night_first_call_after: string
           night_from: string
           night_retry_slot: string
           night_to: string
           operators_use_queue: boolean
+          retry_every_n: number
           retry_gap_minutes: number
           updated_at: string
           updated_by: string | null
@@ -3812,6 +3838,20 @@ export type Database = {
       }
       call_queue_on_shift: { Args: { p_email: string }; Returns: boolean }
       call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
+      call_queue_rank: {
+        Args: {
+          p_created: string
+          p_due: string
+          p_last: string
+          p_morning_until: string
+          p_now: string
+          p_retry_turn: boolean
+          p_tier: number
+          p_we: string
+          p_ws: string
+        }
+        Returns: number[]
+      }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release_view: {
         Args: { p_order_id: string }

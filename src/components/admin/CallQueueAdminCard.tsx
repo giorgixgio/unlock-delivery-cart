@@ -24,6 +24,10 @@ export default function CallQueueAdminCard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [masterAsk, setMasterAsk] = useState<boolean | null>(null);
   const [night, setNight] = useState({ night_from: "", night_to: "", night_first_call_after: "", night_retry_slot: "" });
+  const [order, setOrder] = useState({ morning_block_until: "12:00", retry_every_n: "4" });
+  useEffect(() => {
+    if (settings) setOrder({ morning_block_until: settings.morning_block_until, retry_every_n: String(settings.retry_every_n) });
+  }, [settings]);
   useEffect(() => {
     if (settings) setNight({ night_from: settings.night_from, night_to: settings.night_to, night_first_call_after: settings.night_first_call_after, night_retry_slot: settings.night_retry_slot });
   }, [settings]);
@@ -49,6 +53,17 @@ export default function CallQueueAdminCard() {
   };
 
   const validTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  const saveOrder = async () => {
+    if (!settings) return;
+    const n = Number(order.retry_every_n);
+    if (!validTime(order.morning_block_until) || !Number.isInteger(n) || n < 1 || n > 20) { toast({ title: "Use HH:MM and a whole number 1–20", variant: "destructive" }); return; }
+    setBusy("order");
+    const ok = await saveCallQueueSettings({ morning_block_until: order.morning_block_until, retry_every_n: n }, user?.email || "admin");
+    setBusy(null);
+    if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
+    setSettings({ ...settings, morning_block_until: order.morning_block_until, retry_every_n: n });
+    toast({ title: "Saved" });
+  };
   const saveNight = async () => {
     if (!settings) return;
     if (!Object.values(night).every(validTime)) { toast({ title: "Use HH:MM times", variant: "destructive" }); return; }
@@ -101,6 +116,20 @@ export default function CallQueueAdminCard() {
           ))}
         </div>
         <Button size="sm" variant="outline" disabled={!settings || busy === "night"} onClick={saveNight}>Save night times</Button>
+      </div>
+      <div className="mt-3 border-t border-border pt-2 space-y-2">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">Queue order</div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Morning block until (retries first)</span>
+            <Input value={order.morning_block_until} onChange={(e) => setOrder({ ...order, morning_block_until: e.target.value })} placeholder="HH:MM" className="h-9 text-base" />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Every Nth order is a retry</span>
+            <Input inputMode="numeric" value={order.retry_every_n} onChange={(e) => setOrder({ ...order, retry_every_n: e.target.value })} className="h-9 text-base" />
+          </label>
+        </div>
+        <Button size="sm" variant="outline" disabled={!settings || busy === "order"} onClick={saveOrder}>Save queue order</Button>
       </div>
       <AlertDialog open={masterAsk !== null} onOpenChange={(o) => !o && setMasterAsk(null)}>
         <AlertDialogContent>
