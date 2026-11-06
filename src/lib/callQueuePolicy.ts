@@ -2,6 +2,7 @@
  * Call Queue pure rules. Mirrored in SQL:
  *  - computeRetry  ↔ public.call_queue_compute_retry
  *  - queueTier     ↔ public.call_queue_tier
+ *  - queueRank     ↔ public.call_queue_rank (ordering used by call_queue_next)
  * Keep both in sync.
  */
 const TBILISI_OFFSET_MS = 4 * 3600 * 1000; // Georgia has no DST
@@ -15,11 +16,14 @@ export interface QueuePolicySettings {
   nightTo?: string;
   nightFirstCallAfter?: string;
   nightRetrySlot?: string;
+  morningBlockUntil?: string;
+  retryEveryN?: number;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
   retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00",
   nightFrom: "00:00", nightTo: "07:00", nightFirstCallAfter: "12:00", nightRetrySlot: "18:00",
+  morningBlockUntil: "12:00", retryEveryN: 4,
 };
 
 const hm = (s: string) => { const [h, m] = s.split(":").map(Number); return h * 60 + (m || 0); };
@@ -61,15 +65,14 @@ export function computeRetry(
     const slot = atLocal(n.day, hm(s.nightRetrySlot ?? "18:00"));
     if (slot.getTime() > now.getTime()) return { action: "retry", at: slot };
   }
-  const otherHalf = local(firstAttemptAt).hour < 14 ? 15 * 60 : 11 * 60;
   if (attemptCount <= 1) {
     const cand = new Date(now.getTime() + s.retryGapMinutes * 60000);
     const c = local(cand);
-    if (c.day > n.day || c.minute > hm(s.workEnd)) return { action: "retry", at: atLocal(n.day + 1, otherHalf) };
+    if (c.day > n.day || c.minute > hm(s.workEnd)) return { action: "retry", at: atLocal(n.day + 1, hm(s.workStart)) };
     if (c.minute < hm(s.workStart)) return { action: "retry", at: atLocal(c.day, hm(s.workStart)) };
     return { action: "retry", at: cand };
   }
-  return { action: "retry", at: atLocal(n.day + 1, otherHalf) };
+  return { action: "retry", at: atLocal(n.day + 1, hm(s.workStart)) };
 }
 
 /** Statuses the queue serves; phone-only leads (pending_details) wait 10 min for the customer to add an address. */
@@ -127,19 +130,50 @@ export function queueTier(
   return 4;
 }
 
+const STARVE_MS = 3 * 3600000;
+/**
+ * Sort key [group, key] (lower first). ↔ public.call_queue_rank
+ * 0 my callback · 1 other callback · 2 morning: retry carried over from a previous day (oldest due)
+ * 3 morning: off-hours fresh lead (newest) · 4 starved >3h fresh or retry (oldest)
+ * 5 retry on the operator's every-Nth turn (oldest due) · 6 fresh (newest) · 7 retry (oldest due)
+ */
+export function queueRank(
+  tier: number, o: QueueOrderLike, now: Date, retryTurn: boolean, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+): [number, number] {
+  const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
+  const created = new Date(o.created_at).getTime();
+  const last = ts(o.last_call_attempt_at);
+  const due = ts(o.next_call_after) ?? (last !== null ? last + s.retryGapMinutes * 60000 : created);
+  if (tier === 1) return [0, due];
+  if (tier === 3) return [1, due];
+  const n = local(now);
+  const morning = n.minute >= hm(s.workStart) && n.minute < hm(s.morningBlockUntil ?? "12:00");
+  if (morning) {
+    if (tier === 4 && last !== null && local(new Date(last)).day < n.day) return [2, due];
+    const cm = local(new Date(created)).minute;
+    if (tier === 2 && (cm < hm(s.workStart) || cm >= hm(s.workEnd))) return [3, -created];
+  }
+  if (tier === 2 && created < now.getTime() - STARVE_MS) return [4, created];
+  if (tier === 4 && due < now.getTime() - STARVE_MS) return [4, due];
+  if (tier === 4 && retryTurn) return [5, due];
+  if (tier === 2) return [6, -created];
+  return [7, due];
+}
+
+/** Whether the operator's next hand-out is a retry turn (picksToday = call_queue_next hand-outs so far today). */
+export const isRetryTurn = (picksToday: number, everyN = DEFAULT_QUEUE_SETTINGS.retryEveryN ?? 4) =>
+  (picksToday + 1) % Math.max(1, everyN) === 0;
+
 /** Same ordering as call_queue_next. */
-export function sortQueue<T extends QueueOrderLike>(orders: T[], caller: string, now: Date): T[] {
+export function sortQueue<T extends QueueOrderLike>(
+  orders: T[], caller: string, now: Date, picksToday = 0, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+): T[] {
+  const turn = isRetryTurn(picksToday, s.retryEveryN);
   return orders
-    .map((o) => ({ o, tier: queueTier(o, caller, now) }))
+    .map((o) => ({ o, tier: queueTier(o, caller, now, s.retryGapMinutes, s) }))
     .filter((x): x is { o: T; tier: number } => x.tier !== null)
-    .sort((a, b) => {
-      if (a.tier !== b.tier) return a.tier - b.tier;
-      if (a.tier === 2) return a.o.created_at.localeCompare(b.o.created_at);
-      const an = a.o.next_call_after ? new Date(a.o.next_call_after).getTime() : -Infinity;
-      const bn = b.o.next_call_after ? new Date(b.o.next_call_after).getTime() : -Infinity;
-      if (an !== bn) return an - bn;
-      return a.o.created_at.localeCompare(b.o.created_at);
-    })
+    .map((x) => ({ ...x, r: queueRank(x.tier, x.o, now, turn, s) }))
+    .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.o.created_at.localeCompare(b.o.created_at))
     .map((x) => x.o);
 }
 
