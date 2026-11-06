@@ -921,6 +921,7 @@ function TeamTab({ lockMinutes }: { lockMinutes: number }) {
   const inHours = hour >= 10 && hour < 21;
   const oldestMin = stats?.oldest_fresh_seconds != null ? Math.round(stats.oldest_fresh_seconds / 60) : null;
   const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const fmtAge = (sec: number) => (sec >= 3600 ? `${Math.floor(sec / 3600)}სთ ${Math.round((sec % 3600) / 60)}წთ` : `${Math.round(sec / 60)}წთ`);
 
   const doAssign = async () => {
     const o = await findOrder(assignTerm);
@@ -941,13 +942,14 @@ function TeamTab({ lockMinutes }: { lockMinutes: number }) {
 
   return (
     <div className="space-y-3 mt-2">
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
         {[
           ["ახალი / Fresh waiting", stats?.fresh_waiting],
           ["გადარეკვა / Callbacks due", stats?.callbacks_due],
           ["განმეორება / Retries due now", stats?.retries_due],
           ["ღამის / Night leads (from 12:00)", stats?.night_waiting],
           ["მოგვიანებით / Retries later", stats ? (stats.retries_later_today ?? 0) + (stats.retries_tomorrow ?? 0) : undefined],
+          ["დაგვიანებული / Retries overdue", stats ? `${stats.retries_overdue ?? 0}${stats.oldest_retry_overdue_seconds ? ` · ${fmtAge(stats.oldest_retry_overdue_seconds)}` : ""}` : undefined],
         ].map(([l, v]) => (
           <div key={l as string} className="rounded-lg border border-border bg-card p-2">
             <div className="text-[11px] text-muted-foreground">{l}</div>
