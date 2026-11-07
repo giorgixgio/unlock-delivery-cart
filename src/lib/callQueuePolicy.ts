@@ -18,12 +18,13 @@ export interface QueuePolicySettings {
   nightRetrySlot?: string;
   morningBlockUntil?: string;
   retryEveryN?: number;
+  backlogMix?: 2 | 3;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
   retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00",
   nightFrom: "00:00", nightTo: "07:00", nightFirstCallAfter: "12:00", nightRetrySlot: "18:00",
-  morningBlockUntil: "12:00", retryEveryN: 4,
+  morningBlockUntil: "12:00", retryEveryN: 4, backlogMix: 2,
 };
 
 const hm = (s: string) => { const [h, m] = s.split(":").map(Number); return h * 60 + (m || 0); };
@@ -107,7 +108,8 @@ export function queueTier(
   const t = now.getTime();
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!QUEUE_STATUSES.includes(o.status)) return null;
-  if (o.status === "pending_details" && ts(o.created_at) !== null && t - ts(o.created_at)! < PENDING_DETAILS_GRACE_MS) return null;
+  const createdAt = ts(o.created_at);
+  if (o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
   if (o.support_hold) return null; // handed to support (operator issue ticket)
@@ -131,14 +133,22 @@ export function queueTier(
 }
 
 const STARVE_MS = 3 * 3600000;
+const retryDue = (o: QueueOrderLike, s: QueuePolicySettings) => o.next_call_after
+  ? new Date(o.next_call_after).getTime()
+  : o.last_call_attempt_at ? new Date(o.last_call_attempt_at).getTime() + s.retryGapMinutes * 60000
+  : new Date(o.created_at).getTime();
+const isGuardItem = (tier: number, o: QueueOrderLike, now: Date, s: QueuePolicySettings) =>
+  (tier === 2 && new Date(o.created_at).getTime() < now.getTime() - STARVE_MS)
+  || (tier === 4 && retryDue(o, s) < now.getTime() - STARVE_MS);
 /**
  * Sort key [group, key] (lower first). ↔ public.call_queue_rank
- * 0 my callback · 1 other callback · 2 morning: retry carried over from a previous day (oldest due)
- * 3 morning: off-hours fresh lead (newest) · 4 starved >3h fresh or retry (oldest)
- * 5 retry on the operator's every-Nth turn (oldest due) · 6 fresh (newest) · 7 retry (oldest due)
+ * Callbacks and morning carried-over retries precede all lanes. During backlog,
+ * old turns rank guards oldest first; fresh turns rank all never-called leads newest first.
+ * Without backlog preserve morning off-hours priority and every-Nth retry ordering.
  */
 export function queueRank(
   tier: number, o: QueueOrderLike, now: Date, retryTurn: boolean, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+  hasBacklog = false, oldTurn = true,
 ): [number, number] {
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   const created = new Date(o.created_at).getTime();
@@ -150,11 +160,20 @@ export function queueRank(
   const morning = n.minute >= hm(s.workStart) && n.minute < hm(s.morningBlockUntil ?? "12:00");
   if (morning) {
     if (tier === 4 && last !== null && local(new Date(last)).day < n.day) return [2, due];
-    const cm = local(new Date(created)).minute;
-    if (tier === 2 && (cm < hm(s.workStart) || cm >= hm(s.workEnd))) return [3, -created];
   }
-  if (tier === 2 && created < now.getTime() - STARVE_MS) return [4, created];
-  if (tier === 4 && due < now.getTime() - STARVE_MS) return [4, due];
+  if (hasBacklog) {
+    const guard = isGuardItem(tier, o, now, s);
+    if (oldTurn) {
+      if (guard) return [3, tier === 2 ? created : due];
+      if (tier === 2) return [4, -created];
+      return [5, due];
+    }
+    if (tier === 2) return [3, -created];
+    if (guard) return [4, due];
+    return [5, due];
+  }
+  const cm = local(new Date(created)).minute;
+  if (morning && tier === 2 && (cm < hm(s.workStart) || cm >= hm(s.workEnd))) return [3, -created];
   if (tier === 4 && retryTurn) return [5, due];
   if (tier === 2) return [6, -created];
   return [7, due];
@@ -163,16 +182,19 @@ export function queueRank(
 /** Whether the operator's next hand-out is a retry turn (picksToday = call_queue_next hand-outs so far today). */
 export const isRetryTurn = (picksToday: number, everyN = DEFAULT_QUEUE_SETTINGS.retryEveryN ?? 4) =>
   (picksToday + 1) % Math.max(1, everyN) === 0;
+export const isOldTurn = (picksToday: number, mix: 2 | 3 = 2) => picksToday % mix === 0;
 
 /** Same ordering as call_queue_next. */
 export function sortQueue<T extends QueueOrderLike>(
   orders: T[], caller: string, now: Date, picksToday = 0, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
 ): T[] {
   const turn = isRetryTurn(picksToday, s.retryEveryN);
-  return orders
+  const eligible = orders
     .map((o) => ({ o, tier: queueTier(o, caller, now, s.retryGapMinutes, s) }))
-    .filter((x): x is { o: T; tier: number } => x.tier !== null)
-    .map((x) => ({ ...x, r: queueRank(x.tier, x.o, now, turn, s) }))
+    .filter((x): x is { o: T; tier: number } => x.tier !== null);
+  const backlog = eligible.some((x) => isGuardItem(x.tier, x.o, now, s));
+  return eligible
+    .map((x) => ({ ...x, r: queueRank(x.tier, x.o, now, turn, s, backlog, isOldTurn(picksToday, s.backlogMix)) }))
     .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.o.created_at.localeCompare(b.o.created_at))
     .map((x) => x.o);
 }

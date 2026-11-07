@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -24,9 +25,9 @@ export default function CallQueueAdminCard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [masterAsk, setMasterAsk] = useState<boolean | null>(null);
   const [night, setNight] = useState({ night_from: "", night_to: "", night_first_call_after: "", night_retry_slot: "" });
-  const [order, setOrder] = useState({ morning_block_until: "12:00", retry_every_n: "4" });
+  const [order, setOrder] = useState({ morning_block_until: "12:00", retry_every_n: "4", backlog_mix: "2" });
   useEffect(() => {
-    if (settings) setOrder({ morning_block_until: settings.morning_block_until, retry_every_n: String(settings.retry_every_n) });
+    if (settings) setOrder({ morning_block_until: settings.morning_block_until, retry_every_n: String(settings.retry_every_n), backlog_mix: String(settings.backlog_mix) });
   }, [settings]);
   useEffect(() => {
     if (settings) setNight({ night_from: settings.night_from, night_to: settings.night_to, night_first_call_after: settings.night_first_call_after, night_retry_slot: settings.night_retry_slot });
@@ -56,12 +57,14 @@ export default function CallQueueAdminCard() {
   const saveOrder = async () => {
     if (!settings) return;
     const n = Number(order.retry_every_n);
+    const mix = Number(order.backlog_mix);
+    if (mix !== 2 && mix !== 3) return;
     if (!validTime(order.morning_block_until) || !Number.isInteger(n) || n < 1 || n > 20) { toast({ title: "Use HH:MM and a whole number 1–20", variant: "destructive" }); return; }
     setBusy("order");
-    const ok = await saveCallQueueSettings({ morning_block_until: order.morning_block_until, retry_every_n: n }, user?.email || "admin");
+    const ok = await saveCallQueueSettings({ morning_block_until: order.morning_block_until, retry_every_n: n, backlog_mix: mix }, user?.email || "admin");
     setBusy(null);
     if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
-    setSettings({ ...settings, morning_block_until: order.morning_block_until, retry_every_n: n });
+    setSettings({ ...settings, morning_block_until: order.morning_block_until, retry_every_n: n, backlog_mix: mix });
     toast({ title: "Saved" });
   };
   const saveNight = async () => {
@@ -130,6 +133,16 @@ export default function CallQueueAdminCard() {
           </label>
         </div>
         <Button size="sm" variant="outline" disabled={!settings || busy === "order"} onClick={saveOrder}>Save queue order</Button>
+        <div className="space-y-1">
+          <span id="backlog-mix-label" className="text-xs text-muted-foreground">Backlog mix</span>
+          <Select value={order.backlog_mix} onValueChange={(v) => setOrder({ ...order, backlog_mix: v })}>
+            <SelectTrigger aria-labelledby="backlog-mix-label" className="h-9 text-base"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2">1 old : 1 fresh</SelectItem>
+              <SelectItem value="3">1 old : 2 fresh</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <AlertDialog open={masterAsk !== null} onOpenChange={(o) => !o && setMasterAsk(null)}>
         <AlertDialogContent>
