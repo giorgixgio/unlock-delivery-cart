@@ -244,7 +244,7 @@ describe("ordering v2", () => {
       .toEqual(["oldRetry", "newest", "oldRetry", "newest", "oldRetry", "newest"]);
   });
   it("backlog_mix 3 gives one old then two fresh per operator's daily counter", () => {
-    const s = { retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00", backlogMix: 3 };
+    const s = { retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00", backlogMix: 3 as const };
     expect([0, 1, 2, 3, 4, 5].map((p) => sortQueue(backlog, me, backlogNow, p, s)[0].id))
       .toEqual(["oldRetry", "newest", "newest", "oldRetry", "newest", "newest"]);
   });
