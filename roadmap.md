@@ -1,8 +1,8 @@
 # Roadmap — Courier section
 
 # Roadmap — Queue backlog alternation
-- [ ] Apply live backlog mixing to selection/rank without changing eligibility or order data.
-- [ ] Add backlog_mix admin setting and matching pure policy tests; validate SQL parity and typecheck.
+- [x] Apply live backlog mixing to selection/rank without changing eligibility or order data; schema and lock clause verified.
+- [x] Add backlog_mix admin setting and matching pure policy tests; 227 tests and TypeScript pass, SQL alternation/callback/fallback parity verified. Settings rendering unverified: no matching preview auth account.
 
 # Roadmap — Onway regions and review
 - [ ] Fetch and log read-only Onway regions through the proxy; cache and map destinations with refresh support.
