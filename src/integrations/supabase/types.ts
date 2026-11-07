@@ -308,6 +308,7 @@ export type Database = {
       }
       call_queue_settings: {
         Row: {
+          backlog_mix: number
           enabled_operators: string[]
           id: boolean
           lock_minutes: number
@@ -327,6 +328,7 @@ export type Database = {
           work_start: string
         }
         Insert: {
+          backlog_mix?: number
           enabled_operators?: string[]
           id?: boolean
           lock_minutes?: number
@@ -346,6 +348,7 @@ export type Database = {
           work_start?: string
         }
         Update: {
+          backlog_mix?: number
           enabled_operators?: string[]
           id?: boolean
           lock_minutes?: number
@@ -3778,6 +3781,7 @@ export type Database = {
       call_queue_cfg: {
         Args: never
         Returns: {
+          backlog_mix: number
           enabled_operators: string[]
           id: boolean
           lock_minutes: number
@@ -3838,20 +3842,37 @@ export type Database = {
       }
       call_queue_on_shift: { Args: { p_email: string }; Returns: boolean }
       call_queue_override: { Args: { p_order_id: string }; Returns: undefined }
-      call_queue_rank: {
-        Args: {
-          p_created: string
-          p_due: string
-          p_last: string
-          p_morning_until: string
-          p_now: string
-          p_retry_turn: boolean
-          p_tier: number
-          p_we: string
-          p_ws: string
-        }
-        Returns: number[]
-      }
+      call_queue_rank:
+        | {
+            Args: {
+              p_created: string
+              p_due: string
+              p_last: string
+              p_morning_until: string
+              p_now: string
+              p_retry_turn: boolean
+              p_tier: number
+              p_we: string
+              p_ws: string
+            }
+            Returns: number[]
+          }
+        | {
+            Args: {
+              p_created: string
+              p_due: string
+              p_has_backlog: boolean
+              p_last: string
+              p_morning_until: string
+              p_now: string
+              p_old_turn: boolean
+              p_retry_turn: boolean
+              p_tier: number
+              p_we: string
+              p_ws: string
+            }
+            Returns: number[]
+          }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release_view: {
         Args: { p_order_id: string }
