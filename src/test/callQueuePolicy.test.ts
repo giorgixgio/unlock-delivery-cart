@@ -191,7 +191,8 @@ describe("ordering v2", () => {
       retry("rOld", "2026-11-02T15:00:00", "2026-11-03T11:00:00"),
       cb,
     ];
-    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["cb", "rOld", "rNew", "eve23", "eve21", "dayFresh"]);
+    expect(sortQueue(list, me, now).map((o) => o.id)).toEqual(["cb", "rOld", "rNew", "eve21", "eve23", "dayFresh"]);
+    expect(sortQueue(list, me, now, 1).map((o) => o.id)).toEqual(["cb", "rOld", "rNew", "dayFresh", "eve23", "eve21"]);
   });
 
   it("afternoon: fresh newest first", () => {
@@ -229,5 +230,48 @@ describe("ordering v2", () => {
 
   it("isRetryTurn counts today's hand-outs", () => {
     expect([0, 1, 2, 3, 4, 7].map((n) => isRetryTurn(n, 4))).toEqual([false, false, false, true, false, true]);
+  });
+
+  const backlogNow = T("2026-11-07T17:00:00");
+  const backlog = [
+    fresh("newest", "2026-11-07T16:45:00"),
+    fresh("oldFresh", "2026-11-07T12:00:00"),
+    retry("oldRetry", "2026-11-07T08:00:00", "2026-11-07T10:00:00"),
+    retry("recentRetry", "2026-11-07T14:00:00", "2026-11-07T16:00:00"),
+  ];
+  it("backlog alternates odd old / even newest fresh, superseding every-fourth retry", () => {
+    expect([0, 1, 2, 3, 4, 5].map((p) => sortQueue(backlog, me, backlogNow, p)[0].id))
+      .toEqual(["oldRetry", "newest", "oldRetry", "newest", "oldRetry", "newest"]);
+  });
+  it("backlog_mix 3 gives one old then two fresh per operator's daily counter", () => {
+    const s = { retryGapMinutes: 120, maxAttempts: 3, workStart: "10:00", workEnd: "21:00", backlogMix: 3 as const };
+    expect([0, 1, 2, 3, 4, 5].map((p) => sortQueue(backlog, me, backlogNow, p, s)[0].id))
+      .toEqual(["oldRetry", "newest", "newest", "oldRetry", "newest", "newest"]);
+  });
+  it("empty fresh lane falls back to oldest overdue retry on even picks", () => {
+    expect(sortQueue(backlog.filter((o) => o.call_attempt_count), me, backlogNow, 1)[0].id).toBe("oldRetry");
+  });
+  it("empty guard lane falls back to newest fresh on odd picks", () => {
+    expect(sortQueue([backlog[0]], me, backlogNow, 0)[0].id).toBe("newest");
+  });
+  it("old fresh leads alone still alternate oldest and newest", () => {
+    const list = [fresh("oldest", "2026-11-07T11:00:00"), fresh("lessOld", "2026-11-07T12:00:00")];
+    expect(sortQueue(list, me, backlogNow, 0)[0].id).toBe("oldest");
+    expect(sortQueue(list, me, backlogNow, 1)[0].id).toBe("lessOld");
+  });
+  it("eligible callbacks win on both lanes, future or sticky callbacks stay excluded", () => {
+    const cb = { ...fresh("callback", "2026-11-07T12:00:00"), call_outcome: "callback", next_call_after: T("2026-11-07T16:55:00").toISOString(), queue_last_touched_by: me };
+    expect([0, 1, 3].map((p) => sortQueue([...backlog, cb], me, backlogNow, p)[0].id)).toEqual(["callback", "callback", "callback"]);
+    expect(sortQueue([...backlog, { ...cb, next_call_after: T("2026-11-07T18:00:00").toISOString() }], me, backlogNow, 1)[0].id).toBe("newest");
+  });
+  it("pending_details participates in the newest fresh lane after its existing grace", () => {
+    const phoneOnly = { ...fresh("phoneOnly", "2026-11-07T16:49:00"), status: "pending_details" };
+    expect(sortQueue([...backlog, phoneOnly], me, backlogNow, 1)[0].id).toBe("phoneOnly");
+  });
+  it("morning without carried-over retries alternates backlog with newest eligible daytime leads", () => {
+    const list = [fresh("evening", "2026-11-06T22:00:00"), fresh("today", "2026-11-07T10:15:00")];
+    const now = T("2026-11-07T10:30:00");
+    expect(sortQueue(list, me, now, 0)[0].id).toBe("evening");
+    expect(sortQueue(list, me, now, 1)[0].id).toBe("today");
   });
 });

@@ -22,13 +22,14 @@ export interface CallQueueSettings {
   night_retry_slot: string;
   morning_block_until: string;
   retry_every_n: number;
+  backlog_mix: 2 | 3;
 }
 
 export const DEFAULT_CALL_QUEUE_SETTINGS: CallQueueSettings = {
   enabled_operators: [], manager_emails: ["eto@bigmart.ge"], retry_gap_minutes: 120,
   max_attempts: 3, work_start: "10:00", work_end: "21:00", lock_minutes: 10,
   operators_use_queue: false, night_from: "00:00", night_to: "07:00", night_first_call_after: "12:00", night_retry_slot: "18:00",
-  morning_block_until: "12:00", retry_every_n: 4,
+  morning_block_until: "12:00", retry_every_n: 4, backlog_mix: 2,
 };
 
 const TEST_KEY = "callQueueTestMode";
