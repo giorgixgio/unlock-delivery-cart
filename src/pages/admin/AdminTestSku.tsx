@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const TEST_SKU = "999999";
+const TEST_SKUS = ["999999","test1","test2","test3","test4","test5","test6","test7","test8","test9"];
 type Mode = "today" | "yesterday" | "7d" | "all";
 
 const tbDay = (offset = 0) => {
@@ -14,6 +14,9 @@ const tbDay = (offset = 0) => {
 
 export default function AdminTestSku() {
   const [mode, setMode] = useState<Mode>("today");
+  const [sku, setSku] = useState<string>("all");
+  const skus = sku === "all" ? TEST_SKUS : [sku];
+  const TEST_SKU = sku === "all" ? "test" : sku;
   const [rows, setRows] = useState<any[]>([]);
   const [meta, setMeta] = useState<{ spend: number; purchases: number; clicks: number; currency: string } | null>(null);
   const [metaErr, setMetaErr] = useState<string | null>(null);
@@ -33,8 +36,8 @@ export default function AdminTestSku() {
       const e = new Date(`${until}T23:59:59.999+04:00`).toISOString();
       const { data } = await supabase
         .from("order_items")
-        .select("quantity, line_total, orders!inner(id, public_order_number, created_at, status, is_confirmed, is_fulfilled, customer_phone, total)")
-        .eq("sku", TEST_SKU)
+        .select("sku, quantity, line_total, orders!inner(id, public_order_number, created_at, status, is_confirmed, is_fulfilled, customer_phone, total)")
+        .in("sku", skus)
         .gte("orders.created_at", s)
         .lte("orders.created_at", e)
         .limit(1000);
@@ -48,8 +51,8 @@ export default function AdminTestSku() {
           supabase.from("meta_ad_product_map").select("ad_id, product_sku"),
         ]);
         if (error) throw error;
-        const mapped = new Set((map || []).filter((m: any) => m.product_sku === TEST_SKU).map((m: any) => m.ad_id));
-        const ads = (fn?.ads ?? []).filter((a: any) => mapped.has(a.adId) || String(a.adName).includes(TEST_SKU));
+        const mapped = new Set((map || []).filter((m: any) => skus.includes(m.product_sku)).map((m: any) => m.ad_id));
+        const ads = (fn?.ads ?? []).filter((a: any) => mapped.has(a.adId) || skus.some((k) => String(a.adName).toLowerCase().includes(k)));
         setMeta({
           spend: ads.reduce((t: number, a: any) => t + (a.spend || 0), 0),
           purchases: ads.reduce((t: number, a: any) => t + (a.purchases || 0), 0),
@@ -61,7 +64,7 @@ export default function AdminTestSku() {
         setMeta(null);
       }
     })();
-  }, [since, until]);
+  }, [since, until, sku]);
 
   const st = useMemo(() => {
     const orders = new Map<string, any>();
@@ -73,7 +76,7 @@ export default function AdminTestSku() {
       pcs += r.quantity || 0;
       rev += Number(r.line_total || 0);
       if (!canceled) revNet += Number(r.line_total || 0);
-      orders.set(o.id, { ...o, qty: (orders.get(o.id)?.qty || 0) + (r.quantity || 0), canceled });
+      orders.set(o.id, { ...o, qty: (orders.get(o.id)?.qty || 0) + (r.quantity || 0), sku: r.sku, canceled });
     }
     const list = [...orders.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
     const confirmed = list.filter((o) => (o.is_confirmed || o.is_fulfilled) && !o.canceled).length;
@@ -87,12 +90,17 @@ export default function AdminTestSku() {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-extrabold">სატესტო SKU {TEST_SKU}</h1>
+        <h1 className="text-2xl font-extrabold">სატესტო SKU {sku === "all" ? "(ყველა)" : sku}</h1>
         <p className="text-sm text-muted-foreground">ეს შეკვეთები არ ჩანს Dashboard-ზე და Orders-ში — მხოლოდ აქ.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         {([["today", "დღეს"], ["yesterday", "გუშინ"], ["7d", "7 დღე"], ["all", "სულ"]] as [Mode, string][]).map(([m, l]) => (
           <Button key={m} size="sm" variant={mode === m ? "default" : "outline"} onClick={() => setMode(m)}>{l}</Button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {["all", ...TEST_SKUS].map((k) => (
+          <Button key={k} size="sm" variant={sku === k ? "secondary" : "ghost"} onClick={() => setSku(k)}>{k === "all" ? "ყველა" : k}</Button>
         ))}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -106,7 +114,7 @@ export default function AdminTestSku() {
         <Kpi label="ფასი 1 დადასტურებულზე" value={cpc != null ? cpc.toFixed(2) : "—"} />
       </div>
       {meta && meta.spend === 0 && (
-        <p className="text-xs text-muted-foreground">Meta ხარჯი 0 — მიაბით რეკლამა SKU {TEST_SKU}-ს Dashboard-ის „რეკლამების მიბმა" სიაში, ან ჩაწერეთ 999999 რეკლამის სახელში.</p>
+        <p className="text-xs text-muted-foreground">Meta ხარჯი 0 — მიაბით რეკლამა SKU {TEST_SKU}-ს Dashboard-ის „რეკლამების მიბმა" სიაში, ან ჩაწერეთ SKU რეკლამის სახელში.</p>
       )}
       <Card><CardContent className="p-0 divide-y">
         {loading ? <p className="p-4 text-sm text-muted-foreground">იტვირთება...</p> :
@@ -114,7 +122,7 @@ export default function AdminTestSku() {
           st.list.map((o) => (
             <div key={o.id} className="flex items-center justify-between p-3 text-sm">
               <div>
-                <div className="font-semibold">#{o.public_order_number} · {o.qty} ც</div>
+                <div className="font-semibold">#{o.public_order_number} · {o.sku} · {o.qty} ც</div>
                 <div className="text-xs text-muted-foreground">{format(new Date(o.created_at), "dd.MM HH:mm")} · {o.customer_phone}</div>
               </div>
               <div className="text-right">

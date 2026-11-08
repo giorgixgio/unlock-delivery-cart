@@ -73,7 +73,7 @@ const navGroups = [
       { to: '/admin/reviews', label: 'Reviews', icon: ListChecks },
       { to: "/admin/products-import", label: "AI Import", icon: Wand2 },
       { to: "/admin/stockout-demand", label: "Stockout Demand", icon: PackageX },
-      { to: "/admin/test-sku", label: "Test SKU 999999", icon: Zap },
+      { to: "/admin/test-sku", label: "Test SKUs", icon: Zap },
     ],
   },
   {
