@@ -22,7 +22,6 @@ Customer tracking (/t/:token) reads and writes only through the `order-tracking`
 
 Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mirrored by pure `src/lib/callQueuePolicy.ts` (keep both in sync); the queue page reuses existing call/cancel/callback services with source `call_queue`, orders go only to callers with an open unpaused shift (DB-enforced), access comes from the master switch or admin test mode.
 - Queue backlog mixing uses eligible actor/store-scoped guard items and the existing daily assignment counter in both SQL rank and pure policy; callbacks and morning carried-over retries precede mixing, so backlog cannot starve fresh leads without changing eligibility or locking.
-- Operator order-review UI (address fields, item editor, previous orders) lives in `src/components/admin/order-review/` and is shared by OrderQuickReviewModal and the Call Queue, so both screens keep identical save/edit rules; confirm-address validation is the pure `validateConfirmAddress` and applies only to those two confirm paths.
 - Call Queue undo goes only through the `call_queue_undo` RPC (rules mirrored in pure `src/lib/callQueueUndo.ts`): it restores the snapshot, renames the action's events to `<type>_undone`, and retires the action's stock log rows to `*_undone` while reversing their quantities, so the once-only stock functions work correctly on redo and stats ignore undone outcomes.
 - RLS policies must read the caller's email from `auth.jwt()->>'email'`, never `auth.users`, because the authenticated role cannot read auth.users and the policy silently fails.
 - Call Queue Team-tab metrics live in pure `src/lib/callQueueTeamMetrics.ts` and reuse `operatorStatsEngine` outcome rules, so the tab and Operator Stats never disagree.
@@ -34,3 +33,4 @@ Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mi
 
 - Operator city (`AddressFields`) saves only exact Onway names (`findExactOnwayCity`); free text blocks confirm, to stop hand fixes.
 - Issue tickets (`customer_requests` kind `operator_flag`) change only via `support_ticket_*` RPCs (mirrored in `src/lib/supportTickets.ts`) and hold leads via `orders.support_hold`, never status/stock, so support hand-off is not a call outcome.
+- Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.

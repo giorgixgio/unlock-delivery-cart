@@ -2641,6 +2641,7 @@ export type Database = {
           created_at: string
           id: string
           order_id: string
+          product_id: string | null
           product_sku: string
           sent_at: string | null
           token: string
@@ -2650,6 +2651,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id: string
+          product_id?: string | null
           product_sku?: string
           sent_at?: string | null
           token?: string
@@ -2659,6 +2661,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string
+          product_id?: string | null
           product_sku?: string
           sent_at?: string | null
           token?: string
@@ -2681,6 +2684,7 @@ export type Database = {
           id: string
           order_id: string | null
           photo_urls: Json
+          product_id: string | null
           product_sku: string
           rating: number
           source: string
@@ -2694,6 +2698,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           photo_urls?: Json
+          product_id?: string | null
           product_sku: string
           rating: number
           source: string
@@ -2707,6 +2712,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           photo_urls?: Json
+          product_id?: string | null
           product_sku?: string
           rating?: number
           source?: string
@@ -4069,6 +4075,22 @@ export type Database = {
         Returns: boolean
       }
       order_is_delivered: { Args: { p_order_id: string }; Returns: boolean }
+      product_landing_stats: {
+        Args: { p_product_id?: string; p_sku: string }
+        Returns: Json
+      }
+      product_review_feed: {
+        Args: { p_preview?: boolean; p_product_id?: string; p_sku: string }
+        Returns: Json
+      }
+      product_review_sms_candidates: {
+        Args: { p_product_id?: string; p_sku: string }
+        Returns: {
+          order_id: string
+          order_number: string
+          phone: string
+        }[]
+      }
       record_stockout_attempt: {
         Args: {
           p_payload: Json

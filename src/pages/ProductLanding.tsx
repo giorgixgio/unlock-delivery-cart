@@ -47,6 +47,9 @@ import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
 import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } from '@/lib/miniCameraConfig';
 const MiniCameraLanding = lazyWithRetry(() => import('@/components/landing/MiniCameraLanding'));
+import { KERATIN_PRODUCT_ID, KERATIN_SLUG, KERATIN_VARIANT, keratinBump, keratinPreviewMode, resolveKeratinConfig, usesKeratinPresentation, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
+import { bumpLineTotal } from '@/lib/bumpPricing';
+const KeratinMaskLanding = lazyWithRetry(() => import('@/components/landing/KeratinMaskLanding'));
 
 
 
@@ -57,6 +60,7 @@ const ProductLanding = () => {
 
   const product = useMemo(() => {
     if (!slug || products.length === 0) return null;
+    if (slug === KERATIN_SLUG) return products.find((p) => p.id === KERATIN_PRODUCT_ID) ?? null;
     return products.find((p) => p.handle === (slug === 'mini-camera' ? CAMERA_HANDLE : slug) || p.id === slug) ?? null;
   }, [slug, products]);
 
@@ -88,6 +92,9 @@ const ProductLanding = () => {
     );
   }
 
+  if (usesKeratinPresentation(slug, product.id)) {
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} keratinConfig={landingConfig?.landing_config?.keratin_mask} keratinPresentation /></Suspense>;
+  }
   // Custom spy detector landing
   if (usesCameraPresentation(slug, product.sku)) {
     return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={slug === 'mini-camera' ? false : landingConfig?.offer_1plus1_enabled ?? false} offerTimerMinutes={slug === 'mini-camera' ? 59 : landingConfig?.offer_timer_minutes ?? 59} cameraConfig={landingConfig?.landing_config?.mini_camera} cameraPresentation /></Suspense>;
@@ -155,6 +162,8 @@ const GenericLanding = ({
   offerTimerMinutes,
   cameraConfig,
   cameraPresentation = false,
+  keratinConfig,
+  keratinPresentation = false,
 }: {
   product: Product;
   landingSlug: string;
@@ -163,6 +172,8 @@ const GenericLanding = ({
   offerTimerMinutes: number;
   cameraConfig?: import('@/lib/miniCameraConfig').MiniCameraConfig;
   cameraPresentation?: boolean;
+  keratinConfig?: Partial<KeratinMaskConfig>;
+  keratinPresentation?: boolean;
 }) => {
 
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
@@ -174,11 +185,18 @@ const GenericLanding = ({
   // Per-product single-item offer (shown right after phone submit)
   // Per-product single-item offer. SKU 002 (camera) has none: its funnel ends at
   // the address step — the GPS-tracker (0011) offer was removed on request.
-  const singleOffer = getSingleUpsellOffer(product.sku);
+  const kCfg = useMemo(() => resolveKeratinConfig(keratinConfig), [keratinConfig]);
+  const keratinUpsellProduct = useMemo(
+    () => (keratinPresentation && kCfg.upsell.enabled && kCfg.upsell.product_id ? catalogProducts.find((p) => p.id === kCfg.upsell.product_id && p.id !== product.id) ?? null : null),
+    [keratinPresentation, kCfg, catalogProducts, product.id]
+  );
+  const singleOffer = keratinPresentation
+    ? (keratinUpsellProduct ? { offerSku: String(keratinUpsellProduct.sku ?? keratinUpsellProduct.id), offerPrice: kCfg.upsell.price, compareAtPrice: kCfg.upsell.compare_at, timerSeconds: 180, headline: kCfg.upsell.headline, subline: kCfg.upsell.subline, bullets: ['იგივე მიტანა — დამატებითი გადასახადის გარეშე', 'იხდი კურიერთან მიღებისას'] } : null)
+    : getSingleUpsellOffer(product.sku);
 
   const singleOfferProduct = useMemo(
-    () => (singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
-    [singleOffer, storefrontProducts]
+    () => (keratinPresentation ? keratinUpsellProduct : singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
+    [singleOffer, storefrontProducts, keratinPresentation, keratinUpsellProduct]
   );
   const singleOfferActive = !!(singleOffer && singleOfferProduct);
 
@@ -197,7 +215,7 @@ const GenericLanding = ({
   // When a single offer is configured, the generic multi-product upsell is disabled.
   // The camera presentation passes `blocked`, so its funnel ends at the address step.
   const upsellsActive =
-    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride, cameraPresentation);
+    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride, cameraPresentation || keratinPresentation);
 
 
 
@@ -230,13 +248,15 @@ const GenericLanding = ({
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
   const hasStockLimitedPrice = product.sku === "G888-T4656-0016";
   const landingMedia = getProductLandingMedia(product.sku);
-  const hasSku002QuantityOffer = String(product.sku) === "002";
-  const sku002BumpConfig: BumpConfig = CAMERA_BUMP;
+  // Bump funnel (phone → bump → address → optional single upsell): camera and the KERAVÉ landing.
+  const hasSku002QuantityOffer = String(product.sku) === "002" || keratinPresentation;
+  const sku002BumpConfig: BumpConfig = keratinPresentation ? keratinBump(kCfg) : CAMERA_BUMP;
+  const landingVariantTag = keratinPresentation ? KERATIN_VARIANT : landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic';
 
-  useEffect(() => { trackFunnel("landing_view"); }, []);
+  useEffect(() => { trackFunnel("landing_view", keratinPresentation ? { landingVariant: KERATIN_VARIANT } : {}); }, []);
   useEffect(() => {
     trackViewContent(product);
-    trackLandingView({ productId: product.id, productName: product.title, landingType: landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic' });
+    trackLandingView({ productId: product.id, productName: product.title, landingType: landingVariantTag });
     const last = readLastOrder(product.sku || product.id);
     if (last) {
       setRepeatBlocked(last);
@@ -275,7 +295,7 @@ const GenericLanding = ({
   };
 
   const handleBumpDone = (accepted: boolean) => {
-    if (accepted) setPendingOrderTotal((current) => current + (sku002BumpConfig.fixed_price ?? CAMERA_BUMP.fixed_price ?? 19));
+    if (accepted) setPendingOrderTotal((current) => current + bumpLineTotal(product.price, sku002BumpConfig));
     setBumpOpen(false);
     if (hasSku002QuantityOffer) setAddressOpen(true);
     else if (singleOfferActive) setSingleUpsellOpen(true);
@@ -310,7 +330,7 @@ const GenericLanding = ({
 
   return (
     <div className="min-h-screen bg-background pb-36">
-      {cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
+      {keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
@@ -462,7 +482,7 @@ const GenericLanding = ({
         quantity={effectiveQty}
         discountPct={qtyDiscountPct}
         landingSlug={landingSlug}
-        landingVariant={landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic'}
+        landingVariant={landingVariantTag}
         onPhoneOrderCreated={handlePhoneOrderCreated}
         onDuplicateBlocked={(orderNumber, createdAt) => {
           const rec = { orderNumber, sku: product.sku || product.id, productName: product.title, phone: "", createdAt: new Date(createdAt).getTime() };
