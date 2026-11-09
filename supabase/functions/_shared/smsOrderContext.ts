@@ -1,8 +1,9 @@
 // Loads everything a sequence SMS needs for one order (service-role client).
+import { isTestOrder } from "./testOrders.ts";
 import { parseSmsSettings, type SmsSettings } from "./smsTemplates.ts";
 
 export interface SmsOrderContext {
-  order: any; store: "BIGMART" | "TRENDMART"; product: string | null; settings: SmsSettings;
+  order: any; isTest: boolean; store: "BIGMART" | "TRENDMART"; product: string | null; settings: SmsSettings;
 }
 
 export async function loadSmsContext(db: any, by: { id?: string; orderNumber?: string }): Promise<SmsOrderContext | null> {
@@ -23,7 +24,7 @@ export async function loadSmsContext(db: any, by: { id?: string; orderNumber?: s
   const first = paid[0] ?? items[0];
   const product = first ? (String(prods[String(first.sku)]?.sms_name || "").trim() || null) : null;
   const { data: s } = await db.from("site_settings").select("value").eq("key", "sms_sequence").maybeSingle();
-  return { order, store, product, settings: parseSmsSettings(s?.value) };
+  return { order, isTest: isTestOrder(order), store, product, settings: parseSmsSettings(s?.value) };
 }
 
 export const STOPPED_STATUSES = new Set(["canceled", "cancelled", "returned", "archived", "merged"]);

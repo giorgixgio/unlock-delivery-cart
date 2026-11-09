@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isTestOrder } from "../_shared/testOrders.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,7 +95,11 @@ Deno.serve(async (req) => {
     // === AUTO-CONFIRM (low risk + high confidence) ===
     // Skip if a human operator already confirmed this order — otherwise the
     // "AUTO" badge appears next to an operator-confirmed order (e.g. #104527).
+    // Test orders stay in the Test orders tab: never auto-confirmed or sent to review.
+    const testOrder = isTestOrder(order);
+    if (testOrder) { delete updates.review_required; if (updates.status === "on_hold") delete updates.status; }
     if (
+      !testOrder &&
       riskLevel === "low" &&
       riskScore === 0 &&
       confidence >= 0.75 &&

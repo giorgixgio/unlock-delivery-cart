@@ -1,6 +1,7 @@
 // Create Packing Session
 // Admin-only. Freezes the current pool of confirmed orders into a session.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isTestOrder } from "../_shared/testOrders.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
 
     const { data: eligible, error: eligErr } = await supabase
       .from("orders")
-      .select("id, created_at, customer_phone, tracking_number, order_items(sku)")
+      .select("id, created_at, customer_phone, tracking_number, tags, order_items(sku)")
       .eq("is_confirmed", true)
       .eq("is_fulfilled", false)
       .eq("status", "confirmed")
@@ -102,7 +103,7 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: true });
 
     if (eligErr) return json(500, { error: eligErr.message });
-    const orders = (eligible || []).filter((o: any) => (o.order_items || []).length > 0);
+    const orders = (eligible || []).filter((o: any) => (o.order_items || []).length > 0 && !isTestOrder(o));
 
     if (orders.length === 0) {
       return json(200, { ok: true, empty: true, message: "No eligible confirmed orders to pack." });
