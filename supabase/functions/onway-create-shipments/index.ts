@@ -10,8 +10,8 @@ import { finalizeOnwaySent, type FinalizeEntry } from "../_shared/onwayFulfill.t
 import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag } from "../_shared/courierLabel.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import {
 import { isTestOrder } from "../_shared/testOrders.ts";
+import {
   alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking, validPickupPhone,
 } from "./payload.ts";
 
