@@ -58,6 +58,22 @@ function BeforeAfter({ before, after }: { before: string; after: string }) {
   </div>;
 }
 
+/** Before/after clip: lazy src, plays only in view, poster + tap-to-play under reduced motion. */
+function BeforeAfterVideo({ src, poster }: { src: string; poster: string }) {
+  const box = useRef<HTMLDivElement>(null); const vid = useRef<HTMLVideoElement>(null);
+  const [near, setNear] = useState(false); const [ratio, setRatio] = useState('2 / 3');
+  const [still] = useState(reduced); const [playing, setPlaying] = useState(false);
+  useEffect(() => { const el = box.current; if (!el) return; const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: '400px 0px' }); io.observe(el); return () => io.disconnect(); }, []);
+  useEffect(() => { const el = box.current; const v = vid.current; if (!el || !v || !near || still) return; const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) v.play().catch(() => {}); else v.pause(); }, { threshold: 0.25 }); io.observe(el); return () => io.disconnect(); }, [near, still]);
+  return <div ref={box} className="k-bavideo" style={{ aspectRatio: ratio }}>
+    <video ref={vid} src={near ? src : undefined} poster={poster || undefined} autoPlay={!still} muted loop playsInline preload="metadata" disablePictureInPicture disableRemotePlayback controls={false}
+      onLoadedMetadata={e => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`); }}
+      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
+    <span className="k-chip absolute top-3 left-3 text-xs">მანამდე</span><span className="k-chip absolute top-3 right-3 text-xs">შემდეგ</span>
+    {still && !playing && <button type="button" onClick={() => vid.current?.play()} aria-label="ვიდეოს ჩართვა" className="k-playbtn">▶</button>}
+  </div>;
+}
+
 /** 3–5 minute dial: the rose arc covers 3→5 of a 5-minute face. */
 const Dial = () => <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true" className="shrink-0">
   <circle cx="38" cy="38" r="32" fill="none" stroke="hsl(var(--k-ivory) / .18)" strokeWidth="6" />
@@ -212,6 +228,12 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
 
     {/* Trust strip */}
     {s.trust && c.trust.filter(Boolean).length > 0 && <div className="max-w-lg mx-auto px-4 mt-5"><ul className="k-truststrip">{c.trust.filter(Boolean).map((t, i) => { const Icon = trustIcons[i] ?? ShieldCheck; return <li key={i}><Icon className="w-5 h-5 k-rose shrink-0" /><span className="k-wrap">{t}</span></li>; })}</ul></div>}
+
+    {show.before_after_video && <Reveal className="max-w-lg mx-auto px-4 mt-8 text-center">
+      <BeforeAfterVideo src={c.before_after_video} poster={c.before_after_video_poster} />
+      <h2 className="text-[26px] leading-tight mt-4 k-wrap">იხილე განსხვავება</h2>
+      <p className="text-[15px] k-mutetx mt-1 k-wrap">სირბილე და ბზინვარება — შედეგი თვალსაჩინოა</p>
+    </Reveal>}
 
     {/* Problem → solution (editorial split) */}
     {s.problem && <Reveal className="mt-10 k-problem">
