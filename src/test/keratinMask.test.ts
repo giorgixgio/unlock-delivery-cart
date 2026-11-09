@@ -41,3 +41,33 @@ describe('KERAVÉ landing', () => {
     expect(resolveKeratinConfig({}).upsell.enabled).toBe(false);
   });
 });
+
+import { BROW_PRODUCT_ID, BROW_VARIANT, KERAVE_PRODUCTS, keraveFor, isKeraveVariant } from '@/lib/keratinMaskConfig';
+describe('KERAVÉ brow stamp landing', () => {
+  const brow = KERAVE_PRODUCTS.find(p => p.key === 'brow')!;
+  it('bump adds exactly 19₾ to the subtotal and persisted line', () => {
+    const bump = keratinBump(resolveKeratinConfig({}, brow.defaults));
+    expect(bump.fixed_price).toBe(19);
+    expect(bumpLineTotal(29, bump)).toBe(19);
+    expect(bump.subtitle).toContain('ნაკრები მხოლოდ 19₾');
+  });
+  it('keratin entry is unchanged and stays 16₾', () => {
+    const k = KERAVE_PRODUCTS[0];
+    expect([k.slug, k.productId, k.variant, k.configKey, k.urgencyKey]).toEqual(['keratin-mask', KERATIN_PRODUCT_ID, KERATIN_VARIANT, 'keratin_mask', 'sku_keratin_urgency_end']);
+    expect(keratinBump(resolveKeratinConfig({})).subtitle).toBe('დაამატე კიდევ ერთი ნიღაბი მხოლოდ 16₾-ად');
+  });
+  it('routes /p/brow-stamp only for its product id, with its own variant and keys', () => {
+    expect(keraveFor('brow-stamp', BROW_PRODUCT_ID)?.variant).toBe(BROW_VARIANT);
+    expect(keraveFor('brow-stamp', KERATIN_PRODUCT_ID)).toBeUndefined();
+    expect(keraveFor('keratin-mask', BROW_PRODUCT_ID)).toBeUndefined();
+    expect(brow.urgencyKey).toBe('sku_brow_urgency_end');
+    expect(isKeraveVariant('custom-brow-stamp')).toBe(true);
+    expect(isKeraveVariant(CAMERA_VARIANT)).toBe(false);
+  });
+  it('hides the unanswered FAQ and empty before/after video', () => {
+    const c = resolveKeratinConfig({}, brow.defaults);
+    expect(c.faq.find(f => f.question.startsWith('რამდენ ხანს'))?.answer).toBe('');
+    expect(keratinVisibleSections(c, 0).before_after_video).toBe(false);
+    expect(c.upsell.enabled).toBe(false);
+  });
+});
