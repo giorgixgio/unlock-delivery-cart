@@ -294,7 +294,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <div className="k-volume">
         <img src={hero} alt="" aria-hidden="true" loading="lazy" className="k-volume-img" width={260} height={260} />
         <div className="relative z-[1] max-w-[58%]">
-          <p className="text-[14px] font-semibold k-rose k-wrap">{c.headings.texture}</p>
+          <p className={c.feature_kind === 'waterproof' ? 'k-serif text-[30px] leading-tight k-wrap' : 'text-[14px] font-semibold k-rose k-wrap'}>{c.headings.texture}</p>
           {c.feature_kind === 'waterproof'
             ? <div className="k-drop mt-2" aria-hidden="true"><svg viewBox="0 0 64 80" width="72" height="90"><defs><linearGradient id="kdrop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="hsl(var(--k-blush))" /><stop offset="1" stopColor="hsl(var(--k-rose))" /></linearGradient></defs><path d="M32 4C22 22 8 36 8 52a24 24 0 0 0 48 0C56 36 42 22 32 4Z" fill="url(#kdrop)" stroke="hsl(var(--k-gold))" strokeWidth="1.5" /><path d="M20 52a12 12 0 0 0 10 12" fill="none" stroke="hsl(var(--k-ivory))" strokeWidth="3" strokeLinecap="round" opacity=".8" /></svg></div>
             : <p className="k-serif text-[64px] leading-none mt-1">{c.volume}<span className="text-[26px] ml-1">მლ</span></p>}
