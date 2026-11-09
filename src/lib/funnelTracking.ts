@@ -61,6 +61,7 @@ export function trackPhoneSubmitted(params: {
   productName: string;
   baseValue: number;
   landingSlug: string;
+  landingVariant?: string;
 }) {
   // PostHog main conversion
   trackEvent("phone_submitted", {
@@ -72,6 +73,7 @@ export function trackPhoneSubmitted(params: {
     currency: "GEL",
     source: "phone_submit",
     landing_slug: params.landingSlug,
+    ...(params.landingVariant ? { landingVariant: params.landingVariant } : {}),
   }, true); // flush immediately
 
   // Meta Purchase — fires NOW, base product value only, no shipping

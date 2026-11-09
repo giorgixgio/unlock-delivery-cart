@@ -43,6 +43,7 @@ const CODFormModal = ({
   quantity,
   discountPct,
   landingSlug,
+  landingVariant,
   onPhoneOrderCreated,
   onDuplicateBlocked,
   giftProduct,
@@ -60,8 +61,10 @@ const CODFormModal = ({
 
   const cleanedPhone = cleanPhoneInput(phone);
   const isValid = isValidGeorgianMobile(cleanedPhone);
-  useEffect(() => { if (open) trackFunnel("form_open"); }, [open]);
-  useEffect(() => { if (open && isValid) trackFunnel("phone_entered"); }, [open, isValid]);
+  // Only dedicated variants are tagged so existing generic/camera analytics stay identical.
+  const variantMeta = landingVariant === "custom-keratin-mask" ? { landingVariant } : {};
+  useEffect(() => { if (open) trackFunnel("form_open", variantMeta); }, [open]);
+  useEffect(() => { if (open && isValid) trackFunnel("phone_entered", variantMeta); }, [open, isValid]);
   const showInlineError = touched && !isValid && cleanedPhone.length > 0;
 
   const unitPrice = product.price;
@@ -188,6 +191,7 @@ const CODFormModal = ({
         productName: product.title,
         baseValue: totalAfter, // base product value only, no shipping
         landingSlug,
+        ...variantMeta,
       });
 
       // Show brief success flash
