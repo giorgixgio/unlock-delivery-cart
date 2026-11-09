@@ -36,13 +36,13 @@ export interface KeratinMaskConfig {
 }
 
 export const KERATIN_DEFAULTS: KeratinMaskConfig = {
-  eyebrow: 'KERAVÉ® · PROFESSIONAL CARE',
+  eyebrow: 'KERAVÉ® · პროფესიონალური მოვლა',
   title: 'KERAVÉ® კერატინის თმის ნიღაბი',
   subtitle: 'სალონური მოვლა — შენს სახლში, 3–5 წუთში',
   headline: 'გამომშრალი და ფაფუკი თმა? დაუბრუნე სირბილე და ბზინვარება',
   pain_points: ['გამომშრალი თმა', 'ფაფუკი თმა', 'ძნელად ივარცხნება', 'მოუვლელი ბოლოები'],
   results: ['რბილი', 'გლუვი', 'დამყოლი', 'მოვლილი იერი'],
-  cta_note: 'შეკვეთა 30 წამში — წინასწარ არაფერს იხდი',
+  cta_note: 'წინასწარ არაფერს იხდი — გადაიხდი კურიერთან',
   gallery: [], video_url: '', before_image: '', after_image: '', texture_image: '',
   trust: ['გადახდა მხოლოდ მიღებისას', 'მიწოდება მთელ საქართველოში', 'თბილისი 1–2 დღე, რეგიონები 2–4 დღე', '500 მლ'],
   benefits: [
