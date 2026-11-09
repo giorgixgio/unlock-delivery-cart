@@ -11,6 +11,7 @@ import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag } fr
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
+import { isTestOrder } from "../_shared/testOrders.ts";
   alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking, validPickupPhone,
 } from "./payload.ts";
 
@@ -119,8 +120,12 @@ Deno.serve(async (req) => {
     query = waveId
       ? query.eq("packing_wave_id", waveId)
       : query.eq("is_confirmed", true).eq("is_fulfilled", false).eq("status", "confirmed");
-    const { data: ordersRaw, error: ordersErr } = await query;
+    const { data: ordersAll, error: ordersErr } = await query;
     if (ordersErr) return json({ error: ordersErr.message }, 500);
+    // Hard guard: test orders never go to Onway, even when selected manually.
+    const testHits = (ordersAll || []).filter((o: any) => isTestOrder(o) && (!onlyIds || onlyIds.includes(o.id)));
+    if (onlyIds && testHits.length) return json({ error: "Test orders cannot be sent to Onway", test_orders: testHits.map((o: any) => o.public_order_number) }, 400);
+    const ordersRaw = (ordersAll || []).filter((o: any) => !isTestOrder(o));
 
     const allSkus = [...new Set((ordersRaw || []).flatMap((o: any) => (o.order_items || []).map((i: any) => String(i.sku || "")).filter(Boolean)))];
     const binBySku: Record<string, string> = {};

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildZoneMap, sentViaApi, zoneForOrder } from "../_shared/courierLabel.ts";
+import { isTestOrder } from "../_shared/testOrders.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +119,8 @@ Deno.serve(async (req) => {
     const { data: ordersFetched, error: ordersErr } = await query;
     // Never export an order already (or possibly) created via the Onway API.
     const apiSentExcluded = (ordersFetched || []).filter((o: any) => sentViaApi(o)).length;
-    const ordersRaw = (ordersFetched || []).filter((o: any) => !sentViaApi(o));
+    // Hard guard: test orders never reach the courier export.
+    const ordersRaw = (ordersFetched || []).filter((o: any) => !sentViaApi(o) && !isTestOrder(o));
     if (ordersErr) {
       return new Response(JSON.stringify({ error: ordersErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
