@@ -109,7 +109,7 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
   stock_bar_max: 500,
   unit_label: 'ნიღაბი', hero_badge: '', ritual_time: 'მხოლოდ 3–5 წუთი', video_caption: 'სირბილე და ბზინვარება — შედეგი თვალსაჩინოა',
   hair_types_hint: 'მონიშნე, რაც შენ თმას ახასიათებს', hair_types_done: 'KERAVÉ® შექმნილია შენი თმისთვის ✓', feature_kind: 'volume',
-  vs_ours_sub: 'სახლში', vs_other: 'სალონი', vs_other_sub: 'პროცედურა', final_heading: 'მიანიჭე თმას სალონური მოვლის შეგრძნება', hero_frameless: true,
+  vs_ours_sub: 'სახლში', vs_other: 'სალონი', vs_other_sub: 'პროცედურა', final_heading: 'მიანიჭე თმას სალონური მოვლის შეგრძნება', hero_frameless: false,
 };
 
 export const BROW_PRODUCT_ID = 'manual-1794256246336-wgmlb';

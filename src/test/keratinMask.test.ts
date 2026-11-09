@@ -70,12 +70,11 @@ describe('KERAVÉ brow stamp landing', () => {
     expect(keratinVisibleSections(c, 0).before_after_video).toBe(false);
     expect(c.upsell.enabled).toBe(false);
   });
-  it('second video shows only when set, and both KERAVÉ heroes are frameless', () => {
+  it('second video shows only when set, and brow hero is frameless while keratin keeps the framed hero', () => {
     const c = resolveKeratinConfig({}, brow.defaults);
     expect(keratinVisibleSections(c, 0).before_after_video_2).toBe(false);
     expect(keratinVisibleSections(resolveKeratinConfig({ before_after_video_2: 'v2' }, brow.defaults), 0).before_after_video_2).toBe(true);
     expect(c.hero_frameless).toBe(true);
-    expect(resolveKeratinConfig({}).hero_frameless).toBe(true);
-    expect(KERATIN_DEFAULTS.hero_frameless).toBe(true);
+    expect(resolveKeratinConfig({}).hero_frameless).toBe(false);
   });
 });
