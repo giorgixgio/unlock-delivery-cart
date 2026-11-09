@@ -198,11 +198,13 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
           {s.gallery && c.video_url && <video controls preload="none" src={c.video_url} className="w-full h-full shrink-0 snap-center object-cover" />}
         </div>
         <div className="k-pedestal" />
-        {heroPct > 0 && <span className="k-badge-off">−{heroPct}%</span>}
-        {(c.hero_badge || c.volume) && <span className="k-badge-vol">{c.hero_badge || `${c.volume} მლ`}</span>}
         {s.gallery && slots > 1 && <div className="absolute z-[3] bottom-2.5 inset-x-0 flex justify-center gap-1">{Array.from({ length: slots }, (_, i) => <button key={i} type="button" aria-label={`ფოტო ${i + 1}`} aria-pressed={active === i} onClick={() => go(i)} className="p-1.5"><span className={`k-dot block ${active === i ? 'on' : ''}`} /></button>)}</div>}
       </div>
 
+      {(heroPct > 0 || c.hero_badge || c.volume) && <div className="flex flex-wrap gap-2 mt-3">
+        {heroPct > 0 && <span className="k-badge-off">−{heroPct}%</span>}
+        {(c.hero_badge || c.volume) && <span className="k-badge-vol">{c.hero_badge || `${c.volume} მლ`}</span>}
+      </div>}
       <p className="mt-3 text-[13px] font-semibold tracking-wide k-rose k-wrap">{c.title}</p>
       <h1 className="text-[27px] leading-[1.22] mt-1 k-wrap">{c.headline}</h1>
       {proof && <div className="mt-2">{proof}</div>}
@@ -324,7 +326,6 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {show.reviews && <Reveal id="keratin-reviews" className="max-w-lg mx-auto px-4 mt-10">
       <h2 className="text-[28px] leading-tight text-center k-wrap">{c.headings.reviews}</h2>
       {rating.count > 0 && <div className="flex justify-center items-center gap-2 mt-2"><Stars className="w-5 h-5" /><strong className="text-[18px]">{rating.average.toFixed(1)}</strong><span className="k-mutetx text-[14px]">· {rating.count}</span></div>}
-      {preview && <p className="text-center text-xs k-mutetx mt-2">DEMO — სატესტო შეფასებები ჩანს მხოლოდ preview რეჟიმში</p>}
       <div className="mt-4"><CameraReviewList reviews={reviews} /></div>
     </Reveal>}
 
