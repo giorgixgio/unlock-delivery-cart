@@ -47,7 +47,7 @@ import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
 import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } from '@/lib/miniCameraConfig';
 const MiniCameraLanding = lazyWithRetry(() => import('@/components/landing/MiniCameraLanding'));
-import { KERATIN_PRODUCT_ID, KERATIN_SLUG, KERATIN_VARIANT, keratinBump, keratinPreviewMode, resolveKeratinConfig, usesKeratinPresentation, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
+import { keraveBySlug, keraveFor, keratinBump, keratinPreviewMode, resolveKeratinConfig, type KeraveProduct, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
 import { bumpLineTotal } from '@/lib/bumpPricing';
 const KeratinMaskLanding = lazyWithRetry(() => import('@/components/landing/KeratinMaskLanding'));
 
@@ -60,7 +60,8 @@ const ProductLanding = () => {
 
   const product = useMemo(() => {
     if (!slug || products.length === 0) return null;
-    if (slug === KERATIN_SLUG) return products.find((p) => p.id === KERATIN_PRODUCT_ID) ?? null;
+    const kerave = keraveBySlug(slug);
+    if (kerave) return products.find((p) => p.id === kerave.productId) ?? null;
     return products.find((p) => p.handle === (slug === 'mini-camera' ? CAMERA_HANDLE : slug) || p.id === slug) ?? null;
   }, [slug, products]);
 
@@ -92,8 +93,9 @@ const ProductLanding = () => {
     );
   }
 
-  if (usesKeratinPresentation(slug, product.id)) {
-    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} keratinConfig={landingConfig?.landing_config?.keratin_mask} keratinPresentation /></Suspense>;
+  const keraveEntry = keraveFor(slug, product.id);
+  if (keraveEntry) {
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} keratinConfig={landingConfig?.landing_config?.[keraveEntry.configKey]} keraveEntry={keraveEntry} /></Suspense>;
   }
   // Custom spy detector landing
   if (usesCameraPresentation(slug, product.sku)) {
@@ -163,7 +165,7 @@ const GenericLanding = ({
   cameraConfig,
   cameraPresentation = false,
   keratinConfig,
-  keratinPresentation = false,
+  keraveEntry,
 }: {
   product: Product;
   landingSlug: string;
@@ -173,8 +175,9 @@ const GenericLanding = ({
   cameraConfig?: import('@/lib/miniCameraConfig').MiniCameraConfig;
   cameraPresentation?: boolean;
   keratinConfig?: Partial<KeratinMaskConfig>;
-  keratinPresentation?: boolean;
+  keraveEntry?: KeraveProduct;
 }) => {
+  const keratinPresentation = !!keraveEntry;
 
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
   const navigate = useNavigate();
@@ -185,7 +188,7 @@ const GenericLanding = ({
   // Per-product single-item offer (shown right after phone submit)
   // Per-product single-item offer. SKU 002 (camera) has none: its funnel ends at
   // the address step — the GPS-tracker (0011) offer was removed on request.
-  const kCfg = useMemo(() => resolveKeratinConfig(keratinConfig), [keratinConfig]);
+  const kCfg = useMemo(() => resolveKeratinConfig(keratinConfig, keraveEntry?.defaults), [keratinConfig, keraveEntry]);
   const keratinUpsellProduct = useMemo(
     () => (keratinPresentation && kCfg.upsell.enabled && kCfg.upsell.product_id ? catalogProducts.find((p) => p.id === kCfg.upsell.product_id && p.id !== product.id) ?? null : null),
     [keratinPresentation, kCfg, catalogProducts, product.id]
@@ -251,9 +254,9 @@ const GenericLanding = ({
   // Bump funnel (phone → bump → address → optional single upsell): camera and the KERAVÉ landing.
   const hasSku002QuantityOffer = String(product.sku) === "002" || keratinPresentation;
   const sku002BumpConfig: BumpConfig = keratinPresentation ? keratinBump(kCfg) : CAMERA_BUMP;
-  const landingVariantTag = keratinPresentation ? KERATIN_VARIANT : landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic';
+  const landingVariantTag = keraveEntry ? keraveEntry.variant : landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic';
 
-  useEffect(() => { trackFunnel("landing_view", keratinPresentation ? { landingVariant: KERATIN_VARIANT } : {}); }, []);
+  useEffect(() => { trackFunnel("landing_view", keraveEntry ? { landingVariant: keraveEntry.variant } : {}); }, []);
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: landingVariantTag });
@@ -330,7 +333,7 @@ const GenericLanding = ({
 
   return (
     <div className="min-h-screen bg-background pb-36">
-      {keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
+      {keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
