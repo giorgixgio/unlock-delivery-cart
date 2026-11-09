@@ -34,4 +34,4 @@ Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mi
 
 - Operator city (`AddressFields`) saves only exact Onway names (`findExactOnwayCity`); free text blocks confirm, to stop hand fixes.
 - Issue tickets (`customer_requests` kind `operator_flag`) change only via `support_ticket_*` RPCs (mirrored in `src/lib/supportTickets.ts`) and hold leads via `orders.support_hold`, never status/stock, so support hand-off is not a call outcome.
-- Dedicated product landings (camera, KERAVÉ) reuse GenericLanding's checkout with a presentation prop, store their config namespaced in `product_landing_config.landing_config`, and read reviews/stats through the product-parameterised `product_review_feed`/`product_landing_stats` RPCs keyed by product id with SKU fallback, so SKU renames don't break pages; bump totals always come from `bumpLineTotal`.
+- Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
