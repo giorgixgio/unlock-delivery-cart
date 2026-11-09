@@ -400,6 +400,13 @@
       "when": 1794167920010,
       "tag": "0056_tag_test_skus_1_9",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794251652124,
+      "tag": "0057_product_reviews_generalize",
+      "breakpoints": true
     }
   ]
 }
