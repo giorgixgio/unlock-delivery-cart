@@ -3,6 +3,7 @@ import { CategoryId } from "@/lib/constants";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useRecommendations } from "@/hooks/useRecommendations";
+import { filterTestProducts } from "@/lib/testProducts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ProductCard from "@/components/ProductCard";
 import RecommendationBlock from "@/components/RecommendationBlock";
@@ -17,7 +18,9 @@ const TOP_COUNT = 10;
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
-  const { data: products = [], isLoading } = useProducts();
+  const { data: storefrontProducts = [], isLoading } = useProducts();
+  // Test SKUs stay in the catalog for order testing but never reach customers.
+  const products = useMemo(() => filterTestProducts(storefrontProducts), [storefrontProducts]);
   const { t } = useLanguage();
 
   const available = useMemo(() => products.filter((p) => p.available !== false), [products]);

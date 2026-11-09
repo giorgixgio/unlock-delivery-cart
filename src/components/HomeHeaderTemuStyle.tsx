@@ -101,7 +101,7 @@ const SearchOverlay = ({ open, onClose }: { open: boolean; onClose: () => void }
   const results = useMemo(() => {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
-    return products
+    return filterTestProducts(products)
       .filter((p) => p.available && (p.title.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q))))
       .slice(0, 12);
   }, [query, products]);
