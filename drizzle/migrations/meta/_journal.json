@@ -414,6 +414,13 @@
       "when": 1794251678737,
       "tag": "0058_review_token_info_product",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794259356594,
+      "tag": "0059_test_sku_kerave",
+      "breakpoints": true
     }
   ]
 }
