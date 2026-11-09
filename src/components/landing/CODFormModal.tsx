@@ -1,4 +1,5 @@
 import { trackFunnel } from "@/lib/funnelTracker";
+import { isKeraveVariant } from '@/lib/keratinMaskConfig';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -62,7 +63,7 @@ const CODFormModal = ({
   const cleanedPhone = cleanPhoneInput(phone);
   const isValid = isValidGeorgianMobile(cleanedPhone);
   // Only dedicated variants are tagged so existing generic/camera analytics stay identical.
-  const variantMeta = landingVariant === "custom-keratin-mask" ? { landingVariant } : {};
+  const variantMeta = isKeraveVariant(landingVariant) ? { landingVariant } : {};
   useEffect(() => { if (open) trackFunnel("form_open", variantMeta); }, [open]);
   useEffect(() => { if (open && isValid) trackFunnel("phone_entered", variantMeta); }, [open, isValid]);
   const showInlineError = touched && !isValid && cleanedPhone.length > 0;

@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSiteBranding } from '@/hooks/useSiteBranding';
 import { useProductReviews, useProductStats } from '@/hooks/useCameraReviews';
 import { cameraRating, cameraSoldLabel } from '@/lib/miniCameraConfig';
-import { KERATIN_URGENCY_KEY, keratinVisibleSections, resolveKeratinConfig, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
+import { KERAVE_PRODUCTS, keratinVisibleSections, resolveKeratinConfig, type KeraveProduct, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
 import type { LastOrderRecord } from '@/lib/lastOrderStore';
 import logo from '@/assets/logo.png';
 import StickyAnnouncementBar from './StickyAnnouncementBar';
@@ -91,10 +91,10 @@ const Molecule = ({ label, tone }: { label: string; tone: 'rose' | 'gold' }) => 
   <span className="relative k-serif text-[18px] leading-tight text-center px-3 k-wrap">{label}</span>
 </div>;
 
-interface Props { product: Product; config?: Partial<KeratinMaskConfig> | null; selectedQty: number; onSelect: (n: number) => void; onBuy: () => void; repeatBlocked: LastOrderRecord | null; onReorder: () => void; preview: boolean }
+interface Props { product: Product; config?: Partial<KeratinMaskConfig> | null; selectedQty: number; onSelect: (n: number) => void; onBuy: () => void; repeatBlocked: LastOrderRecord | null; onReorder: () => void; preview: boolean; entry?: KeraveProduct }
 
-export default function KeratinMaskLanding({ product, config, selectedQty, onSelect, onBuy, repeatBlocked, onReorder, preview }: Props) {
-  const c = resolveKeratinConfig(config);
+export default function KeratinMaskLanding({ product, config, selectedQty, onSelect, onBuy, repeatBlocked, onReorder, preview, entry = KERAVE_PRODUCTS[0] }: Props) {
+  const c = resolveKeratinConfig(config, entry.defaults);
   const { logoUrl, siteName } = useSiteBranding();
   const { data: reviews = [] } = useProductReviews(product.id, product.sku, preview);
   const { data: stats } = useProductStats(product.id, product.sku);
@@ -130,9 +130,9 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
   useEffect(() => {
     if (!s.recent || !stats?.recent_cities?.length) return;
     let i = 0; let hide: ReturnType<typeof setTimeout>;
-    const timer = setInterval(() => { const used = Number(sessionStorage.getItem('keratin-toast-count') ?? 0); if (used >= 4) return; setToast(stats.recent_cities[i++ % stats.recent_cities.length]); sessionStorage.setItem('keratin-toast-count', String(used + 1)); hide = setTimeout(() => setToast(''), 5000); }, 25000);
+    const timer = setInterval(() => { const used = Number(sessionStorage.getItem(entry.toastKey) ?? 0); if (used >= 4) return; setToast(stats.recent_cities[i++ % stats.recent_cities.length]); sessionStorage.setItem(entry.toastKey, String(used + 1)); hide = setTimeout(() => setToast(''), 5000); }, 25000);
     return () => { clearInterval(timer); clearTimeout(hide); };
-  }, [stats?.recent_cities, s.recent]);
+  }, [stats?.recent_cities, s.recent, entry.toastKey]);
 
   const go = (i: number) => { setActive(i); gallery.current?.scrollTo({ left: i * gallery.current.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); };
   const cta = (label = 'შეუკვეთე ახლა') => repeatBlocked ? <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={onReorder} /> : <button type="button" onClick={onBuy} className="k-btn"><span className="relative z-[1] flex items-center justify-center gap-2">{label}<ArrowRight className="w-5 h-5" /></span></button>;
@@ -150,7 +150,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
           {q === 2 && <span className="k-ribbon">ყველაზე ხშირად ირჩევენ</span>}
           <span className="k-radio" aria-hidden="true" />
           <span className="flex-1 min-w-0 text-left">
-            <span className="block font-bold text-[17px]">{q} ნიღაბი</span>
+            <span className="block font-bold text-[17px]">{q} {c.unit_label}</span>
             <span className="block text-[13px] k-mutetx">{money(Math.round((t / q) * 100) / 100)}₾ / ცალი</span>
           </span>
           <span className="text-right shrink-0">
@@ -199,7 +199,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
         </div>
         <div className="k-pedestal" />
         {heroPct > 0 && <span className="k-badge-off">−{heroPct}%</span>}
-        <span className="k-badge-vol">{c.volume} მლ</span>
+        {(c.hero_badge || c.volume) && <span className="k-badge-vol">{c.hero_badge || `${c.volume} მლ`}</span>}
         {s.gallery && slots > 1 && <div className="absolute z-[3] bottom-2.5 inset-x-0 flex justify-center gap-1">{Array.from({ length: slots }, (_, i) => <button key={i} type="button" aria-label={`ფოტო ${i + 1}`} aria-pressed={active === i} onClick={() => go(i)} className="p-1.5"><span className={`k-dot block ${active === i ? 'on' : ''}`} /></button>)}</div>}
       </div>
 
@@ -220,7 +220,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {((s.today && (stats?.today_orders ?? 0) >= 10) || (s.stock && stock != null && stock > 0) || s.timer) && <div className="max-w-lg mx-auto px-4 mt-5 space-y-2.5">
       {s.today && (stats?.today_orders ?? 0) >= 10 && <p className="k-live"><span className="k-pulse" />დღეს შეუკვეთა <strong>{stats!.today_orders}</strong> ადამიანმა</p>}
       {s.stock && stock != null && stock > 0 && <div className="k-card px-4 py-3"><div className="flex justify-between text-[14px] mb-1.5"><span className="font-semibold">დარჩა {stock} ცალი</span><span className="k-mutetx">მარაგშია</span></div><progress className="k-progress w-full h-2" max={Math.max(c.stock_bar_max, stock)} value={stock} /></div>}
-      {s.timer && <SkuUrgencyTimer storageKey={KERATIN_URGENCY_KEY} showStock={false} />}
+      {s.timer && <SkuUrgencyTimer storageKey={entry.urgencyKey} showStock={false} />}
     </div>}
 
     {/* OFFER — conversion centrepiece */}
@@ -232,7 +232,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {show.before_after_video && <Reveal className="max-w-lg mx-auto px-4 mt-8 text-center">
       <BeforeAfterVideo src={c.before_after_video} poster={c.before_after_video_poster} />
       <h2 className="text-[26px] leading-tight mt-4 k-wrap">იხილე განსხვავება</h2>
-      <p className="text-[15px] k-mutetx mt-1 k-wrap">სირბილე და ბზინვარება — შედეგი თვალსაჩინოა</p>
+      <p className="text-[15px] k-mutetx mt-1 k-wrap">{c.video_caption}</p>
     </Reveal>}
 
     {/* Problem → solution (editorial split) */}
@@ -261,7 +261,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <div className="max-w-lg mx-auto py-10">
         <div className="px-4 flex items-center gap-4">
           <Dial />
-          <div className="min-w-0"><h2 className="text-[26px] min-[380px]:text-[28px] leading-tight k-wrap">{c.headings.ritual}</h2><p className="k-goldtx k-serif text-[18px] mt-1">მხოლოდ 3–5 წუთი</p></div>
+          <div className="min-w-0"><h2 className="text-[26px] min-[380px]:text-[28px] leading-tight k-wrap">{c.headings.ritual}</h2><p className="k-goldtx k-serif text-[18px] mt-1">{c.ritual_time}</p></div>
         </div>
         <ol className="k-steps mt-6" aria-label="გამოყენების ნაბიჯები">
           {ritual.map((step, i) => <li key={i} className="k-step"><span className="k-stepnum">{i + 1}</span><p className="text-[16px] leading-snug mt-3 k-wrap">{step}</p></li>)}
@@ -281,9 +281,9 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {show.hair_types && <Reveal className="mt-10 k-blush-bg">
       <div className="max-w-lg mx-auto px-4 py-9 text-center">
         <h2 className="text-[28px] leading-tight k-wrap">{c.headings.hair_types}</h2>
-        <p className="text-[15px] k-mutetx mt-1">მონიშნე, რაც შენ თმას ახასიათებს</p>
+        <p className="text-[15px] k-mutetx mt-1">{c.hair_types_hint}</p>
         <div className="flex flex-wrap justify-center gap-2.5 mt-5">{c.hair_types.filter(Boolean).map(t => { const on = picked.includes(t); return <button key={t} type="button" aria-pressed={on} onClick={() => setPicked(p => on ? p.filter(x => x !== t) : [...p, t])} className={`k-cloud ${on ? 'on' : ''}`}>{on && <Check className="w-4 h-4 shrink-0" />}<span className="k-wrap">{t}</span></button>; })}</div>
-        {picked.length > 0 && <p className="mt-4 k-serif text-[18px]" role="status">KERAVÉ® შექმნილია შენი თმისთვის ✓</p>}
+        {picked.length > 0 && <p className="mt-4 k-serif text-[18px]" role="status">{c.hair_types_done}</p>}
       </div>
     </Reveal>}
 
@@ -294,8 +294,10 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <div className="k-volume">
         <img src={hero} alt="" aria-hidden="true" loading="lazy" className="k-volume-img" width={260} height={260} />
         <div className="relative z-[1] max-w-[58%]">
-          <p className="text-[14px] font-semibold k-rose k-wrap">{c.headings.texture}</p>
-          <p className="k-serif text-[64px] leading-none mt-1">{c.volume}<span className="text-[26px] ml-1">მლ</span></p>
+          <p className={c.feature_kind === 'waterproof' ? 'k-serif text-[24px] leading-tight' : 'text-[14px] font-semibold k-rose k-wrap'}>{c.headings.texture}</p>
+          {c.feature_kind === 'waterproof'
+            ? <div className="k-drop mt-2" aria-hidden="true"><svg viewBox="0 0 64 80" width="72" height="90"><defs><linearGradient id="kdrop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="hsl(var(--k-blush))" /><stop offset="1" stopColor="hsl(var(--k-rose))" /></linearGradient></defs><path d="M32 4C22 22 8 36 8 52a24 24 0 0 0 48 0C56 36 42 22 32 4Z" fill="url(#kdrop)" stroke="hsl(var(--k-gold))" strokeWidth="1.5" /><path d="M20 52a12 12 0 0 0 10 12" fill="none" stroke="hsl(var(--k-ivory))" strokeWidth="3" strokeLinecap="round" opacity=".8" /></svg></div>
+            : <p className="k-serif text-[64px] leading-none mt-1">{c.volume}<span className="text-[26px] ml-1">მლ</span></p>}
           <p className="text-[15px] k-mutetx mt-2 leading-snug k-wrap">{c.volume_text}</p>
         </div>
       </div>
@@ -307,11 +309,11 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <h2 className="text-[28px] leading-tight text-center k-wrap">{c.headings.comparison}</h2>
       <div className="grid grid-cols-2 gap-2.5 mt-6 items-center">
         <div className="k-vs-ours">
-          <p className="k-serif text-[19px] text-center">KERAVÉ®</p><p className="text-[12px] text-center k-goldtx">სახლში</p>
+          <p className="k-serif text-[19px] text-center">KERAVÉ®</p><p className="text-[12px] text-center k-goldtx">{c.vs_ours_sub}</p>
           <ul className="mt-3 space-y-3">{c.comparison.map((r, i) => <li key={i}><p className="text-[12px] k-ivorymute k-wrap">{r.label}</p><p className="font-bold text-[15px] flex items-start gap-1.5 k-wrap"><Check className="w-4 h-4 k-goldtx shrink-0 mt-0.5" />{r.ours}</p></li>)}</ul>
         </div>
         <div className="k-vs-salon">
-          <p className="k-serif text-[17px] text-center">სალონი</p><p className="text-[12px] text-center k-mutetx">პროცედურა</p>
+          <p className="k-serif text-[17px] text-center">{c.vs_other}</p><p className="text-[12px] text-center k-mutetx">{c.vs_other_sub}</p>
           <ul className="mt-3 space-y-3">{c.comparison.map((r, i) => <li key={i}><p className="text-[12px] k-mutetx k-wrap">{r.label}</p><p className="text-[15px] flex items-start gap-1.5 k-mutetx k-wrap"><X className="w-4 h-4 shrink-0 mt-0.5" />{r.salon}</p></li>)}</ul>
         </div>
       </div>
@@ -338,7 +340,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {/* Final offer */}
     {s.final_cta && <section className="k-final mt-10">
       <img src={hero} alt="" aria-hidden="true" loading="lazy" className="k-final-blur" width={400} height={400} />
-      <div className="relative max-w-lg mx-auto px-4 py-10">{offer(finalOffer, 'მიანიჭე თმას სალონური მოვლის შეგრძნება')}</div>
+      <div className="relative max-w-lg mx-auto px-4 py-10">{offer(finalOffer, c.final_heading)}</div>
     </section>}
     
 
