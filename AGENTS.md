@@ -6,7 +6,7 @@ Wholesale reorders keep a unique wholesale row SKU and a link to the existing pr
 New wholesale SKUs in both warehouses allocate the next unused `G888-T4656-####` number across catalog and wholesale items, because carton marks are product identifiers rather than batch identifiers.
 Resolve landing gifts from the full catalog, including unverified gift-only products, while storefront sale lists remain verified-only; gifts must be real zero-price order lines for warehouse picking.
 Keep the lazy mini-camera presentation inside the existing GenericLanding checkout owner and select it for the camera alias and original camera handle; preserve the actual landing slug and generic catalog variant so ad URLs and attribution remain stable without duplicating checkout logic.
-Gate /p cross-product bundles and single offers through shared helpers in useUpsellsEnabled, so overrides cannot bypass the rule while quantity and same-product bumps stay independent.
+Gate /p cross-product bundles and single offers through `useUpsellsEnabled`, so overrides cannot bypass the rule; quantity and same-SKU bumps stay independent.
 
 Resolve camera preview content centrally by pathname and query so the original camera URL can show the complete partner-preview presentation without redirects or checkout changes.
 Keep camera scarcity simulation in presentation-only page state that resets on mount or refresh, without browser storage; simulated stock must never change inventory or order eligibility.
@@ -34,4 +34,5 @@ Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mi
 - Operator city (`AddressFields`) saves only exact Onway names (`findExactOnwayCity`); free text blocks confirm, to stop hand fixes.
 - Issue tickets (`customer_requests` kind `operator_flag`) change only via `support_ticket_*` RPCs (mirrored in `src/lib/supportTickets.ts`) and hold leads via `orders.support_hold`, never status/stock, so support hand-off is not a call outcome.
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
-- KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry, so a new product is a registry entry.
+- KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
+- Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.

@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
+import { filterTestProducts } from "@/lib/testProducts";
 import ProductSheet from "@/components/ProductSheet";
 import { Product } from "@/lib/constants";
 // Language switcher removed — Georgian only
@@ -101,7 +102,7 @@ const SearchOverlay = ({ open, onClose }: { open: boolean; onClose: () => void }
   const results = useMemo(() => {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
-    return products
+    return filterTestProducts(products)
       .filter((p) => p.available && (p.title.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q))))
       .slice(0, 12);
   }, [query, products]);

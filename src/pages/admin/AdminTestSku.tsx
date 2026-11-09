@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const TEST_SKUS = ["999999","test1","test2","test3","test4","test5","test6","test7","test8","test9","testkrema","testwarbi"];
+import { TEST_SKUS } from "@/lib/testProducts";
 type Mode = "today" | "yesterday" | "7d" | "all";
 
 const tbDay = (offset = 0) => {
