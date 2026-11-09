@@ -131,7 +131,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       </div>
 
       {/* 5. Trust row */}
-      {s.trust && <div className="grid grid-cols-2 gap-2.5 mt-6">{c.trust.filter(Boolean).map((t, i) => { const Icon = trustIcons[i] ?? ShieldCheck; return <div key={i} className="k-card p-3.5 flex items-center gap-2.5 !rounded-[18px]"><span className="w-9 h-9 rounded-full grid place-items-center k-sand shrink-0"><Icon className="w-4 h-4 k-rose" /></span><span className="text-[13px] font-medium leading-snug">{t}</span></div>; })}</div>}
+      {s.trust && <div className="grid grid-cols-2 gap-2.5 mt-6">{c.trust.filter(Boolean).map((t, i) => { const Icon = trustIcons[i] ?? ShieldCheck; return <div key={i} className="k-card p-3.5 flex items-center gap-2.5 !rounded-[18px]"><span className="w-9 h-9 rounded-full grid place-items-center k-sand shrink-0"><Icon className="w-4 h-4 k-rose" /></span><span className="text-[12.5px] font-medium leading-snug min-w-0 [overflow-wrap:anywhere]">{t}</span></div>; })}</div>}
     </main>
 
     <div className="mt-6">
