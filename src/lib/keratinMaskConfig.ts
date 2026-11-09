@@ -28,6 +28,7 @@ export interface KeratinMaskConfig {
   headline: string; pain_points: string[]; results: string[]; cta_note: string;
   gallery: string[]; video_url: string;
   before_after_video: string; before_after_video_poster: string;
+  before_after_video_2: string; before_after_video_2_poster: string;
   before_image: string; after_image: string; texture_image: string;
   trust: string[];
   benefits: KText[]; ritual: string[]; ingredients: KText[]; hair_types: string[];
@@ -45,6 +46,8 @@ export interface KeratinMaskConfig {
   unit_label: string; hero_badge: string; ritual_time: string; video_caption: string;
   hair_types_hint: string; hair_types_done: string; feature_kind: 'volume' | 'waterproof';
   vs_ours_sub: string; vs_other: string; vs_other_sub: string; final_heading: string;
+  /** Frameless hero: image fills the stage edge-to-edge instead of floating inside padding. */
+  hero_frameless: boolean;
 }
 
 export const KERATIN_DEFAULTS: KeratinMaskConfig = {
@@ -55,7 +58,7 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
   pain_points: ['გამომშრალი თმა', 'ფაფუკი თმა', 'ძნელად ივარცხნება', 'მოუვლელი ბოლოები'],
   results: ['რბილი', 'გლუვი', 'დამყოლი', 'მოვლილი იერი'],
   cta_note: 'წინასწარ არაფერს იხდი — გადაიხდი კურიერთან',
-  gallery: [], video_url: '', before_after_video: '', before_after_video_poster: '', before_image: '', after_image: '', texture_image: '',
+  gallery: [], video_url: '', before_after_video: '', before_after_video_poster: '', before_after_video_2: '', before_after_video_2_poster: '', before_image: '', after_image: '', texture_image: '',
   trust: ['გადახდა მხოლოდ მიღებისას', 'მიწოდება მთელ საქართველოში', 'თბილისი 1–2 დღე, რეგიონები 2–4 დღე', '500 მლ'],
   benefits: [
     { title: 'სირბილე და ბზინვარება', text: 'თმა უფრო გლუვი, რბილი და მოვლილი ხდება.' },
@@ -106,7 +109,7 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
   stock_bar_max: 500,
   unit_label: 'ნიღაბი', hero_badge: '', ritual_time: 'მხოლოდ 3–5 წუთი', video_caption: 'სირბილე და ბზინვარება — შედეგი თვალსაჩინოა',
   hair_types_hint: 'მონიშნე, რაც შენ თმას ახასიათებს', hair_types_done: 'KERAVÉ® შექმნილია შენი თმისთვის ✓', feature_kind: 'volume',
-  vs_ours_sub: 'სახლში', vs_other: 'სალონი', vs_other_sub: 'პროცედურა', final_heading: 'მიანიჭე თმას სალონური მოვლის შეგრძნება',
+  vs_ours_sub: 'სახლში', vs_other: 'სალონი', vs_other_sub: 'პროცედურა', final_heading: 'მიანიჭე თმას სალონური მოვლის შეგრძნება', hero_frameless: false,
 };
 
 export const BROW_PRODUCT_ID = 'manual-1794256246336-wgmlb';
@@ -166,7 +169,7 @@ export const BROW_DEFAULTS: KeratinMaskConfig = {
   stock_bar_max: 500,
   unit_label: 'ნაკრები', hero_badge: 'წყალგამძლე', ritual_time: 'წამებში', video_caption: 'ბუნებრივი, სიმეტრიული წარბები — შედეგი თვალსაჩინოა',
   hair_types_hint: 'მონიშნე, რაც შენზეა', hair_types_done: 'KERAVÉ® შტამპი შენთვისაა ✓', feature_kind: 'waterproof',
-  vs_ours_sub: 'შტამპი', vs_other: 'ფანქარი', vs_other_sub: 'ხელით ხატვა', final_heading: 'დაზოგე დრო ყოველ დილით',
+  vs_ours_sub: 'შტამპი', vs_other: 'ფანქარი', vs_other_sub: 'ხელით ხატვა', final_heading: 'დაზოგე დრო ყოველ დილით', hero_frameless: true,
 };
 
 export const KERAVE_PRODUCTS: KeraveProduct[] = [
@@ -201,6 +204,7 @@ export function keratinVisibleSections(c: KeratinMaskConfig, reviewCount: number
   const s = c.sections;
   return {
     before_after_video: s.before_after_video && !!c.before_after_video,
+    before_after_video_2: s.before_after_video && !!c.before_after_video_2,
     before_after: s.before_after && !!c.before_image && !!c.after_image,
     box: s.box && c.box_contents.filter(Boolean).length > 0,
     faq: s.faq && c.faq.some(f => f.answer.trim()),
