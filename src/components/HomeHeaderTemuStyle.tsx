@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCartOverlay } from "@/contexts/CartOverlayContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
+import { filterTestProducts } from "@/lib/testProducts";
 import ProductSheet from "@/components/ProductSheet";
 import { Product } from "@/lib/constants";
 // Language switcher removed — Georgian only
