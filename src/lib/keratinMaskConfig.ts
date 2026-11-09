@@ -18,6 +18,7 @@ export interface KText { title: string; text: string }
 export interface KeratinUpsell { enabled: boolean; product_id: string; price: number; compare_at: number; headline: string; subline: string }
 export interface KeratinMaskConfig {
   eyebrow: string; title: string; subtitle: string;
+  headline: string; pain_points: string[]; results: string[]; cta_note: string;
   gallery: string[]; video_url: string;
   before_image: string; after_image: string; texture_image: string;
   trust: string[];
@@ -35,9 +36,13 @@ export interface KeratinMaskConfig {
 }
 
 export const KERATIN_DEFAULTS: KeratinMaskConfig = {
-  eyebrow: 'KERAVÉ® · PROFESSIONAL CARE',
+  eyebrow: 'KERAVÉ® · პროფესიონალური მოვლა',
   title: 'KERAVÉ® კერატინის თმის ნიღაბი',
   subtitle: 'სალონური მოვლა — შენს სახლში, 3–5 წუთში',
+  headline: 'გამომშრალი და ფაფუკი თმა? დაუბრუნე სირბილე და ბზინვარება',
+  pain_points: ['გამომშრალი თმა', 'ფაფუკი თმა', 'ძნელად ივარცხნება', 'მოუვლელი ბოლოები'],
+  results: ['რბილი', 'გლუვი', 'დამყოლი', 'მოვლილი იერი'],
+  cta_note: 'წინასწარ არაფერს იხდი — გადაიხდი კურიერთან',
   gallery: [], video_url: '', before_image: '', after_image: '', texture_image: '',
   trust: ['გადახდა მხოლოდ მიღებისას', 'მიწოდება მთელ საქართველოში', 'თბილისი 1–2 დღე, რეგიონები 2–4 დღე', '500 მლ'],
   benefits: [
@@ -75,12 +80,13 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
     { question: 'რამდენად ხშირად გამოვიყენო?', answer: '' },
   ],
   headings: {
+    problem: 'თმა, რომელიც აღარ გემორჩილება?', mid_cta: 'სცადე სახლში, 3–5 წუთში',
     benefits: 'რას გრძნობ', ritual: 'შენი 4-ნაბიჯიანი რიტუალი', ingredients: 'ფორმულის გული', hair_types: 'ვისთვისაა',
     before_after: 'შედეგი', texture: 'ტექსტურა და მოცულობა', comparison: 'KERAVÉ® სახლში vs სალონის პროცედურა',
     specs: 'მახასიათებლები', reviews: 'რას ამბობენ ჩვენი მომხმარებლები', box: 'რა არის შეფუთვაში', faq: 'ხშირად დასმული კითხვები',
   },
   sections: {
-    gallery: true, today: true, stock: true, timer: true, trust: true, benefits: true, ritual: true, ingredients: true, hair_types: true,
+    problem: true, mid_cta: true, gallery: true, today: true, stock: true, timer: true, trust: true, benefits: true, ritual: true, ingredients: true, hair_types: true,
     before_after: true, texture: true, comparison: true, specs: true, reviews: true, box: true, faq: true, final_cta: true, recent: true,
   },
   bump_price: 16,

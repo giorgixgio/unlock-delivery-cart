@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 
-const StickyAnnouncementBar = memo(({ variant }: { variant?: "camera" }) => {
+const StickyAnnouncementBar = memo(({ variant }: { variant?: "camera" | "keratin" }) => {
   const [secondsLeft, setSecondsLeft] = useState(() => {
     const stored = sessionStorage.getItem("announcement_countdown_end");
     if (stored) {
@@ -28,6 +28,17 @@ const StickyAnnouncementBar = memo(({ variant }: { variant?: "camera" }) => {
 
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const secs = String(secondsLeft % 60).padStart(2, "0");
+
+  if (variant === "keratin") {
+    return (
+      <div className="k-announce sticky top-0 z-[60] w-full">
+        <div className="max-w-lg mx-auto px-4 h-8 flex items-center justify-between gap-3">
+          <span className="text-[12px] font-semibold whitespace-nowrap">✦ ფლეშ ფასი მთავრდება</span>
+          <span className="k-announce-time tabular-nums text-[13px] font-bold">{mins}:{secs}</span>
+        </div>
+      </div>
+    );
+  }
 
   if (variant === "camera") {
     const parts = [
