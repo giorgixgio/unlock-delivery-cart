@@ -28,6 +28,7 @@ export interface LandingSection {
 export interface LandingConfig {
   mini_camera?: import('@/lib/miniCameraConfig').MiniCameraConfig;
   keratin_mask?: Partial<import('@/lib/keratinMaskConfig').KeratinMaskConfig>;
+  brow_stamp?: Partial<import('@/lib/keratinMaskConfig').KeratinMaskConfig>;
   hero_title?: string;
   hero_subtitle?: string;
   sections?: LandingSection[];

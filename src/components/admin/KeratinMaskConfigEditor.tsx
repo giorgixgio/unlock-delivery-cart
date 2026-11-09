@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useProducts } from '@/hooks/useProducts';
-import { KERATIN_PRODUCT_ID, KERATIN_SLUG, type KeratinMaskConfig, type KText } from '@/lib/keratinMaskConfig';
+import { KERATIN_PRODUCT_ID, type KeraveProduct, type KeratinMaskConfig, type KText } from '@/lib/keratinMaskConfig';
 
 async function toWebp(file: File) { const bmp = await createImageBitmap(file); const k = Math.min(1, 1200 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext('2d')!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((ok, no) => cv.toBlob(b => b ? ok(b) : no(Error('WebP conversion failed')), 'image/webp', 0.85)); }
 
@@ -21,19 +21,19 @@ async function posterFrom(file: File) {
 
 type ImageKey = 'before_image' | 'after_image' | 'texture_image';
 
-export default function KeratinMaskConfigEditor({ value: c, onChange, originalHandle }: { value: KeratinMaskConfig; onChange: (c: KeratinMaskConfig) => void; originalHandle: string }) {
+export default function KeratinMaskConfigEditor({ value: c, onChange, originalHandle, entry }: { entry: KeraveProduct; value: KeratinMaskConfig; onChange: (c: KeratinMaskConfig) => void; originalHandle: string }) {
   const [uploading, setUploading] = useState(''); const [err, setErr] = useState('');
   const { data: products = [] } = useProducts();
   const set = <K extends keyof KeratinMaskConfig>(key: K, v: KeratinMaskConfig[K]) => onChange({ ...c, [key]: v });
-  const put = async (blob: Blob, name: string, ext: string, type: string) => { const path = `landing/keratin-mask/${name}-${Date.now()}.${ext}`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: type, upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
-  const upload = async (file: File, name: string) => { const blob = await toWebp(file); const path = `landing/keratin-mask/${name}-${Date.now()}.webp`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: 'image/webp', upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
+  const put = async (blob: Blob, name: string, ext: string, type: string) => { const path = `${entry.storagePrefix}/${name}-${Date.now()}.${ext}`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: type, upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
+  const upload = async (file: File, name: string) => { const blob = await toWebp(file); const path = `${entry.storagePrefix}/${name}-${Date.now()}.webp`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: 'image/webp', upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
   const run = async (name: string, fn: () => Promise<void>) => { setUploading(name); setErr(''); try { await fn(); } catch (x) { setErr(x instanceof Error ? x.message : 'Upload failed'); } finally { setUploading(''); } };
   const textRows = (key: 'benefits' | 'ingredients') => <div><Label>{key} — title + text per row</Label><div className="space-y-2">{c[key].map((b: KText, i) => <div key={i} className="grid grid-cols-[1fr_2fr_auto] gap-2"><Input aria-label={`${key} title ${i + 1}`} value={b.title} onChange={e => set(key, c[key].map((v, j) => i === j ? { ...v, title: e.target.value } : v))} /><Input aria-label={`${key} text ${i + 1}`} value={b.text} onChange={e => set(key, c[key].map((v, j) => i === j ? { ...v, text: e.target.value } : v))} /><button type="button" className="text-xs text-destructive" onClick={() => set(key, c[key].filter((_, j) => j !== i))}>remove</button></div>)}<button type="button" className="text-xs text-primary" onClick={() => set(key, [...c[key], { title: '', text: '' }])}>+ add row</button></div></div>;
 
   return <div className="space-y-5 border-t border-border pt-5">
-    <h3 className="font-bold">KERAVÉ keratin mask — dedicated page</h3>
-    <div className="flex flex-wrap gap-3 text-primary text-sm"><a href={`/p/${originalHandle}`} target="_blank" rel="noreferrer">Original page</a><a href={`/p/${KERATIN_SLUG}`} target="_blank" rel="noreferrer">New page</a><a href={`/p/${KERATIN_SLUG}?preview=1`} target="_blank" rel="noreferrer">Demo preview</a></div>
-    {(['eyebrow', 'title', 'headline', 'subtitle', 'cta_note', 'video_url', 'volume', 'volume_text'] as const).map(key => <div key={key}><Label htmlFor={`k-${key}`}>{key.replace(/_/g, ' ')}</Label><Input id={`k-${key}`} value={c[key]} onChange={e => set(key, e.target.value)} /></div>)}
+    <h3 className="font-bold">{entry.adminLabel} — dedicated page</h3>
+    <div className="flex flex-wrap gap-3 text-primary text-sm"><a href={`/p/${originalHandle}`} target="_blank" rel="noreferrer">Original page</a><a href={`/p/${entry.slug}`} target="_blank" rel="noreferrer">New page</a><a href={`/p/${entry.slug}?preview=1`} target="_blank" rel="noreferrer">Demo preview</a></div>
+    {(['eyebrow', 'title', 'headline', 'subtitle', 'cta_note', 'video_url', 'volume', 'volume_text', 'unit_label', 'hero_badge', 'ritual_time', 'video_caption', 'hair_types_hint', 'hair_types_done', 'vs_ours_sub', 'vs_other', 'vs_other_sub', 'final_heading'] as const).map(key => <div key={key}><Label htmlFor={`k-${key}`}>{key.replace(/_/g, ' ')}</Label><Input id={`k-${key}`} value={c[key]} onChange={e => set(key, e.target.value)} /></div>)}
 
     <div><Label>Gallery images (one URL per line — empty uses the product photos)</Label><Textarea value={c.gallery.join('\n')} onChange={e => set('gallery', e.target.value.split('\n'))} /><Input className="mt-2" type="file" accept="image/*" aria-label="Upload gallery image" disabled={!!uploading} onChange={e => { const f = e.target.files?.[0]; if (f) run('gallery', async () => { const url = await upload(f, 'gallery'); set('gallery', [...c.gallery.filter(Boolean), url]); }); }} /></div>
 
@@ -58,7 +58,7 @@ export default function KeratinMaskConfigEditor({ value: c, onChange, originalHa
     <h4 className="font-bold">Sections and headings</h4>{Object.entries(c.sections).map(([key, enabled]) => <div key={key} className="flex items-center gap-3"><Switch aria-label={key} checked={enabled} onCheckedChange={v => set('sections', { ...c.sections, [key]: v })} /><Label className="w-28">{key}</Label>{key in c.headings && <Input value={c.headings[key]} onChange={e => set('headings', { ...c.headings, [key]: e.target.value })} />}</div>)}
 
     <h4 className="font-bold">Funnel</h4>
-    <div><Label htmlFor="k-bump">“+1 mask” bump price (₾)</Label><Input id="k-bump" type="number" min={1} value={c.bump_price} onChange={e => set('bump_price', Math.max(1, Number(e.target.value)))} /></div>
+    <div><Label htmlFor="k-bump">“+1” bump price (₾)</Label><Input id="k-bump" type="number" min={1} value={c.bump_price} onChange={e => set('bump_price', Math.max(1, Number(e.target.value)))} /></div>
     <div><Label>Stock bar scale (does not change stock)</Label><Input type="number" min={1} value={c.stock_bar_max} onChange={e => set('stock_bar_max', Math.max(1, Number(e.target.value)))} /></div>
     <div className="space-y-2 border border-border rounded-lg p-3">
       <div className="flex items-center gap-3"><Switch aria-label="Post-address upsell" checked={c.upsell.enabled} onCheckedChange={v => set('upsell', { ...c.upsell, enabled: v })} /><Label>Post-address upsell (one product)</Label></div>
