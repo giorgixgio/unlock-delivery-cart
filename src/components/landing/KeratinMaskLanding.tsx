@@ -71,7 +71,7 @@ const Molecule = ({ label, tone }: { label: string; tone: 'rose' | 'gold' }) => 
     <g fill="none" stroke="currentColor" strokeWidth="1" opacity=".55"><path d="M60 22 93 41v38L60 98 27 79V41Z" /><path d="M60 40 77 50v20L60 80 43 70V50Z" /><path d="M60 22v18M93 41 77 50M93 79 77 70M60 98V80M27 79l16-9M27 41l16 9" /></g>
     {[[60, 22], [93, 41], [93, 79], [60, 98], [27, 79], [27, 41]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3.2" fill="currentColor" />)}
   </svg>
-  <span className="relative k-serif text-[22px] leading-tight text-center px-4 k-wrap">{label}</span>
+  <span className="relative k-serif text-[18px] leading-tight text-center px-3 k-wrap">{label}</span>
 </div>;
 
 interface Props { product: Product; config?: Partial<KeratinMaskConfig> | null; selectedQty: number; onSelect: (n: number) => void; onBuy: () => void; repeatBlocked: LastOrderRecord | null; onReorder: () => void; preview: boolean }
@@ -126,7 +126,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
 
   const offer = (ref: RefObject<HTMLDivElement>, heading?: string) => <div ref={ref} className="k-offer">
     {heading && <h2 className="text-[26px] leading-tight text-center mb-4 k-wrap">{heading}</h2>}
-    <div role="radiogroup" aria-label="აირჩიე რაოდენობა" className="space-y-2.5">
+    <div role="radiogroup" aria-label="აირჩიე რაოდენობა" className="flex flex-col gap-3.5">
       {[1, 2, 3].map(q => {
         const t = priceFor(q); const save = Math.round(compareFor(q) - t); const on = q === selectedQty;
         return <button key={q} type="button" role="radio" aria-checked={on} onClick={() => onSelect(q)} className={`k-bundle ${on ? 'on' : ''}`}>
@@ -153,12 +153,14 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
   </div>;
 
   const midCta = <div className="k-midcta">
-    <img src={hero} alt="" loading="lazy" width={72} height={72} className="w-16 h-16 object-contain shrink-0 k-float" />
-    <div className="flex-1 min-w-0">
-      <p className="k-serif text-[17px] leading-snug k-wrap">{c.headings.mid_cta}</p>
-      <p className="text-[14px] mt-0.5"><strong className="text-[18px]">{money(total)}₾</strong>{compare && <s className="k-mutetx ml-1.5">{money(compare)}₾</s>}</p>
+    <div className="flex items-center gap-3">
+      <img src={hero} alt="" loading="lazy" width={56} height={56} className="w-14 h-14 object-contain shrink-0 k-float" />
+      <div className="flex-1 min-w-0">
+        <p className="k-serif text-[18px] leading-snug k-wrap">{c.headings.mid_cta}</p>
+        <p className="text-[14px]"><strong className="text-[18px]">{money(total)}₾</strong>{compare && <s className="k-mutetx ml-1.5">{money(compare)}₾</s>}{pct > 0 && <span className="k-rose font-bold ml-1.5">−{pct}%</span>}</p>
+      </div>
     </div>
-    {!repeatBlocked && <button type="button" onClick={onBuy} className="k-btn !w-auto !min-h-[52px] px-5 text-[15px] shrink-0"><span className="relative z-[1]">შეუკვეთე</span></button>}
+    <div className="mt-3">{cta('შეუკვეთე ახლა')}</div>
   </div>;
 
   const benefitIcons = [Sparkles, Droplet, Waves, Leaf];
@@ -236,7 +238,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <div className="max-w-lg mx-auto py-10">
         <div className="px-4 flex items-center gap-4">
           <Dial />
-          <div className="min-w-0"><h2 className="text-[30px] leading-tight k-wrap">{c.headings.ritual}</h2><p className="k-goldtx k-serif text-[18px] mt-1">მხოლოდ 3–5 წუთი</p></div>
+          <div className="min-w-0"><h2 className="text-[26px] min-[380px]:text-[28px] leading-tight k-wrap">{c.headings.ritual}</h2><p className="k-goldtx k-serif text-[18px] mt-1">მხოლოდ 3–5 წუთი</p></div>
         </div>
         <ol className="k-steps mt-6" aria-label="გამოყენების ნაბიჯები">
           {ritual.map((step, i) => <li key={i} className="k-step"><span className="k-stepnum">{i + 1}</span><p className="text-[16px] leading-snug mt-3 k-wrap">{step}</p></li>)}
@@ -268,7 +270,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {s.texture && <Reveal className="max-w-lg mx-auto px-4 mt-10">
       <div className="k-volume">
         <img src={hero} alt="" aria-hidden="true" loading="lazy" className="k-volume-img" width={260} height={260} />
-        <div className="relative z-[1] max-w-[60%]">
+        <div className="relative z-[1] max-w-[58%]">
           <p className="text-[14px] font-semibold k-rose k-wrap">{c.headings.texture}</p>
           <p className="k-serif text-[64px] leading-none mt-1">{c.volume}<span className="text-[26px] ml-1">მლ</span></p>
           <p className="text-[15px] k-mutetx mt-2 leading-snug k-wrap">{c.volume_text}</p>
