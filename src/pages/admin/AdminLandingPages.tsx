@@ -17,6 +17,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import MiniCameraConfigEditor from '@/components/admin/MiniCameraConfigEditor';
 import { CAMERA_HANDLE, resolveCameraConfig } from '@/lib/miniCameraConfig';
+import KeratinMaskConfigEditor from '@/components/admin/KeratinMaskConfigEditor';
+import { KERATIN_VARIANT, resolveKeratinConfig } from '@/lib/keratinMaskConfig';
 
 interface LandingRow {
   id: string;
@@ -68,6 +70,8 @@ const EditDialog = ({
 
   const cfg = row.landing_config || {};
   const [cameraConfig,setCameraConfig] = useState(resolveCameraConfig(cfg.mini_camera));
+  const isKeratin = row.landing_variant === KERATIN_VARIANT;
+  const [keratinConfig,setKeratinConfig] = useState(resolveKeratinConfig(cfg.keratin_mask));
 
   const [heroTitle, setHeroTitle] = useState(cfg.hero_title || "");
   const [heroSubtitle, setHeroSubtitle] = useState(cfg.hero_subtitle || "");
@@ -95,6 +99,7 @@ const EditDialog = ({
     const newConfig: LandingConfig = {
       ...cfg,
       ...(row.product_handle === CAMERA_HANDLE ? {mini_camera:cameraConfig} : {}),
+      ...(isKeratin ? {keratin_mask:keratinConfig} : {}),
       hero_title: heroTitle || undefined,
       hero_subtitle: heroSubtitle || undefined,
       sections: sections.length > 0 ? sections : undefined,
@@ -273,6 +278,7 @@ const EditDialog = ({
           </div>
 
           {row.product_handle === CAMERA_HANDLE && <MiniCameraConfigEditor value={cameraConfig} onChange={setCameraConfig}/>}
+          {isKeratin && <KeratinMaskConfigEditor value={keratinConfig} onChange={setKeratinConfig} originalHandle={row.product_handle}/>}
           {/* Bundle */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
