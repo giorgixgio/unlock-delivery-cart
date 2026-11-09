@@ -188,3 +188,6 @@
   .keratin-page *, .keratin-page *::before, .keratin-page *::after, .k-btn::after { animation: none !important; transition: none !important; }
   .keratin-page .k-reveal { opacity: 1; transform: none; }
 }
+.keratin-page .k-drop svg { filter: drop-shadow(0 12px 14px hsl(var(--k-rose) / .35)); animation: k-drop-float 4.5s ease-in-out infinite; }
+@keyframes k-drop-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .keratin-page .k-drop svg { animation: none; } }
