@@ -407,6 +407,13 @@
       "when": 1794251652124,
       "tag": "0057_product_reviews_generalize",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794251678737,
+      "tag": "0058_review_token_info_product",
+      "breakpoints": true
     }
   ]
 }
