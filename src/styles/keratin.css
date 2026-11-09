@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Georgian:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap');
+
+/* KERAVÉ landing — "quiet luxury salon". All tokens scoped to the page. */
+.keratin-page {
+  --k-ivory: 33 56% 97%;
+  --k-sand: 33 41% 89%;
+  --k-blush: 18 47% 84%;
+  --k-rose: 22 35% 57%;
+  --k-gold: 37 41% 67%;
+  --k-cocoa: 19 24% 13%;
+  --background: var(--k-ivory);
+  --foreground: var(--k-cocoa);
+  --card: 33 60% 98.5%;
+  --card-foreground: var(--k-cocoa);
+  --muted: var(--k-sand);
+  --muted-foreground: 20 14% 36%;
+  --border: 34 33% 84%;
+  --primary: var(--k-rose);
+  --primary-foreground: var(--k-ivory);
+  --secondary: var(--k-gold);
+  --dark-surface: var(--k-cocoa);
+  --success: 150 28% 34%;
+  --ring: var(--k-rose);
+  --k-shadow: 0 18px 40px -22px hsl(var(--k-cocoa) / 0.35), 0 2px 6px -2px hsl(var(--k-rose) / 0.12);
+  font-family: 'Noto Sans Georgian', system-ui, sans-serif;
+  background: hsl(var(--k-ivory));
+  color: hsl(var(--k-cocoa));
+  position: relative;
+  isolation: isolate;
+}
+.keratin-page::before { /* paper grain */
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .32; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .45  0 0 0 0 .38  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.keratin-page .k-serif, .keratin-page h1, .keratin-page h2, .keratin-page h3 { font-family: 'Noto Serif Georgian', Georgia, serif; font-weight: 600; letter-spacing: -0.005em; }
+.keratin-page .k-eyebrow { font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; font-weight: 600; color: hsl(var(--k-rose)); }
+.keratin-page .k-card { background: hsl(var(--card)); border: 1px solid hsl(var(--k-gold) / .35); border-radius: 22px; box-shadow: var(--k-shadow); }
+.keratin-page .k-sand { background: hsl(var(--k-sand) / .6); }
+.keratin-page .k-blush-bg { background: linear-gradient(180deg, hsl(var(--k-blush) / .55), hsl(var(--k-ivory))); }
+.keratin-page .k-chip { border-radius: 999px; border: 1px solid hsl(var(--k-gold) / .5); background: hsl(var(--card)); padding: .4rem .9rem; font-size: 13px; font-weight: 500; }
+.keratin-page .k-chip-rose { background: hsl(var(--k-rose)); color: hsl(var(--k-ivory)); border-color: transparent; }
+.keratin-page .k-rose { color: hsl(var(--k-rose)); }
+.keratin-page .k-gold { color: hsl(var(--k-gold)); }
+.keratin-page .k-hair { height: 1px; background: linear-gradient(90deg, transparent, hsl(var(--k-gold)), transparent); }
+.keratin-page .k-divider { display: flex; align-items: center; gap: .6rem; color: hsl(var(--k-gold)); }
+.keratin-page .k-divider::before, .keratin-page .k-divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, hsl(var(--k-gold))); }
+.keratin-page .k-divider::after { background: linear-gradient(90deg, hsl(var(--k-gold)), transparent); }
+.keratin-page .k-numeral { width: 2.6rem; height: 2.6rem; border-radius: 999px; display: grid; place-items: center; border: 1px solid hsl(var(--k-gold)); background: radial-gradient(circle at 30% 25%, hsl(var(--card)), hsl(var(--k-sand))); font-family: 'Noto Serif Georgian', serif; font-size: 1.15rem; color: hsl(var(--k-rose)); flex-shrink: 0; }
+
+/* Hero pedestal */
+.keratin-page .k-stage { position: relative; border-radius: 28px; overflow: hidden; background: radial-gradient(70% 55% at 50% 38%, hsl(var(--k-blush) / .9), transparent 70%), radial-gradient(45% 35% at 80% 15%, hsl(var(--k-gold) / .35), transparent 70%), linear-gradient(180deg, hsl(var(--k-blush) / .55), hsl(var(--k-ivory))); border: 1px solid hsl(var(--k-gold) / .3); }
+.keratin-page .k-stage img.k-hero { filter: drop-shadow(0 26px 22px hsl(var(--k-cocoa) / .22)); }
+.keratin-page .k-pedestal { position: absolute; left: 18%; right: 18%; bottom: 7%; height: 10%; border-radius: 50%; background: radial-gradient(closest-side, hsl(var(--k-cocoa) / .18), transparent); pointer-events: none; }
+.keratin-page .k-shimmer { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, hsl(var(--k-ivory) / .55) 50%, transparent 65%); transform: translateX(-120%); animation: k-sweep 7s ease-in-out infinite; }
+@keyframes k-sweep { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+
+/* Primary button: cocoa with rose-gold edge and shine */
+.keratin-page .k-btn, .k-btn { position: relative; overflow: hidden; width: 100%; min-height: 3.6rem; border-radius: 999px; color: hsl(33 56% 97%); background: linear-gradient(hsl(19 24% 13%), hsl(19 24% 13%)) padding-box, linear-gradient(120deg, hsl(22 35% 57%), hsl(37 41% 67%), hsl(22 35% 57%)) border-box; border: 2px solid transparent; font-weight: 700; font-size: 1.05rem; box-shadow: 0 14px 28px -14px hsl(19 24% 13% / .7); transition: transform .15s ease; }
+.k-btn:active { transform: scale(.985); }
+.k-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, hsl(37 41% 67% / .35) 50%, transparent 70%); transform: translateX(-130%); animation: k-sweep 4.5s ease-in-out infinite; }
+.k-btn:focus-visible { outline: 3px solid hsl(22 35% 57%); outline-offset: 3px; }
+
+.keratin-page .k-seg button { border-radius: 18px; border: 1px solid hsl(var(--k-gold) / .45); background: hsl(var(--card)); transition: all .2s; }
+.keratin-page .k-seg button[aria-pressed='true'] { border-color: hsl(var(--k-rose)); background: hsl(var(--k-blush) / .45); box-shadow: 0 0 0 1px hsl(var(--k-rose)); }
+.keratin-page .k-dot { width: 6px; height: 6px; border-radius: 99px; background: hsl(var(--k-gold) / .5); transition: all .2s; }
+.keratin-page .k-dot.on { width: 18px; background: hsl(var(--k-rose)); }
+.keratin-page .k-gallery { scrollbar-width: none; }
+.keratin-page .k-gallery::-webkit-scrollbar { display: none; }
+.keratin-page progress.k-progress { appearance: none; border: 0; border-radius: 99px; overflow: hidden; background: hsl(var(--k-sand)); }
+.keratin-page progress.k-progress::-webkit-progress-bar { background: hsl(var(--k-sand)); }
+.keratin-page progress.k-progress::-webkit-progress-value { background: linear-gradient(90deg, hsl(var(--k-gold)), hsl(var(--k-rose))); border-radius: 99px; }
+.keratin-page progress.k-progress::-moz-progress-bar { background: linear-gradient(90deg, hsl(var(--k-gold)), hsl(var(--k-rose))); }
+.keratin-page .k-sticky { background: hsl(var(--k-ivory) / .94); backdrop-filter: blur(10px); border-top: 1px solid hsl(var(--k-gold) / .4); }
+.keratin-page .k-reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+.keratin-page .k-reveal.is-seen { opacity: 1; transform: none; }
+.keratin-page .k-toast { background: hsl(var(--k-cocoa) / .92); color: hsl(var(--k-ivory)); }
+/* The reused review list uses camera class names; restyle them here. */
+.keratin-page .cam-card { background: hsl(var(--card)); border: 1px solid hsl(var(--k-gold) / .35); border-radius: 22px; box-shadow: var(--k-shadow); }
+.keratin-page .cam-amber { color: hsl(var(--k-rose)); }
+.keratin-page .camera-progress { appearance: none; border: 0; border-radius: 99px; background: hsl(var(--k-sand)); }
+.keratin-page .camera-progress::-webkit-progress-bar { background: hsl(var(--k-sand)); border-radius: 99px; }
+.keratin-page .camera-progress::-webkit-progress-value { background: hsl(var(--k-rose)); border-radius: 99px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .keratin-page *, .keratin-page *::before, .keratin-page *::after, .k-btn::after { animation: none !important; transition: none !important; }
+  .keratin-page .k-reveal { opacity: 1; transform: none; }
+}
