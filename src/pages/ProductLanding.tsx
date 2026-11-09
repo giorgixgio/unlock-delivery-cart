@@ -253,7 +253,7 @@ const GenericLanding = ({
   const sku002BumpConfig: BumpConfig = keratinPresentation ? keratinBump(kCfg) : CAMERA_BUMP;
   const landingVariantTag = keratinPresentation ? KERATIN_VARIANT : landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic';
 
-  useEffect(() => { trackFunnel("landing_view"); }, []);
+  useEffect(() => { trackFunnel("landing_view", keratinPresentation ? { landingVariant: KERATIN_VARIANT } : {}); }, []);
   useEffect(() => {
     trackViewContent(product);
     trackLandingView({ productId: product.id, productName: product.title, landingType: landingVariantTag });
