@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
 import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderRecord } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
+import { resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 
 interface WrenchLandingProps {
   product: Product;
@@ -137,7 +138,11 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
   };
 
   const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
-  const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    if (resolveUpsellEnabled(undefined, null)) setUpsellOpen(true);
+    else goToSuccess(pendingOrderNumber);
+  };
   const handleDoneClose = () => setDoneOpen(false);
 
   return (
