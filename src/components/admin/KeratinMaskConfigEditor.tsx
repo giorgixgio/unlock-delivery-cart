@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useProducts } from '@/hooks/useProducts';
-import { KERATIN_PRODUCT_ID, type KeraveProduct, type KeratinMaskConfig, type KText } from '@/lib/keratinMaskConfig';
+import { type KeraveProduct, type KeratinMaskConfig, type KText } from '@/lib/keratinMaskConfig';
 
 async function toWebp(file: File) { const bmp = await createImageBitmap(file); const k = Math.min(1, 1200 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext('2d')!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((ok, no) => cv.toBlob(b => b ? ok(b) : no(Error('WebP conversion failed')), 'image/webp', 0.85)); }
 
@@ -62,7 +62,7 @@ export default function KeratinMaskConfigEditor({ value: c, onChange, originalHa
     <div><Label>Stock bar scale (does not change stock)</Label><Input type="number" min={1} value={c.stock_bar_max} onChange={e => set('stock_bar_max', Math.max(1, Number(e.target.value)))} /></div>
     <div className="space-y-2 border border-border rounded-lg p-3">
       <div className="flex items-center gap-3"><Switch aria-label="Post-address upsell" checked={c.upsell.enabled} onCheckedChange={v => set('upsell', { ...c.upsell, enabled: v })} /><Label>Post-address upsell (one product)</Label></div>
-      <select aria-label="Upsell product" className="w-full bg-background border border-border rounded-md p-2 text-base" value={c.upsell.product_id} onChange={e => set('upsell', { ...c.upsell, product_id: e.target.value })}><option value="">— choose product —</option>{products.filter(p => p.id !== KERATIN_PRODUCT_ID).map(p => <option key={p.id} value={p.id}>{p.sku ? `${p.sku} · ` : ''}{p.title.slice(0, 70)}</option>)}</select>
+      <select aria-label="Upsell product" className="w-full bg-background border border-border rounded-md p-2 text-base" value={c.upsell.product_id} onChange={e => set('upsell', { ...c.upsell, product_id: e.target.value })}><option value="">— choose product —</option>{products.filter(p => p.id !== entry.productId).map(p => <option key={p.id} value={p.id}>{p.sku ? `${p.sku} · ` : ''}{p.title.slice(0, 70)}</option>)}</select>
       <div className="grid grid-cols-2 gap-2"><div><Label>Offer price ₾</Label><Input type="number" min={0} value={c.upsell.price} onChange={e => set('upsell', { ...c.upsell, price: Math.max(0, Number(e.target.value)) })} /></div><div><Label>Compare price ₾</Label><Input type="number" min={0} value={c.upsell.compare_at} onChange={e => set('upsell', { ...c.upsell, compare_at: Math.max(0, Number(e.target.value)) })} /></div></div>
       <Input aria-label="Upsell headline" value={c.upsell.headline} onChange={e => set('upsell', { ...c.upsell, headline: e.target.value })} /><Input aria-label="Upsell subline" value={c.upsell.subline} onChange={e => set('upsell', { ...c.upsell, subline: e.target.value })} />
     </div>

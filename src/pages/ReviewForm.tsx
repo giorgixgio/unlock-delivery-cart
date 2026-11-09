@@ -1,4 +1,4 @@
-import { KERATIN_PRODUCT_ID, KERATIN_REVIEW_NAME } from '@/lib/keratinMaskConfig';
+import { keraveByProductId } from '@/lib/keratinMaskConfig';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
