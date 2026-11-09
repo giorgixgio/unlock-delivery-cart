@@ -89,7 +89,7 @@ const SkuUrgencyTimer = ({ storageKey = DEFAULT_STORAGE_KEY, showStock = true }:
           </div>
         </div>
 
-        <div className="h-12 w-px bg-primary-foreground/15" aria-hidden="true" />
+        {showStock && <><div className="h-12 w-px bg-primary-foreground/15" aria-hidden="true" />
 
         <div className="text-right">
           <p className="mb-1 text-[10px] font-bold text-primary-foreground/55">მარაგის სტატუსი</p>
@@ -97,7 +97,7 @@ const SkuUrgencyTimer = ({ storageKey = DEFAULT_STORAGE_KEY, showStock = true }:
             <Flame className="h-4 w-4 animate-pulse" aria-hidden="true" />
             სწრაფად იყიდება
           </p>
-        </div>
+        </div></>}
       </div>
 
       {showStock && <div className="mt-4">
@@ -121,7 +121,7 @@ const SkuUrgencyTimer = ({ storageKey = DEFAULT_STORAGE_KEY, showStock = true }:
             <span className="absolute inset-y-0 right-0 w-10 animate-pulse bg-primary-foreground/30" />
           </div>
         </div>
-      </div>
+      </div>}
     </section>
   );
 };
