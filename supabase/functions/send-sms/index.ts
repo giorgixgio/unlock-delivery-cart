@@ -36,7 +36,7 @@ async function sendFirstText(service: any, apiKey: string, orderNumber: string, 
     await sleep(4000);
     ctx = await loadSmsContext(service, { orderNumber });
   }
-  if (!ctx || STOPPED_STATUSES.has(String(ctx.order.status))) return;
+  if (!ctx || ctx.isTest || STOPPED_STATUSES.has(String(ctx.order.status))) return;
   const auto = ctx.order.auto_confirmed === true;
   const seqType = auto ? "order_auto_confirmed" : "lead_created";
   if (!ctx.settings.enabled[seqType]) return;
@@ -155,6 +155,11 @@ Deno.serve(async (req) => {
       EdgeRuntime.waitUntil(sendFirstText(service, apiKey, orderNumber, destination).catch((e) => console.error("send-sms first text", (e as Error).message)));
       return new Response(JSON.stringify({ accepted: true }),
         { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const fulCtx = await loadSmsContext(service, { orderNumber });
+    if (fulCtx?.isTest) {
+      return new Response(JSON.stringify({ skipped: "test_order" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const content = buildContent(type, orderNumber);
     const logType: string = type;

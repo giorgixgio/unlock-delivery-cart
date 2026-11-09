@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
         if (!st?.enabled) { await skip("support_disabled"); continue; }
         if (!req || !["open", "in_review", "waiting_customer"].includes(req.status)) { await skip("ticket_resolved"); continue; }
         if (!ctx) { await skip("order_missing"); continue; }
+        if (ctx.isTest) { await skip("test_order"); continue; }
         if (STOPPED_STATUSES.has(String(ctx.order.status))) { await skip(`order_${ctx.order.status}`); continue; }
         const phone = normalizeGePhone(ctx.order.customer_phone);
         if (!phone) { await skip("invalid_phone"); continue; }
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
       if (quiet.getTime() !== now.getTime()) { stats.deferred++; await finish({ status: "pending", attempts: item.attempts, send_after: quiet.toISOString() }); continue; }
       const ctx = await loadSmsContext(db, { id: item.order_id });
       if (!ctx) { await skip("order_missing"); continue; }
+      if (ctx.isTest) { await skip("test_order"); continue; }
       const { order, settings } = ctx;
       const type = item.type as SeqType;
       if (!settings.enabled[type]) { await skip("type_disabled"); continue; }
