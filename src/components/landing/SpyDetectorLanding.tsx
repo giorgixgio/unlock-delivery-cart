@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
 import { readLastOrder, saveLastOrder, markIntentionalRepeat, type LastOrderRecord } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
+import { resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
 
 interface SpyDetectorLandingProps {
   product: Product;
@@ -141,7 +142,11 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   };
 
   const handleUpsellSkip = () => { setUpsellOpen(false); setDoneOpen(true); };
-  const handleAddressComplete = () => { setAddressOpen(false); setUpsellOpen(true); };
+  const handleAddressComplete = () => {
+    setAddressOpen(false);
+    if (resolveUpsellEnabled(undefined, null)) setUpsellOpen(true);
+    else goToSuccess(pendingOrderNumber);
+  };
   const handleDoneClose = () => setDoneOpen(false);
 
   const images = (product.images && product.images.length > 0) ? product.images : [product.image];
