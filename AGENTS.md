@@ -35,3 +35,4 @@ Call Queue selection, locking and retry timing live in `call_queue_*` DB RPCs mi
 - Issue tickets (`customer_requests` kind `operator_flag`) change only via `support_ticket_*` RPCs (mirrored in `src/lib/supportTickets.ts`) and hold leads via `orders.support_hold`, never status/stock, so support hand-off is not a call outcome.
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
+- Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
