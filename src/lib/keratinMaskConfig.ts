@@ -20,6 +20,7 @@ export interface KeratinMaskConfig {
   eyebrow: string; title: string; subtitle: string;
   headline: string; pain_points: string[]; results: string[]; cta_note: string;
   gallery: string[]; video_url: string;
+  before_after_video: string; before_after_video_poster: string;
   before_image: string; after_image: string; texture_image: string;
   trust: string[];
   benefits: KText[]; ritual: string[]; ingredients: KText[]; hair_types: string[];
@@ -43,7 +44,7 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
   pain_points: ['გამომშრალი თმა', 'ფაფუკი თმა', 'ძნელად ივარცხნება', 'მოუვლელი ბოლოები'],
   results: ['რბილი', 'გლუვი', 'დამყოლი', 'მოვლილი იერი'],
   cta_note: 'წინასწარ არაფერს იხდი — გადაიხდი კურიერთან',
-  gallery: [], video_url: '', before_image: '', after_image: '', texture_image: '',
+  gallery: [], video_url: '', before_after_video: '', before_after_video_poster: '', before_image: '', after_image: '', texture_image: '',
   trust: ['გადახდა მხოლოდ მიღებისას', 'მიწოდება მთელ საქართველოში', 'თბილისი 1–2 დღე, რეგიონები 2–4 დღე', '500 მლ'],
   benefits: [
     { title: 'სირბილე და ბზინვარება', text: 'თმა უფრო გლუვი, რბილი და მოვლილი ხდება.' },
@@ -86,7 +87,7 @@ export const KERATIN_DEFAULTS: KeratinMaskConfig = {
     specs: 'მახასიათებლები', reviews: 'რას ამბობენ ჩვენი მომხმარებლები', box: 'რა არის შეფუთვაში', faq: 'ხშირად დასმული კითხვები',
   },
   sections: {
-    problem: true, mid_cta: true, gallery: true, today: true, stock: true, timer: true, trust: true, benefits: true, ritual: true, ingredients: true, hair_types: true,
+    before_after_video: true, problem: true, mid_cta: true, gallery: true, today: true, stock: true, timer: true, trust: true, benefits: true, ritual: true, ingredients: true, hair_types: true,
     before_after: true, texture: true, comparison: true, specs: true, reviews: true, box: true, faq: true, final_cta: true, recent: true,
   },
   bump_price: 16,
@@ -114,6 +115,7 @@ export function keratinBump(c: KeratinMaskConfig): BumpConfig {
 export function keratinVisibleSections(c: KeratinMaskConfig, reviewCount: number) {
   const s = c.sections;
   return {
+    before_after_video: s.before_after_video && !!c.before_after_video,
     before_after: s.before_after && !!c.before_image && !!c.after_image,
     box: s.box && c.box_contents.filter(Boolean).length > 0,
     faq: s.faq && c.faq.some(f => f.answer.trim()),

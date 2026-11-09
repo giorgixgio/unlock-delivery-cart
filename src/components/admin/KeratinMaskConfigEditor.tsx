@@ -9,12 +9,23 @@ import { KERATIN_PRODUCT_ID, KERATIN_SLUG, type KeratinMaskConfig, type KText } 
 
 async function toWebp(file: File) { const bmp = await createImageBitmap(file); const k = Math.min(1, 1200 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext('2d')!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((ok, no) => cv.toBlob(b => b ? ok(b) : no(Error('WebP conversion failed')), 'image/webp', 0.85)); }
 
+async function posterFrom(file: File) {
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(file);
+  await new Promise<void>((ok, no) => { v.onloadeddata = () => ok(); v.onerror = () => no(Error('Video could not be read')); });
+  v.currentTime = Math.min(2, (v.duration || 2) / 2);
+  await new Promise<void>(ok => { v.onseeked = () => ok(); });
+  const cv = document.createElement('canvas'); cv.width = v.videoWidth; cv.height = v.videoHeight; cv.getContext('2d')!.drawImage(v, 0, 0);
+  URL.revokeObjectURL(v.src);
+  return await new Promise<Blob>((ok, no) => cv.toBlob(b => b ? ok(b) : no(Error('Poster failed')), 'image/webp', 0.85));
+}
+
 type ImageKey = 'before_image' | 'after_image' | 'texture_image';
 
 export default function KeratinMaskConfigEditor({ value: c, onChange, originalHandle }: { value: KeratinMaskConfig; onChange: (c: KeratinMaskConfig) => void; originalHandle: string }) {
   const [uploading, setUploading] = useState(''); const [err, setErr] = useState('');
   const { data: products = [] } = useProducts();
   const set = <K extends keyof KeratinMaskConfig>(key: K, v: KeratinMaskConfig[K]) => onChange({ ...c, [key]: v });
+  const put = async (blob: Blob, name: string, ext: string, type: string) => { const path = `landing/keratin-mask/${name}-${Date.now()}.${ext}`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: type, upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
   const upload = async (file: File, name: string) => { const blob = await toWebp(file); const path = `landing/keratin-mask/${name}-${Date.now()}.webp`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: 'image/webp', upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
   const run = async (name: string, fn: () => Promise<void>) => { setUploading(name); setErr(''); try { await fn(); } catch (x) { setErr(x instanceof Error ? x.message : 'Upload failed'); } finally { setUploading(''); } };
   const textRows = (key: 'benefits' | 'ingredients') => <div><Label>{key} — title + text per row</Label><div className="space-y-2">{c[key].map((b: KText, i) => <div key={i} className="grid grid-cols-[1fr_2fr_auto] gap-2"><Input aria-label={`${key} title ${i + 1}`} value={b.title} onChange={e => set(key, c[key].map((v, j) => i === j ? { ...v, title: e.target.value } : v))} /><Input aria-label={`${key} text ${i + 1}`} value={b.text} onChange={e => set(key, c[key].map((v, j) => i === j ? { ...v, text: e.target.value } : v))} /><button type="button" className="text-xs text-destructive" onClick={() => set(key, c[key].filter((_, j) => j !== i))}>remove</button></div>)}<button type="button" className="text-xs text-primary" onClick={() => set(key, [...c[key], { title: '', text: '' }])}>+ add row</button></div></div>;
@@ -26,6 +37,14 @@ export default function KeratinMaskConfigEditor({ value: c, onChange, originalHa
 
     <div><Label>Gallery images (one URL per line — empty uses the product photos)</Label><Textarea value={c.gallery.join('\n')} onChange={e => set('gallery', e.target.value.split('\n'))} /><Input className="mt-2" type="file" accept="image/*" aria-label="Upload gallery image" disabled={!!uploading} onChange={e => { const f = e.target.files?.[0]; if (f) run('gallery', async () => { const url = await upload(f, 'gallery'); set('gallery', [...c.gallery.filter(Boolean), url]); }); }} /></div>
 
+    <div className="space-y-2 border border-border rounded-lg p-3"><Label>Before/after video (mp4/webm, shown right under the offer)</Label>
+      {c.before_after_video && <video src={c.before_after_video} poster={c.before_after_video_poster || undefined} muted playsInline className="w-28 rounded-xl" />}
+      <Input type="file" accept="video/mp4,video/webm" aria-label="Upload before/after video" disabled={!!uploading} onChange={e => { const f = e.target.files?.[0]; if (f) run('ba-video', async () => { const url = await put(f, 'before-after', f.type === 'video/webm' ? 'webm' : 'mp4', f.type || 'video/mp4'); let poster = c.before_after_video_poster; if (!poster) { try { poster = await put(await posterFrom(f), 'before-after-poster', 'webp', 'image/webp'); } catch { poster = ''; } } onChange({ ...c, before_after_video: url, before_after_video_poster: poster }); }); }} />
+      <Input aria-label="Before/after video URL" value={c.before_after_video} onChange={e => set('before_after_video', e.target.value)} placeholder="or paste video URL" />
+      <Label>Poster (optional — auto-made from the video when empty)</Label>
+      <Input type="file" accept="image/*" aria-label="Upload video poster" disabled={!!uploading} onChange={e => { const f = e.target.files?.[0]; if (f) run('ba-poster', async () => set('before_after_video_poster', await upload(f, 'before-after-poster'))); }} />
+      <Input aria-label="Poster URL" value={c.before_after_video_poster} onChange={e => set('before_after_video_poster', e.target.value)} placeholder="or paste poster URL" />
+    </div>
     {(['before_image', 'after_image', 'texture_image'] as ImageKey[]).map(key => <div key={key} className="space-y-2"><Label>{key.replace(/_/g, ' ')} (before/after shows only when both are set)</Label>{c[key] && <img src={c[key]} alt="" className="w-28 h-28 object-cover rounded-xl" />}<Input type="file" accept="image/*" aria-label={`Upload ${key}`} disabled={!!uploading} onChange={e => { const f = e.target.files?.[0]; if (f) run(key, async () => set(key, await upload(f, key))); }} /><Input aria-label={`${key} URL`} value={c[key]} onChange={e => set(key, e.target.value)} placeholder="or paste image URL" /></div>)}
     {uploading && <p className="text-sm text-muted-foreground">Uploading…</p>}{err && <p className="text-sm text-destructive">{err}</p>}
 
