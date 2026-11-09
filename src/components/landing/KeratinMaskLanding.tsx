@@ -59,7 +59,7 @@ function BeforeAfter({ before, after }: { before: string; after: string }) {
 }
 
 /** Before/after clip: lazy src, plays only in view, poster + tap-to-play under reduced motion. */
-function BeforeAfterVideo({ src, poster }: { src: string; poster: string }) {
+function BeforeAfterVideo({ src, poster, chips = true }: { src: string; poster: string; chips?: boolean }) {
   const box = useRef<HTMLDivElement>(null); const vid = useRef<HTMLVideoElement>(null);
   const [near, setNear] = useState(false); const [ratio, setRatio] = useState('2 / 3');
   const [still] = useState(reduced); const [playing, setPlaying] = useState(false);
@@ -69,7 +69,7 @@ function BeforeAfterVideo({ src, poster }: { src: string; poster: string }) {
     <video ref={vid} src={near ? src : undefined} poster={poster || undefined} autoPlay={!still} muted loop playsInline preload="metadata" disablePictureInPicture disableRemotePlayback controls={false}
       onLoadedMetadata={e => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`); }}
       onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
-    <span className="k-chip absolute top-3 left-3 text-xs">მანამდე</span><span className="k-chip absolute top-3 right-3 text-xs">შემდეგ</span>
+    {chips && <><span className="k-chip absolute top-3 left-3 text-xs">მანამდე</span><span className="k-chip absolute top-3 right-3 text-xs">შემდეგ</span></>}
     {still && !playing && <button type="button" onClick={() => vid.current?.play()} aria-label="ვიდეოს ჩართვა" className="k-playbtn">▶</button>}
   </div>;
 }
@@ -190,11 +190,11 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
 
     {/* HERO — must sell above the fold */}
     <section className="max-w-lg mx-auto px-4 pt-3">
-      <div className="k-stage">
+      <div className={`k-stage${c.hero_frameless ? ' k-stage-full' : ''}`}>
         <img src={hero} alt="" aria-hidden="true" className="k-stage-blur" width={400} height={400} />
         <div className="k-stage-light" /><div className="k-sweep" />
         <div ref={gallery} onScroll={e => setActive(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} className="relative z-[2] flex h-full overflow-x-auto snap-x snap-mandatory k-gallery">
-          {(s.gallery ? images : [hero]).map((url, i) => <div key={url + i} className="w-full h-full shrink-0 snap-center grid place-items-center px-10 pt-5 pb-9"><img src={url} alt={`${c.title} ${i + 1}`} width={600} height={600} loading={i === 0 ? 'eager' : 'lazy'} fetchPriority={i === 0 ? 'high' : 'auto'} decoding={i === 0 ? 'sync' : 'async'} className="k-hero max-w-full max-h-full object-contain" /></div>)}
+          {(s.gallery ? images : [hero]).map((url, i) => <div key={url + i} className={`w-full h-full shrink-0 snap-center grid place-items-center ${c.hero_frameless ? '' : 'px-10 pt-5 pb-9'}`}><img src={url} alt={`${c.title} ${i + 1}`} width={600} height={600} loading={i === 0 ? 'eager' : 'lazy'} fetchPriority={i === 0 ? 'high' : 'auto'} decoding={i === 0 ? 'sync' : 'async'} className={`k-hero max-w-full max-h-full ${c.hero_frameless ? 'w-full h-full object-cover' : 'object-contain'}`} /></div>)}
           {s.gallery && c.video_url && <video controls preload="none" src={c.video_url} className="w-full h-full shrink-0 snap-center object-cover" />}
         </div>
         <div className="k-pedestal" />
@@ -229,8 +229,9 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     {/* Trust strip */}
     {s.trust && c.trust.filter(Boolean).length > 0 && <div className="max-w-lg mx-auto px-4 mt-5"><ul className="k-truststrip">{c.trust.filter(Boolean).map((t, i) => { const Icon = trustIcons[i] ?? ShieldCheck; return <li key={i}><Icon className="w-5 h-5 k-rose shrink-0" /><span className="k-wrap">{t}</span></li>; })}</ul></div>}
 
-    {show.before_after_video && <Reveal className="max-w-lg mx-auto px-4 mt-8 text-center">
-      <BeforeAfterVideo src={c.before_after_video} poster={c.before_after_video_poster} />
+    {(show.before_after_video || show.before_after_video_2) && <Reveal className="max-w-lg mx-auto px-4 mt-8 text-center">
+      {show.before_after_video && <BeforeAfterVideo src={c.before_after_video} poster={c.before_after_video_poster} />}
+      {show.before_after_video_2 && <BeforeAfterVideo src={c.before_after_video_2} poster={c.before_after_video_2_poster} chips={false} />}
       <h2 className="text-[26px] leading-tight mt-4 k-wrap">იხილე განსხვავება</h2>
       <p className="text-[15px] k-mutetx mt-1 k-wrap">{c.video_caption}</p>
     </Reveal>}

@@ -57,6 +57,11 @@
 .keratin-page .k-stage-blur { position: absolute; inset: -20%; width: 140%; height: 140%; object-fit: cover; filter: blur(38px) saturate(1.2); opacity: .45; z-index: 0; }
 .keratin-page .k-stage-light { position: absolute; inset: 0; z-index: 1; background: radial-gradient(45% 40% at 50% 42%, hsl(var(--k-ivory) / .85), transparent 70%), linear-gradient(180deg, transparent 62%, hsl(var(--k-cocoa) / .35)); }
 .keratin-page .k-stage img.k-hero { filter: drop-shadow(0 26px 20px hsl(var(--k-cocoa) / .38)); }
+/* Frameless hero: image fills the whole stage, no floating padding. */
+.keratin-page .k-stage.k-stage-full { aspect-ratio: 1 / 1; border-radius: 0; box-shadow: none; }
+.keratin-page .k-stage.k-stage-full img.k-hero { filter: none; }
+.keratin-page .k-stage.k-stage-full .k-stage-blur, .keratin-page .k-stage.k-stage-full .k-pedestal { display: none; }
+.keratin-page .k-stage.k-stage-full .k-stage-light { background: linear-gradient(180deg, transparent 70%, hsl(var(--k-cocoa) / .3)); }
 .keratin-page .k-pedestal { position: absolute; z-index: 1; left: 22%; right: 22%; bottom: 7%; height: 9%; border-radius: 50%; background: radial-gradient(closest-side, hsl(var(--k-cocoa) / .45), transparent); pointer-events: none; }
 .keratin-page .k-sweep { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(115deg, transparent 38%, hsl(var(--k-ivory) / .42) 50%, transparent 62%); transform: translateX(-120%); animation: k-sweep 6.5s ease-in-out infinite; }
 @keyframes k-sweep { 0%, 50% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
