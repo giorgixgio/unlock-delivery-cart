@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Product } from "@/lib/constants";
 import { BumpConfig } from "@/hooks/useLandingConfig";
 import { addUpsellItems } from "@/lib/orderService";
+import { bumpLineTotal } from "@/lib/bumpPricing";
 
 interface BumpOfferModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ const BumpOfferModal = ({
 }: BumpOfferModalProps) => {
   const [loading, setLoading] = useState(false);
 
-  const bumpTotal = bumpConfig.fixed_price ?? product.price * (1 - bumpConfig.discount_pct / 100) * bumpConfig.bump_qty;
+  const bumpTotal = bumpLineTotal(product.price, bumpConfig);
   const bumpUnitPrice = bumpTotal / bumpConfig.bump_qty;
   const savings = Math.max(0, product.price * bumpConfig.bump_qty - bumpTotal);
 
@@ -134,7 +135,7 @@ const BumpOfferModal = ({
                 </span>
                 <span className="text-base font-extrabold text-primary">{bumpTotal.toFixed(0)} ₾</span>
                 <span className="bg-deal text-deal-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded">
-                  -{bumpConfig.discount_pct}%
+                  -{bumpConfig.discount_pct || Math.round((savings / (product.price * bumpConfig.bump_qty)) * 100)}%
                 </span>
               </div>
             </div>

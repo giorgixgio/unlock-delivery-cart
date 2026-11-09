@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Clock3, Flame } from "lucide-react";
 
 const TIMER_MINUTES = 29;
-const STORAGE_KEY = "sku_002_urgency_end";
+const DEFAULT_STORAGE_KEY = "sku_002_urgency_end";
 
-const getInitialSeconds = () => {
+const getInitialSeconds = (STORAGE_KEY: string) => {
   const storedEnd = Number(sessionStorage.getItem(STORAGE_KEY));
   if (Number.isFinite(storedEnd) && storedEnd > Date.now()) {
     return Math.ceil((storedEnd - Date.now()) / 1000);
@@ -15,9 +15,10 @@ const getInitialSeconds = () => {
   return TIMER_MINUTES * 60;
 };
 
-const SkuUrgencyTimer = () => {
+/** `storageKey` keeps each landing's countdown separate; `showStock` off hides the simulated stock strip. */
+const SkuUrgencyTimer = ({ storageKey = DEFAULT_STORAGE_KEY, showStock = true }: { storageKey?: string; showStock?: boolean } = {}) => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [secondsLeft, setSecondsLeft] = useState(getInitialSeconds);
+  const [secondsLeft, setSecondsLeft] = useState(() => getInitialSeconds(storageKey));
   const [isVisible, setIsVisible] = useState(false);
   const [stockLeft, setStockLeft] = useState(17);
 
@@ -99,7 +100,7 @@ const SkuUrgencyTimer = () => {
         </div>
       </div>
 
-      <div className="mt-4">
+      {showStock && <div className="mt-4">
         <div className="mb-2 flex items-end justify-between gap-2">
           <p className="text-xs font-bold text-primary-foreground">მარაგი თითქმის ამოიწურა</p>
           <p className="shrink-0 text-sm font-extrabold text-primary">დარჩა {stockLeft} ცალი</p>
