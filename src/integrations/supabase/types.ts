@@ -4025,6 +4025,8 @@ export type Database = {
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
       is_queue_only_operator: { Args: { p_uid: string }; Returns: boolean }
+      is_test_order: { Args: { p_order_id: string }; Returns: boolean }
+      is_test_sku: { Args: { p_sku: string }; Returns: boolean }
       mark_stockout_waitlist: {
         Args: { p_attempt_id: string }
         Returns: undefined
