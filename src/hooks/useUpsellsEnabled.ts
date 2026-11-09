@@ -26,17 +26,17 @@ export function useGlobalUpsellsEnabled() {
   });
 }
 
-/** Compute whether the upsell should be shown for a given landing.
- *  `blocked` (e.g. the camera presentation, which runs no post-phone upsell)
- *  suppresses the sheet unless the product row explicitly turns it on. */
+/** Cross-product suggestions are disabled on all /p pages, even with admin overrides. */
 export function resolveUpsellEnabled(
-  globalEnabled: boolean | undefined,
-  perProductEnabled: boolean | null | undefined,
-  blocked = false,
+  _globalEnabled: boolean | undefined,
+  _perProductEnabled: boolean | null | undefined,
+  _blocked = false,
 ): boolean {
-  // Per-product TRUE always wins (overrides global OFF and the block).
-  if (perProductEnabled === true) return true;
-  if (blocked) return false;
-  return globalEnabled !== false; // default ON until we know otherwise
+  return false;
+}
+
+/** Same-product offers remain eligible; different products never do. */
+export function isLandingOfferAllowed(baseProductId: string, offerProductId?: string): boolean {
+  return !!offerProductId && baseProductId === offerProductId;
 }
 

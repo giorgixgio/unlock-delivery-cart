@@ -7,7 +7,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProducts, useStorefrontProducts } from "@/hooks/useProducts";
 import { useLandingPage } from "@/contexts/LandingPageContext";
 import { useLandingConfig } from "@/hooks/useLandingConfig";
-import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsellsEnabled";
+import { useGlobalUpsellsEnabled, resolveUpsellEnabled, isLandingOfferAllowed } from "@/hooks/useUpsellsEnabled";
 import { Product } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft, Gift, Truck } from "lucide-react";
@@ -201,7 +201,7 @@ const GenericLanding = ({
     () => (keratinPresentation ? keratinUpsellProduct : singleOffer ? storefrontProducts.find((p) => String(p.sku) === singleOffer.offerSku) ?? null : null),
     [singleOffer, storefrontProducts, keratinPresentation, keratinUpsellProduct]
   );
-  const singleOfferActive = !!(singleOffer && singleOfferProduct);
+  const singleOfferActive = !!singleOffer && isLandingOfferAllowed(product.id, singleOfferProduct?.id);
 
   // Pre-selected free gift for every order of this SKU
   const giftOffer = getFreeGiftOffer(product.sku);
