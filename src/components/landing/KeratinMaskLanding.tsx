@@ -33,14 +33,15 @@ function Reveal({ children, className = '', id }: { children: ReactNode; classNa
 }
 
 /** Tracks whether an element is on screen (used for the sticky bar). */
-function useOnScreen(ref: RefObject<HTMLElement>, initial: boolean) {
+function useOnScreen(ref: RefObject<HTMLElement>, initial: boolean, past = false) {
   const [on, setOn] = useState(initial);
   useEffect(() => {
     const el = ref.current; if (!el) { setOn(false); return; }
-    const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting), { threshold: 0 });
+    // "past" counts as on-screen so the sticky bar stays hidden below the final offer (footer).
+    const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting || (past && e.boundingClientRect.bottom < 0)), { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
-  }, [ref]);
+  }, [ref, past]);
   return on;
 }
 
@@ -89,12 +90,10 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
   const heroCta = useRef<HTMLDivElement>(null);
   const finalOffer = useRef<HTMLDivElement>(null);
   const mainOffer = useRef<HTMLDivElement>(null);
-  const pageEnd = useRef<HTMLDivElement>(null);
   const heroOn = useOnScreen(heroCta, true);
-  const finalOn = useOnScreen(finalOffer, false);
+  const finalOn = useOnScreen(finalOffer, false, true);
   const mainOn = useOnScreen(mainOffer, false);
-  const endOn = useOnScreen(pageEnd, false);
-  const stickyOn = !heroOn && !finalOn && !mainOn && !endOn;
+  const stickyOn = !heroOn && !finalOn && !mainOn;
 
   const rating = cameraRating(reviews);
   const sold = stats ? cameraSoldLabel(stats.sold_units) : 0;
@@ -319,7 +318,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
       <img src={hero} alt="" aria-hidden="true" loading="lazy" className="k-final-blur" width={400} height={400} />
       <div className="relative max-w-lg mx-auto px-4 py-10">{offer(finalOffer, 'მიანიჭე თმას სალონური მოვლის შეგრძნება')}</div>
     </section>}
-    <div ref={pageEnd} className="h-6" aria-hidden="true" />
+    
 
     {toast && <div role="status" className={`k-toast fixed left-4 right-4 z-40 max-w-sm mx-auto rounded-full px-4 py-2.5 text-[14px] text-center ${stickyOn ? 'bottom-[96px]' : 'bottom-5'}`}>ახლახან შეუკვეთეს: {toast}</div>}
 
