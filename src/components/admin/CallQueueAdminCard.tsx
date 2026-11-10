@@ -59,8 +59,8 @@ export default function CallQueueAdminCard() {
   const saveCatchUp = async (on: boolean) => {
     if (!settings) return;
     const gap = Number(catchUpGap);
-    if (!Number.isInteger(gap) || gap < 1 || gap > 120) {
-      toast({ title: "Minimum gap: 1–120 minutes", variant: "destructive" }); return;
+    if (!Number.isInteger(gap) || gap < 0 || gap > 120) {
+      toast({ title: "Minimum gap: 0–120 minutes", variant: "destructive" }); return;
     }
     setBusy("catchup");
     const patch = { catch_up_enabled: on, catch_up_gap_minutes: gap };
@@ -128,7 +128,7 @@ export default function CallQueueAdminCard() {
         </div>
         <label className="block text-sm space-y-1">
           <span>Minimum retry gap (minutes)</span>
-          <Input type="number" min={1} max={120} value={catchUpGap} onChange={(e) => setCatchUpGap(e.target.value)} className="text-base" />
+          <Input type="number" min={0} max={120} value={catchUpGap} onChange={(e) => setCatchUpGap(e.target.value)} className="text-base" />
         </label>
         <Button size="sm" variant="outline" disabled={!settings || busy === "catchup"} onClick={() => void saveCatchUp(!!settings?.catch_up_enabled)}>Save catch-up gap</Button>
       </div>

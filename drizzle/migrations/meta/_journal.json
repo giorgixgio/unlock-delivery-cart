@@ -442,6 +442,13 @@
       "when": 1794302285077,
       "tag": "0062_catch_up_closed_stage_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794302538416,
+      "tag": "0063_call_queue_zero_catch_up_gap",
+      "breakpoints": true
     }
   ]
 }

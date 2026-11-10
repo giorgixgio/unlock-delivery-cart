@@ -28,6 +28,28 @@ describe("temporary catch-up", () => {
     expect(queueTier(callback, me, now, 120, settings)).toBeNull();
     expect(queueTier(callback, me, new Date("2026-11-10T10:00:00Z"), 120, settings)).toBe(1);
   });
+  it("zero gap makes the just-attempted lead immediately callable without cancelling", () => {
+    const zero = { ...settings, catchUpGapMinutes: 0 };
+    const lead = { ...base, call_attempt_count: 4, last_call_attempt_at: now.toISOString(), next_call_after: "2026-11-11T06:00:00Z" };
+    expect(computeRetry(4, now, now, zero)).toEqual({ action: "retry", at: now });
+    expect(queueTier(lead, me, now, 120, zero)).toBe(4);
+  });
+  it("zero gap rotates a no-answer behind leads with fewer attempts or older calls", () => {
+    const zero = { ...settings, catchUpGapMinutes: 0 };
+    const rows = [
+      { ...base, id: "justCalled", call_attempt_count: 3, last_call_attempt_at: now.toISOString() },
+      { ...base, id: "olderCall", call_attempt_count: 3, last_call_attempt_at: "2026-11-10T08:59:00Z" },
+      { ...base, id: "fewer", call_attempt_count: 2, last_call_attempt_at: "2026-11-10T08:59:30Z" },
+      { ...base, id: "fresh", call_attempt_count: 0 },
+    ];
+    expect(sortQueue(rows, me, now, 0, zero).map(o => o.id)).toEqual(["fresh", "fewer", "olderCall", "justCalled"]);
+  });
+  it("zero gap still respects future callbacks and off restores normal waiting", () => {
+    const zero = { ...settings, catchUpGapMinutes: 0 };
+    expect(queueTier({ ...base, call_outcome: "callback", next_call_after: "2026-11-10T10:00:00Z" }, me, now, 120, zero)).toBeNull();
+    expect(queueTier({ ...base, call_attempt_count: 4, last_call_attempt_at: now.toISOString(), next_call_after: "2026-11-11T06:00:00Z" }, me, now, 120, { ...zero, catchUpEnabled: false })).toBeNull();
+    expect(computeRetry(1, now, now, { ...zero, catchUpEnabled: false })).toEqual({ action: "retry", at: new Date("2026-11-10T11:00:00Z") });
+  });
   it("sorts never-called first then fewest attempts, oldest last-call, newest creation", () => {
     const rows = [
       { ...base, id: "many", call_attempt_count: 4, last_call_attempt_at: "2026-11-09T01:00:00Z" },
