@@ -23,6 +23,7 @@ export const TEST_SKUS = [
   "252",
   "328/old",
   "323_x",
+  "386",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);
