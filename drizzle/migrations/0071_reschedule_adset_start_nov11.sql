@@ -1,0 +1,2 @@
+SELECT cron.alter_job(job_id := (SELECT jobid FROM cron.job WHERE jobname='meta-adsets-start-oct6'), schedule := '1 20 10 11 *');
+SELECT cron.alter_job(job_id := (SELECT jobid FROM cron.job WHERE jobname='meta-adsets-start-oct6-retry'), schedule := '3 20 10 11 *');
