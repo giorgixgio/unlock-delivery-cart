@@ -1,7 +1,7 @@
 # Roadmap — Courier section
 
 # Roadmap — Temporary catch-up mode
-- [ ] Allow and activate a zero-minute catch-up gap; show live last-call age and recorded attempt count on queue cards/search rows; verify unchanged callbacks/off rules and callable count.
+- [x] Allow and activate zero-minute catch-up gap; add live last-call age/recorded attempts on queue cards/search rows. 73 related tests pass, build clean; live unlocked callable count 38. Signed-in display remains blocked by missing requesting-user auth account (login redirect verified).
 - [x] Add isolated catch-up selection/retry rules, admin switch and operator banner without changing normal settings or the held optimisation plan.
 - [x] Verify policy and live eligibility, enable catch-up with a 15-minute gap; 37 unlocked callable leads, 23 future callbacks, one assigned at verification.
 - [ ] Verify signed-in toggle/banner and no-answer round trip — requesting user has no matching auth account; preview currently redirects to sign-in. UI changes need publishing for existing public operator sessions.
