@@ -309,6 +309,8 @@ export type Database = {
       call_queue_settings: {
         Row: {
           backlog_mix: number
+          catch_up_enabled: boolean
+          catch_up_gap_minutes: number
           enabled_operators: string[]
           id: boolean
           lock_minutes: number
@@ -329,6 +331,8 @@ export type Database = {
         }
         Insert: {
           backlog_mix?: number
+          catch_up_enabled?: boolean
+          catch_up_gap_minutes?: number
           enabled_operators?: string[]
           id?: boolean
           lock_minutes?: number
@@ -349,6 +353,8 @@ export type Database = {
         }
         Update: {
           backlog_mix?: number
+          catch_up_enabled?: boolean
+          catch_up_gap_minutes?: number
           enabled_operators?: string[]
           id?: boolean
           lock_minutes?: number
@@ -3788,6 +3794,8 @@ export type Database = {
         Args: never
         Returns: {
           backlog_mix: number
+          catch_up_enabled: boolean
+          catch_up_gap_minutes: number
           enabled_operators: string[]
           id: boolean
           lock_minutes: number
