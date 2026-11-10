@@ -19,6 +19,7 @@ export const TEST_SKUS = [
   "testkrema",
   "testwarbi",
   "207",
+  "46",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);
