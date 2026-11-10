@@ -1,0 +1,2 @@
+ALTER TABLE public.call_queue_settings DROP CONSTRAINT call_queue_settings_catch_up_gap_minutes_check;
+ALTER TABLE public.call_queue_settings ADD CONSTRAINT call_queue_settings_catch_up_gap_minutes_check CHECK (catch_up_gap_minutes BETWEEN 0 AND 120);

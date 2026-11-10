@@ -63,21 +63,21 @@ interface QOrder {
   address_line1: string; address_line2: string | null; raw_address: string | null; normalized_address: string | null;
   notes_customer: string | null; internal_note: string | null; normalization_confidence: number | null; review_required: boolean;
   subtotal: number; shipping_fee: number; discount_total: number; total: number;
-  call_attempt_count: number | null; is_fulfilled: boolean | null; operator_viewed_at: string | null; operator_review_status: string | null;
+  call_attempt_count: number | null; last_call_attempt_at: string | null; is_fulfilled: boolean | null; operator_viewed_at: string | null; operator_review_status: string | null;
   is_return: boolean | null; is_confirmed: boolean | null; auto_confirmed: boolean | null; call_outcome: string | null;
   onway_sent_at: string | null; onway_tracking: string | null; tracking_number: string | null; packed_at: string | null;
   packing_wave_id: string | null; merged_into_order_id: string | null; onway_last_status: string | null; final_cancel_reason: string | null;
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, support_hold, tags, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, last_call_attempt_at, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, support_hold, tags, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
 
 export const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, support_hold, call_outcome, call_attempt_count, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, support_hold, call_outcome, call_attempt_count, last_call_attempt_at, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
 type SearchHit = SearchOrderLike & OrderStageLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
   customer_name: string | null; customer_phone: string | null;
-  call_outcome: string | null; call_attempt_count: number | null;
+  call_outcome: string | null; call_attempt_count: number | null; last_call_attempt_at: string | null;
   current_courier_status: string | null; courier_status: string | null;
   order_items: { title: string; quantity: number }[] | null;
 };
@@ -97,6 +97,18 @@ async function findOrders(term: string): Promise<SearchHit[]> {
 /** Newest single match (Team tab tools). */
 const findOrder = async (term: string): Promise<{ id: string } | null> => (await findOrders(term))[0] ?? null;
 const itemsLine = (h: SearchHit) => (h.order_items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ");
+
+function LastCallInfo({ order, now }: { order: Pick<QOrder, "last_call_attempt_at" | "call_attempt_count">; now: number }) {
+  const count = Number(order.call_attempt_count || 0);
+  const calledAt = order.last_call_attempt_at ? new Date(order.last_call_attempt_at).getTime() : NaN;
+  const minutes = Math.max(0, Math.floor((now - calledAt) / 60000));
+  const age = minutes < 1 ? "ახლახან" : minutes < 60 ? `${minutes} წთ წინ` : minutes < 1440 ? `${Math.floor(minutes / 60)} სთ ${minutes % 60} წთ წინ` : `${Math.floor(minutes / 1440)} დღის წინ`;
+  return (
+    <div className="text-base font-bold text-foreground" title={Number.isFinite(calledAt) ? fmtDateTime(order.last_call_attempt_at ?? "") : undefined}>
+      📞 {Number.isFinite(calledAt) ? `ბოლო ზარი: ${age}` : count ? "ბოლო ზარის დრო უცნობია" : "ჯერ არ დარეკილა"} · {count} მცდელობა
+    </div>
+  );
+}
 
 const fmtDur = (sec: number) => {
   const m = Math.floor(sec / 60);
@@ -680,6 +692,7 @@ function QueueTab() {
                     {lockedByOther && <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs">🔒 {operatorName(h.queue_locked_by || "")}</span>}
                   </div>
                   <div className="mt-1 truncate text-xs text-muted-foreground">{itemsLine(h) || "—"}</div>
+                  <LastCallInfo order={h} now={now} />
                 </button>
                 {isAdmin && <Link to={`/admin/orders/${h.id}`} className="absolute right-2 bottom-1.5 text-[11px] underline text-muted-foreground">Open full page</Link>}
               </div>
@@ -723,6 +736,7 @@ function QueueTab() {
                 <div className="text-xs text-muted-foreground">{itemCount} ც</div>
               </div>
             </div>
+            <LastCallInfo order={order} now={now} />
             <PreviousOrdersPanel key={order.id} order={order} currentSkus={order.order_items.map((i) => i.sku)} actor={actor} accordion />
 
             {(order.notes_customer || order.internal_note) && (
