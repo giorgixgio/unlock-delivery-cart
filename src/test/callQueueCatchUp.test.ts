@@ -39,7 +39,7 @@ describe("temporary catch-up", () => {
     expect(sortQueue(rows, me, now, 0, settings).map(o => o.id)).toEqual(["freshNew", "freshOld", "oldNewer", "old", "recent", "many"]);
   });
   it("preserves test, support, confirmed, cancelled and lock exclusions", () => {
-    for (const patch of [{ tags: ["test_sku"] }, { support_hold: true }, { is_confirmed: true }, { status: "canceled" }, { queue_locked_by: "other", queue_locked_until: "2026-11-10T10:00:00Z" }]) {
+    for (const patch of [{ tags: ["test_sku"] }, { support_hold: true }, { is_confirmed: true }, { status: "canceled" }, { onway_api_status: "sent" }, { merged_into_order_id: "converted" }, { queue_locked_by: "other", queue_locked_until: "2026-11-10T10:00:00Z" }]) {
       expect(queueTier({ ...base, ...patch }, me, now, 120, settings)).toBeNull();
     }
   });

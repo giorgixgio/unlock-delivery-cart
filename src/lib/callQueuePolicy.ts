@@ -100,6 +100,13 @@ export interface QueueOrderLike {
   queue_locked_by?: string | null;
   queue_locked_until?: string | null;
   queue_last_touched_by?: string | null;
+  onway_sent_at?: string | null;
+  onway_api_status?: string | null;
+  onway_tracking?: string | null;
+  tracking_number?: string | null;
+  merged_into_order_id?: string | null;
+  packed_at?: string | null;
+  packing_wave_id?: string | null;
 }
 
 /** 1 = my sticky callback, 2 = fresh, 3 = other callback, 4 = no-answer retry; null = not eligible now. */
@@ -116,6 +123,7 @@ export function queueTier(
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
   if (o.support_hold) return null; // handed to support (operator issue ticket)
+  if (s.catchUpEnabled && (o.onway_sent_at || o.merged_into_order_id || o.onway_tracking || o.tracking_number || o.packed_at || o.packing_wave_id || ["sent", "sending"].includes(o.onway_api_status ?? ""))) return null;
   const next = ts(o.next_call_after);
   if ((!s.catchUpEnabled || o.call_outcome === "callback") && next !== null && next > t) return null;
   const lockUntil = ts(o.queue_locked_until);
