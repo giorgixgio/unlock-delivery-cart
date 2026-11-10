@@ -1,5 +1,9 @@
 # Roadmap — Courier section
 
+# Roadmap — Temporary catch-up mode
+- [ ] Add isolated catch-up selection/retry rules, admin switch and operator banner without changing normal settings or the held optimisation plan.
+- [ ] Verify policy and live eligibility, enable catch-up with a 15-minute gap, report callable lead count.
+
 # Roadmap — Queue backlog alternation
 - [x] Apply live backlog mixing to selection/rank without changing eligibility or order data; schema and lock clause verified.
 - [x] Add backlog_mix admin setting and matching pure policy tests; 227 tests and TypeScript pass, SQL alternation/callback/fallback parity verified. Settings rendering unverified: no matching preview auth account.
