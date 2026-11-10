@@ -470,6 +470,13 @@
       "when": 1794332804787,
       "tag": "0066_test_sku_46",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794333087526,
+      "tag": "0067_test_sku_252",
+      "breakpoints": true
     }
   ]
 }
