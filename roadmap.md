@@ -1,5 +1,10 @@
 # Roadmap — Courier section
 
+# Roadmap — Temporary catch-up mode
+- [x] Add isolated catch-up selection/retry rules, admin switch and operator banner without changing normal settings or the held optimisation plan.
+- [x] Verify policy and live eligibility, enable catch-up with a 15-minute gap; 37 unlocked callable leads, 23 future callbacks, one assigned at verification.
+- [ ] Verify signed-in toggle/banner and no-answer round trip — requesting user has no matching auth account; preview currently redirects to sign-in. UI changes need publishing for existing public operator sessions.
+
 # Roadmap — Queue backlog alternation
 - [x] Apply live backlog mixing to selection/rank without changing eligibility or order data; schema and lock clause verified.
 - [x] Add backlog_mix admin setting and matching pure policy tests; 227 tests and TypeScript pass, SQL alternation/callback/fallback parity verified. Settings rendering unverified: no matching preview auth account.

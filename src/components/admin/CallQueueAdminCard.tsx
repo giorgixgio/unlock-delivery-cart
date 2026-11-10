@@ -26,6 +26,8 @@ export default function CallQueueAdminCard() {
   const [masterAsk, setMasterAsk] = useState<boolean | null>(null);
   const [night, setNight] = useState({ night_from: "", night_to: "", night_first_call_after: "", night_retry_slot: "" });
   const [order, setOrder] = useState({ morning_block_until: "12:00", retry_every_n: "4", backlog_mix: "2" });
+  const [catchUpGap, setCatchUpGap] = useState("15");
+  useEffect(() => { if (settings) setCatchUpGap(String(settings.catch_up_gap_minutes)); }, [settings]);
   useEffect(() => {
     if (settings) setOrder({ morning_block_until: settings.morning_block_until, retry_every_n: String(settings.retry_every_n), backlog_mix: String(settings.backlog_mix) });
   }, [settings]);
@@ -54,6 +56,20 @@ export default function CallQueueAdminCard() {
   };
 
   const validTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  const saveCatchUp = async (on: boolean) => {
+    if (!settings) return;
+    const gap = Number(catchUpGap);
+    if (!Number.isInteger(gap) || gap < 1 || gap > 120) {
+      toast({ title: "Minimum gap: 1–120 minutes", variant: "destructive" }); return;
+    }
+    setBusy("catchup");
+    const patch = { catch_up_enabled: on, catch_up_gap_minutes: gap };
+    const ok = await saveCallQueueSettings(patch, user?.email || "admin");
+    setBusy(null);
+    if (!ok) { toast({ title: "Couldn't save", variant: "destructive" }); return; }
+    setSettings({ ...settings, ...patch });
+    toast({ title: on ? "Catch-up mode ON" : "Normal queue rules restored" });
+  };
   const saveOrder = async () => {
     if (!settings) return;
     const n = Number(order.retry_every_n);
@@ -104,6 +120,17 @@ export default function CallQueueAdminCard() {
           <div className="text-xs text-muted-foreground">On: every operator (not managers/admins) works only from the queue; Orders list hidden for them.</div>
         </div>
         <Switch checked={!!settings?.operators_use_queue} disabled={!settings || busy === "master"} onCheckedChange={(v) => setMasterAsk(v)} />
+      </div>
+      <div className="mt-3 border-t border-border pt-3 space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="catch-up-mode" className="text-base font-bold">Catch-up mode</label>
+          <Switch id="catch-up-mode" checked={!!settings?.catch_up_enabled} disabled={!settings || busy === "catchup"} onCheckedChange={(on) => void saveCatchUp(on)} />
+        </div>
+        <label className="block text-sm space-y-1">
+          <span>Minimum retry gap (minutes)</span>
+          <Input type="number" min={1} max={120} value={catchUpGap} onChange={(e) => setCatchUpGap(e.target.value)} className="text-base" />
+        </label>
+        <Button size="sm" variant="outline" disabled={!settings || busy === "catchup"} onClick={() => void saveCatchUp(!!settings?.catch_up_enabled)}>Save catch-up gap</Button>
       </div>
       <div className="mt-3 border-t border-border pt-2 space-y-2">
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">Night leads (Tbilisi time)</div>

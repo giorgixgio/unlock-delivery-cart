@@ -128,6 +128,12 @@ export default function AdminCallQueue() {
         <ToggleStore compact />
       </div>
       <Tabs defaultValue={access.allowed ? "queue" : "team"}>
+        {access.settings?.catch_up_enabled && (
+          <div role="status" className="my-3 border-2 border-primary bg-accent text-accent-foreground px-3 py-3 text-base font-bold flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>Catch-up mode ON · დაჩქარებული რეჟიმი ჩართულია · განმეორებით ზარებს შორის მინიმუმ {access.settings.catch_up_gap_minutes} წუთი</span>
+          </div>
+        )}
         <TabsList>
           {access.allowed && <TabsTrigger value="queue">რიგი / Queue</TabsTrigger>}
           {access.isManager && <TabsTrigger value="team">Team</TabsTrigger>}

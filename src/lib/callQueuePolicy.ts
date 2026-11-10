@@ -19,6 +19,8 @@ export interface QueuePolicySettings {
   morningBlockUntil?: string;
   retryEveryN?: number;
   backlogMix?: 2 | 3;
+  catchUpEnabled?: boolean;
+  catchUpGapMinutes?: number;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
@@ -59,6 +61,7 @@ export function computeRetry(
   attemptCount: number, firstAttemptAt: Date, now: Date,
   s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS, extraAttempts = 0, createdAt?: Date,
 ): RetryDecision {
+  if (s.catchUpEnabled) return { action: "retry", at: new Date(now.getTime() + (s.catchUpGapMinutes ?? 15) * 60000) };
   if (attemptCount >= s.maxAttempts + extraAttempts) return { action: "cancel" };
   const n = local(now);
   // Night lead, first no-answer: retry at nightRetrySlot today if it is still ahead.
@@ -97,6 +100,13 @@ export interface QueueOrderLike {
   queue_locked_by?: string | null;
   queue_locked_until?: string | null;
   queue_last_touched_by?: string | null;
+  onway_sent_at?: string | null;
+  onway_api_status?: string | null;
+  onway_tracking?: string | null;
+  tracking_number?: string | null;
+  merged_into_order_id?: string | null;
+  packed_at?: string | null;
+  packing_wave_id?: string | null;
 }
 
 /** 1 = my sticky callback, 2 = fresh, 3 = other callback, 4 = no-answer retry; null = not eligible now. */
@@ -109,15 +119,21 @@ export function queueTier(
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!QUEUE_STATUSES.includes(o.status)) return null;
   const createdAt = ts(o.created_at);
-  if (o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
+  if (!s.catchUpEnabled && o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
   if (o.support_hold) return null; // handed to support (operator issue ticket)
+  if (s.catchUpEnabled && (o.onway_sent_at || o.merged_into_order_id || o.onway_tracking || o.tracking_number || o.packed_at || o.packing_wave_id || ["sent", "sending"].includes(o.onway_api_status ?? ""))) return null;
   const next = ts(o.next_call_after);
-  if (next !== null && next > t) return null;
+  if ((!s.catchUpEnabled || o.call_outcome === "callback") && next !== null && next > t) return null;
   const lockUntil = ts(o.queue_locked_until);
   const me = caller.toLowerCase();
   if (lockUntil !== null && lockUntil > t && (o.queue_locked_by ?? "").toLowerCase() !== me) return null;
+  if (s.catchUpEnabled && o.call_outcome !== "callback") {
+    const last = ts(o.last_call_attempt_at);
+    if (last !== null && last > t - (s.catchUpGapMinutes ?? 15) * 60000) return null;
+    return Number(o.call_attempt_count || 0) === 0 ? 2 : 4;
+  }
   if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") {
     const rel = nightReleaseAt(new Date(o.created_at), s);
     if (rel && t < rel.getTime()) return null;
@@ -193,6 +209,16 @@ export function sortQueue<T extends QueueOrderLike>(
     .map((o) => ({ o, tier: queueTier(o, caller, now, s.retryGapMinutes, s) }))
     .filter((x): x is { o: T; tier: number } => x.tier !== null);
   const backlog = eligible.some((x) => isGuardItem(x.tier, x.o, now, s));
+  if (s.catchUpEnabled) {
+    const rank = (x: { o: T; tier: number }) => x.tier === 1 || x.tier === 3
+      ? [0, new Date(x.o.next_call_after ?? x.o.created_at).getTime(), 0, 0]
+      : [1, Number(x.o.call_attempt_count || 0), x.o.last_call_attempt_at ? new Date(x.o.last_call_attempt_at).getTime() : 0, -new Date(x.o.created_at).getTime()];
+    return eligible.sort((a, b) => {
+      const ar = rank(a), br = rank(b);
+      for (let i = 0; i < ar.length; i++) { if (ar[i] !== br[i]) return ar[i] - br[i]; }
+      return a.o.id.localeCompare(b.o.id);
+    }).map((x) => x.o);
+  }
   return eligible
     .map((x) => ({ ...x, r: queueRank(x.tier, x.o, now, turn, s, backlog, isOldTurn(picksToday, s.backlogMix)) }))
     .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.o.created_at.localeCompare(b.o.created_at))

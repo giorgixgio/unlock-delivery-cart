@@ -428,6 +428,20 @@
       "when": 1794265408006,
       "tag": "0060_test_order_isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794302195471,
+      "tag": "0061_call_queue_catch_up_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794302285077,
+      "tag": "0062_catch_up_closed_stage_guard",
+      "breakpoints": true
     }
   ]
 }
