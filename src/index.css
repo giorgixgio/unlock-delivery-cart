@@ -939,6 +939,7 @@
 .satori-page .sat-band-ink { background: hsl(var(--sat-ink)); }
 .satori-page .sat-band-walnut { background: linear-gradient(180deg, hsl(var(--sat-walnut)), hsl(20 40% 22%)); }
 .satori-page .sat-walnut-fill { fill: hsl(var(--sat-walnut)); }
+.satori-page .sat-demo-feature { background: hsl(var(--sat-ink)); border: 1px solid hsl(var(--sat-vermilion) / .55); box-shadow: 0 0 0 1px hsl(var(--sat-steel) / .15) inset, 0 10px 34px -8px hsl(var(--sat-vermilion) / .38); }
 .satori-page .sat-card-ink { background: hsl(var(--sat-ink)); border: 1px solid hsl(0 0% 100% / .08); }
 .satori-page .sat-paper, .satori-page .cam-card { background: hsl(var(--sat-paper)); color: hsl(0 0% 10%); }
 .satori-page .cam-card { border-color: transparent; box-shadow: 0 12px 32px hsl(0 0% 0% / .45); }

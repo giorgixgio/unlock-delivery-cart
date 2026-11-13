@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { bumpLineTotal } from '@/lib/bumpPricing';
 import { DR_LANDINGS, drFor, drVariantForPath, SATORI_PRODUCT_ID } from '@/lib/drLandings';
-import { resolveSatoriConfig, satoriBump, satoriImages, satoriVisibleFaq, discountPct, satoriTiers, satoriDemoMedia, SATORI_DEFAULTS } from '@/lib/satoriKnifeConfig';
+import { resolveSatoriConfig, satoriBump, satoriImages, satoriVisibleFaq, discountPct, satoriTiers, satoriDemoMedia, satoriDemoLayout, SATORI_DEFAULTS } from '@/lib/satoriKnifeConfig';
 import { isTestSku } from '@/lib/testProducts';
 import { getDiscountedTotal } from '@/lib/landingDiscounts';
 
@@ -53,4 +53,12 @@ describe('SATORI knife landing', () => {
     expect(satoriDemoMedia(resolveSatoriConfig({ demo_slots: [{ label: 'ბოსტნეული', url: 'x.mp4' }, { label: 'თევზი', url: '' }] }))).toHaveLength(1);
   });
   it('no hardcoded prices in default copy', () => { expect(JSON.stringify(SATORI_DEFAULTS.comparison)).not.toMatch(/\d+₾/); });
+});
+
+describe('satori demo layout', () => {
+  it('one filled slot is a single card, two keep the strip, none hides', () => {
+    expect(satoriDemoLayout(resolveSatoriConfig())).toBe('none');
+    expect(satoriDemoLayout(resolveSatoriConfig({ demo_slots: [{ label: 'a', url: 'x.mp4' }, { label: 'b', url: '' }] }))).toBe('single');
+    expect(satoriDemoLayout(resolveSatoriConfig({ demo_slots: [{ label: 'a', url: 'x.mp4' }, { label: 'b', url: 'y.webp' }] }))).toBe('strip');
+  });
 });

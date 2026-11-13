@@ -2,11 +2,11 @@ import type { BumpConfig } from '@/hooks/useLandingConfig';
 import { getDiscountedTotal } from '@/lib/landingDiscounts';
 
 export interface SatoriHotspot { title: string; text: string; x: number; y: number; crop?: 'blade' | 'handle' }
-export interface SatoriDemoSlot { label: string; url: string }
+export interface SatoriDemoSlot { label: string; url: string; poster?: string }
 export interface SatoriConfig {
   title: string; headline: string; benefits: string[];
   gallery: string[]; video_url: string; video_poster: string;
-  demo_heading: string; demo_slots: SatoriDemoSlot[];
+  demo_heading: string; demo_subline: string; demo_slots: SatoriDemoSlot[];
   hotspot_heading: string; hotspots: SatoriHotspot[];
   uses_heading: string; uses: string[];
   comparison_heading: string; comparison: { label: string; ours: string; other: string }[];
@@ -25,6 +25,7 @@ export const SATORI_DEFAULTS: SatoriConfig = {
   benefits: ['თხელი, სუფთა ჭრა', 'ხის სახელური — მყარი მოჭიდება', 'ნაჭედი ტექსტურის პირი'],
   gallery: [], video_url: '', video_poster: '',
   demo_heading: 'ნახე მოქმედებაში',
+  demo_subline: 'ბასრი პირი — სუფთა, თხელი ჭრა',
   demo_slots: SATORI_DEMO_LABELS.map(label => ({ label, url: '' })),
   hotspot_heading: 'ახლო ხედი',
   hotspots: [
@@ -73,7 +74,9 @@ export function satoriBump(c: SatoriConfig): BumpConfig {
 }
 export const satoriVisibleFaq = (c: SatoriConfig) => c.faq.filter(f => f.question.trim() && f.answer.trim());
 export const satoriVisibleSpecs = (c: SatoriConfig) => c.specs.filter(s => s.label.trim() && s.value.trim());
-export const satoriDemoMedia = (c: SatoriConfig) => [...(c.video_url.trim() ? [{ label: '', url: c.video_url.trim() }] : []), ...c.demo_slots.filter(s => s.url.trim())];
+export const satoriDemoMedia = (c: SatoriConfig) => [...(c.video_url.trim() ? [{ label: '', url: c.video_url.trim(), poster: c.video_poster.trim() }] : []), ...c.demo_slots.filter(s => s.url.trim())];
+/** One filled slot renders as a single feature card; 2+ keep the swipe strip. */
+export const satoriDemoLayout = (c: SatoriConfig): 'none' | 'single' | 'strip' => { const n = satoriDemoMedia(c).length; return n === 0 ? 'none' : n === 1 ? 'single' : 'strip'; };
 export const isVideoUrl = (u: string) => /\.(mp4|webm|mov)(\?|$)/i.test(u);
 export const satoriPreviewMode = (search: string) => new URLSearchParams(search).get('preview') === '1';
 /** Real gallery images only — never an empty/broken URL. */

@@ -8,7 +8,7 @@ import { useProductReviews, useProductStats } from '@/hooks/useCameraReviews';
 import { useSiteBranding } from '@/hooks/useSiteBranding';
 import logo from '@/assets/logo.png';
 import { DR_LANDINGS, type DrLanding } from '@/lib/drLandings';
-import { discountPct, isVideoUrl, resolveSatoriConfig, satoriDemoMedia, satoriImages, satoriMoney as money, satoriTiers, satoriVisibleFaq, satoriVisibleSpecs, type SatoriConfig } from '@/lib/satoriKnifeConfig';
+import { discountPct, isVideoUrl, resolveSatoriConfig, satoriDemoMedia, satoriDemoLayout, satoriImages, satoriMoney as money, satoriTiers, satoriVisibleFaq, satoriVisibleSpecs, type SatoriConfig } from '@/lib/satoriKnifeConfig';
 import RepeatOrderBlock from './RepeatOrderBlock';
 import { CountUp, ShineButton } from './cameraVisuals';
 
@@ -33,6 +33,24 @@ function DemoItem({ url, label }: { url: string; label: string }) {
     {isVideoUrl(url) ? (near ? <video src={url} autoPlay muted loop playsInline preload="metadata" onError={() => setBad(true)} aria-label={label || 'SATORI'} className="w-full h-auto block"/> : <div className="aspect-square"/>) : <img src={url} alt={label || 'SATORI'} loading="lazy" onError={() => setBad(true)} className="w-full h-auto block"/>}
     {label && <figcaption className="px-3 py-2.5 text-[15px] font-bold sat-on-dark">{label}</figcaption>}
   </figure>;
+}
+
+/** Single demo as a GIF-like feature card: lazy src, plays only while >=25% visible, aspect from metadata. */
+function DemoFeature({ url, label, poster }: { url: string; label: string; poster?: string }) {
+  const ref = useRef<HTMLDivElement>(null); const vid = useRef<HTMLVideoElement>(null);
+  const [near, setNear] = useState(false); const [vis, setVis] = useState(false); const [ratio, setRatio] = useState('16 / 9'); const [bad, setBad] = useState(false);
+  const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; const [tapped, setTapped] = useState(false);
+  const video = isVideoUrl(url);
+  useEffect(() => { const el = ref.current; if (!el) return; const a = new IntersectionObserver(e => { if (e[0].isIntersecting) { setNear(true); a.disconnect(); } }, { rootMargin: '400px' }); const b = new IntersectionObserver(e => setVis(e[0].intersectionRatio >= 0.25), { threshold: [0, 0.25, 0.5, 1] }); a.observe(el); b.observe(el); return () => { a.disconnect(); b.disconnect(); }; }, []);
+  const allowed = !reduced || tapped;
+  useEffect(() => { const v = vid.current; if (!v) return; if (vis && allowed) v.play().catch(() => {}); else v.pause(); }, [vis, allowed, near]);
+  if (bad) return null;
+  return <div ref={ref} className="sat-demo-feature relative rounded-[20px] overflow-hidden" style={{ aspectRatio: ratio }}>
+    {video ? (near ? <video ref={vid} src={url} poster={poster || undefined} muted loop playsInline autoPlay={allowed} preload="metadata" disablePictureInPicture disableRemotePlayback controls={false} aria-label={label || 'SATORI'} onLoadedMetadata={e => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`); }} onError={() => setBad(true)} className="absolute inset-0 w-full h-full object-cover"/> : poster ? <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover"/> : null)
+      : <img src={url} alt={label || 'SATORI'} loading="lazy" onLoad={e => { const i = e.currentTarget; if (i.naturalWidth) setRatio(`${i.naturalWidth} / ${i.naturalHeight}`); }} onError={() => setBad(true)} className="absolute inset-0 w-full h-full object-cover"/>}
+    {label && <span className="absolute top-2.5 left-2.5 sat-chip text-[13px] font-bold rounded-full px-2.5 py-1 max-w-[85%]">{label}</span>}
+    {video && reduced && !tapped && <button type="button" onClick={() => setTapped(true)} className="absolute bottom-3 right-3 sat-chip-accent rounded-full px-3 py-2 text-[14px] font-bold min-h-[44px]">▶ ნახვა</button>}
+  </div>;
 }
 
 /** Zoomed crop of the real hero photo with numbered callouts (no generated imagery). */
@@ -138,7 +156,8 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
       <section ref={offerA} data-k="a" className="max-w-lg mx-auto px-4 mt-6 scroll-mt-4"><OfferCard id="satori-offer" tiers={tiers} compareUnit={compareUnit} selectedQty={selectedQty} onSelect={choose} onBuy={onBuy} repeatBlocked={repeatBlocked} onReorder={onReorder} ribbon={c.ribbon} price={product.price} pct={pct}/></section>
 
       {/* Demo: real uploaded media, else close-up crops of the real photo */}
-      {c.sections.demo && media.length > 0 && <Sec><H2>{c.demo_heading}</H2><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-1 camera-gallery">{media.map((m, i) => <DemoItem key={`${m.url}-${i}`} url={m.url} label={m.label}/>)}</div></Sec>}
+      {c.sections.demo && satoriDemoLayout(c) === 'single' && <Sec><H2>{c.demo_heading}</H2>{c.demo_subline && <p className="-mt-1 mb-3 text-[16px] sat-muted-dark">{c.demo_subline}</p>}<DemoFeature url={media[0].url} label={media[0].label} poster={media[0].poster}/></Sec>}
+      {c.sections.demo && satoriDemoLayout(c) === 'strip' && <Sec><H2>{c.demo_heading}</H2><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-1 camera-gallery">{media.map((m, i) => <DemoItem key={`${m.url}-${i}`} url={m.url} label={m.label}/>)}</div></Sec>}
       {c.sections.demo && hero && c.hotspots.length > 0 && <Sec><H2>{c.hotspot_heading}</H2>
         <div className="grid grid-cols-2 gap-2.5"><Crop src={hero} pos="56% 66%" label="პირი" spots={spots('blade')}/><Crop src={hero} pos="96% 10%" label="სახელური" spots={spots('handle')}/></div>
         <ol className="mt-3 grid gap-2">{c.hotspots.map((h, i) => <li key={i} className="sat-card-ink rounded-xl px-3 py-2.5 flex gap-3 items-center"><span className="sat-hotspot shrink-0">{i + 1}</span><span className="text-[15px] leading-snug sat-on-dark"><strong>{h.title}</strong> — <span className="sat-muted-dark">{h.text}</span></span></li>)}</ol></Sec>}
