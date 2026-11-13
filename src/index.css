@@ -957,3 +957,10 @@
 .satori-page .cam-dot { background: hsl(var(--sat-steel) / .4); }
 .satori-page .cam-dot.on { background: hsl(var(--sat-vermilion)); }
 @media (prefers-reduced-motion: reduce) { .satori-page * { animation: none !important; } }
+.satori-page { font-size: 16px; line-height: 1.5; }
+.satori-page .sat-tier { background: hsl(0 0% 100%); border: 2px solid hsl(36 14% 82%); color: hsl(0 0% 10%); }
+.satori-page .sat-tier.is-on { border-color: hsl(var(--sat-vermilion)); background: hsl(var(--sat-vermilion) / .06); }
+.satori-page .sat-radio { width: 22px; height: 22px; border-radius: 999px; border: 2px solid hsl(0 0% 55%); }
+.satori-page .sat-tier.is-on .sat-radio { border-color: hsl(var(--sat-vermilion)); box-shadow: inset 0 0 0 4px hsl(0 0% 100%); background: hsl(var(--sat-vermilion)); }
+.satori-page .sat-crop-cap { background: linear-gradient(0deg, hsl(0 0% 0% / .75), transparent); }
+.satori-page .sat-ghost { border: 2px solid hsl(var(--sat-paper)); color: hsl(var(--sat-paper)); background: hsl(0 0% 0% / .15); }
