@@ -37,7 +37,7 @@ export const SATORI_DEFAULTS: SatoriConfig = {
   uses: ['ხორცი და მწვადი', 'ბოსტნეული', 'თევზი', 'ხილი', 'პიკნიკი და ლაშქრობა', 'ყოველდღიური სამზარეულო'],
   comparison_heading: 'SATORI vs ჩვეულებრივი დანა',
   comparison: [
-    { label: 'ფასი', ours: '29₾', other: '—' },
+    { label: 'ფასი', ours: '49₾', other: '—' },
     { label: 'სახელური', ours: 'ხის, 3 მოქლონით', other: 'პლასტმასი' },
     { label: 'პირის ტექსტურა', ours: 'ნაჭედი', other: 'გლუვი' },
     { label: 'თითის ხვრელი', ours: 'კი', other: 'არა' },

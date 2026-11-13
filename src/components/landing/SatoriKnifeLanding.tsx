@@ -79,7 +79,7 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
       <section className="max-w-lg mx-auto px-5 pt-4">
         <div className="relative overflow-hidden rounded-2xl sat-hero-frame">
           <Hanko className="absolute top-3 right-3 z-[2] w-8 h-8"/>
-          <div ref={gallery} onScroll={e => setActive(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} className="flex overflow-x-auto snap-x snap-mandatory aspect-[4/3] camera-gallery">
+          <div ref={gallery} onScroll={e => setActive(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))} className="flex overflow-x-auto snap-x snap-mandatory aspect-square camera-gallery">
             {shown.length ? shown.map((url, i) => <img key={url} src={url} alt={`${c.title} ${i + 1}`} width={800} height={600} loading={i === 0 ? 'eager' : 'lazy'} fetchPriority={i === 0 ? 'high' : 'auto'} onError={() => setBroken(b => ({ ...b, [url]: true }))} className="w-full h-full shrink-0 object-cover snap-center"/>) : <div className="w-full h-full shrink-0"><Placeholder title={c.title}/></div>}
           </div>
         </div>
