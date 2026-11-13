@@ -142,14 +142,14 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
     <main>
       {/* Hero */}
       <section className="max-w-lg mx-auto px-4 pt-3">
-        <div className="relative overflow-hidden rounded-2xl sat-hero-frame aspect-[4/3]">
-          {hero ? <img src={hero} alt={c.title} width={800} height={800} loading="eager" fetchPriority="high" onError={() => setBroken(b => ({ ...b, [hero]: true }))} className="w-full h-full object-cover object-[50%_45%]"/> : <Placeholder title={c.title}/>}
+        <div className="relative overflow-hidden rounded-2xl sat-hero-frame aspect-square">
+          {hero ? <img src={hero} alt={c.title} width={800} height={800} loading="eager" fetchPriority="high" onError={() => setBroken(b => ({ ...b, [hero]: true }))} className="w-full h-full object-contain"/> : <Placeholder title={c.title}/>}
         </div>
         <h1 className="sat-serif text-[24px] leading-[1.3] mt-3 sat-on-dark">{c.headline}</h1>
         <ul className="mt-2.5 grid gap-1.5">{c.benefits.filter(Boolean).slice(0, 3).map((b, i) => { const I = benefitIcons[i] ?? Check; return <li key={b} className="flex items-center gap-2 text-[16px] font-semibold sat-on-dark"><I className="w-5 h-5 shrink-0 sat-accent"/>{b}</li>; })}</ul>
         {proof && <div className="mt-2.5">{proof}</div>}
         <div className="mt-2.5 flex items-baseline gap-2 flex-wrap"><strong className="text-[32px] font-black leading-none sat-on-dark">{money(product.price)}₾</strong>{compareUnit && <s className="text-base sat-muted-dark">{money(compareUnit)}₾</s>}{pct > 0 && <span className="sat-chip-accent text-sm font-extrabold rounded-md px-2 py-0.5">−{pct}%</span>}</div>
-        <div ref={heroCta} className="mt-3">{repeatBlocked ? <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={onReorder}/> : <ShineButton onClick={onBuy}>{CTA}</ShineButton>}</div>
+        <div ref={heroCta} className="mt-3">{repeatBlocked ? <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={onReorder}/> : <EvergreenTimer/>}</div>
       </section>
 
       {/* Offer */}
@@ -157,7 +157,7 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
 
       {/* Demo: real uploaded media, else close-up crops of the real photo */}
       {c.sections.demo && satoriDemoLayout(c) === 'single' && <Sec><H2>{c.demo_heading}</H2>{c.demo_subline && <p className="-mt-1 mb-3 text-[16px] sat-muted-dark">{c.demo_subline}</p>}<DemoFeature url={media[0].url} label={media[0].label} poster={media[0].poster}/></Sec>}
-      {c.sections.demo && satoriDemoLayout(c) === 'strip' && <Sec><H2>{c.demo_heading}</H2><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-1 camera-gallery">{media.map((m, i) => <DemoItem key={`${m.url}-${i}`} url={m.url} label={m.label}/>)}</div></Sec>}
+      {c.sections.demo && satoriDemoLayout(c) === 'strip' && <Sec><H2>{c.demo_heading}</H2>{c.demo_subline && <p className="-mt-1 mb-3 text-[16px] sat-muted-dark">{c.demo_subline}</p>}<div className="grid gap-3">{media.map((m, i) => <DemoFeature key={`${m.url}-${i}`} url={m.url} label={m.label} poster={m.poster}/>)}</div></Sec>}
       {c.sections.demo && hero && c.hotspots.length > 0 && <Sec><H2>{c.hotspot_heading}</H2>
         <div className="grid grid-cols-2 gap-2.5"><Crop src={hero} pos="56% 66%" label="პირი" spots={spots('blade')}/><Crop src={hero} pos="96% 10%" label="სახელური" spots={spots('handle')}/></div>
         <ol className="mt-3 grid gap-2">{c.hotspots.map((h, i) => <li key={i} className="sat-card-ink rounded-xl px-3 py-2.5 flex gap-3 items-center"><span className="sat-hotspot shrink-0">{i + 1}</span><span className="text-[15px] leading-snug sat-on-dark"><strong>{h.title}</strong> — <span className="sat-muted-dark">{h.text}</span></span></li>)}</ol></Sec>}
@@ -186,5 +186,19 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
     </main>
     <div aria-hidden={!stickyOn} className={`fixed bottom-0 inset-x-0 z-50 sat-bottom transition-transform duration-300 ${stickyOn ? 'translate-y-0' : 'translate-y-full pointer-events-none'}`}><div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">{repeatBlocked ? <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={onReorder}/> : <><div className="shrink-0 leading-tight"><span className="text-[13px] font-bold sat-accent">{sel.qty} ცალი</span><div className="flex items-baseline gap-1.5"><strong className="text-[22px] font-black sat-on-dark">{money(sel.total)}₾</strong>{compareUnit && <s className="text-[13px] sat-muted-dark">{money(compareUnit * sel.qty)}₾</s>}</div></div><ShineButton onClick={onBuy} className="flex-1 text-[15px]">შეუკვეთე</ShineButton></>}</div></div>
     {toast && <div role="status" className={`fixed left-4 right-4 max-w-sm mx-auto z-40 sat-paper rounded-2xl p-3.5 text-[15px] font-medium shadow-lg transition-[bottom] ${stickyOn ? 'bottom-28' : 'bottom-4'}`}>📦 ახლახან შეუკვეთეს — {toast}</div>}
+  </div>;
+}
+
+/** Evergreen per-visit countdown (presentation only): restarts at 15:00 when it reaches zero. */
+function EvergreenTimer() {
+  const KEY = 'sat_evergreen_end'; const LEN = 15 * 60 * 1000;
+  const getEnd = () => { const v = Number(sessionStorage.getItem(KEY)); if (v > Date.now()) return v; const e = Date.now() + LEN; sessionStorage.setItem(KEY, String(e)); return e; };
+  const [left, setLeft] = useState(() => getEnd() - Date.now());
+  useEffect(() => { const t = setInterval(() => setLeft(getEnd() - Date.now()), 1000); return () => clearInterval(t); }, []);
+  const s = Math.max(0, Math.floor(left / 1000)); const mm = String(Math.floor(s / 60)).padStart(2, '0'); const ss = String(s % 60).padStart(2, '0');
+  const Box = ({ v, l }: { v: string; l: string }) => <div className="flex flex-col items-center"><span className="sat-chip-accent text-[30px] font-black leading-none rounded-xl px-3 py-2 tabular-nums min-w-[64px] text-center">{v}</span><span className="text-[13px] mt-1 sat-muted-dark">{l}</span></div>;
+  return <div className="sat-card-ink rounded-2xl border sat-line px-4 py-3 text-center" role="timer" aria-live="off">
+    <p className="text-[16px] font-bold sat-on-dark mb-2">⏳ ფასდაკლება სრულდება:</p>
+    <div className="flex items-start justify-center gap-2"><Box v={mm} l="წუთი"/><span className="text-[28px] font-black sat-accent pt-1">:</span><Box v={ss} l="წამი"/></div>
   </div>;
 }

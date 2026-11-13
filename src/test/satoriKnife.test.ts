@@ -48,8 +48,8 @@ describe('SATORI knife landing', () => {
     for (const t of satoriTiers(49, 59, 'testdana')) expect(Number((49 * t.qty * (1 - [0, 0, 20, 35][t.qty] / 100)).toFixed(2))).toBe(t.total);
   });
   it('49₾ + 19₾ bump subtotal equals persisted line', () => { expect(49 + bumpLineTotal(49, satoriBump(resolveSatoriConfig()))).toBe(68); });
-  it('demo section has no media until real uploads exist', () => {
-    expect(satoriDemoMedia(resolveSatoriConfig())).toEqual([]);
+  it('defaults include the two uploaded demo videos', () => {
+    expect(satoriDemoMedia(resolveSatoriConfig())).toHaveLength(2);
     expect(satoriDemoMedia(resolveSatoriConfig({ demo_slots: [{ label: 'ბოსტნეული', url: 'x.mp4' }, { label: 'თევზი', url: '' }] }))).toHaveLength(1);
   });
   it('no hardcoded prices in default copy', () => { expect(JSON.stringify(SATORI_DEFAULTS.comparison)).not.toMatch(/\d+₾/); });
@@ -57,7 +57,7 @@ describe('SATORI knife landing', () => {
 
 describe('satori demo layout', () => {
   it('one filled slot is a single card, two keep the strip, none hides', () => {
-    expect(satoriDemoLayout(resolveSatoriConfig())).toBe('none');
+    expect(satoriDemoLayout(resolveSatoriConfig({ demo_slots: [] }))).toBe('none');
     expect(satoriDemoLayout(resolveSatoriConfig({ demo_slots: [{ label: 'a', url: 'x.mp4' }, { label: 'b', url: '' }] }))).toBe('single');
     expect(satoriDemoLayout(resolveSatoriConfig({ demo_slots: [{ label: 'a', url: 'x.mp4' }, { label: 'b', url: 'y.webp' }] }))).toBe('strip');
   });

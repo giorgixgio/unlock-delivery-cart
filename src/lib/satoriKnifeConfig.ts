@@ -26,7 +26,11 @@ export const SATORI_DEFAULTS: SatoriConfig = {
   gallery: [], video_url: '', video_poster: '',
   demo_heading: 'ნახე მოქმედებაში',
   demo_subline: 'ბასრი პირი — სუფთა, თხელი ჭრა',
-  demo_slots: SATORI_DEMO_LABELS.map(label => ({ label, url: '' })),
+  demo_slots: [
+    { label: '', url: '/__l5e/assets-v1/2c56ca1b-8c1a-4b9b-b055-ac19d8ffaa35/satori-demo.mp4' },
+    { label: '', url: '/__l5e/assets-v1/8e5e49c9-d370-4b49-933c-4430b354af98/satori-demo-2.mp4' },
+    ...SATORI_DEMO_LABELS.slice(2).map(label => ({ label, url: '' })),
+  ],
   hotspot_heading: 'ახლო ხედი',
   hotspots: [
     { title: 'ნაჭედი ტექსტურა', text: 'ხელს უწყობს, რომ საკვები ნაკლებად მიეწებოს', x: 28, y: 62, crop: 'blade' },
