@@ -15,6 +15,7 @@ import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoDa
 import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import LandingDealStrip from "@/components/landing/LandingDealStrip";
+import ProductBenefitBadges from "@/components/landing/ProductBenefitBadges";
 import StickyAnnouncementBar from "@/components/landing/StickyAnnouncementBar";
 import LandingTrustRow from "@/components/landing/LandingTrustRow";
 import LandingReviews from "@/components/landing/LandingReviews";
@@ -367,6 +368,9 @@ const GenericLanding = ({
 
         {/* Deal badges moved BELOW the image so they never cover text baked into product photos */}
         <LandingDealStrip discount={discount} badges={badges} />
+
+        {/* Per-SKU benefit pills (below the image, never over it) */}
+        <ProductBenefitBadges sku={product.sku} />
 
 
         <div>
