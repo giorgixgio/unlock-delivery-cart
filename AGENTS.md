@@ -36,4 +36,3 @@ Queue RPCs mirror `callQueuePolicy.ts`; reuse call/cancel/callback services (`ca
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
 - Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
-- Direct-response landings in the camera layout family are registered in `DR_LANDINGS` (`src/lib/drLandings.ts`); the camera entry mirrors its existing constants and its page is untouched, while product-id entries (e.g. SATORI) render their own themed page through GenericLanding's shared checkout, bump and analytics.
