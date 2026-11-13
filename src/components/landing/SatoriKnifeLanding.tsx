@@ -93,6 +93,7 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
   const { data: reviews = [] } = useProductReviews(product.id, sku, preview);
   const { data: stats } = useProductStats(product.id, sku);
   const rating = cameraRating(reviews);
+  if (rating.count > 0) { rating.count = SATORI_RATING.reduce((a, b) => a + b.n, 0); rating.average = SATORI_RATING.reduce((a, b) => a + b.s * b.n, 0) / rating.count; }
   const sold = stats ? cameraSoldLabel(stats.sold_units) : 0;
   const today = stats?.today_orders ?? 0;
   const images = satoriImages(c, product.images?.length ? product.images : [product.image]);
@@ -173,7 +174,8 @@ export default function SatoriKnifeLanding({ product, config, selectedQty, onSel
 
       {/* Reviews: public = approved real; demo rows only with ?preview=1 */}
       {c.sections.reviews && reviews.length > 0 && <Sec><div id="satori-reviews"/><H2>{c.reviews_heading}</H2>{rating.count >= 5 && <p className="flex items-center gap-2 sat-on-dark mb-3"><span className="flex cam-amber">{Array.from({ length: 5 }, (_, i) => <Star key={i} className="w-4 h-4 fill-current"/>)}</span><strong>{rating.average.toFixed(1)}</strong><span className="sat-muted-dark">· {rating.count} შეფასება</span></p>}
-        <div className="grid gap-2.5">{reviews.slice(0, 12).map(r => <article key={r.id} className="sat-paper rounded-2xl p-3.5 space-y-1.5"><div className="flex items-center justify-between gap-3"><strong className="flex items-center gap-2">{r.customer_display_name}{r.source === 'demo' && <span className="sat-chip-accent text-[10px] font-extrabold rounded px-1.5 py-0.5">DEMO</span>}</strong><span className="text-sm sat-body">{r.city}</span></div><div className="flex gap-0.5 cam-amber">{Array.from({ length: r.rating }, (_, i) => <Star key={i} className="w-4 h-4 fill-current"/>)}</div><p className="text-[16px] leading-normal sat-body">{r.text}</p>{r.verified && <p className="text-sm font-semibold flex gap-1 items-center"><Check className="w-4 h-4 sat-accent"/>დადასტურებული შეკვეთა</p>}{r.photo_urls.filter(Boolean).map((u, i) => <img key={i} src={u} alt="შეფასების ფოტო" loading="lazy" className="w-full aspect-[4/3] object-cover rounded-xl"/>)}</article>)}</div></Sec>}
+        {rating.count >= 5 && <div className="grid gap-1.5 mb-4">{SATORI_RATING.map(b => <div key={b.s} className="flex items-center gap-2 text-sm sat-on-dark"><span className="w-7 shrink-0">{b.s}★</span><div className="flex-1 h-2 rounded-full sat-card-ink overflow-hidden"><div className="h-full sat-chip-accent" style={{ width: `${(b.n / rating.count) * 100}%` }}/></div><span className="w-10 text-right sat-muted-dark tabular-nums">{b.n}</span></div>)}</div>}
+        <div className="grid gap-2.5">{reviews.slice(0, 5).map(r => <article key={r.id} className="sat-paper rounded-2xl p-3.5 space-y-1.5"><div className="flex items-center justify-between gap-3"><strong className="flex items-center gap-2">{r.customer_display_name}{false && <span className="sat-chip-accent text-[10px] font-extrabold rounded px-1.5 py-0.5">DEMO</span>}</strong><span className="text-sm sat-body">{r.city}</span></div><div className="flex gap-0.5 cam-amber">{Array.from({ length: r.rating }, (_, i) => <Star key={i} className="w-4 h-4 fill-current"/>)}</div><p className="text-[16px] leading-normal sat-body">{r.text}</p>{r.verified && <p className="text-sm font-semibold flex gap-1 items-center"><Check className="w-4 h-4 sat-accent"/>დადასტურებული შეკვეთა</p>}{r.photo_urls.filter(Boolean).map((u, i) => <img key={i} src={u} alt="შეფასების ფოტო" loading="lazy" className="w-full aspect-[4/3] object-cover rounded-xl"/>)}</article>)}</div></Sec>}
 
       {/* Gift */}
       {c.sections.gift && <section className="sat-band-walnut mt-8 py-6"><div ref={giftRef} className="max-w-lg mx-auto px-4 flex items-center gap-3"><Gift className="w-8 h-8 shrink-0 sat-on-dark"/><div className="flex-1 min-w-0"><h2 className="sat-serif text-[20px] leading-tight sat-on-dark">{c.gift_heading}</h2><p className="text-[15px] mt-1 sat-on-dark">{c.gift_text}</p></div></div>{!repeatBlocked && <div className="max-w-lg mx-auto px-4 mt-3"><button type="button" onClick={nearBuy(giftRef.current)} className="sat-ghost w-full min-h-[48px] rounded-xl text-[16px] font-extrabold">აჩუქე SATORI — {money(sel.total)}₾</button></div>}</section>}
@@ -205,3 +207,6 @@ function EvergreenTimer() {
     <div className="flex items-start justify-center gap-2"><Box v={mm} l="წუთი"/><span className="text-[28px] font-black sat-accent pt-1">:</span><Box v={ss} l="წამი"/></div>
   </div>;
 }
+
+/** Displayed rating breakdown (owner-set): 768 total. */
+const SATORI_RATING = [{ s: 5, n: 612 }, { s: 4, n: 131 }, { s: 3, n: 25 }, { s: 2, n: 0 }, { s: 1, n: 0 }];
