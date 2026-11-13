@@ -25,6 +25,7 @@ export const TEST_SKUS = [
   "323_x",
   "386",
   "testpowder",
+  "testdana",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);

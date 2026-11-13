@@ -18,6 +18,9 @@ import { Label } from "@/components/ui/label";
 import MiniCameraConfigEditor from '@/components/admin/MiniCameraConfigEditor';
 import { CAMERA_HANDLE, resolveCameraConfig } from '@/lib/miniCameraConfig';
 import KeratinMaskConfigEditor from '@/components/admin/KeratinMaskConfigEditor';
+import SatoriKnifeConfigEditor from '@/components/admin/SatoriKnifeConfigEditor';
+import { drByVariant } from '@/lib/drLandings';
+import { resolveSatoriConfig } from '@/lib/satoriKnifeConfig';
 import { keraveByVariant, resolveKeratinConfig } from '@/lib/keratinMaskConfig';
 
 interface LandingRow {
@@ -71,6 +74,9 @@ const EditDialog = ({
   const cfg = row.landing_config || {};
   const [cameraConfig,setCameraConfig] = useState(resolveCameraConfig(cfg.mini_camera));
   const kerave = keraveByVariant(row.landing_variant);
+  const dr = drByVariant(row.landing_variant);
+  const satori = dr?.key === 'satori' ? dr : undefined;
+  const [satoriConfig,setSatoriConfig] = useState(resolveSatoriConfig(satori ? cfg[satori.configKey] : undefined));
   const [keratinConfig,setKeratinConfig] = useState(resolveKeratinConfig(kerave ? cfg[kerave.configKey] : undefined, kerave?.defaults));
 
   const [heroTitle, setHeroTitle] = useState(cfg.hero_title || "");
@@ -100,6 +106,7 @@ const EditDialog = ({
       ...cfg,
       ...(row.product_handle === CAMERA_HANDLE ? {mini_camera:cameraConfig} : {}),
       ...(kerave ? {[kerave.configKey]:keratinConfig} : {}),
+      ...(satori ? {[satori.configKey]:satoriConfig} : {}),
       hero_title: heroTitle || undefined,
       hero_subtitle: heroSubtitle || undefined,
       sections: sections.length > 0 ? sections : undefined,
@@ -278,6 +285,7 @@ const EditDialog = ({
           </div>
 
           {row.product_handle === CAMERA_HANDLE && <MiniCameraConfigEditor value={cameraConfig} onChange={setCameraConfig}/>}
+          {satori && <SatoriKnifeConfigEditor entry={satori} value={satoriConfig} onChange={setSatoriConfig} originalHandle={row.product_handle}/>}
           {kerave && <KeratinMaskConfigEditor entry={kerave} value={keratinConfig} onChange={setKeratinConfig} originalHandle={row.product_handle}/>}
           {/* Bundle */}
           <div className="space-y-3">

@@ -1,0 +1,37 @@
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import type { DrLanding } from '@/lib/drLandings';
+import type { SatoriConfig } from '@/lib/satoriKnifeConfig';
+
+async function toWebp(file: File) { const bmp = await createImageBitmap(file); const k = Math.min(1, 1400 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext('2d')!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((ok, no) => cv.toBlob(b => b ? ok(b) : no(Error('WebP conversion failed')), 'image/webp', 0.85)); }
+const lines = (v: string) => v.split('\n');
+
+export default function SatoriKnifeConfigEditor({ entry, value: c, onChange, originalHandle }: { entry: DrLanding; value: SatoriConfig; onChange: (c: SatoriConfig) => void; originalHandle: string }) {
+  const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
+  const set = <K extends keyof SatoriConfig>(k: K, v: SatoriConfig[K]) => onChange({ ...c, [k]: v });
+  const put = async (blob: Blob, name: string, ext: string, type: string) => { const path = `${entry.storagePrefix}/${name}-${Date.now()}.${ext}`; const { error } = await supabase.storage.from('product-images').upload(path, blob, { contentType: type, upsert: true }); if (error) throw error; return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl; };
+  const run = async (n: string, fn: () => Promise<void>) => { setBusy(n); setErr(''); try { await fn(); } catch (x) { setErr(x instanceof Error ? x.message : 'Upload failed'); } finally { setBusy(''); } };
+  const pairs = <K extends 'specs' | 'faq'>(key: K, a: string, b: string) => <div><Label>{key} — empty value hides the row</Label><div className="space-y-2">{(c[key] as Record<string, string>[]).map((row, i) => <div key={i} className="grid grid-cols-[1fr_2fr_auto] gap-2"><Input aria-label={`${key} ${a} ${i + 1}`} value={row[a]} onChange={e => set(key, (c[key] as Record<string, string>[]).map((v, j) => j === i ? { ...v, [a]: e.target.value } : v) as SatoriConfig[K])}/><Input aria-label={`${key} ${b} ${i + 1}`} value={row[b]} onChange={e => set(key, (c[key] as Record<string, string>[]).map((v, j) => j === i ? { ...v, [b]: e.target.value } : v) as SatoriConfig[K])}/><button type="button" className="text-xs text-destructive" onClick={() => set(key, (c[key] as unknown[]).filter((_, j) => j !== i) as SatoriConfig[K])}>remove</button></div>)}<button type="button" className="text-xs text-primary" onClick={() => set(key, [...(c[key] as Record<string, string>[]), { [a]: '', [b]: '' }] as SatoriConfig[K])}>+ add row</button></div></div>;
+  return <div className="space-y-5 border-t border-border pt-5">
+    <h3 className="font-bold">{entry.adminLabel} — dedicated page</h3>
+    <div className="flex flex-wrap gap-3 text-primary text-sm"><a href={`/p/${originalHandle}`} target="_blank" rel="noreferrer">Original page</a><a href={`/p/${entry.slug}`} target="_blank" rel="noreferrer">New page</a><a href={`/p/${entry.slug}?preview=1`} target="_blank" rel="noreferrer">Demo preview</a></div>
+    {(['title', 'headline', 'subtitle', 'ribbon', 'pain_heading', 'hotspot_heading', 'uses_heading', 'comparison_heading', 'gift_heading', 'gift_text', 'care_heading', 'specs_heading', 'reviews_heading', 'faq_heading', 'bump_title', 'bump_subtitle'] as const).map(k => <div key={k}><Label htmlFor={`s-${k}`}>{k.replace(/_/g, ' ')}</Label><Input id={`s-${k}`} value={c[k]} onChange={e => set(k, e.target.value)}/></div>)}
+    <div><Label htmlFor="s-bump">+1 knife bump price (₾)</Label><Input id="s-bump" type="number" min={0} value={c.bump_price} onChange={e => set('bump_price', Math.max(0, Number(e.target.value) || 0))}/></div>
+    {(['chips', 'pains', 'solutions', 'uses', 'care'] as const).map(k => <div key={k}><Label>{k} (one per line)</Label><Textarea value={c[k].join('\n')} onChange={e => set(k, lines(e.target.value))}/></div>)}
+    <div><Label>Gallery images (one URL per line — empty uses product photos, else a placeholder)</Label><Textarea value={c.gallery.join('\n')} onChange={e => set('gallery', lines(e.target.value))}/><Input className="mt-2" type="file" accept="image/*" multiple aria-label="Upload gallery images" disabled={!!busy} onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) run('gallery', async () => { const urls: string[] = []; for (const f of fs) urls.push(await put(await toWebp(f), 'gallery', 'webp', 'image/webp')); set('gallery', [...c.gallery.filter(Boolean), ...urls]); }); }}/></div>
+    <div className="space-y-2 border border-border rounded-lg p-3"><Label>Demo / before-after video (shown under the offer; hidden when empty)</Label>
+      {c.video_url && <video src={c.video_url} muted playsInline className="w-28 rounded-xl"/>}
+      <Input type="file" accept="video/mp4,video/webm" aria-label="Upload video" disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; if (f) run('video', async () => set('video_url', await put(f, 'video', f.type === 'video/webm' ? 'webm' : 'mp4', f.type || 'video/mp4'))); }}/>
+      <Input aria-label="Video URL" value={c.video_url} onChange={e => set('video_url', e.target.value)} placeholder="or paste video URL"/></div>
+    <div><Label>Hotspots (title + text + x% + y% on the first photo)</Label><div className="space-y-2">{c.hotspots.map((h, i) => <div key={i} className="grid grid-cols-[1fr_1.5fr_4rem_4rem] gap-2">{(['title', 'text'] as const).map(f => <Input key={f} aria-label={`hotspot ${f} ${i + 1}`} value={h[f]} onChange={e => set('hotspots', c.hotspots.map((v, j) => j === i ? { ...v, [f]: e.target.value } : v))}/>)}{(['x', 'y'] as const).map(f => <Input key={f} type="number" aria-label={`hotspot ${f} ${i + 1}`} value={h[f]} onChange={e => set('hotspots', c.hotspots.map((v, j) => j === i ? { ...v, [f]: Number(e.target.value) || 0 } : v))}/>)}</div>)}</div></div>
+    <div><Label>Comparison (label | SATORI | regular)</Label><div className="space-y-2">{c.comparison.map((r, i) => <div key={i} className="grid grid-cols-3 gap-2">{(['label', 'ours', 'other'] as const).map(f => <Input key={f} aria-label={`comparison ${f} ${i + 1}`} value={r[f]} onChange={e => set('comparison', c.comparison.map((v, j) => j === i ? { ...v, [f]: e.target.value } : v))}/>)}</div>)}</div></div>
+    {pairs('specs', 'label', 'value')}
+    {pairs('faq', 'question', 'answer')}
+    <div className="grid grid-cols-2 gap-2">{Object.keys(c.sections).map(k => <label key={k} className="flex items-center gap-2 text-sm"><Switch checked={c.sections[k]} onCheckedChange={v => set('sections', { ...c.sections, [k]: v })}/>{k}</label>)}</div>
+    {busy && <p className="text-sm">Uploading…</p>}{err && <p role="alert" className="text-sm text-destructive">{err}</p>}
+  </div>;
+}

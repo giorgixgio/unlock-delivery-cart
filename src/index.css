@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Georgian:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -920,3 +921,39 @@
   .tm-float, .tm-blob, .tm-sparkle, .tm-anim-gradient { animation: none; }
   .tm-reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* SATORI knife landing (registry theme "satori") — Japanese craft, charcoal + paper + one vermilion accent. */
+.satori-page {
+  --sat-charcoal: 0 0% 8%; --sat-ink: 0 0% 12%; --sat-walnut: 20 38% 30%; --sat-steel: 210 9% 81%; --sat-paper: 43 30% 95%; --sat-vermilion: 4 65% 48%;
+  --cam-blue: var(--sat-vermilion); --cam-blue-deep: 4 68% 40%; --cam-grey: 40 22% 90%; --cam-ink: var(--sat-charcoal); --cam-body: 0 0% 28%; --cam-line: 36 14% 84%; --cam-amber: 39 91% 55%;
+  --success: var(--sat-vermilion); --success-foreground: 0 0% 100%;
+  --foreground: 0 0% 10%; --muted-foreground: 0 0% 34%; --border: 36 14% 84%; --background: var(--sat-charcoal);
+  background: hsl(var(--sat-charcoal)); color: hsl(var(--sat-paper)); font-family: 'Noto Sans Georgian', sans-serif; font-size: 16px;
+}
+.satori-page .sat-serif { font-family: 'Noto Serif Georgian', 'Noto Sans Georgian', serif; font-weight: 800; letter-spacing: 0; }
+.satori-page .sat-on-dark { color: hsl(var(--sat-paper)); }
+.satori-page .sat-muted-dark { color: hsl(var(--sat-steel)); }
+.satori-page .sat-accent { color: hsl(var(--sat-vermilion)); }
+.satori-page .sat-steel { color: hsl(var(--sat-steel)); }
+.satori-page .sat-body { color: hsl(0 0% 28%); }
+.satori-page .sat-band-ink { background: hsl(var(--sat-ink)); }
+.satori-page .sat-band-walnut { background: linear-gradient(180deg, hsl(var(--sat-walnut)), hsl(20 40% 22%)); }
+.satori-page .sat-walnut-fill { fill: hsl(var(--sat-walnut)); }
+.satori-page .sat-card-ink { background: hsl(var(--sat-ink)); border: 1px solid hsl(0 0% 100% / .08); }
+.satori-page .sat-paper, .satori-page .cam-card { background: hsl(var(--sat-paper)); color: hsl(0 0% 10%); }
+.satori-page .cam-card { border-color: transparent; box-shadow: 0 12px 32px hsl(0 0% 0% / .45); }
+.satori-page .sat-line { border-color: hsl(0 0% 100% / .08); }
+.satori-page .sat-line-paper { border-color: hsl(36 14% 84%); }
+.satori-page .sat-chip { background: hsl(var(--sat-ink)); color: hsl(var(--sat-paper)); border: 1px solid hsl(var(--sat-steel) / .35); }
+.satori-page .sat-chip-accent { background: hsl(var(--sat-vermilion)); color: hsl(0 0% 100%); }
+.satori-page .sat-hanko { color: hsl(var(--sat-vermilion)); transform: rotate(-4deg); }
+.satori-page .sat-brush { color: hsl(var(--sat-vermilion)); }
+.satori-page .sat-hero-frame { background: hsl(var(--sat-ink)); }
+.satori-page .sat-placeholder { background: radial-gradient(120% 90% at 30% 20%, hsl(0 0% 18%), hsl(var(--sat-ink)) 60%, hsl(var(--sat-charcoal))); }
+.satori-page .sat-hotspot { width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: hsl(var(--sat-vermilion)); color: hsl(0 0% 100%); box-shadow: 0 0 0 4px hsl(var(--sat-vermilion) / .3); }
+.satori-page .sat-bottom { background: hsl(var(--sat-ink) / .97); border-top: 1px solid hsl(0 0% 100% / .1); backdrop-filter: blur(8px); }
+.satori-page .sat-logo { filter: brightness(0) invert(1); }
+.satori-page .cam-buy { min-height: 56px; }
+.satori-page .cam-dot { background: hsl(var(--sat-steel) / .4); }
+.satori-page .cam-dot.on { background: hsl(var(--sat-vermilion)); }
+@media (prefers-reduced-motion: reduce) { .satori-page * { animation: none !important; } }

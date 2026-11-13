@@ -512,6 +512,13 @@
       "when": 1794577721470,
       "tag": "0072_test_sku_testpowder",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794587129794,
+      "tag": "0073_test_sku_testdana",
+      "breakpoints": true
     }
   ]
 }
