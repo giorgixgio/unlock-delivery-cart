@@ -121,3 +121,9 @@
 - [x] Replacement-only flow: pick delivered order + items + reason; one atomic step creates free replacement linked to the old order and closes the lead as converted.
 - [x] Courier note "REPLACEMENT for #old — free"; history panel shows 🔁; tests and rolled-back DB test pass.
 - [x] Listed existing return records that point at a cancelled lead (left unchanged).
+
+# Roadmap — Wood-disc landing
+- [x] Register the real wood-disc product and isolated workshop presentation, shared checkout and 16 GEL bump.
+- [x] Add editable demo media/content and product-scoped reviews with 12 preview-only samples.
+- [x] Verify mobile/desktop, quantity modal totals and intercepted phone/bump/address flow; 300 tests pass, build green; not published.
+- [ ] Verify signed-in admin editor/save and review filter — requesting user has no app account and temporary-account approval is unavailable; no real operational order placed.

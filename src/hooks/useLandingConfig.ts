@@ -26,6 +26,8 @@ export interface LandingSection {
 }
 
 export interface LandingConfig {
+  satori_knife?: Partial<import('@/lib/satoriKnifeConfig').SatoriConfig>;
+  wood_disc?: Partial<import('@/lib/woodDiscConfig').WoodDiscConfig>;
   mini_camera?: import('@/lib/miniCameraConfig').MiniCameraConfig;
   keratin_mask?: Partial<import('@/lib/keratinMaskConfig').KeratinMaskConfig>;
   brow_stamp?: Partial<import('@/lib/keratinMaskConfig').KeratinMaskConfig>;

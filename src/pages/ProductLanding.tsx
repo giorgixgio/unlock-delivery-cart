@@ -50,6 +50,8 @@ import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } fr
 const MiniCameraLanding = lazyWithRetry(() => import('@/components/landing/MiniCameraLanding'));
 import { drBySlug, drFor, type DrLanding } from '@/lib/drLandings';
 import { resolveSatoriConfig, satoriBump, satoriPreviewMode, type SatoriConfig } from '@/lib/satoriKnifeConfig';
+import { resolveWoodDiscConfig, woodDiscBump, type WoodDiscConfig } from '@/lib/woodDiscConfig';
+const WoodDiscLanding = lazyWithRetry(() => import('@/components/landing/WoodDiscLanding'));
 const SatoriKnifeLanding = lazyWithRetry(() => import('@/components/landing/SatoriKnifeLanding'));
 import { keraveBySlug, keraveFor, keratinBump, keratinPreviewMode, resolveKeratinConfig, type KeraveProduct, type KeratinMaskConfig } from '@/lib/keratinMaskConfig';
 import { bumpLineTotal } from '@/lib/bumpPricing';
@@ -105,7 +107,7 @@ const ProductLanding = () => {
   }
   const drEntry = drFor(slug, product.id);
   if (drEntry) {
-    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} satoriConfig={landingConfig?.landing_config?.[drEntry.configKey]} drEntry={drEntry} /></Suspense>;
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} satoriConfig={drEntry.key === 'satori' ? landingConfig?.landing_config?.satori_knife : undefined} woodDiscConfig={drEntry.key === 'wood-disc' ? landingConfig?.landing_config?.wood_disc : undefined} drEntry={drEntry} /></Suspense>;
   }
   // Custom spy detector landing
   if (usesCameraPresentation(slug, product.sku)) {
@@ -177,6 +179,7 @@ const GenericLanding = ({
   keratinConfig,
   keraveEntry,
   satoriConfig,
+  woodDiscConfig,
   drEntry,
 }: {
   product: Product;
@@ -189,10 +192,13 @@ const GenericLanding = ({
   keratinConfig?: Partial<KeratinMaskConfig>;
   keraveEntry?: KeraveProduct;
   satoriConfig?: Partial<SatoriConfig>;
+  woodDiscConfig?: Partial<WoodDiscConfig>;
   drEntry?: DrLanding;
 }) => {
   const keratinPresentation = !!keraveEntry;
   const satoriPresentation = drEntry?.key === 'satori';
+  const woodPresentation = drEntry?.key === 'wood-disc';
+  const wCfg = useMemo(() => resolveWoodDiscConfig(woodDiscConfig), [woodDiscConfig]);
   const sCfg = useMemo(() => resolveSatoriConfig(satoriConfig), [satoriConfig]);
 
   const { logoUrl: siteLogo, siteName } = useSiteBranding();
@@ -234,7 +240,7 @@ const GenericLanding = ({
   // When a single offer is configured, the generic multi-product upsell is disabled.
   // The camera presentation passes `blocked`, so its funnel ends at the address step.
   const upsellsActive =
-    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride, cameraPresentation || keratinPresentation || satoriPresentation);
+    !singleOfferActive && resolveUpsellEnabled(globalUpsellsEnabled, upsellOverride, cameraPresentation || keratinPresentation || satoriPresentation || woodPresentation);
 
 
 
@@ -268,8 +274,8 @@ const GenericLanding = ({
   const hasStockLimitedPrice = product.sku === "G888-T4656-0016";
   const landingMedia = getProductLandingMedia(product.sku);
   // Bump funnel (phone → bump → address → optional single upsell): camera and the KERAVÉ landing.
-  const hasSku002QuantityOffer = String(product.sku) === "002" || keratinPresentation || satoriPresentation;
-  const sku002BumpConfig: BumpConfig = keratinPresentation ? keratinBump(kCfg) : satoriPresentation ? satoriBump(sCfg) : CAMERA_BUMP;
+  const hasSku002QuantityOffer = String(product.sku) === "002" || keratinPresentation || satoriPresentation || woodPresentation;
+  const sku002BumpConfig: BumpConfig = woodPresentation ? woodDiscBump(wCfg) : keratinPresentation ? keratinBump(kCfg) : satoriPresentation ? satoriBump(sCfg) : CAMERA_BUMP;
   const landingVariantTag = keraveEntry ? keraveEntry.variant : drEntry ? drEntry.variant : landingSlug === 'mini-camera' ? CAMERA_VARIANT : 'generic';
 
   useEffect(() => { trackFunnel("landing_view", keraveEntry ? { landingVariant: keraveEntry.variant } : drEntry ? { landingVariant: drEntry.variant } : {}); }, []);
@@ -348,8 +354,8 @@ const GenericLanding = ({
   const handleDoneClose = () => setDoneOpen(false);
 
   return (
-    <div className="min-h-screen bg-background pb-36">
-      {satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
+    <div className={`min-h-screen bg-background ${woodPresentation ? "" : "pb-36"}`}>
+      {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">

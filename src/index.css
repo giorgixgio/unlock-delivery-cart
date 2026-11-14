@@ -970,3 +970,38 @@
 @keyframes sat-marquee{to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.sat-marquee-track{animation:none}}
 .sat-brush{background:linear-gradient(90deg,#C8352B,#C8352B 70%,transparent)}
+
+/* Workshop tokens are scoped; existing camera/KERAVE/SATORI themes remain untouched. */
+.wood-disc-page { --wd-graphite:210 10% 12%; --wd-steel:210 8% 20%; --wd-wood:38 44% 85%; --wd-orange:22 89% 53%; --wd-white:0 0% 100%; --wd-ink:210 10% 12%; --wd-muted:210 10% 80%; --wd-line:34 22% 70%; --wd-saving:21 84% 30%; --wd-grain:30 25% 35%; --wd-glow:0 8px 30px -12px hsl(var(--wd-orange)/.4); background:hsl(var(--wd-graphite)); color:hsl(var(--wd-white)); font-family:'Noto Sans Georgian',sans-serif; font-size:16px; line-height:1.5; letter-spacing:0; }
+.wood-disc-page .wd-paper { background-color:hsl(var(--wd-wood)); background-image:repeating-linear-gradient(4deg,transparent 0 9px,hsl(var(--wd-grain)/.035) 10px,transparent 11px 20px);color:hsl(var(--wd-ink)); }
+.wood-disc-page .wd-accent { color:hsl(var(--wd-orange)); }
+.wood-disc-page .wd-muted {color:hsl(var(--wd-muted));}
+.wood-disc-page .wd-paper .wd-muted {color:hsl(var(--wd-steel));}
+.wood-disc-page .wd-saving {color:hsl(var(--wd-saving));}
+.wood-disc-page .wd-steel,.wood-disc-page .wd-bottom {background:hsl(var(--wd-steel));}
+.wood-disc-page .wd-cta,.wood-disc-page .wd-badge {background:hsl(var(--wd-orange));color:hsl(var(--wd-ink));border-color:hsl(var(--wd-orange));}
+.wood-disc-page .wd-cta {box-shadow:var(--wd-glow);position:relative;overflow:hidden;}
+.wood-disc-page .wd-cta:hover {background:hsl(var(--wd-orange));filter:brightness(1.08);}
+.wood-disc-page .wd-cta::after {content:'';position:absolute;inset:-20% 0;width:35%;background:linear-gradient(90deg,transparent,hsl(var(--wd-white)/.25),transparent);animation:cam-shine 4s ease-in-out infinite;}
+.wood-disc-page .wd-section {border-top:1px dashed hsl(var(--wd-muted)/.2);margin-top:16px;}
+.wood-disc-page .wd-line {border-color:hsl(var(--wd-line));}
+.wood-disc-page .wd-tier {background:hsl(var(--wd-white)/.5);color:hsl(var(--wd-ink));border:2px solid hsl(var(--wd-line));}
+.wood-disc-page .wd-tier[aria-checked=true] {border-color:hsl(var(--wd-saving));background:hsl(var(--wd-white)/.8);}
+.wood-disc-page .wd-radio {width:22px;height:22px;border:2px solid hsl(var(--wd-steel));border-radius:50%;}
+.wood-disc-page .wd-tier[aria-checked=true] .wd-radio {background:hsl(var(--wd-saving));box-shadow:inset 0 0 0 4px hsl(var(--wd-white));}
+.wood-disc-page .wd-hero {height:260px;max-width:100%;background:hsl(var(--wd-steel));}
+.wood-disc-page .wd-logo {filter:brightness(0) invert(1);}
+.wood-disc-page .wd-media {background:hsl(var(--wd-steel));border:1px solid hsl(var(--wd-orange)/.6);box-shadow:var(--wd-glow);}
+.wood-disc-page .wd-label {background:hsl(var(--wd-graphite)/.92);color:hsl(var(--wd-white));border:1px solid hsl(var(--wd-muted)/.5);}
+.wood-disc-page .wd-crop {background-size:330%;background-repeat:no-repeat;}
+.wood-disc-page .wd-crop-teeth {background-position:0% 95%;}
+.wood-disc-page .wd-crop-mount {background-position:33% 86%;}
+.wood-disc-page .wd-safety {border-color:hsl(var(--wd-orange));}
+.wood-disc-page .wd-bottom {padding-bottom:env(safe-area-inset-bottom);border-top:1px solid hsl(var(--wd-muted)/.25);}
+.wood-disc-page .wd-stock {accent-color:hsl(var(--wd-orange));}
+@media(max-width:374px){.wood-disc-page .wd-hero{height:220px;}}
+@media(min-width:768px){.wood-disc-page .wd-hero{height:390px;}}
+@media(prefers-reduced-motion:reduce){.wood-disc-page *{animation:none!important;scroll-behavior:auto!important;}}
+
+/* Scope legal-link wrapping to the disc page, leaving other storefronts unchanged. */
+@media(max-width:480px){body:has(.wood-disc-page) footer nav ul{grid-template-columns:1fr;}body:has(.wood-disc-page) footer nav a{max-width:100%;white-space:normal;}}

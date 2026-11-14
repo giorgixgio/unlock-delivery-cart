@@ -5,18 +5,18 @@ import { CAMERA_HANDLE, CAMERA_VARIANT } from '@/lib/miniCameraConfig';
  * The camera entry holds exactly today's values; new products add an entry instead of a new page.
  */
 export interface DrLanding {
-  key: 'camera' | 'satori';
+  key: 'camera' | 'satori' | 'wood-disc';
   slug: string;
   /** Dedicated pages resolve by product id; the camera keeps resolving by its handle + SKU. */
   productId?: string;
   handle?: string;
   sku?: string;
   variant: string;
-  configKey: 'mini_camera' | 'satori_knife';
+  configKey: 'mini_camera' | 'satori_knife' | 'wood_disc';
   urgencyKey: string;
   toastKey: string;
   reviewName: string;
-  theme: 'camera' | 'satori';
+  theme: 'camera' | 'satori' | 'wood-disc';
   adminLabel: string;
   storagePrefix: string;
   fallbackSku: string;
@@ -26,9 +26,11 @@ export const SATORI_PRODUCT_ID = 'manual-1794600000000-satori';
 export const SATORI_SLUG = 'satori-knife';
 export const SATORI_VARIANT = 'custom-satori-knife';
 
+export const WOOD_DISC_PRODUCT_ID = 'manual-1789471691912-r51bc';
 export const DR_LANDINGS: DrLanding[] = [
   { key: 'camera', slug: 'mini-camera', handle: CAMERA_HANDLE, sku: '002', variant: CAMERA_VARIANT, configKey: 'mini_camera', urgencyKey: 'sku_002_urgency_end', toastKey: 'camera-toast-count', reviewName: 'მინი კამერა', theme: 'camera', adminLabel: 'Mini camera', storagePrefix: 'landing/mini-camera', fallbackSku: '002' },
   { key: 'satori', slug: SATORI_SLUG, productId: SATORI_PRODUCT_ID, variant: SATORI_VARIANT, configKey: 'satori_knife', urgencyKey: 'sku_satori_urgency_end', toastKey: 'satori-toast-count', reviewName: 'SATORI დანა', theme: 'satori', adminLabel: 'SATORI knife', storagePrefix: 'landing/satori-knife', fallbackSku: 'testdana' },
+  { key: 'wood-disc', slug: 'wood-disc', productId: WOOD_DISC_PRODUCT_ID, variant: 'custom-wood-disc', configKey: 'wood_disc', urgencyKey: '', toastKey: 'wood-disc-toast-count', reviewName: 'ხის დისკი კუთხსახეხისთვის', theme: 'wood-disc', adminLabel: 'ხის დისკი', storagePrefix: 'landing/wood-disc', fallbackSku: 'G888-T4656-0012_4' },
 ];
 export const drBySlug = (slug?: string) => DR_LANDINGS.find(d => d.slug === slug);
 export const drByVariant = (v?: string | null) => DR_LANDINGS.find(d => d.variant === v);
