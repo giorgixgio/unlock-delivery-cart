@@ -12,6 +12,10 @@ const catalog: Row[] = [
 ];
 
 describe("test products stay off the storefront", () => {
+  it("hides testtaro from storefront lists", () => {
+    expect(isTestSku("testtaro")).toBe(true);
+    expect(filterTestProducts([{ sku: "testtaro" }, { sku: "0019" }])).toEqual([{ sku: "0019" }]);
+  });
   it("hides the KERAVÉ test SKUs the owner named", () => {
     expect(isTestSku("testkrema")).toBe(true);
     expect(isTestSku("testwarbi")).toBe(true);

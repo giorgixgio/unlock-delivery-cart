@@ -519,6 +519,13 @@
       "when": 1794587129794,
       "tag": "0073_test_sku_testdana",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794700350652,
+      "tag": "0074_mark_testtaro_test_sku",
+      "breakpoints": true
     }
   ]
 }

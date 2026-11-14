@@ -3,6 +3,9 @@ import { TEST_SKUS } from "@/lib/testProducts";
 import { TEST_SKUS as EDGE_TEST_SKUS, isTestOrder } from "../../supabase/functions/_shared/testOrders";
 
 describe("test order isolation rule", () => {
+  it("isolates orders containing testtaro", () => {
+    expect(isTestOrder({ order_items: [{ sku: "testtaro" }] })).toBe(true);
+  });
   it("edge functions use the same test SKU list as the Test orders tab", () => {
     expect([...EDGE_TEST_SKUS].sort()).toEqual([...TEST_SKUS].map((s) => s.toLowerCase()).sort());
   });
