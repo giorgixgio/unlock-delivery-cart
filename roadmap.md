@@ -123,6 +123,7 @@
 - [x] Listed existing return records that point at a cancelled lead (left unchanged).
 
 # Roadmap — Wood-disc landing
+- [x] Refine hero, comparison and collapsible specs; replace top CTA with a non-expiring-price timer, remove safety section, and show clearly identified review examples publicly. Verified 360px/390px/desktop, quantity selection and phone modal; 12 tests pass, build clean; not published.
 - [x] Register the real wood-disc product and isolated workshop presentation, shared checkout and 16 GEL bump.
 - [x] Add editable demo media/content and product-scoped reviews with 12 preview-only samples.
 - [x] Verify mobile/desktop, quantity modal totals and intercepted phone/bump/address flow; 300 tests pass, build green; not published.
