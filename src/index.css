@@ -1006,6 +1006,8 @@
 .wood-disc-page .wd-safety {border-color:hsl(var(--wd-orange));}
 .wood-disc-page .wd-bottom {padding-bottom:env(safe-area-inset-bottom);border-top:1px solid hsl(var(--wd-muted)/.25);}
 .wood-disc-page .wd-stock {accent-color:hsl(var(--wd-orange));}
+.wood-disc-page .wd-more {background:hsl(var(--wd-steel));color:hsl(var(--wd-white));border:2px solid hsl(var(--wd-orange));}
+.wood-disc-page .wd-more:hover {background:hsl(var(--wd-orange));color:hsl(var(--wd-ink));}
 @media(prefers-reduced-motion:reduce){.wood-disc-page *{animation:none!important;scroll-behavior:auto!important;}}
 
 /* Scope legal-link wrapping to the disc page, leaving other storefronts unchanged. */
