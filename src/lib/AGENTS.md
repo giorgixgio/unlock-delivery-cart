@@ -5,3 +5,4 @@
 - Direct-response landings in the camera layout family are registered in `DR_LANDINGS` (`src/lib/drLandings.ts`); the camera entry mirrors its existing constants and its page is untouched, while product-id entries (e.g. SATORI) render their own themed page (SATORI computes its package rows via `satoriTiers` from product price/compare and shared tiers, no timers) through GenericLanding's shared checkout, bump and analytics.
 
 - Wood-disc is an isolated DR_LANDINGS product-id presentation through GenericLanding; public sample reviews remain explicitly illustrative and excluded from real ratings, and its presentation timer stops at zero without changing prices, so existing checkout ownership and truthful proof stay intact.
+- Wood-disc uses its uploaded grinder clip and poster as presentation fallback when editor media slots are empty; configured media takes precedence, preserving editability without altering checkout or other landings.

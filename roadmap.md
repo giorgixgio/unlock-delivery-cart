@@ -123,6 +123,7 @@
 - [x] Listed existing return records that point at a cancelled lead (left unchanged).
 
 # Roadmap — Wood-disc landing
+- [x] Add the uploaded grinder MP4 below the first order form with a one-second poster, full-width portrait framing and visible-only playback; mobile/desktop, offscreen pause and reduced-motion tap verified using live CDN media (localhost does not serve asset URLs); 12 tests pass; not published.
 - [x] Refine hero, comparison and collapsible specs; replace top CTA with a non-expiring-price timer, remove safety section, and show clearly identified review examples publicly. Verified 360px/390px/desktop, quantity selection and phone modal; 12 tests pass, build clean; not published.
 - [x] Register the real wood-disc product and isolated workshop presentation, shared checkout and 16 GEL bump.
 - [x] Add editable demo media/content and product-scoped reviews with 12 preview-only samples.
