@@ -989,8 +989,8 @@
 .wood-disc-page .wd-tier[aria-checked=true] {border-color:hsl(var(--wd-saving));background:hsl(var(--wd-white)/.8);}
 .wood-disc-page .wd-radio {width:22px;height:22px;border:2px solid hsl(var(--wd-steel));border-radius:50%;}
 .wood-disc-page .wd-tier[aria-checked=true] .wd-radio {background:hsl(var(--wd-saving));box-shadow:inset 0 0 0 4px hsl(var(--wd-white));}
-.wood-disc-page .wd-hero {aspect-ratio:1;max-width:100%;background:hsl(var(--wd-steel));}
-.wood-disc-page .wd-hero img {transform:scale(1.08);}
+.wood-disc-page .wd-hero {max-width:100%;background:hsl(var(--wd-steel));}
+.wood-disc-page .wd-hero img {display:block;height:auto;}
 .wood-disc-page .wd-timer {background:hsl(var(--wd-steel));border:1px solid hsl(var(--wd-orange)/.4);}
 .wood-disc-page .wd-timer-digit {background:hsl(var(--wd-orange));color:hsl(var(--wd-ink));box-shadow:var(--wd-glow);}
 .wood-disc-page .wd-advantage {background:hsl(var(--wd-orange)/.12);border:1px solid hsl(var(--wd-orange)/.65);box-shadow:var(--wd-glow);}
