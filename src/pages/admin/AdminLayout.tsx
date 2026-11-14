@@ -16,6 +16,7 @@ import { isDesktopDevice, getOpenTelOnThisDevice, setOpenTelOnThisDevice } from 
 import { useCallQueueAccess } from "@/hooks/useCallQueueAccess";
 import { Headphones } from "lucide-react";
 import NewVersionBanner from "@/components/admin/NewVersionBanner";
+import AdminMobileNav from "@/components/admin/AdminMobileNav";
 import { useOpenIssueCount } from "@/hooks/useOpenIssueCount";
 
 const navGroups = [
@@ -137,6 +138,11 @@ const AdminLayout = () => {
   const activeGroup =
     visibleGroups.find((g) => g.items.some((i) => pathname.startsWith(i.to)))?.label ??
     visibleGroups[0]?.label;
+  const mobilePaths = visibleGroups.flatMap((group) => group.items.map((item) => item.to));
+  const hasMobileShortcuts = mobilePaths.some((path) => [
+    "/admin/dashboard", "/admin/courier-labels", "/admin/courier/today", "/admin/test-sku", "/admin/products",
+  ].includes(path));
+  const queueRedirect = queueOnlyRedirect(pathname, callQueue.queueOnly);
 
   const handleSignOut = async () => {
     await signOut();
@@ -244,13 +250,13 @@ const AdminLayout = () => {
       )}
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">
+      <main className={`flex-1 min-w-0 ${isMobile && hasMobileShortcuts ? "pb-[calc(88px+env(safe-area-inset-bottom))]" : ""}`}>
         {/* Mobile top bar */}
         {isMobile && (
           <div className="sticky top-0 z-40 flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0">
+                <Button variant="ghost" size="icon" className="shrink-0" aria-label="Open admin menu">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -264,12 +270,13 @@ const AdminLayout = () => {
         )}
         <NewVersionBanner />
         <CallSyncPanels incoming={callSync.incoming} onDismiss={callSync.dismiss} />
-        {queueOnlyRedirect(pathname, callQueue.queueOnly)
-          ? <Navigate to={queueOnlyRedirect(pathname, callQueue.queueOnly)!} replace />
+        {queueRedirect
+          ? <Navigate to={queueRedirect} replace />
           : role === "operator" && !callQueue.loaded && pathname.startsWith("/admin/orders")
             ? null
             : <Outlet />}
       </main>
+      {isMobile && <AdminMobileNav visiblePaths={mobilePaths} />}
     </div>
   );
 };
