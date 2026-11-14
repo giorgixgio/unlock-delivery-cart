@@ -17,13 +17,14 @@ import DiscDemoMedia from './DiscDemoMedia';
 import logo from '@/assets/logo.png';
 import grinderVideo from '@/assets/wood-disc-grinder.mp4.asset.json';
 import grinderPoster from '@/assets/wood-disc-grinder-poster.webp.asset.json';
+import { WOOD_DISC_TIMER_SECONDS, woodDiscTimerSeconds } from '@/lib/woodDiscTimer';
 const CTA='შეუკვეთე — გადახდა მიღებისას';
 const Heading=({children}:{children:ReactNode})=><h2 className="text-[26px] font-black leading-tight mb-4">{children}</h2>;
 const Section=({children}:{children:ReactNode})=><section className="wd-section max-w-lg mx-auto px-4 py-6">{children}</section>;
 function OfferTimer() {
- const [left,setLeft]=useState(15*60);
- useEffect(()=>{const end=Date.now()+15*60*1000;const timer=setInterval(()=>setLeft(Math.max(0,Math.ceil((end-Date.now())/1000))),1000);return()=>clearInterval(timer);},[]);
- return <div className="wd-timer rounded-lg px-4 py-4 text-center" role="timer" aria-live="off"><p className="flex items-center justify-center gap-2 text-base font-bold mb-3"><Timer className="wd-accent w-5 h-5"/>15-წუთიანი ტაიმერი</p><div className="flex items-start justify-center gap-3">{[{v:Math.floor(left/60),label:'წუთი'},{v:left%60,label:'წამი'}].map((item,i)=><div key={item.label} className="flex items-start gap-3">{i>0&&<span className="wd-accent text-[32px] font-black pt-1">:</span>}<div><span className="wd-timer-digit block rounded-lg text-[36px] font-black tabular-nums leading-none px-4 py-3 min-w-[80px]">{String(item.v).padStart(2,'0')}</span><span className="wd-muted block text-sm mt-1">{item.label}</span></div></div>)}</div><p className="wd-muted text-sm mt-3">ტაიმერის დასრულება ფასს არ ცვლის</p></div>;
+ const [left,setLeft]=useState(WOOD_DISC_TIMER_SECONDS);
+ useEffect(()=>{const start=Date.now();const timer=setInterval(()=>setLeft(woodDiscTimerSeconds(start,Date.now())),1000);return()=>clearInterval(timer);},[]);
+ return <div className="wd-timer rounded-lg px-4 py-4 text-center" role="timer" aria-live="off"><p className="flex items-center justify-center gap-2 text-base font-bold mb-3"><Timer className="wd-accent w-5 h-5"/>15-წუთიანი ტაიმერი</p><div className="flex items-start justify-center gap-3">{[{v:Math.floor(left/60),label:'წუთი'},{v:left%60,label:'წამი'}].map((item,i)=><div key={item.label} className="flex items-start gap-3">{i>0&&<span className="wd-accent text-[32px] font-black pt-1">:</span>}<div><span className="wd-timer-digit block rounded-lg text-[36px] font-black tabular-nums leading-none px-4 py-3 min-w-[80px]">{String(item.v).padStart(2,'0')}</span><span className="wd-muted block text-sm mt-1">{item.label}</span></div></div>)}</div></div>;
 }
 export default function WoodDiscLanding({product,config,selectedQty,onSelect,onBuy,repeatBlocked,onReorder,preview,modalOpen,entry}:{product:Product;config?:Partial<WoodDiscConfig>;selectedQty:number;onSelect:(n:number)=>void;onBuy:()=>void;repeatBlocked:LastOrderRecord|null;onReorder:()=>void;preview:boolean;modalOpen:boolean;entry:DrLanding}) {
  const c=resolveWoodDiscConfig(config),tiers=woodDiscTiers(product.price,product.compareAtPrice,product.sku),sel=tiers.find(t=>t.qty===selectedQty)??tiers[0];

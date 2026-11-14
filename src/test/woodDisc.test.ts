@@ -4,7 +4,9 @@ import {getDiscountedTotal,getQtyDiscountPct} from '@/lib/landingDiscounts';
 import {bumpLineTotal} from '@/lib/bumpPricing';
 import {drFor,drVariantForPath,WOOD_DISC_PRODUCT_ID} from '@/lib/drLandings';
 import {isTestSku} from '@/lib/testProducts';
+import {woodDiscTimerSeconds} from '@/lib/woodDiscTimer';
 describe('real wood-disc landing',()=>{
+ it('evergreen timer repeats every 15 minutes without stopping',()=>{expect(woodDiscTimerSeconds(0,0)).toBe(900);expect(woodDiscTimerSeconds(0,899000)).toBe(1);expect(woodDiscTimerSeconds(0,900000)).toBe(900);expect(woodDiscTimerSeconds(0,901000)).toBe(899);expect(woodDiscTimerSeconds(0,1800000)).toBe(900);});
  it('SKU G888-T4656-0012_4 is real, never test',()=>expect(isTestSku('G888-T4656-0012_4')).toBe(false));
  it('custom-wood-disc only matches its own slug/product',()=>{expect(drFor('wood-disc',WOOD_DISC_PRODUCT_ID)?.variant).toBe('custom-wood-disc');expect(drFor('wood-disc','other')).toBeUndefined();expect(drVariantForPath('/p/wood-disc')).toBe('custom-wood-disc');});
  for(const [qty,total] of [[1,24],[2,38.4],[3,46.8]])it(`${qty} discs match shared tier and modal subtotal ${total}`,()=>{const t=woodDiscTiers(24,34,'G888-T4656-0012_4').find(t=>t.qty===qty);expect(t?.total).toBe(total);expect(t?.total).toBe(getDiscountedTotal(24,qty,'G888-T4656-0012_4'));expect(Number((24*qty*(1-getQtyDiscountPct(qty)/100)).toFixed(2))).toBe(total);});
