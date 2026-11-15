@@ -28,6 +28,7 @@ export const TEST_SKUS = [
   "testdana",
   "testtaro",
   "testwebo",
+  "136",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);
