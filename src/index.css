@@ -1014,3 +1014,7 @@
 @media(max-width:480px){body:has(.wood-disc-page) footer nav ul{grid-template-columns:1fr;}body:has(.wood-disc-page) footer nav a{max-width:100%;white-space:normal;}}
 /* Handheld vacuum skin over the camera layout: bright, trustworthy teal + sunny accent */
 .mini-camera-page.vacuum-skin { --cam-blue: 174 84% 34%; --cam-blue-deep: 176 88% 26%; --cam-violet: 190 80% 42%; --cam-grey: 170 45% 96%; --cam-amber: 42 96% 52%; --cam-line: 170 25% 90%; }
+
+.vac-gift-compact img { max-width: 4rem; max-height: 4rem; }
+.vac-gift-compact ul { display: none; }
+.vac-gift-compact [class*='p-4'] { padding: 0.625rem 0.75rem; }
