@@ -46,6 +46,7 @@ import StockLimitedPriceBadge from "@/components/landing/StockLimitedPriceBadge"
 import BumpOfferModal from "@/components/landing/BumpOfferModal";
 import { getProductLandingMedia } from "@/lib/productLandingMedia";
 import type { BumpConfig } from "@/hooks/useLandingConfig";
+import { usesVacuumPresentation, vacuumConfig } from '@/lib/vacuumLandingConfig';
 import { CAMERA_BUMP, CAMERA_HANDLE, CAMERA_VARIANT, usesCameraPresentation } from '@/lib/miniCameraConfig';
 const MiniCameraLanding = lazyWithRetry(() => import('@/components/landing/MiniCameraLanding'));
 import { drBySlug, drFor, type DrLanding } from '@/lib/drLandings';
@@ -110,6 +111,9 @@ const ProductLanding = () => {
     return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={null} onePlusOneEnabled={false} offerTimerMinutes={59} satoriConfig={drEntry.key === 'satori' ? landingConfig?.landing_config?.satori_knife : undefined} woodDiscConfig={drEntry.key === 'wood-disc' ? landingConfig?.landing_config?.wood_disc : undefined} drEntry={drEntry} /></Suspense>;
   }
   // Custom spy detector landing
+  if (usesVacuumPresentation(product.sku)) {
+    return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={false} offerTimerMinutes={59} cameraConfig={vacuumConfig(product.images.length ? product.images : [product.image])} cameraPresentation /></Suspense>;
+  }
   if (usesCameraPresentation(slug, product.sku)) {
     return <Suspense fallback={<div className="min-h-screen bg-background" />}><GenericLanding product={product} landingSlug={landingSlug || slug || ''} upsellOverride={landingConfig?.landing_upsell_enabled ?? null} onePlusOneEnabled={slug === 'mini-camera' ? false : landingConfig?.offer_1plus1_enabled ?? false} offerTimerMinutes={slug === 'mini-camera' ? 59 : landingConfig?.offer_timer_minutes ?? 59} cameraConfig={landingConfig?.landing_config?.mini_camera} cameraPresentation /></Suspense>;
   }
@@ -355,7 +359,7 @@ const GenericLanding = ({
 
   return (
     <div className={`min-h-screen bg-background ${woodPresentation ? "" : "pb-36"}`}>
-      {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} /> : <>
+      {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} skin={usesVacuumPresentation(product.sku) ? 'vacuum' : undefined} gift={giftOffer && giftProduct ? <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} /> : undefined} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
