@@ -4035,6 +4035,20 @@ export type Database = {
       is_queue_only_operator: { Args: { p_uid: string }; Returns: boolean }
       is_test_order: { Args: { p_order_id: string }; Returns: boolean }
       is_test_sku: { Args: { p_sku: string }; Returns: boolean }
+      lead_recovery_results: {
+        Args: never
+        Returns: {
+          address_entered: number
+          address_rate: number
+          campaign: string
+          confirmation_rate: number
+          delivered: number
+          failed: number
+          link_opened: number
+          self_confirmed: number
+          sent: number
+        }[]
+      }
       mark_stockout_waitlist: {
         Args: { p_attempt_id: string }
         Returns: undefined
@@ -4297,6 +4311,20 @@ export type Database = {
           operator: string
           reviewed: number
         }[]
+      }
+      tracking_reminder_visit: {
+        Args: { p_order_id: string; p_sms_id: string }
+        Returns: undefined
+      }
+      tracking_save_address: {
+        Args: {
+          p_address: string
+          p_name?: string
+          p_order_id: string
+          p_region_id: string
+          p_sms_id?: string
+        }
+        Returns: Json
       }
     }
     Enums: {

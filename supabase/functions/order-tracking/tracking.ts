@@ -61,4 +61,4 @@ export const CANCEL_REASONS_KA: Record<string, string> = {
 /** Order still lacks a usable delivery address (skipped or never entered at checkout). */
 export const needsAddress = (o: any) =>
   !isClosed(o) && !isHandedToCourier(o) &&
-  (o.address_status === "missing" || o.skipped_address === true || !String(o.normalized_city || o.city || "").trim());
+  (o.address_status === "missing" || o.skipped_address === true || !String(o.normalized_city || o.city || "").trim() || !String(o.normalized_address || o.address_line1 || "").trim());

@@ -24,19 +24,24 @@ export default function SmsStatusPanel() {
   const [today, setToday] = useState<SmsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [campaigns, setCampaigns] = useState<{ campaign: string; sent: number; delivered: number; failed: number; link_opened: number; address_entered: number; self_confirmed: number; address_rate: number | null; confirmation_rate: number | null }[]>([]);
+  const [campaignError, setCampaignError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const cols = "id,order_number,phone,type,status,provider,delivery_status,api_message,created_at";
-    const [b, last, day] = await Promise.all([
+    const [b, last, day, recovery] = await Promise.all([
       fetchSmsBalance(),
       supabase.from("sms_logs").select(cols).order("created_at", { ascending: false }).limit(50),
       supabase.from("sms_logs").select(cols).gte("created_at", start.toISOString()).limit(5000),
+      supabase.rpc("lead_recovery_results"),
     ]);
     setBalance(b);
     setRows((last.data as SmsRow[]) || []);
     setToday((day.data as SmsRow[]) || []);
+    setCampaigns(recovery.data || []);
+    setCampaignError(!!recovery.error);
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -68,6 +73,17 @@ export default function SmsStatusPanel() {
         <Stat label="Failed today" value={String(failed)} />
         <Stat label="Delivered %" value={deliveredPct === null ? "—" : `${deliveredPct}%`} />
       </div>
+      <section className="space-y-2">
+        <h3 className="font-semibold">SMS — მისამართი და დადასტურება</h3>
+        {campaignError ? <p className="text-sm text-destructive">შედეგები ვერ ჩაიტვირთა</p> : campaigns.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground"><tr><th>კამპანია</th><th>გაგზავნილი</th><th>მიწოდებული</th><th>ვერ გაიგზავნა</th><th>ბმული გახსნა</th><th>მისამართი შეავსო</th><th>თვითონ დაადასტურა</th><th>მისამართი %</th><th>დადასტურება %</th></tr></thead>
+              <tbody>{campaigns.map(c => <tr key={c.campaign} className="border-t border-border"><td className="py-2 pr-3 whitespace-nowrap">{c.campaign}</td><td>{c.sent}</td><td>{c.delivered}</td><td>{c.failed}</td><td>{c.link_opened}</td><td>{c.address_entered}</td><td>{c.self_confirmed}</td><td>{c.address_rate === null ? "—" : `${c.address_rate}%`}</td><td>{c.confirmation_rate === null ? "—" : `${c.confirmation_rate}%`}</td></tr>)}</tbody>
+            </table>
+          </div>
+        ) : <p className="text-sm text-muted-foreground">კამპანია ჯერ არ გაგზავნილა</p>}
+      </section>
       {loading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : (
         <div className="max-h-96 overflow-auto">
           <table className="w-full text-sm">

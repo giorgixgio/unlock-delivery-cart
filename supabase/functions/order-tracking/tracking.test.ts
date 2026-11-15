@@ -29,7 +29,10 @@ Deno.test("phone-as-name is never shown", () => assertEquals(firstName("55510772
 Deno.test("needsAddress: skipped address on open order", () => {
   assertEquals(needsAddress({ status: "new", address_status: "missing", city: "" }), true);
   assertEquals(needsAddress({ status: "new", skipped_address: true, city: "თბილისი" }), true);
-  assertEquals(needsAddress({ status: "new", address_status: "completed", city: "ბათუმი" }), false);
+  assertEquals(needsAddress({ status: "new", address_status: "completed", city: "ბათუმი", address_line1: "ქუჩა 12" }), false);
   assertEquals(needsAddress({ status: "canceled", city: "" }), false);
   assertEquals(needsAddress({ status: "new", city: "", onway_sent_at: "2026-01-01" }), false);
+});
+Deno.test("city without street still needs an address", () => {
+  assertEquals(needsAddress({ status: "new", address_status: "completed", city: "ბათუმი", address_line1: "" }), true);
 });

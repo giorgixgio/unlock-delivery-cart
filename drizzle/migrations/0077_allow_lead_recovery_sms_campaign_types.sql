@@ -1,0 +1,2 @@
+ALTER TABLE public.sms_logs DROP CONSTRAINT sms_logs_type_check;
+ALTER TABLE public.sms_logs ADD CONSTRAINT sms_logs_type_check CHECK (type = ANY(ARRAY['confirmation','fulfillment','review_request','lead_created','order_auto_confirmed','call_no_answer','call_no_answer_2','order_confirmed','out_for_delivery','delivery_failed','delivery_failed_2','address_problem','address_problem_2']) OR type ~ '^support_(ack|followup|update)(_[0-9]+)?$' OR type ~ '^lead_recovery_[a-zA-Z0-9_]+$');

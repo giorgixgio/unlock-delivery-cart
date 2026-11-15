@@ -1,3 +1,9 @@
+# Roadmap — SMS lead recovery
+- [x] Confirm eligible real orders atomically when customers submit a valid tracking-page address; preserve support holds and test isolation.
+- [x] Record reminder-linked visits, address entries and confirmations, with admin-only campaign totals in Settings SMS.
+- [x] Verify live customer address/confirmation readback, nine tracking tests, twelve validation/isolation tests and rollback-only SQL attribution/protection tests; no SMS sent, all verification orders removed.
+- [ ] Send Georgian recovery campaign after message approval; SMS sending has not been implemented or executed. Admin results rendering awaits an authorized session and an actual sent campaign.
+
 # Roadmap — Courier section
 
 # Roadmap — testtaro tape gift

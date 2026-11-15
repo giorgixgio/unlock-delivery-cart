@@ -23,7 +23,10 @@ interface Tracking {
 }
 
 async function call(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("order-tracking", { body });
+  const smsId = new URLSearchParams(window.location.search).get("sms");
+  const attributed = smsId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smsId)
+    && ["get", "set_address"].includes(String(body.action)) ? { ...body, sms_id: smsId } : body;
+  const { data, error } = await supabase.functions.invoke("order-tracking", { body: attributed });
   if (error) {
     const ctx = (error as any).context;
     let payload: any = null;
@@ -227,12 +230,13 @@ function AddressForm({ token, onDone }: { token: string; onDone: () => void }) {
   const [city, setCity] = useState(""), [cityId, setCityId] = useState<string | null>(null);
   const [address, setAddress] = useState(""), [name, setName] = useState("");
   const [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null), [done, setDone] = useState(false);
-  if (done) return <section className="rounded-2xl border-2 border-primary bg-primary/5 p-5 text-center text-lg font-bold">გმადლობთ! მისამართი შენახულია.</section>;
+  const [confirmed, setConfirmed] = useState(false);
+  if (done) return <section className="rounded-2xl border-2 border-primary bg-primary/5 p-5 text-center text-lg font-bold">{confirmed ? "გმადლობთ! შეკვეთა დადასტურებულია." : "გმადლობთ! მისამართი შენახულია. ოპერატორი დაგიკავშირდებათ."}</section>;
   const save = async () => {
     if (!selectedCityValid(cities, cityId, city)) return setErr("აირჩიეთ ქალაქი სიიდან");
     if (address.trim().length < 3) return setErr("ჩაწერეთ მისამართი");
     setBusy(true); setErr(null);
-    try { await call({ action: "set_address", token, region_id: cityId, address: address.trim(), name: name.trim() || undefined }); setDone(true); setTimeout(onDone, 2500); }
+    try { const result = await call({ action: "set_address", token, region_id: cityId, address: address.trim(), name: name.trim() || undefined }); setConfirmed(result?.confirmed === true); setDone(true); onDone(); }
     catch (e: any) { setErr(e.code === "rate_limited" ? "ძალიან ბევრი მცდელობა, სცადეთ მოგვიანებით." : "ვერ შეინახა, სცადეთ ხელახლა."); }
     setBusy(false);
   };
@@ -245,7 +249,7 @@ function AddressForm({ token, onDone }: { token: string; onDone: () => void }) {
       <label className="block text-sm font-semibold">მისამართი<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={300} placeholder="ქუჩა, სახლის ნომერი, ბინა" className="mt-1 h-12 w-full rounded-lg border border-input bg-background px-3 text-base" /></label>
       <label className="block text-sm font-semibold">მიმღების სახელი (არასავალდებულო)<input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className="mt-1 h-12 w-full rounded-lg border border-input bg-background px-3 text-base" /></label>
       {err && <p className="text-sm text-destructive">{err}</p>}
-      <Button type="submit" size="lg" className="h-14 w-full text-lg" disabled={busy}>{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "შენახვა"}</Button>
+      <Button type="submit" size="lg" className="h-14 w-full text-lg" disabled={busy}>{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "შენახვა და დადასტურება"}</Button>
     </form>
   );
 }
