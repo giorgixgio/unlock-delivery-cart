@@ -2,7 +2,7 @@
 - [x] Confirm eligible real orders atomically when customers submit a valid tracking-page address; preserve support holds and test isolation.
 - [x] Record reminder-linked visits, address entries and confirmations, with admin-only campaign totals in Settings SMS.
 - [x] Verify live customer address/confirmation readback, nine tracking tests, twelve validation/isolation tests and rollback-only SQL attribution/protection tests; no SMS sent, all verification orders removed.
-- [ ] Send Georgian recovery campaign after message approval; SMS sending has not been implemented or executed. Admin results rendering awaits an authorized session and an actual sent campaign.
+- [x] Sent approved Georgian recovery campaign to 311 unique uncalled real customers from the fixed November 12–15 three-day window; all 311 accepted, zero failed/pending, all 311 links carry SMS attribution. Two safety tests pass; customer delivery and response totals accumulate in SMS Settings.
 
 # Roadmap — Courier section
 

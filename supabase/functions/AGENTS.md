@@ -1,5 +1,7 @@
 # Edge function rules
 
+- One-off recovery campaigns use fixed approved windows, the existing SMS job secret, insert-first logs, per-phone deduplication and an expiry; use the shared Sender.ge client without altering automated sequence wording.
+
 - Tracking address completion uses service-role-only `tracking_save_address` for atomic save/confirmation with test, closed-order and support-hold guards; `lead_recovery_*` SMS logs and `?sms=<log UUID>` feed admin-only `lead_recovery_results`, so self-confirmation remains separate from operator outcomes.
 
 - Onway webhook validates the shared query token, logs to service-role-only onway_webhook_log in the background and always acknowledges independently of processing, because provider retries must not depend on our failures.
