@@ -24,4 +24,11 @@ describe("SKU 0017 gift", () => {
     expect(getFreeGiftOffer("testfiber")).toBeNull();
     expect(isGiftPairSkuSet(["136", "testfiber"])).toBe(true);
   });
+
+  it("gives testpets the testpetgift ball with a standard value of 19 GEL", () => {
+    expect(getFreeGiftOffer("testpets")?.giftSku).toBe("testpetgift");
+    expect(getFreeGiftOffer("testpets")?.valueGel).toBe(19);
+    expect(getFreeGiftOffer("testpetgift")).toBeNull();
+    expect(isGiftPairSkuSet(["testpets", "testpetgift"])).toBe(true);
+  });
 });

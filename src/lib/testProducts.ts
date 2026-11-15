@@ -30,6 +30,8 @@ export const TEST_SKUS = [
   "testwebo",
   "136",
   "testfiber",
+  "testpets",
+  "testpetgift",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);
