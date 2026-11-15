@@ -33,6 +33,17 @@ export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
       "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
     ],
   },
+  "136": {
+    giftSku: "testfiber",
+    image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/testfiber/1794761329378_as1wvz.png",
+    valueGel: 19,
+    label: "საჩუქარი",
+    headline: "19₾-იანი საჩუქარი — შენთვის უფასოდ!",
+    bullets: [
+      "მიკროფიბრის საწმენდი ტილო FiberX — გამაძლიერებელთან ერთად",
+      "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+    ],
+  },
   "G888-T4656-0017": {
     giftSku: "17GIFT",
     image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/17GIFT%2Fring_shower_head.jpg",

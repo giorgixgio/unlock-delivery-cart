@@ -17,4 +17,11 @@ describe("SKU 0017 gift", () => {
     expect(isGiftPairSkuSet(["G888-T4656-0017", "17GIFT"])).toBe(true);
     expect(isGiftPairSkuSet(["G888-T4656-0017", "17GIFT", "5"])).toBe(false);
   });
+
+  it("gives SKU 136 the testfiber cloth with a standard value of 19 GEL", () => {
+    expect(getFreeGiftOffer("136")?.giftSku).toBe("testfiber");
+    expect(getFreeGiftOffer("136")?.valueGel).toBe(19);
+    expect(getFreeGiftOffer("testfiber")).toBeNull();
+    expect(isGiftPairSkuSet(["136", "testfiber"])).toBe(true);
+  });
 });
