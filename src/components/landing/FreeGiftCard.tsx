@@ -61,6 +61,9 @@ const FreeGiftCard = ({
             </span>}
             {offer.limitedTime && <span className="text-sm font-bold text-success">უფასოდ</span>}
           </div>
+          {offer.giftSku === "testwebo" && (
+            <p className="mt-2 text-base font-extrabold text-success">ზოგავ 19₾ — საჩუქარი სრულიად უფასოა!</p>
+          )}
           <ul className="mt-1.5 space-y-0.5">
             {offer.bullets.map((b) => (
               <li

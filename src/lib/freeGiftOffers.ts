@@ -1,3 +1,5 @@
+import tapeGiftAsset from "@/assets/testwebo_800x.webp.asset.json";
+
 /**
  * Pre-selected free gift attached to every order of a given base SKU
  * (landing funnel only). The gift is added to the order as a real
@@ -20,6 +22,17 @@ export interface FreeGiftOffer {
 }
 
 export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
+  testtaro: {
+    giftSku: "testwebo",
+    image: tapeGiftAsset.url,
+    valueGel: 19,
+    label: "საჩუქარი",
+    headline: "19₾-იანი საჩუქარი — შენთვის უფასოდ!",
+    bullets: [
+      "ორმხრივი წებოვანი ლენტი — თაროსთან ერთად",
+      "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+    ],
+  },
   "G888-T4656-0017": {
     giftSku: "17GIFT",
     image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/17GIFT%2Fring_shower_head.jpg",

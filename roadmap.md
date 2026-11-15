@@ -1,5 +1,8 @@
 # Roadmap — Courier section
 
+# Roadmap — testtaro tape gift
+- [x] Create gift SKU testwebo with uploaded photo and 19 GEL standard value; attach at zero price to testtaro. Mobile gift/photo and checkout verified through hosted asset address; 14 tests pass, no real order submitted.
+
 # Roadmap — Temporary catch-up mode
 - [x] Allow and activate zero-minute catch-up gap; add live last-call age/recorded attempts on queue cards/search rows. 73 related tests pass, build clean; live unlocked callable count 38. Signed-in display remains blocked by missing requesting-user auth account (login redirect verified).
 - [x] Add isolated catch-up selection/retry rules, admin switch and operator banner without changing normal settings or the held optimisation plan.

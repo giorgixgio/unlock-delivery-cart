@@ -3,6 +3,9 @@ import { TEST_SKUS } from "@/lib/testProducts";
 import { TEST_SKUS as EDGE_TEST_SKUS, isTestOrder } from "../../supabase/functions/_shared/testOrders";
 
 describe("test order isolation rule", () => {
+  it("isolates the testwebo gift SKU", () => {
+    expect(isTestOrder({ order_items: [{ sku: "testwebo" }] })).toBe(true);
+  });
   it("isolates orders containing testtaro", () => {
     expect(isTestOrder({ order_items: [{ sku: "testtaro" }] })).toBe(true);
   });

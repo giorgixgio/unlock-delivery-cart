@@ -27,6 +27,7 @@ export const TEST_SKUS = [
   "testpowder",
   "testdana",
   "testtaro",
+  "testwebo",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);

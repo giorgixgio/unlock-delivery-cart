@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getFreeGiftOffer, isGiftPairSkuSet } from "@/lib/freeGiftOffers";
 
 describe("SKU 0017 gift", () => {
+  it("gives testtaro the testwebo tape with a standard value of 19 GEL", () => {
+    expect(getFreeGiftOffer("testtaro")?.giftSku).toBe("testwebo");
+    expect(getFreeGiftOffer("testtaro")?.valueGel).toBe(19);
+    expect(getFreeGiftOffer("testwebo")).toBeNull();
+  });
   it("attaches warehouse SKU 17GIFT only to the 0017 base product", () => {
     expect(getFreeGiftOffer("G888-T4656-0017")?.giftSku).toBe("17GIFT");
     expect(getFreeGiftOffer("17GIFT")).toBeNull();

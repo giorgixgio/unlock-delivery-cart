@@ -474,7 +474,7 @@ const GenericLanding = ({
             <>
             {giftOffer && giftProduct && (
               <p className="mb-1.5 flex items-center justify-center gap-1 text-sm font-extrabold text-success">
-                <Gift className="h-4 w-4 shrink-0" /> {giftOffer.limitedTime ? "შეზღუდული დროით + საშხაპე თავი უფასოდ" : "საჩუქარი შეკვეთაზე — უფასოდ"}
+                <Gift className="h-4 w-4 shrink-0" /> {giftOffer.giftSku === "testwebo" ? "+ 19₾-იანი ლენტი საჩუქრად — უფასოდ" : giftOffer.limitedTime ? "შეზღუდული დროით + საშხაპე თავი უფასოდ" : "საჩუქარი შეკვეთაზე — უფასოდ"}
               </p>
             )}
             <div className="flex items-center gap-3">
