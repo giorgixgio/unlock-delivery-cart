@@ -36,4 +36,3 @@ Queue RPCs mirror `callQueuePolicy.ts`; reuse call/cancel/callback services (`ca
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
 - Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
-- Refund links for "can't use product" tickets go through the `refund-request` edge function (staff `send` SMS; public `get`/`submit` by 10-char token at `/refund/:token`) into `refund_requests` (staff read, admin marks refunded); the customer progress bar is presentation-only and reaches 100% only when staff mark it refunded.
