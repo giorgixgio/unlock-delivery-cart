@@ -2989,6 +2989,84 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_requests: {
+        Row: {
+          amount: number | null
+          created_at: string
+          full_name: string | null
+          iban: string | null
+          id: string
+          opened_at: string | null
+          order_id: string
+          phone: string | null
+          refunded_at: string | null
+          refunded_by: string | null
+          request_id: string
+          sent_at: string
+          sent_by: string | null
+          sms_error: string | null
+          sms_status: string | null
+          status: string
+          submitted_at: string | null
+          token: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          full_name?: string | null
+          iban?: string | null
+          id?: string
+          opened_at?: string | null
+          order_id: string
+          phone?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          request_id: string
+          sent_at?: string
+          sent_by?: string | null
+          sms_error?: string | null
+          sms_status?: string | null
+          status?: string
+          submitted_at?: string | null
+          token: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          full_name?: string | null
+          iban?: string | null
+          id?: string
+          opened_at?: string | null
+          order_id?: string
+          phone?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          request_id?: string
+          sent_at?: string
+          sent_by?: string | null
+          sms_error?: string | null
+          sms_status?: string | null
+          status?: string
+          submitted_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "customer_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       return_matches: {
         Row: {
           confidence_score: number

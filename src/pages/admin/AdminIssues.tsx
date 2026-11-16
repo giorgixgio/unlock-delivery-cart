@@ -11,6 +11,7 @@ import {
   postTicketUpdate, releaseToQueue, resolveTicket, sortTickets, type Resolution,
 } from "@/lib/supportTickets";
 import SupportSettingsCard from "@/components/admin/issues/SupportSettingsCard";
+import RefundsPanel, { RefundLinkButton, type RefundRow } from "@/components/admin/issues/RefundsPanel";
 
 interface Ticket {
   id: string; order_id: string; status: string; payload: any; created_at: string; created_by: string | null; assigned_to: string | null;
@@ -29,6 +30,8 @@ export default function AdminIssues() {
   const [rows, setRows] = useState<Ticket[]>([]);
   const [view, setView] = useState<"open" | "resolved">("open");
   const [mine, setMine] = useState(false);
+  const [tab, setTab] = useState<"cant_use" | "other" | "refunds">("cant_use");
+  const [refunds, setRefunds] = useState<Record<string, RefundRow>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,14 +40,17 @@ export default function AdminIssues() {
       .select("id, order_id, status, payload, created_at, created_by, assigned_to, sla_due_at, last_customer_reply_at, last_admin_update_at, staff_seen_at, resolution, orders(public_order_number, customer_phone, support_hold, status, order_items(title, quantity))")
       .eq("kind", "operator_flag").in("status", view === "open" ? OPEN_STATUSES : ["resolved", "done"])
       .order("created_at", { ascending: view === "open" }).limit(200);
+    const { data: rf } = await (supabase as any).from("refund_requests").select("*, orders(public_order_number, customer_phone)").order("sent_at", { ascending: false }).limit(500);
+    setRefunds(Object.fromEntries((rf || []).map((r: RefundRow) => [r.request_id, r])));
     setRows(data || []); setLoading(false);
   }, [view]);
   useEffect(() => { void load(); const t = window.setInterval(load, 60_000); return () => window.clearInterval(t); }, [load]);
 
   const shown = useMemo(() => {
-    const r = mine ? rows.filter((t) => (t.assigned_to || "").toLowerCase() === me) : rows;
+    const byTab = rows.filter((t) => (t.payload?.reason === "cant_use") === (tab === "cant_use"));
+    const r = mine ? byTab.filter((t) => (t.assigned_to || "").toLowerCase() === me) : byTab;
     return view === "open" ? sortTickets(r) : r;
-  }, [rows, mine, me, view]);
+  }, [rows, mine, me, view, tab]);
   const current = rows.find((r) => r.id === openId) || null;
 
   return (
@@ -58,12 +64,20 @@ export default function AdminIssues() {
           <Button size="sm" variant={mine ? "secondary" : "ghost"} onClick={() => setMine(true)}>Mine</Button>
         </div>
       </div>
-      {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : !shown.length ? <p className="text-sm text-muted-foreground">No issues.</p> : (
+      <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+        {([["cant_use", "🛠 ვერ იყენებს", rows.filter((t) => t.payload?.reason === "cant_use").length], ["other", "სხვა", rows.filter((t) => t.payload?.reason !== "cant_use").length], ["refunds", "💸 დაბრუნებები", Object.values(refunds).filter((r) => r.status === "submitted").length]] as const).map(([k, label, n]) => (
+          <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-md px-2 py-2 text-sm font-semibold ${tab === k ? "bg-background shadow" : "text-muted-foreground"}`}>
+            {label} <span className="ml-1 rounded bg-primary/15 px-1.5 text-xs">{n}</span>
+          </button>
+        ))}
+      </div>
+      {tab === "refunds" ? <RefundsPanel rows={Object.values(refunds)} onChanged={load} /> : loading ? <p className="text-sm text-muted-foreground">Loading…</p> : !shown.length ? <p className="text-sm text-muted-foreground">No issues.</p> : (
         <div className="divide-y rounded-lg border border-border bg-card">
           {shown.map((t) => {
             const unread = hasUnreadReply(t), overdue = isOverdue(t);
             return (
-              <button key={t.id} type="button" onClick={() => { setOpenId(t.id); if (unread) void markTicketSeen(t.id).then(load); }}
+              <div key={t.id} className="p-0">
+              <button type="button" onClick={() => { setOpenId(t.id); if (unread) void markTicketSeen(t.id).then(load); }}
                 className="flex w-full flex-wrap items-center gap-2 p-2.5 text-left text-sm hover:bg-muted">
                 <span className="font-semibold">#{t.orders?.public_order_number}</span>
                 {t.orders?.customer_phone && <a href={`tel:${t.orders.customer_phone}`} onClick={(e) => e.stopPropagation()} className="underline">{t.orders.customer_phone}</a>}
@@ -76,6 +90,8 @@ export default function AdminIssues() {
                   <span className="text-xs text-muted-foreground">{STATUS_LABEL[t.status]} · {age(t.created_at)}</span>
                 </span>
               </button>
+              {tab === "cant_use" && <div className="px-2.5 pb-2.5"><RefundLinkButton ticketId={t.id} refund={refunds[t.id]} onDone={load} /></div>}
+              </div>
             );
           })}
         </div>
@@ -83,7 +99,7 @@ export default function AdminIssues() {
       <SupportSettingsCard />
       <Sheet open={!!current} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-          {current && <IssueDetail ticket={current} onChanged={load} />}
+          {current && <>{current.payload?.reason === "cant_use" && <div className="mb-3"><RefundLinkButton ticketId={current.id} refund={refunds[current.id]} onDone={load} /></div>}<IssueDetail ticket={current} onChanged={load} /></>}
         </SheetContent>
       </Sheet>
     </div>

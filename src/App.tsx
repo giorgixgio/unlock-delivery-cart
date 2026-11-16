@@ -72,6 +72,7 @@ const AdminCallQueue = lazy(() => import('./pages/admin/AdminCallQueue'));
 const AdminIssues = lazy(() => import('./pages/admin/AdminIssues'));
 import ReviewForm from './pages/ReviewForm';
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
+const RefundRequest = lazy(() => import('./pages/RefundRequest'));
 const AdminCustomerFeedback = lazy(() => import('./pages/admin/AdminCustomerFeedback'));
 import StorePolicy from './pages/StorePolicy';
 import StorePolicyFooter from './components/StorePolicyFooter';
@@ -175,6 +176,7 @@ const App = () => (
                     {/* Landing page for individual products */}
                     <Route path="/p/:slug" element={<LandingPageRoute />} />
                     <Route path="/r/:token" element={<ReviewForm />} />
+                    <Route path="/refund/:token" element={<Suspense fallback={null}><RefundRequest /></Suspense>} />
                     <Route path="/t/:token" element={<Suspense fallback={null}><OrderTracking /></Suspense>} />
                     {/* 5-for-49 bundle builder */}
                     <Route path="/5for39" element={<BundleLanding />} />
