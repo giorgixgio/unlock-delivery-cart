@@ -22,6 +22,16 @@ export interface FreeGiftOffer {
 }
 
 export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
+  "002": {
+    giftSku: "stikeri",
+    valueGel: 24,
+    label: "საჩუქარი",
+    headline: "24₾-იანი საჩუქარი — შენთვის უფასოდ!",
+    bullets: [
+      "ტელეფონის სიგნალის გამაძლიერებელი სტიკერი — კამერასთან ერთად",
+      "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+    ],
+  },
   testtaro: {
     giftSku: "testwebo",
     image: tapeGiftAsset.url,

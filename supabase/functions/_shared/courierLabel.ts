@@ -17,6 +17,9 @@ export function zoneForOrder(order: { normalized_city?: string | null; raw_city?
   return key && zoneByCity[key] !== undefined ? zoneByCity[key] : null;
 }
 
+/** Gift SKUs printed as "+sku" so packers never forget the free extra. */
+export const PLUS_LABEL_SKUS = new Set(["stikeri"]);
+
 /** "BIN - qty, BIN - qty" with duplicate SKU rows merged; falls back to the SKU when no bin. */
 export function skuWithQtyText(items: { sku?: unknown; quantity?: unknown }[] | null | undefined, binBySku: Record<string, string>): string {
   const qtyBySku = new Map<string, number>();
@@ -24,7 +27,8 @@ export function skuWithQtyText(items: { sku?: unknown; quantity?: unknown }[] | 
     const sku = String(i.sku ?? "");
     qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + Number(i.quantity || 1));
   }
-  return [...qtyBySku.entries()].map(([sku, q]) => `${(binBySku[sku] || "").trim() || sku} - ${q}`).join(", ");
+  return [...qtyBySku.entries()].map(([sku, q]) =>
+    PLUS_LABEL_SKUS.has(sku) ? `+${sku}${q > 1 ? ` - ${q}` : ""}` : `${(binBySku[sku] || "").trim() || sku} - ${q}`).join(", ");
 }
 
 /** Printed label: "[tag] BIN - qty". */

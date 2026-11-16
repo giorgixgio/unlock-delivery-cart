@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildZoneMap, sentViaApi, zoneForOrder } from "../_shared/courierLabel.ts";
+import { buildZoneMap, sentViaApi, skuWithQtyText, zoneForOrder } from "../_shared/courierLabel.ts";
 import { isTestOrder } from "../_shared/testOrders.ts";
 
 const corsHeaders = {
@@ -366,14 +366,7 @@ Deno.serve(async (req) => {
       // Quantity column is always "1"; real qty lives in the SKU string as "SKU - QTY".
       // Merge duplicate order_items rows of the same SKU into a single entry,
       // then print the product's bin location (falling back to the SKU itself).
-      const qtyBySku = new Map<string, number>();
-      for (const i of items as any[]) {
-        const sku = String(i.sku ?? "");
-        qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + Number(i.quantity || 1));
-      }
-      const skuWithQty = Array.from(qtyBySku.entries())
-        .map(([sku, qty]) => `${(binBySku[sku] || "").trim() || sku} - ${qty}`)
-        .join(", ");
+      const skuWithQty = skuWithQtyText(items, binBySku);
       const titles = items.map((i: any) => i.title).join(", ");
       const quantityColumn = "1";
       const tag = `[${a.tag}]`; // printed on the slip so the stack self-sorts

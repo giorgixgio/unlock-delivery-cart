@@ -32,3 +32,9 @@ describe("SKU 0017 gift", () => {
     expect(isGiftPairSkuSet(["testpets", "testpetgift"])).toBe(true);
   });
 });
+import { skuWithQtyText } from "../../supabase/functions/_shared/courierLabel";
+describe("002 sticker gift", () => {
+  it("gives stikeri free with 002", () => expect(getFreeGiftOffer("002")?.giftSku).toBe("stikeri"));
+  it("prints +stikeri on courier labels", () =>
+    expect(skuWithQtyText([{ sku: "002", quantity: 1 }, { sku: "stikeri", quantity: 1 }], { "002": "A1" })).toBe("A1 - 1, +stikeri"));
+});
