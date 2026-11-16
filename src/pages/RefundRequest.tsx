@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-interface Info { order_number: string; amount: number; status: "sent" | "submitted" | "refunded"; submitted_at: string | null; refunded_at: string | null; evidence_required?: boolean }
+interface Info { order_number: string; amount: number; status: "sent" | "submitted" | "approved" | "bank_submitted" | "refunded"; submitted_at: string | null; bank_submitted_at?: string | null; refunded_at: string | null; evidence_required?: boolean }
 interface Ev { id: string; name: string; video: boolean; preview: string; path?: string; state: "up" | "ok" | "err" }
 const extOf = (f: File) => (f.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || (f.type.split("/")[1] || "bin").replace(/[^a-z0-9]/g, "").slice(0, 5);
 
@@ -48,11 +48,14 @@ function Evidence({ token, items, setItems, required }: { token: string; items: 
   );
 }
 const call = (body: Record<string, unknown>) => supabase.functions.invoke("refund-request", { body });
+const MONEY_STEPS = ["მოთხოვნა მიღებულია", "მონაცემები მოწმდება", "გადარიცხვა მზადდება", "თანხა ჩაირიცხა"];
 const STEPS = ["მასალა მიღებულია", "სპეციალისტი განიხილავს", "გადაწყვეტილება მზადდება", "დაგიკავშირდებით"];
 
 function Progress({ info }: { info: Info }) {
   const refunded = info.status === "refunded";
-  const start = new Date(info.submitted_at || Date.now()).getTime();
+  const money = info.status === "bank_submitted" || refunded;
+  const steps = money ? MONEY_STEPS : STEPS;
+  const start = new Date((money ? info.bank_submitted_at : info.submitted_at) || info.submitted_at || Date.now()).getTime();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   // Presentation-only: eases toward 92% over 72h; jumps to 100% only when staff mark it refunded.
@@ -63,8 +66,8 @@ function Progress({ info }: { info: Info }) {
     <div className="space-y-5">
       <div className="text-center">
         <div className="text-5xl">{refunded ? "✅" : "⏳"}</div>
-        <h1 className="mt-2 text-2xl font-bold">{refunded ? "განხილვა დასრულდა" : "თქვენი მიმართვა განიხილება"}</h1>
-        <p className="mt-1 text-lg text-muted-foreground">{refunded ? "მადლობა მოთმინებისთვის." : "24–72 საათში დაგიკავშირდებით."}</p>
+        <h1 className="mt-2 text-2xl font-bold">{refunded ? "თანხა დაბრუნებულია!" : money ? "თანხის დაბრუნება მუშავდება" : "თქვენი მიმართვა განიხილება"}</h1>
+        <p className="mt-1 text-lg text-muted-foreground">{refunded ? "თანხა ჩაირიცხა თქვენს ანგარიშზე." : money ? "თანხა ჩაგერიცხებათ 24–72 საათში." : "24–72 საათში დაგიკავშირდებით."}</p>
       </div>
       <div>
         <div className="h-5 overflow-hidden rounded-full bg-muted">
@@ -73,7 +76,7 @@ function Progress({ info }: { info: Info }) {
         <div className="mt-1 text-right text-sm font-semibold">{Math.floor(pct)}%</div>
       </div>
       <ol className="space-y-3">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li key={s} className={`flex items-center gap-3 text-lg ${i <= step ? "font-semibold" : "text-muted-foreground"}`}>
             <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${i < step || refunded ? "bg-primary text-primary-foreground" : i === step ? "border-2 border-primary" : "bg-muted"}`}>{i < step || refunded ? "✓" : i + 1}</span>
             {s}{i === step && !refunded && <span className="text-sm text-muted-foreground">…</span>}
@@ -82,6 +85,40 @@ function Progress({ info }: { info: Info }) {
       </ol>
       <p className="rounded-lg bg-muted p-3 text-center">შეკვეთა #{info.order_number}</p>
     </div>
+  );
+}
+
+function BankForm({ info, token, onDone }: { info: Info; token: string; onDone: (at: string) => void }) {
+  const [name, setName] = useState(""); const [iban, setIban] = useState("");
+  const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr(null);
+    if (name.trim().split(/\s+/).length < 2) return setErr("ჩაწერეთ სახელი და გვარი");
+    const clean = iban.replace(/\s+/g, "").toUpperCase();
+    if (!/^GE\d{2}[A-Z]{2}\d{16}$/.test(clean)) return setErr("IBAN უნდა იყოს 22 სიმბოლო, იწყება GE-ით (მაგ: GE29NB0000000101904917)");
+    setBusy(true);
+    const { data, error } = await call({ action: "bank", token, full_name: name.trim(), iban: clean });
+    setBusy(false);
+    if (data?.ok) onDone(data.bank_submitted_at);
+    else if ((error as any)?.context?.status === 400) setErr("IBAN არასწორია, გთხოვთ გადაამოწმოთ");
+    else setErr("ვერ გაიგზავნა, სცადეთ თავიდან");
+  };
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="text-center">
+        <div className="text-5xl">✅</div>
+        <h1 className="mt-2 text-2xl font-bold">დაბრუნება დამტკიცდა</h1>
+        <p className="mt-1 text-lg text-muted-foreground">შეკვეთა #{info.order_number} · <b className="text-foreground">{Number(info.amount).toFixed(2)}₾</b></p>
+        <p className="mt-2 text-lg">მოგვწერეთ ანგარიშის ნომერი, სადაც ჩაგერიცხებათ თანხა.</p>
+      </div>
+      <label className="block space-y-1"><span className="text-lg font-semibold">სახელი და გვარი</span>
+        <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoComplete="name" className="h-14 text-lg" placeholder="მაგ: გიორგი ბერიძე" /></label>
+      <label className="block space-y-1"><span className="text-lg font-semibold">ბანკის ანგარიშის ნომერი (IBAN)</span>
+        <Input value={iban} onChange={(e) => setIban(e.target.value.toUpperCase())} maxLength={34} className="h-14 font-mono text-lg" placeholder="GE00XX0000000000000000" autoCapitalize="characters" /></label>
+      {err && <p className="rounded-lg bg-destructive/10 p-3 font-semibold text-destructive">{err}</p>}
+      <Button type="submit" disabled={busy} className="h-16 w-full text-xl font-bold">{busy ? "იგზავნება…" : "გაგზავნა"}</Button>
+      <p className="text-center text-muted-foreground">🔒 თანხა ჩაგერიცხებათ 24–72 საათში</p>
+    </form>
   );
 }
 
@@ -110,7 +147,9 @@ export default function RefundRequest() {
   return (
     <main className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 shadow-sm">
-        {!info ? <p className="py-10 text-center text-lg">{err || "იტვირთება…"}</p> : info.status !== "sent" ? <Progress info={info} /> : (
+        {!info ? <p className="py-10 text-center text-lg">{err || "იტვირთება…"}</p>
+          : info.status === "approved" ? <BankForm info={info} token={token} onDone={(at) => setInfo((i) => i && { ...i, status: "bank_submitted", bank_submitted_at: at })} />
+          : info.status !== "sent" ? <Progress info={info} /> : (
           <form onSubmit={submit} className="space-y-4">
             <div className="text-center">
               <div className="text-5xl">🔍</div>

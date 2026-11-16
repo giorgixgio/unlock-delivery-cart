@@ -4,13 +4,15 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { normalizeGePhone, senderApiKey, sendSms } from "../_shared/senderGe.ts";
 import { loadSmsContext } from "../_shared/smsOrderContext.ts";
-import { newToken, refundText } from "./policy.ts";
+import { bankText, newToken, normalizeIban, refundText } from "./policy.ts";
 
 const EVIDENCE = "refund-evidence";
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const Tok = z.string().regex(/^[0-9A-Za-z]{10}$/);
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("send"), request_id: z.string().uuid(), evidence_required: z.boolean().optional() }),
+  z.object({ action: z.literal("approve"), request_id: z.string().uuid() }),
+  z.object({ action: z.literal("bank"), token: Tok, full_name: z.string().trim().min(3).max(100), iban: z.string().trim().min(15).max(40) }),
   z.object({ action: z.literal("upload_url"), token: Tok, ext: z.string().regex(/^[a-z0-9]{2,5}$/) }),
   z.object({ action: z.literal("get"), token: Tok }),
   z.object({ action: z.literal("submit"), token: Tok, evidence: z.array(z.string().max(200)).max(10).optional() }),
@@ -25,7 +27,7 @@ Deno.serve(async (req) => {
   if (!p.success) return json({ error: "invalid_request" }, 400);
   const b = p.data;
 
-  if (b.action === "send") {
+  if (b.action === "send" || b.action === "approve") {
     const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     const auth = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: `Bearer ${jwt}` } } });
     const { data: u } = await auth.auth.getUser();
@@ -40,35 +42,56 @@ Deno.serve(async (req) => {
     const phone = normalizeGePhone(ctx.order.customer_phone);
     if (!phone) return json({ error: "bad_phone" }, 400);
 
-    const { data: existing } = await db.from("refund_requests").select("id, token, status").eq("request_id", t.id).maybeSingle();
-    if (existing && existing.status !== "sent") return json({ error: "already_" + existing.status }, 409);
-    const amount = (ctx.order.order_items || []).reduce((s: number, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity || 1), 0);
+    const { data: existing } = await db.from("refund_requests").select("id, token, status, amount").eq("request_id", t.id).maybeSingle();
+    const approve = b.action === "approve";
+    // Step 1 (send) only before evidence arrives; step 2 (approve) only after evidence, re-sendable until bank details arrive.
+    if (!approve && existing && existing.status !== "sent") return json({ error: "already_" + existing.status }, 409);
+    if (approve && (!existing || !["submitted", "approved"].includes(existing.status))) return json({ error: "not_reviewable" }, 409);
+    const amount = approve ? Number(existing!.amount || 0) : (ctx.order.order_items || []).reduce((s: number, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity || 1), 0);
     const token = existing?.token || newToken();
-    const row = { evidence_required: !!b.evidence_required, request_id: t.id, order_id: t.order_id, token, phone, amount, status: "sent", sent_by: u.user.email, sent_at: new Date().toISOString(), sms_status: "pending", sms_error: null };
-    const { data: saved, error } = await db.from("refund_requests").upsert(row, { onConflict: "request_id" }).select("id").single();
-    if (error) return json({ error: error.message }, 500);
+    let saved: { id: string };
+    if (approve) {
+      const now = new Date().toISOString();
+      const { error } = await db.from("refund_requests").update({ status: "approved", approved_at: now, approved_by: u.user.email, sms_status: "pending", sms_error: null }).eq("id", existing!.id).in("status", ["submitted", "approved"]);
+      if (error) return json({ error: error.message }, 500);
+      saved = { id: existing!.id };
+    } else {
+      const row = { evidence_required: true, request_id: t.id, order_id: t.order_id, token, phone, amount, status: "sent", sent_by: u.user.email, sent_at: new Date().toISOString(), sms_status: "pending", sms_error: null };
+      const { data, error } = await db.from("refund_requests").upsert(row, { onConflict: "request_id" }).select("id").single();
+      if (error) return json({ error: error.message }, 500);
+      saved = data;
+    }
 
     const link = `https://${ctx.store === "BIGMART" ? "bigmart.ge" : "trendmart.ge"}/refund/${token}`;
     // Test orders still get the refund SMS: it is a manual staff action and is how the flow is tested.
     const key = senderApiKey();
     if (!key) return json({ error: "sms_not_configured" }, 500);
-    const content = refundText(link, String(ctx.order.public_order_number), amount, ctx.store === "BIGMART" ? "BIGMART" : "TRENDMART");
+    const store = ctx.store === "BIGMART" ? "BIGMART" : "TRENDMART";
+    const content = approve ? bankText(link, String(ctx.order.public_order_number), amount, store) : refundText(link, String(ctx.order.public_order_number), amount, store);
     const logId = crypto.randomUUID();
     await db.from("sms_logs").insert({ id: logId, order_number: ctx.order.public_order_number, phone, type: "refund_link", sender: "sender.ge", provider: "sender.ge", content, status: "pending", attempts: 1 });
     const r = await sendSms(key, phone, content);
     await db.from("sms_logs").update({ status: r.status, error_code: r.httpStatus, api_message: r.apiMessage, message_id: r.messageId, segments: r.segments, attempts: r.attempts, delivery_status: r.status === "sent" ? "pending" : null }).eq("id", logId);
     await db.from("refund_requests").update({ sms_status: r.status, sms_error: r.status === "sent" ? null : r.apiMessage }).eq("id", saved.id);
-    await db.from("support_ticket_messages").insert({ request_id: t.id, author_type: "system", author: u.user.email, body: `💸 თანხის დაბრუნების ბმული გაიგზავნა (${r.status})`, link_url: link, notify_customer: false });
+    await db.from("support_ticket_messages").insert({ request_id: t.id, author_type: "system", author: u.user.email, body: approve ? `✅ დაბრუნება დამტკიცდა — IBAN-ის ბმული გაიგზავნა (${r.status})` : `🔍 განხილვის ბმული გაიგზავნა (${r.status})`, link_url: link, notify_customer: false });
     return json({ ok: r.status === "sent", sms: r.status, link });
   }
 
-  const { data: rr } = await db.from("refund_requests").select("id, order_id, amount, status, full_name, submitted_at, refunded_at, opened_at, evidence_required").eq("token", b.token).maybeSingle();
+  const { data: rr } = await db.from("refund_requests").select("id, order_id, amount, status, full_name, submitted_at, refunded_at, opened_at, evidence_required, bank_submitted_at").eq("token", b.token).maybeSingle();
   if (!rr) return json({ error: "not_found" }, 404);
   const { data: o } = await db.from("orders").select("public_order_number").eq("id", rr.order_id).maybeSingle();
 
   if (b.action === "get") {
     if (!rr.opened_at) await db.from("refund_requests").update({ opened_at: new Date().toISOString() }).eq("id", rr.id);
-    return json({ order_number: o?.public_order_number, amount: rr.amount, status: rr.status, submitted_at: rr.submitted_at, refunded_at: rr.refunded_at, evidence_required: rr.evidence_required });
+    return json({ order_number: o?.public_order_number, amount: rr.amount, status: rr.status, submitted_at: rr.submitted_at, refunded_at: rr.refunded_at, bank_submitted_at: rr.bank_submitted_at, evidence_required: rr.evidence_required });
+  }
+  if (b.action === "bank") {
+    if (rr.status !== "approved") return json({ error: "not_approved", status: rr.status }, 409);
+    const iban = normalizeIban(b.iban);
+    if (!iban) return json({ error: "bad_iban" }, 400);
+    const now = new Date().toISOString();
+    await db.from("refund_requests").update({ full_name: b.full_name, iban, status: "bank_submitted", bank_submitted_at: now }).eq("id", rr.id).eq("status", "approved");
+    return json({ ok: true, status: "bank_submitted", bank_submitted_at: now });
   }
   if (b.action === "upload_url") {
     if (rr.status !== "sent") return json({ error: "already_submitted" }, 409);

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export interface RefundRow {
   id: string; request_id: string; order_id: string; token: string; phone: string | null; amount: number | null;
-  status: "sent" | "submitted" | "refunded"; full_name: string | null; iban: string | null; sms_status: string | null; sms_error: string | null;
+  status: "sent" | "submitted" | "approved" | "bank_submitted" | "refunded"; approved_at?: string | null; approved_by?: string | null; bank_submitted_at?: string | null; full_name: string | null; iban: string | null; sms_status: string | null; sms_error: string | null;
   sent_by: string | null; sent_at: string; opened_at: string | null; submitted_at: string | null; refunded_at: string | null; refunded_by: string | null;
   evidence_required?: boolean; evidence?: string[] | null;
   orders?: { public_order_number: string; customer_phone: string | null } | null;
@@ -32,12 +32,28 @@ export function EvidenceThumbs({ paths }: { paths: string[] }) {
 }
 const missingEvidence = (r: RefundRow) => !!r.evidence_required && !(r.evidence || []).length;
 
+async function approveRefund(r: RefundRow, toast: ReturnType<typeof useToast>["toast"]) {
+  if (!confirm(`#${r.orders?.public_order_number ?? ""} — ${r.amount}₾ დაბრუნებას ამტკიცებ? კლიენტს მიუვა SMS IBAN-ის მოთხოვნით.`)) return false;
+  const { data, error } = await supabase.functions.invoke("refund-request", { body: { action: "approve", request_id: r.request_id } });
+  if (error || !data?.ok) { toast({ title: "ვერ გაიგზავნა", description: data?.error || error?.message, variant: "destructive" }); return false; }
+  toast({ title: "დამტკიცდა — IBAN-ის SMS გაიგზავნა ✅" }); return true;
+}
+const STAGE: Record<string, string> = {
+  submitted: "📝 კლიენტმა ატვირთა ფოტო/ვიდეო — განიხილე",
+  approved: "✅ დამტკიცდა — ველოდებით IBAN-ს",
+  bank_submitted: "🏦 კლიენტმა მოგვწერა IBAN — გადასარიცხი",
+  refunded: "💸 თანხა დაბრუნებულია",
+};
+
 export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: string; refund?: RefundRow; onDone: () => void }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   if (refund && refund.status !== "sent") {
     return <div className={`space-y-2 rounded-lg px-3 py-2 text-sm font-semibold ${refund.status === "refunded" ? "bg-primary/15" : "bg-accent"}`}>
-      <div>{refund.status === "refunded" ? "✅ თანხა დაბრუნებულია" : "📝 კლიენტმა ატვირთა ფოტო/ვიდეო — განიხილე"}</div>
+      <div>{STAGE[refund.status]}</div>
+      {(refund.status === "submitted" || refund.status === "approved") && <Button type="button" disabled={busy} className="h-12 w-full text-base font-bold"
+        onClick={async () => { setBusy(true); if (await approveRefund(refund, toast)) onDone(); setBusy(false); }}>
+        {refund.status === "approved" ? "🔁 IBAN-ის SMS ხელახლა" : "✅ დაბრუნების დამტკიცება — IBAN-ის მოთხოვნა"}</Button>}
       {refund.full_name && <div className="font-normal">{refund.full_name} · <span className="font-mono text-xs">{refund.iban}</span></div>}
       {(refund.evidence || []).length ? <EvidenceThumbs paths={refund.evidence!} /> : <div className="font-normal text-muted-foreground">ფოტო/ვიდეო არ ატვირთა</div>}
     </div>;
@@ -63,16 +79,16 @@ export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: strin
 export default function RefundsPanel({ rows, onChanged }: { rows: RefundRow[]; onChanged: () => void }) {
   const { user } = useAdminAuth();
   const { toast } = useToast();
-  const [filter, setFilter] = useState<"submitted" | "sent" | "refunded">("submitted");
+  const [filter, setFilter] = useState<RefundRow["status"]>("submitted");
   const shown = rows.filter((r) => r.status === filter);
   const mark = async (r: RefundRow) => {
     if (missingEvidence(r)) return toast({ title: "მტკიცებულება აკლია", description: "ამ კლიენტს ფოტო/ვიდეო მოეთხოვა და არ აუტვირთავს.", variant: "destructive" });
     if (!confirm(`#${r.orders?.public_order_number} — ${r.amount}₾ დაბრუნებულად მოვნიშნო?`)) return;
-    const { error } = await (supabase as any).from("refund_requests").update({ status: "refunded", refunded_at: new Date().toISOString(), refunded_by: user?.email }).eq("id", r.id).eq("status", "submitted");
+    const { error } = await (supabase as any).from("refund_requests").update({ status: "refunded", refunded_at: new Date().toISOString(), refunded_by: user?.email }).eq("id", r.id).eq("status", "bank_submitted");
     if (error) toast({ title: "ვერ მოინიშნა", description: error.message, variant: "destructive" }); else toast({ title: "მოინიშნა ✅" });
     onChanged();
   };
-  const tabs: [typeof filter, string][] = [["submitted", "📝 ატვირთეს — განსახილველი"], ["sent", "⏳ არ შეუვსიათ"], ["refunded", "✅ დაბრუნებული"]];
+  const tabs: [typeof filter, string][] = [["submitted", "📝 განსახილველი"], ["bank_submitted", "🏦 გადასარიცხი"], ["approved", "⏳ ველოდებით IBAN-ს"], ["sent", "⏳ არ ატვირთეს"], ["refunded", "✅ დაბრუნებული"]];
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1">
@@ -91,7 +107,8 @@ export default function RefundsPanel({ rows, onChanged }: { rows: RefundRow[]; o
                 გაგზავნა {fmt(r.sent_at)}{r.sms_status && r.sms_status !== "sent" ? ` (SMS: ${r.sms_status})` : ""} · გახსნა {fmt(r.opened_at)}{r.submitted_at ? ` · შეავსო ${fmt(r.submitted_at)}` : ""}{r.refunded_at ? ` · დაბრუნდა ${fmt(r.refunded_at)} (${r.refunded_by})` : ""}
               </span>
               {r.evidence_required && <span className="rounded bg-muted px-1.5 py-0.5 text-xs">📸 სავალდებულო</span>}
-              {r.status === "submitted" && <Button size="sm" className="ml-auto" disabled={missingEvidence(r)} onClick={() => mark(r)}>✅ დაბრუნებულია</Button>}
+              {(r.status === "submitted" || r.status === "approved") && <Button size="sm" className="ml-auto" onClick={async () => { if (await approveRefund(r, toast)) onChanged(); }}>{r.status === "approved" ? "🔁 IBAN-ის SMS" : "✅ დამტკიცება"}</Button>}
+              {r.status === "bank_submitted" && <Button size="sm" className="ml-auto" onClick={() => mark(r)}>💸 გადავრიცხე</Button>}
               {!!(r.evidence || []).length && <div className="w-full"><EvidenceThumbs paths={r.evidence!} /></div>}
             </div>
           ))}

@@ -65,7 +65,7 @@ export default function AdminIssues() {
         </div>
       </div>
       <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
-        {([["cant_use", "🛠 ვერ იყენებს", rows.filter((t) => t.payload?.reason === "cant_use").length], ["other", "სხვა", rows.filter((t) => t.payload?.reason !== "cant_use").length], ["refunds", "💸 დაბრუნებები", Object.values(refunds).filter((r) => r.status === "submitted").length]] as const).map(([k, label, n]) => (
+        {([["cant_use", "🛠 ვერ იყენებს", rows.filter((t) => t.payload?.reason === "cant_use").length], ["other", "სხვა", rows.filter((t) => t.payload?.reason !== "cant_use").length], ["refunds", "💸 დაბრუნებები", Object.values(refunds).filter((r) => r.status === "submitted" || r.status === "bank_submitted").length]] as const).map(([k, label, n]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-md px-2 py-2 text-sm font-semibold ${tab === k ? "bg-background shadow" : "text-muted-foreground"}`}>
             {label} <span className="ml-1 rounded bg-primary/15 px-1.5 text-xs">{n}</span>
           </button>
@@ -151,7 +151,7 @@ function IssueDetail({ ticket, refund, onChanged }: { ticket: Ticket; refund?: R
           <div className="text-base font-bold">შედეგი — აირჩიე ერთი</div>
           <div className="space-y-1">
             <RefundLinkButton ticketId={ticket.id} refund={refund} onDone={() => { void load(); onChanged(); }} />
-            <p className="text-xs text-muted-foreground">კლიენტს მიდის SMS: „დავიწყეთ განხილვა“ და ბმული, სადაც ტვირთავს პრობლემის ფოტოს/ვიდეოს. მასალა ჩნდება აქ და „💸 დაბრუნებები“ ტაბში — 24–72 საათში განიხილე და დაუკავშირდი.</p>
+            <p className="text-xs text-muted-foreground">1) კლიენტს მიდის SMS „დავიწყეთ განხილვა“ — ტვირთავს ფოტოს/ვიდეოს. 2) ნახე მასალა და დააჭირე „დამტკიცება“ — მიდის მეორე SMS, კლიენტი წერს IBAN-ს. 3) გადარიცხე და მონიშნე „გადავრიცხე“ (💸 დაბრუნებები ტაბი).</p>
           </div>
           {open && <>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="შენიშვნა (არასავალდებულო)" className="text-base" />

@@ -12,6 +12,11 @@ export const refundText = (link: string, orderNumber: string, _amountGel: number
   `${storeName}: შეკვეთაზე #${orderNumber} დავიწყეთ პრობლემის განხილვა. ` +
   `ატვირთეთ პროდუქტის ფოტო ან ვიდეო აქ: ${link} 24-72 საათში დაგიკავშირდებით.`;
 
+// Sent only after staff approve the refund: names store, order and sum, asks just for the account number.
+export const bankText = (link: string, orderNumber: string, amountGel: number, storeName: string) =>
+  `${storeName}: შეკვეთაზე #${orderNumber} ${formatGel(amountGel)} დაბრუნება დამტკიცდა. ` +
+  `მოგვწერეთ სახელი და ბანკის ანგარიშის ნომერი (IBAN) აქ: ${link} 24-72 საათში ჩაგერიცხებათ.`;
+
 /** Georgian IBAN: GE + 2 check digits + 2-letter bank code + 16 digits (22 chars), mod-97 valid. */
 export function normalizeIban(input: string): string | null {
   const s = String(input || "").replace(/\s+/g, "").toUpperCase();

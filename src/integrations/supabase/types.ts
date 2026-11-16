@@ -2992,6 +2992,9 @@ export type Database = {
       refund_requests: {
         Row: {
           amount: number | null
+          approved_at: string | null
+          approved_by: string | null
+          bank_submitted_at: string | null
           created_at: string
           evidence: Json
           evidence_required: boolean
@@ -3014,6 +3017,9 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_submitted_at?: string | null
           created_at?: string
           evidence?: Json
           evidence_required?: boolean
@@ -3036,6 +3042,9 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_submitted_at?: string | null
           created_at?: string
           evidence?: Json
           evidence_required?: boolean
