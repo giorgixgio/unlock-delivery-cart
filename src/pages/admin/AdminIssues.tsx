@@ -75,16 +75,18 @@ export default function AdminIssues() {
         <div className="divide-y rounded-lg border border-border bg-card">
           {shown.map((t) => {
             const unread = hasUnreadReply(t), overdue = isOverdue(t);
+            const step = handledStep(t, refunds[t.id]);
             return (
               <div key={t.id} className="p-0">
               <button type="button" onClick={() => { setOpenId(t.id); if (unread) void markTicketSeen(t.id).then(load); }}
-                className="flex w-full flex-wrap items-center gap-2 p-2.5 text-left text-sm hover:bg-muted">
+                className={`flex w-full flex-wrap items-center gap-2 p-2.5 text-left text-sm hover:bg-muted ${step ? "border-l-4 border-primary bg-primary/5" : ""}`}>
                 <span className="font-semibold">#{t.orders?.public_order_number}</span>
                 {t.orders?.customer_phone && <a href={`tel:${t.orders.customer_phone}`} onClick={(e) => e.stopPropagation()} className="underline">{t.orders.customer_phone}</a>}
                 <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{REASON_LABEL[t.payload?.reason] || t.payload?.reason}</span>
                 {t.payload?.text && <span className="max-w-xs truncate italic text-muted-foreground">“{t.payload.text}”</span>}
                 <span className="text-xs text-muted-foreground">{t.payload?.by_operator}</span>
                 <span className="ml-auto flex items-center gap-1.5">
+                  {step && <span className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">{step}</span>}
                   {unread && <span className="rounded bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">💬 reply</span>}
                   {view === "open" && t.sla_due_at && <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${overdue ? "bg-destructive text-destructive-foreground" : "bg-muted"}`}>SLA {fmt(t.sla_due_at)}</span>}
                   <span className="text-xs text-muted-foreground">{STATUS_LABEL[t.status]} · {age(t.created_at)}</span>
@@ -218,4 +220,23 @@ function IssueDetail({ ticket, refund, onChanged }: { ticket: Ticket; refund?: R
       </div>
     </div>
   );
+}
+
+const REFUND_STEP: Record<string, string> = {
+  sent: "🔍 ბმული გაგზავნილია — ელოდება ფოტოს",
+  submitted: "📸 ფოტო მიღებულია — განსახილველი",
+  approved: "✅ დამტკიცდა — ელოდება IBAN-ს",
+  bank_submitted: "🏦 IBAN მიღებულია — გადასარიცხი",
+  refunded: "💸 თანხა დაბრუნებულია",
+};
+const RESOLUTION_STEP: Record<string, string> = {
+  replacement: "📦 ხელახლა გაიგზავნა (0₾)",
+  refund: "💸 დაბრუნება",
+  other: "✔️ დაიხურა",
+};
+/** Short label for the list row showing what was already done on this issue. */
+function handledStep(t: Ticket, refund?: RefundRow): string | null {
+  if (refund) return REFUND_STEP[refund.status] ?? null;
+  if (t.status === "resolved" && (t as any).resolution) return RESOLUTION_STEP[(t as any).resolution] ?? "✔️ დაიხურა";
+  return null;
 }
