@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -8,31 +8,60 @@ export interface RefundRow {
   id: string; request_id: string; order_id: string; token: string; phone: string | null; amount: number | null;
   status: "sent" | "submitted" | "refunded"; full_name: string | null; iban: string | null; sms_status: string | null; sms_error: string | null;
   sent_by: string | null; sent_at: string; opened_at: string | null; submitted_at: string | null; refunded_at: string | null; refunded_by: string | null;
+  evidence_required?: boolean; evidence?: string[] | null;
   orders?: { public_order_number: string; customer_phone: string | null } | null;
 }
 const fmt = (t: string | null) => t ? new Date(t).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
+/** Customer photos/videos from the refund page (private storage, short-lived signed links). */
+export function EvidenceThumbs({ paths }: { paths: string[] }) {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    if (!paths.length) return;
+    void supabase.storage.from("refund-evidence").createSignedUrls(paths, 3600).then(({ data }) => setUrls((data || []).map((d) => d.signedUrl || "")));
+  }, [paths.join("|")]);
+  if (!paths.length) return null;
+  return <div className="flex flex-wrap gap-1.5">
+    {paths.map((p, i) => {
+      const u = urls[i]; const vid = /\.(mp4|mov|webm|m4v|3gp|qt)$/i.test(p);
+      return <a key={p} href={u || undefined} target="_blank" rel="noreferrer" className="block h-16 w-16 overflow-hidden rounded border border-border bg-muted">
+        {u ? (vid ? <video src={u} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={u} alt="" className="h-full w-full object-cover" />) : null}
+      </a>;
+    })}
+  </div>;
+}
+const missingEvidence = (r: RefundRow) => !!r.evidence_required && !(r.evidence || []).length;
+
 export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: string; refund?: RefundRow; onDone: () => void }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [needEv, setNeedEv] = useState(!!refund?.evidence_required);
   if (refund && refund.status !== "sent") {
-    return <div className={`rounded-lg px-3 py-2 text-sm font-semibold ${refund.status === "refunded" ? "bg-primary/15" : "bg-accent"}`}>
-      {refund.status === "refunded" ? "✅ თანხა დაბრუნებულია" : "📝 კლიენტმა შეავსო საბანკო მონაცემები"}
+    return <div className={`space-y-2 rounded-lg px-3 py-2 text-sm font-semibold ${refund.status === "refunded" ? "bg-primary/15" : "bg-accent"}`}>
+      <div>{refund.status === "refunded" ? "✅ თანხა დაბრუნებულია" : "📝 კლიენტმა შეავსო საბანკო მონაცემები"}</div>
+      {refund.full_name && <div className="font-normal">{refund.full_name} · <span className="font-mono text-xs">{refund.iban}</span></div>}
+      {(refund.evidence || []).length ? <EvidenceThumbs paths={refund.evidence!} /> : <div className="font-normal text-muted-foreground">ფოტო/ვიდეო არ ატვირთა</div>}
     </div>;
   }
   const send = async () => {
     if (refund && !confirm("ბმული უკვე გაგზავნილია. ხელახლა გავგზავნო?")) return;
     setBusy(true);
-    const { data, error } = await supabase.functions.invoke("refund-request", { body: { action: "send", request_id: ticketId } });
+    const { data, error } = await supabase.functions.invoke("refund-request", { body: { action: "send", request_id: ticketId, evidence_required: needEv } });
     setBusy(false);
     if (error || !data?.ok && data?.sms !== "skipped_test") toast({ title: "ვერ გაიგზავნა", description: data?.error || error?.message, variant: "destructive" });
     else toast({ title: data.sms === "skipped_test" ? "ტესტ შეკვეთა — SMS არ გაიგზავნა" : "SMS გაიგზავნა ✅", description: data.link });
     onDone();
   };
   return (
-    <Button type="button" onClick={send} disabled={busy} className="h-12 w-full text-base font-bold">
-      {busy ? "იგზავნება…" : refund ? `🔁 ბმული გაგზავნილია (${fmt(refund.sent_at)}${refund.opened_at ? ", გახსნა" : ""}) — ხელახლა` : "💸 თანხის დაბრუნების ბმულის გაგზავნა"}
-    </Button>
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" className="h-5 w-5" checked={needEv} onChange={(e) => setNeedEv(e.target.checked)} />
+        📸 მოითხოვე ფოტო/ვიდეო მტკიცებულება
+      </label>
+      <Button type="button" onClick={send} disabled={busy} className="h-12 w-full text-base font-bold">
+        {busy ? "იგზავნება…" : refund ? `🔁 ბმული გაგზავნილია (${fmt(refund.sent_at)}${refund.opened_at ? ", გახსნა" : ""}) — ხელახლა` : "💸 თანხის დაბრუნება — ბმულის გაგზავნა"}
+      </Button>
+    </div>
   );
 }
 
@@ -42,6 +71,7 @@ export default function RefundsPanel({ rows, onChanged }: { rows: RefundRow[]; o
   const [filter, setFilter] = useState<"submitted" | "sent" | "refunded">("submitted");
   const shown = rows.filter((r) => r.status === filter);
   const mark = async (r: RefundRow) => {
+    if (missingEvidence(r)) return toast({ title: "მტკიცებულება აკლია", description: "ამ კლიენტს ფოტო/ვიდეო მოეთხოვა და არ აუტვირთავს.", variant: "destructive" });
     if (!confirm(`#${r.orders?.public_order_number} — ${r.amount}₾ დაბრუნებულად მოვნიშნო?`)) return;
     const { error } = await (supabase as any).from("refund_requests").update({ status: "refunded", refunded_at: new Date().toISOString(), refunded_by: user?.email }).eq("id", r.id).eq("status", "submitted");
     if (error) toast({ title: "ვერ მოინიშნა", description: error.message, variant: "destructive" }); else toast({ title: "მოინიშნა ✅" });
@@ -65,7 +95,9 @@ export default function RefundsPanel({ rows, onChanged }: { rows: RefundRow[]; o
               <span className="text-xs text-muted-foreground">
                 გაგზავნა {fmt(r.sent_at)}{r.sms_status && r.sms_status !== "sent" ? ` (SMS: ${r.sms_status})` : ""} · გახსნა {fmt(r.opened_at)}{r.submitted_at ? ` · შეავსო ${fmt(r.submitted_at)}` : ""}{r.refunded_at ? ` · დაბრუნდა ${fmt(r.refunded_at)} (${r.refunded_by})` : ""}
               </span>
-              {r.status === "submitted" && <Button size="sm" className="ml-auto" onClick={() => mark(r)}>✅ დაბრუნებულია</Button>}
+              {r.evidence_required && <span className="rounded bg-muted px-1.5 py-0.5 text-xs">📸 სავალდებულო</span>}
+              {r.status === "submitted" && <Button size="sm" className="ml-auto" disabled={missingEvidence(r)} onClick={() => mark(r)}>✅ დაბრუნებულია</Button>}
+              {!!(r.evidence || []).length && <div className="w-full"><EvidenceThumbs paths={r.evidence!} /></div>}
             </div>
           ))}
         </div>

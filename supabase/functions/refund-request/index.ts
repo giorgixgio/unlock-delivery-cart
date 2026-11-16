@@ -6,12 +6,14 @@ import { normalizeGePhone, senderApiKey, sendSms } from "../_shared/senderGe.ts"
 import { loadSmsContext } from "../_shared/smsOrderContext.ts";
 import { newToken, normalizeIban, refundText } from "./policy.ts";
 
+const EVIDENCE = "refund-evidence";
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const Tok = z.string().regex(/^[0-9A-Za-z]{10}$/);
 const Body = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("send"), request_id: z.string().uuid() }),
+  z.object({ action: z.literal("send"), request_id: z.string().uuid(), evidence_required: z.boolean().optional() }),
+  z.object({ action: z.literal("upload_url"), token: Tok, ext: z.string().regex(/^[a-z0-9]{2,5}$/) }),
   z.object({ action: z.literal("get"), token: Tok }),
-  z.object({ action: z.literal("submit"), token: Tok, full_name: z.string().trim().min(3).max(100), iban: z.string().trim().min(15).max(40) }),
+  z.object({ action: z.literal("submit"), token: Tok, full_name: z.string().trim().min(3).max(100), iban: z.string().trim().min(15).max(40), evidence: z.array(z.string().max(200)).max(10).optional() }),
 ]);
 
 Deno.serve(async (req) => {
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
     if (existing && existing.status !== "sent") return json({ error: "already_" + existing.status }, 409);
     const amount = (ctx.order.order_items || []).reduce((s: number, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity || 1), 0);
     const token = existing?.token || newToken();
-    const row = { request_id: t.id, order_id: t.order_id, token, phone, amount, status: "sent", sent_by: u.user.email, sent_at: new Date().toISOString(), sms_status: "pending", sms_error: null };
+    const row = { evidence_required: !!b.evidence_required, request_id: t.id, order_id: t.order_id, token, phone, amount, status: "sent", sent_by: u.user.email, sent_at: new Date().toISOString(), sms_status: "pending", sms_error: null };
     const { data: saved, error } = await db.from("refund_requests").upsert(row, { onConflict: "request_id" }).select("id").single();
     if (error) return json({ error: error.message }, 500);
 
@@ -60,18 +62,31 @@ Deno.serve(async (req) => {
     return json({ ok: r.status === "sent", sms: r.status, link });
   }
 
-  const { data: rr } = await db.from("refund_requests").select("id, order_id, amount, status, full_name, submitted_at, refunded_at, opened_at").eq("token", b.token).maybeSingle();
+  const { data: rr } = await db.from("refund_requests").select("id, order_id, amount, status, full_name, submitted_at, refunded_at, opened_at, evidence_required").eq("token", b.token).maybeSingle();
   if (!rr) return json({ error: "not_found" }, 404);
   const { data: o } = await db.from("orders").select("public_order_number").eq("id", rr.order_id).maybeSingle();
 
   if (b.action === "get") {
     if (!rr.opened_at) await db.from("refund_requests").update({ opened_at: new Date().toISOString() }).eq("id", rr.id);
-    return json({ order_number: o?.public_order_number, amount: rr.amount, status: rr.status, submitted_at: rr.submitted_at, refunded_at: rr.refunded_at });
+    return json({ order_number: o?.public_order_number, amount: rr.amount, status: rr.status, submitted_at: rr.submitted_at, refunded_at: rr.refunded_at, evidence_required: rr.evidence_required });
+  }
+  if (b.action === "upload_url") {
+    if (rr.status !== "sent") return json({ error: "already_submitted" }, 409);
+    const path = `${rr.id}/${crypto.randomUUID()}.${b.ext}`;
+    const { data: up, error: ue } = await db.storage.from(EVIDENCE).createSignedUploadUrl(path);
+    if (ue || !up) return json({ error: "upload_unavailable" }, 500);
+    return json({ path, token: up.token });
   }
   if (rr.status !== "sent") return json({ error: "already_submitted", status: rr.status, submitted_at: rr.submitted_at }, 409);
   const iban = normalizeIban(b.iban);
   if (!iban) return json({ error: "bad_iban" }, 400);
+  // Only files this request's own upload URLs created, and that really landed in storage.
+  const wanted = [...new Set((b.evidence || []).filter((x) => x.startsWith(rr.id + "/")))];
+  const { data: listed } = await db.storage.from(EVIDENCE).list(rr.id, { limit: 100 });
+  const have = new Set((listed || []).map((f: any) => `${rr.id}/${f.name}`));
+  const evidence = wanted.filter((x) => have.has(x));
+  if (rr.evidence_required && !evidence.length) return json({ error: "evidence_required" }, 400);
   const now = new Date().toISOString();
-  await db.from("refund_requests").update({ full_name: b.full_name, iban, status: "submitted", submitted_at: now }).eq("id", rr.id).eq("status", "sent");
+  await db.from("refund_requests").update({ evidence, full_name: b.full_name, iban, status: "submitted", submitted_at: now }).eq("id", rr.id).eq("status", "sent");
   return json({ ok: true, status: "submitted", submitted_at: now });
 });

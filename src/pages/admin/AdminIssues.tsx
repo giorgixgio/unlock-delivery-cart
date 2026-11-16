@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  OPEN_STATUSES, REASON_LABEL, RESOLUTIONS, STATUS_LABEL, assignTicket, hasUnreadReply, isOverdue, markTicketSeen,
-  postTicketUpdate, releaseToQueue, resolveTicket, sortTickets, type Resolution,
+  OPEN_STATUSES, REASON_LABEL, STATUS_LABEL, assignTicket, hasUnreadReply, isOverdue, markTicketSeen,
+  postTicketUpdate, releaseToQueue, resolveTicket, sendReplacement, sortTickets,
 } from "@/lib/supportTickets";
 import SupportSettingsCard from "@/components/admin/issues/SupportSettingsCard";
 import RefundsPanel, { RefundLinkButton, type RefundRow } from "@/components/admin/issues/RefundsPanel";
@@ -98,20 +98,20 @@ export default function AdminIssues() {
       <SupportSettingsCard />
       <Sheet open={!!current} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-          {current && <>{<div className="mb-3"><RefundLinkButton ticketId={current.id} refund={refunds[current.id]} onDone={load} /></div>}<IssueDetail ticket={current} onChanged={load} /></>}
+          {current && <IssueDetail ticket={current} refund={refunds[current.id]} onChanged={load} />}
         </SheetContent>
       </Sheet>
     </div>
   );
 }
 
-function IssueDetail({ ticket, onChanged }: { ticket: Ticket; onChanged: () => void }) {
+function IssueDetail({ ticket, refund, onChanged }: { ticket: Ticket; refund?: RefundRow; onChanged: () => void }) {
   const { toast } = useToast();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [sms, setSms] = useState<Sms[]>([]);
   const [body, setBody] = useState(""); const [link, setLink] = useState(""); const [video, setVideo] = useState("");
   const [status, setStatus] = useState<string | null>(null); const [notify, setNotify] = useState(true);
-  const [resolution, setResolution] = useState<Resolution | null>(null); const [note, setNote] = useState("");
+  const [note, setNote] = useState("");
   const [assignee, setAssignee] = useState(ticket.assigned_to || "");
   const [busy, setBusy] = useState(false);
   const open = OPEN_STATUSES.includes(ticket.status);
@@ -145,6 +145,33 @@ function IssueDetail({ ticket, onChanged }: { ticket: Ticket; onChanged: () => v
         {ticket.orders?.customer_phone && <a href={`tel:${ticket.orders.customer_phone}`} className="font-semibold text-foreground underline">{ticket.orders.customer_phone}</a>}
         {" · "}{(ticket.orders?.order_items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ")}
       </div>
+
+      {(open || refund) && (
+        <div className="space-y-3 rounded-xl border-2 border-primary/40 bg-card p-3">
+          <div className="text-base font-bold">შედეგი — აირჩიე ერთი</div>
+          <div className="space-y-1">
+            <RefundLinkButton ticketId={ticket.id} refund={refund} onDone={() => { void load(); onChanged(); }} />
+            <p className="text-xs text-muted-foreground">კლიენტს მიდის SMS ბმული: წერს სახელს, IBAN-ს (და ფოტოს/ვიდეოს თუ მონიშნე). გადარიცხვის შემდეგ „💸 დაბრუნებები“ ტაბში მონიშნე „დაბრუნებულია“.</p>
+          </div>
+          {open && <>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="შენიშვნა (არასავალდებულო)" className="text-base" />
+            <div className="space-y-1">
+              <Button variant="secondary" className="h-12 w-full text-base font-bold" disabled={busy} onClick={() => {
+                if (!confirm("შეიქმნება ახალი დადასტურებული შეკვეთა იგივე პროდუქტით, ჯამი 0₾. გავაგრძელო?")) return;
+                void run(async () => { const r: any = await sendReplacement(ticket.id, note); toast({ title: `📦 ახალი შეკვეთა #${r?.public_order_number}` }); }, "შეცვლა გაიგზავნა");
+              }}>📦 იგივე პროდუქტის ხელახლა გაგზავნა (0₾)</Button>
+              <p className="text-xs text-muted-foreground">იქმნება ახალი დადასტურებული შეკვეთა იგივე პროდუქტით, კლიენტი არაფერს იხდის. Issue იხურება.</p>
+            </div>
+            <div className="space-y-1">
+              <Button variant="outline" className="h-12 w-full text-base font-bold" disabled={busy} onClick={() => {
+                if (!confirm("Issue დაიხურება ყოველგვარი მოქმედების გარეშე. გავაგრძელო?")) return;
+                void run(() => resolveTicket(ticket.id, "other", note), "დასრულდა");
+              }}>✔️ დასრულება სხვა მიზეზით</Button>
+              <p className="text-xs text-muted-foreground">არც თანხა ბრუნდება, არც პროდუქტი იგზავნება — მაგ. ვერ დავუკავშირდით, აღარ აინტერესებს. უბრალოდ იხურება.</p>
+            </div>
+          </>}
+        </div>
+      )}
 
       <ul className="space-y-2">
         {msgs.map((m) => (
@@ -180,17 +207,6 @@ function IssueDetail({ ticket, onChanged }: { ticket: Ticket; onChanged: () => v
             setBody(""); setLink(""); setVideo(""); setStatus(null);
             if (notify && !r.sms_queued) toast({ title: "Update saved, no SMS queued (texts off or limit)" });
           }, "Update posted")}>Post update</Button>
-        </div>
-      )}
-
-      {open && (
-        <div className="space-y-2 rounded-lg border border-border p-3">
-          <div className="text-sm font-semibold">Resolve</div>
-          <div className="flex flex-wrap gap-1">
-            {RESOLUTIONS.map(([k, l]) => <Button key={k} size="sm" variant={resolution === k ? "default" : "outline"} onClick={() => setResolution(k)}>{l}</Button>)}
-          </div>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className="text-base" />
-          <Button variant="secondary" disabled={busy || !resolution} onClick={() => run(() => resolveTicket(ticket.id, resolution!, note), "Resolved")}>Resolve</Button>
         </div>
       )}
 

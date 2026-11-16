@@ -2993,6 +2993,8 @@ export type Database = {
         Row: {
           amount: number | null
           created_at: string
+          evidence: Json
+          evidence_required: boolean
           full_name: string | null
           iban: string | null
           id: string
@@ -3013,6 +3015,8 @@ export type Database = {
         Insert: {
           amount?: number | null
           created_at?: string
+          evidence?: Json
+          evidence_required?: boolean
           full_name?: string | null
           iban?: string | null
           id?: string
@@ -3033,6 +3037,8 @@ export type Database = {
         Update: {
           amount?: number | null
           created_at?: string
+          evidence?: Json
+          evidence_required?: boolean
           full_name?: string | null
           iban?: string | null
           id?: string
@@ -4379,6 +4385,10 @@ export type Database = {
       support_ticket_release: {
         Args: { p_order_id: string }
         Returns: undefined
+      }
+      support_ticket_replace: {
+        Args: { p_note: string; p_request_id: string }
+        Returns: Json
       }
       support_ticket_resolve: {
         Args: { p_note: string; p_request_id: string; p_resolution: string }

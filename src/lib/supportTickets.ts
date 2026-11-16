@@ -74,3 +74,4 @@ export const resolveTicket = (id: string, resolution: Resolution, note: string) 
 export const releaseToQueue = (orderId: string) => rpc("support_ticket_release", { p_order_id: orderId });
 export const assignTicket = (id: string, to: string) => rpc("support_ticket_assign", { p_request_id: id, p_to: to });
 export const markTicketSeen = (id: string) => rpc("support_ticket_mark_seen", { p_request_id: id });
+export const sendReplacement = (id: string, note: string) => rpc("support_ticket_replace", { p_request_id: id, p_note: note });

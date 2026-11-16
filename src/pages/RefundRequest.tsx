@@ -4,7 +4,49 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-interface Info { order_number: string; amount: number; status: "sent" | "submitted" | "refunded"; submitted_at: string | null; refunded_at: string | null }
+interface Info { order_number: string; amount: number; status: "sent" | "submitted" | "refunded"; submitted_at: string | null; refunded_at: string | null; evidence_required?: boolean }
+interface Ev { id: string; name: string; video: boolean; preview: string; path?: string; state: "up" | "ok" | "err" }
+const extOf = (f: File) => (f.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || (f.type.split("/")[1] || "bin").replace(/[^a-z0-9]/g, "").slice(0, 5);
+
+function Evidence({ token, items, setItems, required }: { token: string; items: Ev[]; setItems: React.Dispatch<React.SetStateAction<Ev[]>>; required: boolean }) {
+  const add = async (files: FileList | null) => {
+    for (const f of Array.from(files || []).slice(0, Math.max(0, 10 - items.length))) {
+      const id = crypto.randomUUID();
+      if (f.size > 100 * 1024 * 1024) { setItems((x) => [...x, { id, name: f.name, video: false, preview: "", state: "err" }]); continue; }
+      setItems((x) => [...x, { id, name: f.name, video: f.type.startsWith("video"), preview: URL.createObjectURL(f), state: "up" }]);
+      const ext = extOf(f).length >= 2 ? extOf(f) : "jpg";
+      const { data } = await call({ action: "upload_url", token, ext });
+      const up = data?.path ? await supabase.storage.from("refund-evidence").uploadToSignedUrl(data.path, data.token, f, { contentType: f.type || undefined }) : { error: true };
+      setItems((x) => x.map((e) => e.id === id ? { ...e, path: data?.path, state: up.error ? "err" : "ok" } : e));
+    }
+  };
+  const pick = (capture: boolean) => {
+    const i = document.createElement("input");
+    i.type = "file"; i.accept = "image/*,video/*"; i.multiple = !capture;
+    if (capture) i.setAttribute("capture", "environment");
+    i.onchange = () => void add(i.files);
+    i.click();
+  };
+  return (
+    <div className="space-y-2">
+      <span className="text-lg font-semibold">პროდუქტის ფოტო ან ვიდეო {required ? <span className="text-destructive">*</span> : <span className="text-base font-normal text-muted-foreground">(სურვილისამებრ)</span>}</span>
+      <p className="text-muted-foreground">გადაიღეთ პროდუქტი, რომ სწრაფად შევამოწმოთ.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" variant="outline" className="h-16 text-lg font-semibold" onClick={() => pick(true)}>📷 გადაღება</Button>
+        <Button type="button" variant="outline" className="h-16 text-lg font-semibold" onClick={() => pick(false)}>🖼 გალერეიდან</Button>
+      </div>
+      {!!items.length && <div className="grid grid-cols-3 gap-2">
+        {items.map((e) => (
+          <div key={e.id} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
+            {e.preview && (e.video ? <video src={e.preview} muted playsInline className="h-full w-full object-cover" /> : <img src={e.preview} alt="" className="h-full w-full object-cover" />)}
+            <span className="absolute inset-x-0 bottom-0 bg-background/85 py-0.5 text-center text-xs font-semibold">{e.state === "up" ? "იტვირთება…" : e.state === "ok" ? (e.video ? "🎬 ✓" : "✓") : "❌ ვერ აიტვირთა"}</span>
+            <button type="button" aria-label="წაშლა" onClick={() => setItems((x) => x.filter((y) => y.id !== e.id))} className="absolute right-1 top-1 h-7 w-7 rounded-full bg-background/90 text-sm font-bold">✕</button>
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
 const call = (body: Record<string, unknown>) => supabase.functions.invoke("refund-request", { body });
 const STEPS = ["მოთხოვნა მიღებულია", "მონაცემები მოწმდება", "გადარიცხვა მზადდება", "თანხა ჩაირიცხა"];
 
@@ -49,6 +91,7 @@ export default function RefundRequest() {
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState(""); const [iban, setIban] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ev, setEv] = useState<Ev[]>([]);
 
   useEffect(() => { document.title = "თანხის დაბრუნება"; void call({ action: "get", token }).then(({ data, error }) => data && !data.error ? setInfo(data) : setErr(error ? "ბმული ვერ მოიძებნა" : "ბმული ვერ მოიძებნა")); }, [token]);
 
@@ -57,10 +100,14 @@ export default function RefundRequest() {
     if (name.trim().split(/\s+/).length < 2) return setErr("ჩაწერეთ სახელი და გვარი");
     const clean = iban.replace(/\s+/g, "").toUpperCase();
     if (!/^GE\d{2}[A-Z]{2}\d{16}$/.test(clean)) return setErr("IBAN უნდა იყოს 22 სიმბოლო, იწყება GE-ით (მაგ: GE29NB0000000101904917)");
+    if (ev.some((e) => e.state === "up")) return setErr("დაელოდეთ ფაილების ატვირთვას");
+    const evidence = ev.filter((e) => e.state === "ok" && e.path).map((e) => e.path!);
+    if (info?.evidence_required && !evidence.length) return setErr("ატვირთეთ პროდუქტის ფოტო ან ვიდეო");
     setBusy(true);
-    const { data, error } = await call({ action: "submit", token, full_name: name.trim(), iban: clean });
+    const { data, error } = await call({ action: "submit", token, full_name: name.trim(), iban: clean, evidence });
     setBusy(false);
     if (data?.ok) setInfo((i) => i && { ...i, status: "submitted", submitted_at: data.submitted_at });
+    else if ((error as any)?.context && (await (error as any).context.json?.().catch(() => null))?.error === "evidence_required") setErr("ატვირთეთ პროდუქტის ფოტო ან ვიდეო");
     else if (data?.error === "bad_iban" || (error as any)?.context?.status === 400) setErr("IBAN არასწორია, გთხოვთ გადაამოწმოთ");
     else setErr("ვერ გაიგზავნა, სცადეთ თავიდან");
   };
@@ -79,6 +126,7 @@ export default function RefundRequest() {
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoComplete="name" className="h-14 text-lg" placeholder="მაგ: გიორგი ბერიძე" /></label>
             <label className="block space-y-1"><span className="text-lg font-semibold">ბანკის ანგარიში (IBAN)</span>
               <Input value={iban} onChange={(e) => setIban(e.target.value.toUpperCase())} maxLength={34} className="h-14 font-mono text-lg" placeholder="GE00XX0000000000000000" inputMode="text" autoCapitalize="characters" /></label>
+            <Evidence token={token} items={ev} setItems={setEv} required={!!info.evidence_required} />
             {err && <p className="rounded-lg bg-destructive/10 p-3 font-semibold text-destructive">{err}</p>}
             <Button type="submit" disabled={busy} className="h-16 w-full text-xl font-bold">{busy ? "იგზავნება…" : "გაგზავნა"}</Button>
             <p className="text-center text-muted-foreground">🔒 თანხა ჩაგერიცხებათ 24–72 საათში</p>
