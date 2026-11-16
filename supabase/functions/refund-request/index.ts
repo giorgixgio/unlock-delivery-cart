@@ -47,10 +47,7 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 500);
 
     const link = `https://${ctx.store === "BIGMART" ? "bigmart.ge" : "trendmart.ge"}/refund/${token}`;
-    if (ctx.isTest) {
-      await db.from("refund_requests").update({ sms_status: "skipped", sms_error: "test_order" }).eq("id", saved.id);
-      return json({ ok: true, sms: "skipped_test", link });
-    }
+    // Test orders still get the refund SMS: it is a manual staff action and is how the flow is tested.
     const key = senderApiKey();
     if (!key) return json({ error: "sms_not_configured" }, 500);
     const content = refundText(link);
