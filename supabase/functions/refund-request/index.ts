@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // Test orders still get the refund SMS: it is a manual staff action and is how the flow is tested.
     const key = senderApiKey();
     if (!key) return json({ error: "sms_not_configured" }, 500);
-    const content = refundText(link);
+    const content = refundText(link, String(ctx.order.public_order_number), amount, ctx.store === "BIGMART" ? "BIGMART" : "TRENDMART");
     const logId = crypto.randomUUID();
     await db.from("sms_logs").insert({ id: logId, order_number: ctx.order.public_order_number, phone, type: "refund_link", sender: "sender.ge", provider: "sender.ge", content, status: "pending", attempts: 1 });
     const r = await sendSms(key, phone, content);
