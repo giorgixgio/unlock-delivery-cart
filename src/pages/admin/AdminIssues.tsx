@@ -90,7 +90,6 @@ export default function AdminIssues() {
                   <span className="text-xs text-muted-foreground">{STATUS_LABEL[t.status]} · {age(t.created_at)}</span>
                 </span>
               </button>
-              {tab === "cant_use" && <div className="px-2.5 pb-2.5"><RefundLinkButton ticketId={t.id} refund={refunds[t.id]} onDone={load} /></div>}
               </div>
             );
           })}
@@ -99,7 +98,7 @@ export default function AdminIssues() {
       <SupportSettingsCard />
       <Sheet open={!!current} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-          {current && <>{current.payload?.reason === "cant_use" && <div className="mb-3"><RefundLinkButton ticketId={current.id} refund={refunds[current.id]} onDone={load} /></div>}<IssueDetail ticket={current} onChanged={load} /></>}
+          {current && <>{<div className="mb-3"><RefundLinkButton ticketId={current.id} refund={refunds[current.id]} onDone={load} /></div>}<IssueDetail ticket={current} onChanged={load} /></>}
         </SheetContent>
       </Sheet>
     </div>
