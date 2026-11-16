@@ -55,6 +55,17 @@ export const FREE_GIFT_OFFERS: Record<string, FreeGiftOffer> = {
       "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
     ],
   },
+  testumbrella: {
+    giftSku: "47",
+    image: "https://apkephplnoefbuxoyovr.supabase.co/storage/v1/object/public/product-images/10068775895335/1788141882390_8xqnno.avif",
+    valueGel: 24,
+    label: "საჩუქარი",
+    headline: "24₾-იანი საჩუქარი — შენთვის უფასოდ!",
+    bullets: [
+      "მრავალჯერადი საწვიმარი — ქოლგასთან ერთად",
+      "იმავე ამანათში — დამატებითი გადასახადის გარეშე",
+    ],
+  },
   testpets: {
     giftSku: "testpetgift",
     valueGel: 19,

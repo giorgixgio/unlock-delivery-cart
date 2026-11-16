@@ -33,6 +33,7 @@ export const TEST_SKUS = [
   "testpets",
   "testpetgift",
   "G888-T4656-0010",
+  "testumbrella",
 ];
 
 const TEST_SKU_SET = new Set(TEST_SKUS);
