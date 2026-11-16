@@ -1,6 +1,24 @@
-import { Gift, Check, Sparkles, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Gift, Check, Sparkles, Clock, Timer } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { FreeGiftOffer } from "@/lib/freeGiftOffers";
+
+const GIFT_TIMER_SECONDS = 15 * 60;
+
+/** Evergreen 15-min countdown — resets on every mount/refresh, no storage. */
+const useGiftCountdown = () => {
+  const [left, setLeft] = useState(GIFT_TIMER_SECONDS);
+  useEffect(() => {
+    const id = setInterval(
+      () => setLeft((s) => (s <= 1 ? GIFT_TIMER_SECONDS : s - 1)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, []);
+  const m = Math.floor(left / 60);
+  const s = left % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
 
 /**
  * Pre-selected free gift block for the landing page.
@@ -15,6 +33,7 @@ const FreeGiftCard = ({
   giftProduct: Product;
 }) => {
   const value = offer.valueGel ?? giftProduct.price;
+  const countdown = useGiftCountdown();
 
   return (
     <div className="relative overflow-hidden rounded-2xl border-2 border-success/50 bg-gradient-to-br from-success/10 via-card to-card shadow-[0_8px_28px_-12px_hsl(var(--success)/0.55)]">
@@ -36,6 +55,17 @@ const FreeGiftCard = ({
           <span className="text-sm font-bold">არ გამოტოვო შეზღუდული დროის შეთავაზება</span>
         </div>
       )}
+
+      {/* evergreen 15-min gift countdown */}
+      <div className="relative flex items-center justify-center gap-1.5 border-b border-destructive/30 bg-destructive/10 px-3 py-1">
+        <Timer className="h-3.5 w-3.5 text-destructive" />
+        <span className="text-xs font-bold text-foreground">
+          საჩუქარი დაჯავშნილია:
+        </span>
+        <span className="rounded-md bg-destructive px-1.5 py-0.5 font-mono text-xs font-extrabold tabular-nums text-destructive-foreground">
+          {countdown}
+        </span>
+      </div>
 
       <div className="relative flex items-center gap-3 p-3">
         <div className="relative flex-shrink-0">
