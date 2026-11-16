@@ -10,14 +10,14 @@ Deno.test("money formats without needless cents", () => {
   assertEquals(formatGel(NaN), "0₾");
 });
 
-Deno.test("refund SMS names store, order, sum and asks only for the account number", () => {
+Deno.test("investigation SMS names store and order, asks for photo/video, promises no refund", () => {
   const t = refundText("https://trendmart.ge/refund/Ab3dEf7hij", "129802", 24, "TRENDMART");
   assertEquals(t.startsWith("TRENDMART: "), true);
   assertEquals(t.includes("#129802"), true);
-  assertEquals(t.includes("24₾"), true);
-  assertEquals(t.includes("ანგარიშის ნომერი"), true);
+  assertEquals(t.includes("განხილვა"), true);
+  assertEquals(t.includes("ფოტო ან ვიდეო"), true);
   assertEquals(t.includes("https://trendmart.ge/refund/Ab3dEf7hij"), true);
   assertEquals(t.includes("24-72"), true);
-  // Never phrase it as a request for personal data — that reads like a scam text.
-  assertEquals(t.includes("საბანკო მონაცემები"), false);
+  assertEquals(t.includes("IBAN"), false);
+  assertEquals(t.includes("დაბრუნება"), false);
 });

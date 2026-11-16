@@ -151,7 +151,7 @@ function IssueDetail({ ticket, refund, onChanged }: { ticket: Ticket; refund?: R
           <div className="text-base font-bold">შედეგი — აირჩიე ერთი</div>
           <div className="space-y-1">
             <RefundLinkButton ticketId={ticket.id} refund={refund} onDone={() => { void load(); onChanged(); }} />
-            <p className="text-xs text-muted-foreground">კლიენტს მიდის SMS ბმული: წერს სახელს, IBAN-ს (და ფოტოს/ვიდეოს თუ მონიშნე). გადარიცხვის შემდეგ „💸 დაბრუნებები“ ტაბში მონიშნე „დაბრუნებულია“.</p>
+            <p className="text-xs text-muted-foreground">კლიენტს მიდის SMS: „დავიწყეთ განხილვა“ და ბმული, სადაც ტვირთავს პრობლემის ფოტოს/ვიდეოს. მასალა ჩნდება აქ და „💸 დაბრუნებები“ ტაბში — 24–72 საათში განიხილე და დაუკავშირდი.</p>
           </div>
           {open && <>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="შენიშვნა (არასავალდებულო)" className="text-base" />

@@ -4,7 +4,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { normalizeGePhone, senderApiKey, sendSms } from "../_shared/senderGe.ts";
 import { loadSmsContext } from "../_shared/smsOrderContext.ts";
-import { newToken, normalizeIban, refundText } from "./policy.ts";
+import { newToken, refundText } from "./policy.ts";
 
 const EVIDENCE = "refund-evidence";
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -13,7 +13,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("send"), request_id: z.string().uuid(), evidence_required: z.boolean().optional() }),
   z.object({ action: z.literal("upload_url"), token: Tok, ext: z.string().regex(/^[a-z0-9]{2,5}$/) }),
   z.object({ action: z.literal("get"), token: Tok }),
-  z.object({ action: z.literal("submit"), token: Tok, full_name: z.string().trim().min(3).max(100), iban: z.string().trim().min(15).max(40), evidence: z.array(z.string().max(200)).max(10).optional() }),
+  z.object({ action: z.literal("submit"), token: Tok, evidence: z.array(z.string().max(200)).max(10).optional() }),
 ]);
 
 Deno.serve(async (req) => {
@@ -78,15 +78,14 @@ Deno.serve(async (req) => {
     return json({ path, token: up.token });
   }
   if (rr.status !== "sent") return json({ error: "already_submitted", status: rr.status, submitted_at: rr.submitted_at }, 409);
-  const iban = normalizeIban(b.iban);
-  if (!iban) return json({ error: "bad_iban" }, 400);
   // Only files this request's own upload URLs created, and that really landed in storage.
   const wanted = [...new Set((b.evidence || []).filter((x) => x.startsWith(rr.id + "/")))];
   const { data: listed } = await db.storage.from(EVIDENCE).list(rr.id, { limit: 100 });
   const have = new Set((listed || []).map((f: any) => `${rr.id}/${f.name}`));
   const evidence = wanted.filter((x) => have.has(x));
-  if (rr.evidence_required && !evidence.length) return json({ error: "evidence_required" }, 400);
+  // Evidence is always required: the link is for reviewing the problem.
+  if (!evidence.length) return json({ error: "evidence_required" }, 400);
   const now = new Date().toISOString();
-  await db.from("refund_requests").update({ evidence, full_name: b.full_name, iban, status: "submitted", submitted_at: now }).eq("id", rr.id).eq("status", "sent");
+  await db.from("refund_requests").update({ evidence, status: "submitted", submitted_at: now }).eq("id", rr.id).eq("status", "sent");
   return json({ ok: true, status: "submitted", submitted_at: now });
 });

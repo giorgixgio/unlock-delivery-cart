@@ -35,10 +35,9 @@ const missingEvidence = (r: RefundRow) => !!r.evidence_required && !(r.evidence 
 export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: string; refund?: RefundRow; onDone: () => void }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  const [needEv, setNeedEv] = useState(!!refund?.evidence_required);
   if (refund && refund.status !== "sent") {
     return <div className={`space-y-2 rounded-lg px-3 py-2 text-sm font-semibold ${refund.status === "refunded" ? "bg-primary/15" : "bg-accent"}`}>
-      <div>{refund.status === "refunded" ? "✅ თანხა დაბრუნებულია" : "📝 კლიენტმა შეავსო საბანკო მონაცემები"}</div>
+      <div>{refund.status === "refunded" ? "✅ თანხა დაბრუნებულია" : "📝 კლიენტმა ატვირთა ფოტო/ვიდეო — განიხილე"}</div>
       {refund.full_name && <div className="font-normal">{refund.full_name} · <span className="font-mono text-xs">{refund.iban}</span></div>}
       {(refund.evidence || []).length ? <EvidenceThumbs paths={refund.evidence!} /> : <div className="font-normal text-muted-foreground">ფოტო/ვიდეო არ ატვირთა</div>}
     </div>;
@@ -46,7 +45,7 @@ export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: strin
   const send = async () => {
     if (refund && !confirm("ბმული უკვე გაგზავნილია. ხელახლა გავგზავნო?")) return;
     setBusy(true);
-    const { data, error } = await supabase.functions.invoke("refund-request", { body: { action: "send", request_id: ticketId, evidence_required: needEv } });
+    const { data, error } = await supabase.functions.invoke("refund-request", { body: { action: "send", request_id: ticketId, evidence_required: true } });
     setBusy(false);
     if (error || !data?.ok && data?.sms !== "skipped_test") toast({ title: "ვერ გაიგზავნა", description: data?.error || error?.message, variant: "destructive" });
     else toast({ title: data.sms === "skipped_test" ? "ტესტ შეკვეთა — SMS არ გაიგზავნა" : "SMS გაიგზავნა ✅", description: data.link });
@@ -54,12 +53,8 @@ export function RefundLinkButton({ ticketId, refund, onDone }: { ticketId: strin
   };
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" className="h-5 w-5" checked={needEv} onChange={(e) => setNeedEv(e.target.checked)} />
-        📸 მოითხოვე ფოტო/ვიდეო მტკიცებულება
-      </label>
       <Button type="button" onClick={send} disabled={busy} className="h-12 w-full text-base font-bold">
-        {busy ? "იგზავნება…" : refund ? `🔁 ბმული გაგზავნილია (${fmt(refund.sent_at)}${refund.opened_at ? ", გახსნა" : ""}) — ხელახლა` : "💸 თანხის დაბრუნება — ბმულის გაგზავნა"}
+        {busy ? "იგზავნება…" : refund ? `🔁 ბმული გაგზავნილია (${fmt(refund.sent_at)}${refund.opened_at ? ", გახსნა" : ""}) — ხელახლა` : "🔍 განხილვის ბმულის გაგზავნა (ფოტო/ვიდეო)"}
       </Button>
     </div>
   );
@@ -77,7 +72,7 @@ export default function RefundsPanel({ rows, onChanged }: { rows: RefundRow[]; o
     if (error) toast({ title: "ვერ მოინიშნა", description: error.message, variant: "destructive" }); else toast({ title: "მოინიშნა ✅" });
     onChanged();
   };
-  const tabs: [typeof filter, string][] = [["submitted", "📝 შეავსეს — გადასარიცხი"], ["sent", "⏳ არ შეუვსიათ"], ["refunded", "✅ დაბრუნებული"]];
+  const tabs: [typeof filter, string][] = [["submitted", "📝 ატვირთეს — განსახილველი"], ["sent", "⏳ არ შეუვსიათ"], ["refunded", "✅ დაბრუნებული"]];
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1">

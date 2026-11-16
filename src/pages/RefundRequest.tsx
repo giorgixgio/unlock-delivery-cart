@@ -48,7 +48,7 @@ function Evidence({ token, items, setItems, required }: { token: string; items: 
   );
 }
 const call = (body: Record<string, unknown>) => supabase.functions.invoke("refund-request", { body });
-const STEPS = ["მოთხოვნა მიღებულია", "მონაცემები მოწმდება", "გადარიცხვა მზადდება", "თანხა ჩაირიცხა"];
+const STEPS = ["მასალა მიღებულია", "სპეციალისტი განიხილავს", "გადაწყვეტილება მზადდება", "დაგიკავშირდებით"];
 
 function Progress({ info }: { info: Info }) {
   const refunded = info.status === "refunded";
@@ -63,8 +63,8 @@ function Progress({ info }: { info: Info }) {
     <div className="space-y-5">
       <div className="text-center">
         <div className="text-5xl">{refunded ? "✅" : "⏳"}</div>
-        <h1 className="mt-2 text-2xl font-bold">{refunded ? "თანხა დაბრუნებულია!" : "თანხის დაბრუნება მუშავდება"}</h1>
-        <p className="mt-1 text-lg text-muted-foreground">{refunded ? "თანხა ჩაირიცხა თქვენს ანგარიშზე." : "თანხა ჩაგერიცხებათ 24–72 საათში."}</p>
+        <h1 className="mt-2 text-2xl font-bold">{refunded ? "განხილვა დასრულდა" : "თქვენი მიმართვა განიხილება"}</h1>
+        <p className="mt-1 text-lg text-muted-foreground">{refunded ? "მადლობა მოთმინებისთვის." : "24–72 საათში დაგიკავშირდებით."}</p>
       </div>
       <div>
         <div className="h-5 overflow-hidden rounded-full bg-muted">
@@ -80,7 +80,7 @@ function Progress({ info }: { info: Info }) {
           </li>
         ))}
       </ol>
-      <p className="rounded-lg bg-muted p-3 text-center">შეკვეთა #{info.order_number} · {Number(info.amount).toFixed(2)}₾</p>
+      <p className="rounded-lg bg-muted p-3 text-center">შეკვეთა #{info.order_number}</p>
     </div>
   );
 }
@@ -89,26 +89,21 @@ export default function RefundRequest() {
   const { token = "" } = useParams();
   const [info, setInfo] = useState<Info | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [name, setName] = useState(""); const [iban, setIban] = useState("");
   const [busy, setBusy] = useState(false);
   const [ev, setEv] = useState<Ev[]>([]);
 
-  useEffect(() => { document.title = "თანხის დაბრუნება"; void call({ action: "get", token }).then(({ data, error }) => data && !data.error ? setInfo(data) : setErr(error ? "ბმული ვერ მოიძებნა" : "ბმული ვერ მოიძებნა")); }, [token]);
+  useEffect(() => { document.title = "პრობლემის განხილვა"; void call({ action: "get", token }).then(({ data, error }) => data && !data.error ? setInfo(data) : setErr(error ? "ბმული ვერ მოიძებნა" : "ბმული ვერ მოიძებნა")); }, [token]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(null);
-    if (name.trim().split(/\s+/).length < 2) return setErr("ჩაწერეთ სახელი და გვარი");
-    const clean = iban.replace(/\s+/g, "").toUpperCase();
-    if (!/^GE\d{2}[A-Z]{2}\d{16}$/.test(clean)) return setErr("IBAN უნდა იყოს 22 სიმბოლო, იწყება GE-ით (მაგ: GE29NB0000000101904917)");
     if (ev.some((e) => e.state === "up")) return setErr("დაელოდეთ ფაილების ატვირთვას");
     const evidence = ev.filter((e) => e.state === "ok" && e.path).map((e) => e.path!);
-    if (info?.evidence_required && !evidence.length) return setErr("ატვირთეთ პროდუქტის ფოტო ან ვიდეო");
+    if (!evidence.length) return setErr("ატვირთეთ პროდუქტის ფოტო ან ვიდეო");
     setBusy(true);
-    const { data, error } = await call({ action: "submit", token, full_name: name.trim(), iban: clean, evidence });
+    const { data, error } = await call({ action: "submit", token, evidence });
     setBusy(false);
     if (data?.ok) setInfo((i) => i && { ...i, status: "submitted", submitted_at: data.submitted_at });
     else if ((error as any)?.context && (await (error as any).context.json?.().catch(() => null))?.error === "evidence_required") setErr("ატვირთეთ პროდუქტის ფოტო ან ვიდეო");
-    else if (data?.error === "bad_iban" || (error as any)?.context?.status === 400) setErr("IBAN არასწორია, გთხოვთ გადაამოწმოთ");
     else setErr("ვერ გაიგზავნა, სცადეთ თავიდან");
   };
 
@@ -118,18 +113,23 @@ export default function RefundRequest() {
         {!info ? <p className="py-10 text-center text-lg">{err || "იტვირთება…"}</p> : info.status !== "sent" ? <Progress info={info} /> : (
           <form onSubmit={submit} className="space-y-4">
             <div className="text-center">
-              <div className="text-5xl">💸</div>
-              <h1 className="mt-2 text-2xl font-bold">თანხის დაბრუნება</h1>
-              <p className="mt-1 text-lg text-muted-foreground">შეკვეთა #{info.order_number} · <b className="text-foreground">{Number(info.amount).toFixed(2)}₾</b></p>
+              <div className="text-5xl">🔍</div>
+              <h1 className="mt-2 text-2xl font-bold">პრობლემის განხილვა</h1>
+              <p className="mt-1 text-lg text-muted-foreground">შეკვეთა #{info.order_number}</p>
+              <p className="mt-2 text-lg">ატვირთეთ პროდუქტის ფოტო ან ვიდეო, რომ ნათლად დავინახოთ პრობლემა.</p>
             </div>
-            <label className="block space-y-1"><span className="text-lg font-semibold">სახელი და გვარი</span>
-              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoComplete="name" className="h-14 text-lg" placeholder="მაგ: გიორგი ბერიძე" /></label>
-            <label className="block space-y-1"><span className="text-lg font-semibold">ბანკის ანგარიში (IBAN)</span>
-              <Input value={iban} onChange={(e) => setIban(e.target.value.toUpperCase())} maxLength={34} className="h-14 font-mono text-lg" placeholder="GE00XX0000000000000000" inputMode="text" autoCapitalize="characters" /></label>
-            <Evidence token={token} items={ev} setItems={setEv} required={!!info.evidence_required} />
+            <div className="space-y-1 rounded-lg bg-muted p-3 text-base">
+              <p className="font-semibold">როგორ გადავიღოთ:</p>
+              <ul className="list-disc space-y-0.5 pl-5">
+                <li>მკაფიოდ ჩანდეს პროდუქტი და პრობლემა (დაზიანება, არ ირთვება და ა.შ.)</li>
+                <li>თუ არ მუშაობს — გადაიღეთ ვიდეო, სადაც ცდილობთ ჩართვას</li>
+                <li>კარგ განათებაზე, ახლოდან</li>
+              </ul>
+            </div>
+            <Evidence token={token} items={ev} setItems={setEv} required />
             {err && <p className="rounded-lg bg-destructive/10 p-3 font-semibold text-destructive">{err}</p>}
             <Button type="submit" disabled={busy} className="h-16 w-full text-xl font-bold">{busy ? "იგზავნება…" : "გაგზავნა"}</Button>
-            <p className="text-center text-muted-foreground">🔒 თანხა ჩაგერიცხებათ 24–72 საათში</p>
+            <p className="text-center text-muted-foreground">⏱ განვიხილავთ და 24–72 საათში დაგიკავშირდებით</p>
           </form>
         )}
       </div>
