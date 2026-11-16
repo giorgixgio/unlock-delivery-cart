@@ -1,6 +1,6 @@
 import { Outlet, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, LayoutTemplate, Wand2, BarChart3, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Printer, Boxes, FileText, AlertTriangle, ListChecks } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Truck, Package, Settings, LogOut, FileSpreadsheet, Activity, Menu, LayoutTemplate, Wand2, BarChart3, PackageX, Upload, GitMerge, LineChart, Columns3, PackageCheck, MapPin, ScanLine, ImageUp, History, Radio, Zap, HelpCircle, ClipboardList, HeartPulse, Printer, Boxes, FileText, AlertTriangle, ListChecks, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -73,6 +73,7 @@ const navGroups = [
       { to: "/admin/landing-pages", label: "Landing Pages", icon: LayoutTemplate },
       { to: '/admin/reviews', label: 'Reviews', icon: ListChecks },
       { to: "/admin/products-import", label: "AI Import", icon: Wand2 },
+      { to: "/admin/import-calculator", label: "Import & Profit Calc", icon: Calculator, adminOnly: true },
       { to: "/admin/stockout-demand", label: "Stockout Demand", icon: PackageX },
       { to: "/admin/test-sku", label: "Test SKUs", icon: Zap },
     ],
@@ -132,7 +133,7 @@ const AdminLayout = () => {
   const isOperator = role === "operator";
   const visibleGroups = navGroups
     .filter((g) => !(isOperator && OPERATOR_HIDDEN_GROUPS.includes(g.label)))
-    .map((g) => ({ ...g, items: g.items.filter((n) => canAccessPath(role, n.to) && !(isOperator && n.to === "/admin/dashboard")) }))
+    .map((g) => ({ ...g, items: g.items.filter((n) => (!(n as { adminOnly?: boolean }).adminOnly || role === "admin") && canAccessPath(role, n.to) && !(isOperator && n.to === "/admin/dashboard")) }))
     .filter((g) => g.items.length > 0);
 
   const activeGroup =

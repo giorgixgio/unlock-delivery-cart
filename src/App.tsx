@@ -70,6 +70,7 @@ import AdminTestSku from "./pages/admin/AdminTestSku";
 import AdminReviews from './pages/admin/AdminReviews';
 const AdminCallQueue = lazy(() => import('./pages/admin/AdminCallQueue'));
 const AdminIssues = lazy(() => import('./pages/admin/AdminIssues'));
+const AdminImportCalculator = lazy(() => import('./pages/admin/AdminImportCalculator'));
 import ReviewForm from './pages/ReviewForm';
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const RefundRequest = lazy(() => import('./pages/RefundRequest'));
@@ -204,6 +205,7 @@ const App = () => (
                       <Route path="operator-stats" element={<AdminOperatorStats />} />
                       <Route path="call-queue" element={<Suspense fallback={null}><AdminCallQueue /></Suspense>} />
                       <Route path="issues" element={<Suspense fallback={null}><AdminIssues /></Suspense>} />
+                      <Route path="import-calculator" element={<Suspense fallback={null}><AdminImportCalculator /></Suspense>} />
                       <Route path="feedback" element={<Suspense fallback={null}><AdminCustomerFeedback /></Suspense>} />
                       <Route path="orders/:id" element={<AdminOrderDetail />} />
                       <Route path="batches" element={<AdminBatches />} />

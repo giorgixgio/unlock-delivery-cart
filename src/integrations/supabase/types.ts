@@ -1236,6 +1236,45 @@ export type Database = {
         }
         Relationships: []
       }
+      import_calculations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          inputs: Json
+          name: string
+          notes: string | null
+          product_id: string | null
+          product_sku: string | null
+          results: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inputs?: Json
+          name?: string
+          notes?: string | null
+          product_id?: string | null
+          product_sku?: string | null
+          results?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inputs?: Json
+          name?: string
+          notes?: string | null
+          product_id?: string | null
+          product_sku?: string | null
+          results?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       import_staging_rows: {
         Row: {
           applied: boolean
