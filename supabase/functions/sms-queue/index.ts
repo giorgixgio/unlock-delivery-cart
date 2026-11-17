@@ -10,6 +10,7 @@ import { DEFAULT_SUPPORT_TEXTS, isSupportType, renderSupportSms, type SupportSms
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const MAX_ATTEMPTS = 3;
+const OWNER_TEST_PHONE = "550501194";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -57,7 +58,8 @@ Deno.serve(async (req) => {
         if (!st?.enabled) { await skip("support_disabled"); continue; }
         if (!req || !["open", "in_review", "waiting_customer"].includes(req.status)) { await skip("ticket_resolved"); continue; }
         if (!ctx) { await skip("order_missing"); continue; }
-        if (ctx.isTest) { await skip("test_order"); continue; }
+        // Owner test phone may receive support texts on test orders so the flow can be tried end-to-end.
+        if (ctx.isTest && normalizeGePhone(ctx.order.customer_phone) !== OWNER_TEST_PHONE) { await skip("test_order"); continue; }
         if (STOPPED_STATUSES.has(String(ctx.order.status))) { await skip(`order_${ctx.order.status}`); continue; }
         const phone = normalizeGePhone(ctx.order.customer_phone);
         if (!phone) { await skip("invalid_phone"); continue; }
