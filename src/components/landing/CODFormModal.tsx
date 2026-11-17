@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Phone, CheckCircle2, Check, Gift } from "lucide-react";
 import { Product } from "@/lib/constants";
+import { buildScratchGiftItems, scratchGiftEligible, SCRATCH_PROMO } from "@/lib/scratchGift";
 import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
@@ -35,6 +36,8 @@ interface CODFormModalProps {
   giftProduct?: Product | null;
   /** When true, delivery is free for this product's own landing orders (0 ₾ fee). */
   freeShipping?: boolean;
+  /** Scratch-card promo: +1 unit of the same product at 0 ₾ (separate gift line). */
+  scratchGift?: boolean;
 }
 
 
@@ -50,7 +53,9 @@ const CODFormModal = ({
   onDuplicateBlocked,
   giftProduct,
   freeShipping = false,
+  scratchGift = false,
 }: CODFormModalProps) => {
+  const bonusActive = scratchGift && scratchGiftEligible(product.sku);
 
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
@@ -140,7 +145,7 @@ const CODFormModal = ({
           customerName: submitPhone,
           customerPhone: submitPhone,
           items: [
-            { product, quantity },
+            ...buildScratchGiftItems(product, quantity, bonusActive),
             // Free gift — real order line at 0 ₾ so pickers/courier labels see the SKU
             ...(giftProduct
               ? [{ product: { ...giftProduct, price: 0 }, quantity: 1 }]
@@ -152,6 +157,7 @@ const CODFormModal = ({
           source: "landing_cod",
           landingSlug,
           status: "pending_details",
+          ...(bonusActive ? { promo: SCRATCH_PROMO } : {}),
         },
         stockout: {
           productId: product.id,
@@ -248,6 +254,13 @@ const CODFormModal = ({
               </div>
               <p className="text-lg font-extrabold text-primary">{totalAfter.toFixed(2)} ₾</p>
             </div>
+
+            {bonusActive && (
+              <div className="-mt-3 mb-5 flex items-center justify-between gap-3 rounded-xl border border-success/40 bg-success/10 p-3">
+                <p className="flex items-center gap-1 text-base font-bold text-foreground"><Gift className="h-4 w-4 text-success" /> +1 საჩუქარი (უფასო)</p>
+                <p className="text-base font-extrabold text-success">0 ₾</p>
+              </div>
+            )}
 
             {/* Free gift line */}
             {giftProduct && (

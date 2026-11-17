@@ -20,6 +20,8 @@ interface OrderInput {
   source?: string;
   landingSlug?: string;
   status?: string;
+  /** Landing promo code stored on orders.promo (e.g. scratch_0012_4). */
+  promo?: string;
 }
 
 interface SubmitOrderInput {
@@ -157,6 +159,7 @@ export async function createOrder(input: OrderInput) {
         user_agent: userAgent,
         source: orderSource,
         shipping_fee: input.shippingFee ?? 0,
+        ...(input.promo ? { promo: input.promo } : {}),
         ...(addressInherited && orderStatus !== "pending_details"
           ? { address_status: "completed" }
           : {}),
@@ -181,6 +184,7 @@ export async function createOrder(input: OrderInput) {
       unit_price: item.product.price,
       line_total: item.product.price * item.quantity,
       image_url: item.product.image || "",
+      is_gift: !!item.isGift,
     }));
 
     const { error: itemsError } = await supabase

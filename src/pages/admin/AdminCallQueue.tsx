@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { itemSummary } from "@/lib/scratchGift";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -55,7 +56,7 @@ import StatusChip, { fmtDateTime } from "@/components/admin/OrderStatusChip";
 
 const IDLE_MS = 3 * 60 * 1000;
 
-interface QItem { id: string; product_id: string | null; title: string; sku: string; quantity: number; unit_price: number; line_total: number; image_url: string }
+interface QItem { id: string; product_id: string | null; title: string; sku: string; quantity: number; unit_price: number; line_total: number; image_url: string; is_gift?: boolean | null }
 interface QOrder {
   support_hold?: boolean | null; tags?: string[] | null;
   id: string; public_order_number: string; created_at: string; status: string;
@@ -70,10 +71,10 @@ interface QOrder {
   order_items: QItem[];
 }
 const ORDER_SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, last_call_attempt_at, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, support_hold, tags, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, raw_city, normalized_city, address_line1, address_line2, raw_address, normalized_address, notes_customer, internal_note, normalization_confidence, review_required, subtotal, shipping_fee, discount_total, total, call_attempt_count, last_call_attempt_at, is_fulfilled, operator_viewed_at, operator_review_status, is_return, is_confirmed, auto_confirmed, call_outcome, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, final_cancel_reason, support_hold, tags, order_items(id, product_id, title, sku, quantity, unit_price, line_total, image_url, is_gift)";
 
 export const SEARCH_SELECT =
-  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, support_hold, call_outcome, call_attempt_count, last_call_attempt_at, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity)";
+  "id, public_order_number, created_at, status, total, customer_name, customer_phone, is_return, auto_confirmed, is_confirmed, is_fulfilled, tags, queue_locked_by, queue_locked_until, support_hold, call_outcome, call_attempt_count, last_call_attempt_at, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, current_courier_status:onway_last_status, courier_status, order_items(title, quantity, sku, is_gift)";
 type SearchHit = SearchOrderLike & OrderStageLike & {
   id: string; public_order_number: string; created_at: string; total: number | null;
   customer_name: string | null; customer_phone: string | null;
@@ -96,7 +97,7 @@ async function findOrders(term: string): Promise<SearchHit[]> {
 }
 /** Newest single match (Team tab tools). */
 const findOrder = async (term: string): Promise<{ id: string } | null> => (await findOrders(term))[0] ?? null;
-const itemsLine = (h: SearchHit) => (h.order_items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ");
+const itemsLine = (h: SearchHit) => itemSummary(h.order_items as any);
 
 function LastCallInfo({ order, now }: { order: Pick<QOrder, "last_call_attempt_at" | "call_attempt_count">; now: number }) {
   const count = Number(order.call_attempt_count || 0);

@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     // Fetch order
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("*, order_items(id, sku, quantity, title, unit_price, line_total, image_url)")
+      .select("*, order_items(id, sku, quantity, title, unit_price, line_total, image_url, is_gift)")
       .eq("id", order_id)
       .single();
     if (orderErr || !order) return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
@@ -158,7 +158,7 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
   // Find same-day candidates with strong identity match
   let query = supabase
     .from("orders")
-    .select("*, order_items(id, sku, quantity, title, unit_price, line_total, image_url)")
+    .select("*, order_items(id, sku, quantity, title, unit_price, line_total, image_url, is_gift)")
     .neq("id", orderId)
     .gte("created_at", startOfDay)
     .lt("created_at", endOfDay)
@@ -200,11 +200,13 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
   const childItems: any[] = childOrder.order_items || [];
   const primarySkuMap = new Map<string, any>();
   for (const item of primaryItems) {
-    primarySkuMap.set(item.sku, item);
+    primarySkuMap.set(`${item.sku}|${!!item.is_gift}`, item);
   }
 
   for (const childItem of childItems) {
-    const existing = primarySkuMap.get(childItem.sku);
+    const existing = primarySkuMap.get(`${childItem.sku}|${!!childItem.is_gift}`);
+    // Free promo unit stays +1 per order: never stack a second gift line.
+    if (existing && childItem.is_gift) continue;
     if (existing) {
       const newQty = existing.quantity + childItem.quantity;
       const newLineTotal = newQty * Number(existing.unit_price);
@@ -221,6 +223,7 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
         unit_price: childItem.unit_price,
         line_total: childItem.line_total,
         image_url: childItem.image_url || "",
+        is_gift: !!childItem.is_gift,
       });
     }
   }

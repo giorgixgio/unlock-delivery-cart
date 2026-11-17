@@ -40,6 +40,7 @@ export function buildOnwayPayload(
   orderDetail: string,
   creds: { username: string; key: string },
   fromPhone: string,
+  weightKg = 1,
 ) {
   return {
     username: creds.username,
@@ -54,7 +55,7 @@ export function buildOnwayPayload(
     payment: PAYMENT_SETUP.payment,
     payer: PAYMENT_SETUP.payer,
     order_price: Number(order.total || 0),
-    weight: 1,
+    weight: weightKg,
     quantity: 1,
     service_level: 1,
     order_number: s(order.public_order_number),

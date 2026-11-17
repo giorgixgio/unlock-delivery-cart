@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { hasGiftLine, itemSummary } from "@/lib/scratchGift";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,7 @@ interface OrderRow {
   call_attempt_count: number | null;
   next_call_after: string | null;
   final_cancel_reason: string | null;
-  order_items: { image_url: string; quantity: number }[];
+  order_items: { image_url: string; quantity: number; sku?: string; title?: string; is_gift?: boolean | null }[];
   /** Number of total orders from this customer (set by grouping) */
   _customerOrderCount?: number;
 }
@@ -197,7 +198,7 @@ const AdminOrders = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, is_return, original_order_id, return_reason, order_items(image_url, quantity)")
+      .select("id, public_order_number, created_at, customer_name, customer_phone, city, region, total, status, assigned_to, tracking_number, is_confirmed, is_fulfilled, is_tbilisi, risk_score, risk_level, risk_reasons, review_required, auto_confirmed, tags, internal_note, operator_viewed_at, operator_review_status, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, is_return, original_order_id, return_reason, order_items(image_url, quantity, sku, title, is_gift)")
       .not("tags", "cs", "{test_sku}");
 
     // Tab-based filtering
@@ -640,11 +641,14 @@ const AdminOrders = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      {order.order_items?.slice(0, 4).map((item, i) => (
+                      {order.order_items?.filter((item) => !item.is_gift).slice(0, 4).map((item, i) => (
                         <div key={i} className="w-8 h-8 rounded border border-border overflow-hidden flex-shrink-0">
                           <img src={item.image_url} alt="" className="w-full h-full object-cover" />
                         </div>
                       ))}
+                      {hasGiftLine(order.order_items) && (
+                        <span className="self-center whitespace-nowrap rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success">{itemSummary(order.order_items)}</span>
+                      )}
                       {(order.order_items?.length || 0) > 4 && (
                         <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                           +{order.order_items.length - 4}

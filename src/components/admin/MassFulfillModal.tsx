@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { groupGiftItems } from "@/lib/scratchGift";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { logSystemEvent, logSystemEventFailed } from "@/lib/systemEventService";
@@ -340,7 +341,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
     if (appliedOrderIds.length > 0) {
       const { data: fullOrders } = await supabase
         .from("orders")
-        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, status, order_items(sku, quantity, title)")
+        .select("id, public_order_number, customer_name, normalized_address, raw_address, address_line1, normalized_city, raw_city, city, customer_phone, tracking_number, status, order_items(sku, quantity, title, is_gift)")
         .in("id", appliedOrderIds);
 
       if (fullOrders) {
@@ -352,7 +353,7 @@ const MassFulfillModal = ({ open, onClose, onComplete }: MassFulfillModalProps) 
           city: o.normalized_city || o.raw_city || o.city || "",
           phone: o.customer_phone || "",
           tracking: o.tracking_number || "",
-          items: (o.order_items || []).map((i: any) => ({ sku: i.sku, quantity: i.quantity, title: i.title })),
+          items: groupGiftItems(o.order_items).map((g) => ({ sku: g.sku, quantity: g.total, title: g.gift ? `${g.title} (${g.paid} + ${g.gift} 🎁 საჩუქარი)` : g.title })),
         }));
         setFulfilledOrders(stickerData);
 

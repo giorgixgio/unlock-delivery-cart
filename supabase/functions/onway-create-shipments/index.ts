@@ -7,7 +7,7 @@ import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
 import { cityKey } from "../_shared/onwayRegions.ts";
 import { finalizeOnwaySent, type FinalizeEntry } from "../_shared/onwayFulfill.ts";
-import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag } from "../_shared/courierLabel.ts";
+import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag, skuWithQtyText, parcelWeightKg } from "../_shared/courierLabel.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isTestOrder } from "../_shared/testOrders.ts";
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     const roundSize = Math.max(1, parseInt(String(body.round_size ?? "10"), 10) || 10);
 
     // --- Same batch selection as export-courier ---
-    let query = supabase.from("orders").select("*, order_items(sku, quantity, title, product_id)")
+    let query = supabase.from("orders").select("*, order_items(sku, quantity, title, product_id, is_gift)")
       .order("created_at", { ascending: true });
     query = waveId
       ? query.eq("packing_wave_id", waveId)
@@ -240,9 +240,7 @@ Deno.serve(async (req) => {
     // --- Build payloads (label text identical to export-courier) ---
     const built = targets.map((a) => {
       const order = a.order;
-      const qtyBySku = new Map<string, number>();
-      for (const i of order.order_items || []) qtyBySku.set(String(i.sku ?? ""), (qtyBySku.get(String(i.sku ?? "")) || 0) + Number(i.quantity || 1));
-      const skuWithQty = [...qtyBySku.entries()].map(([sku, q]) => `${(binBySku[sku] || "").trim() || sku} - ${q}`).join(", ");
+      const skuWithQty = skuWithQtyText(order.order_items, binBySku);
       const notes: string[] = [];
       if (order.notes_customer) notes.push(order.notes_customer);
       if (order.risk_level && order.risk_level !== "low") notes.push(`RISK:${order.risk_level.toUpperCase()} ${(order.risk_reasons || []).join(", ")}`);
@@ -251,7 +249,7 @@ Deno.serve(async (req) => {
       if (order.is_return && !String(order.internal_note || "").startsWith("REPLACEMENT")) noteText = `RETURN — ${noteText}`.trim();
       const labelText = `[${a.tag}] ${skuWithQty}`;
       const detail = noteText ? `${labelText} | ${noteText}` : labelText;
-      const payload = buildOnwayPayload(order, detail, { username, key }, fromPhone!);
+      const payload = buildOnwayPayload(order, detail, { username, key }, fromPhone!, parcelWeightKg(order.order_items));
       const region=resolveCity(order);
       if(region) { payload.to_city=region.name; Object.assign(payload,{to_city_id:region.id}); }
       const held=reasonsFor(order);

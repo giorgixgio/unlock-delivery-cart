@@ -1946,6 +1946,7 @@ export type Database = {
           icon_url: string | null
           id: string
           image_url: string
+          is_gift: boolean
           line_total: number
           order_id: string
           product_id: string
@@ -1962,6 +1963,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           image_url?: string
+          is_gift?: boolean
           line_total?: number
           order_id: string
           product_id?: string
@@ -1978,6 +1980,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           image_url?: string
+          is_gift?: boolean
           line_total?: number
           order_id?: string
           product_id?: string
@@ -2072,6 +2075,7 @@ export type Database = {
           packing_wave_id: string | null
           payment_method: string
           phone_last9: string | null
+          promo: string | null
           public_order_number: string
           queue_extra_attempts: number | null
           queue_last_touched_by: string | null
@@ -2178,6 +2182,7 @@ export type Database = {
           packing_wave_id?: string | null
           payment_method?: string
           phone_last9?: string | null
+          promo?: string | null
           public_order_number: string
           queue_extra_attempts?: number | null
           queue_last_touched_by?: string | null
@@ -2284,6 +2289,7 @@ export type Database = {
           packing_wave_id?: string | null
           payment_method?: string
           phone_last9?: string | null
+          promo?: string | null
           public_order_number?: string
           queue_extra_attempts?: number | null
           queue_last_touched_by?: string | null

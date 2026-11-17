@@ -18,6 +18,7 @@ import RiskBadge from "@/components/admin/RiskBadge";
 import FulfillmentBadge from "@/components/admin/FulfillmentBadge";
 import EditableOrderFields from "@/components/admin/EditableOrderFields";
 import EditableItemRow from "@/components/admin/EditableItemRow";
+import { hasGiftLine, itemSummary } from "@/lib/scratchGift";
 import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
 import CourierHistorySection from "@/components/admin/CourierHistorySection";
 import CreateReturnModal from "@/components/admin/CreateReturnModal";
@@ -189,7 +190,7 @@ const AdminOrderDetail = () => {
     const [{ data: orderData }, { data: eventsData }, { data: admins }] = await Promise.all([
       supabase
         .from("orders")
-        .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url)")
+        .select("*, order_items(id, title, sku, quantity, unit_price, line_total, image_url, is_gift)")
         .eq("id", id)
         .maybeSingle(),
       supabase
@@ -227,7 +228,7 @@ const AdminOrderDetail = () => {
       if (orConditions.length > 0) {
         const { data: prevOrders } = await supabase
           .from("orders")
-          .select("id, public_order_number, created_at, total, status, is_fulfilled, customer_phone, order_items(sku, title, quantity)")
+          .select("id, public_order_number, created_at, total, status, is_fulfilled, customer_phone, order_items(sku, title, quantity, is_gift)")
           .neq("id", id)
           .or(orConditions.join(","))
           .order("created_at", { ascending: false })
@@ -634,10 +635,11 @@ const AdminOrderDetail = () => {
           .select("*")
           .eq("order_id", id);
 
-        const currentSkuMap = new Map((currentItems || []).map(i => [i.sku, i]));
+        const currentSkuMap = new Map((currentItems || []).map(i => [`${i.sku}|${!!(i as any).is_gift}`, i]));
 
         for (const item of sourceItems) {
-          const existing = currentSkuMap.get(item.sku);
+          const existing = currentSkuMap.get(`${item.sku}|${!!(item as any).is_gift}`);
+          if (existing && (item as any).is_gift) continue; // gift stays +1 per order
           if (existing) {
             // Update quantity on existing item
             const newQty = existing.quantity + item.quantity;
@@ -942,7 +944,7 @@ const AdminOrderDetail = () => {
                     {new Date(prev.created_at).toLocaleDateString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
                   <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-                    {prev.order_items?.map(i => `${i.title} ×${i.quantity}`).join(", ")}
+                    {itemSummary(prev.order_items as any)}
                   </span>
                   <span className="font-medium flex-shrink-0">{Number(prev.total).toFixed(1)} ₾</span>
                   {prev.is_fulfilled && (
@@ -1054,6 +1056,7 @@ const AdminOrderDetail = () => {
       {/* Editable Items */}
       <div className="bg-card rounded-lg p-4 border border-border">
         <h3 className="font-bold text-sm mb-3">Items</h3>
+        {hasGiftLine(order.order_items as any) && <p className="mb-2 rounded-md bg-success/10 px-2 py-1 text-sm font-bold text-success">{itemSummary(order.order_items as any)}</p>}
         <div className="space-y-2">
           {order.order_items.map((item) => (
             <EditableItemRow
@@ -1068,7 +1071,7 @@ const AdminOrderDetail = () => {
         </div>
         <LandingQtyDiscountActions
           orderId={id!}
-          items={order.order_items}
+          items={order.order_items.filter((i: any) => !i.is_gift)}
           actor={actor}
           disabled={order.is_fulfilled || ["shipped", "delivered", "canceled", "returned", "merged"].includes(order.status)}
           onApplied={refreshOrder}

@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildZoneMap, sentViaApi, skuWithQtyText, zoneForOrder } from "../_shared/courierLabel.ts";
+import { buildZoneMap, itemsDescription, parcelWeightKg, sentViaApi, skuWithQtyText, zoneForOrder } from "../_shared/courierLabel.ts";
 import { isTestOrder } from "../_shared/testOrders.ts";
 
 const corsHeaders = {
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
     let query = supabase
       .from("orders")
-      .select("*, order_items(sku, quantity, title, product_id)")
+      .select("*, order_items(sku, quantity, title, product_id, is_gift)")
       .order("created_at", { ascending: true });
 
     if (waveId) {
@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
       // Merge duplicate order_items rows of the same SKU into a single entry,
       // then print the product's bin location (falling back to the SKU itself).
       const skuWithQty = skuWithQtyText(items, binBySku);
-      const titles = items.map((i: any) => i.title).join(", ");
+      const titles = itemsDescription(items);
       const quantityColumn = "1";
       const tag = `[${a.tag}]`; // printed on the slip so the stack self-sorts
 
@@ -398,7 +398,7 @@ Deno.serve(async (req) => {
           order.normalized_city || order.raw_city || order.city || "",
           order.normalized_address || order.raw_address || order.address_line1 || "",
           "",
-          fixedMap["trackings_weight"] || "1",
+          String(parcelWeightKg(items, undefined, Number(fixedMap["trackings_weight"]) || 1)),
           quantityColumn,
           String(Number(order.total || 0)),
           fixedMap["trackings_cod_commission_payer"] || "გამგზავნი",

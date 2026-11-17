@@ -20,20 +20,47 @@ export function zoneForOrder(order: { normalized_city?: string | null; raw_city?
 /** Gift SKUs printed as "+sku" so packers never forget the free extra. */
 export const PLUS_LABEL_SKUS = new Set(["stikeri"]);
 
-/** "BIN - qty, BIN - qty" with duplicate SKU rows merged; falls back to the SKU when no bin. */
-export function skuWithQtyText(items: { sku?: unknown; quantity?: unknown }[] | null | undefined, binBySku: Record<string, string>): string {
-  const qtyBySku = new Map<string, number>();
+type LabelItem = { sku?: unknown; quantity?: unknown; is_gift?: unknown };
+
+/** "BIN - qty, BIN - qty" with duplicate SKU rows merged; falls back to the SKU when no bin.
+ *  Qty is the TOTAL units to pack; free promo units (is_gift) add " (+N საჩუქარი)". */
+export function skuWithQtyText(items: LabelItem[] | null | undefined, binBySku: Record<string, string>): string {
+  const qtyBySku = new Map<string, number>(), giftBySku = new Map<string, number>();
   for (const i of items || []) {
-    const sku = String(i.sku ?? "");
-    qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + Number(i.quantity || 1));
+    const sku = String(i.sku ?? ""), q = Number(i.quantity || 1);
+    qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + q);
+    if (i.is_gift === true) giftBySku.set(sku, (giftBySku.get(sku) || 0) + q);
   }
-  return [...qtyBySku.entries()].map(([sku, q]) =>
-    PLUS_LABEL_SKUS.has(sku) ? `+${sku}${q > 1 ? ` - ${q}` : ""}` : `${(binBySku[sku] || "").trim() || sku} - ${q}`).join(", ");
+  return [...qtyBySku.entries()].map(([sku, q]) => {
+    const gift = giftBySku.get(sku) || 0, extra = gift > 0 ? ` (+${gift} საჩუქარი)` : "";
+    return PLUS_LABEL_SKUS.has(sku) ? `+${sku}${q > 1 ? ` - ${q}` : ""}${extra}` : `${(binBySku[sku] || "").trim() || sku} - ${q}${extra}`;
+  }).join(", ");
 }
 
 /** Printed label: "[tag] BIN - qty". */
-export function courierLabelText(tag: string, items: { sku?: unknown; quantity?: unknown }[] | null | undefined, binBySku: Record<string, string>): string {
+export function courierLabelText(tag: string, items: LabelItem[] | null | undefined, binBySku: Record<string, string>): string {
   return `[${tag}] ${skuWithQtyText(items, binBySku)}`;
+}
+
+/** Known per-unit weights (kg). Unknown SKUs count 0 and the parcel minimum applies. */
+export const UNIT_WEIGHT_KG: Record<string, number> = {};
+
+/** TOTAL parcel weight: every unit incl. free gift units, never below the courier minimum. */
+export function parcelWeightKg(items: LabelItem[] | null | undefined, weightBySku: Record<string, number> = UNIT_WEIGHT_KG, minKg = 1): number {
+  let kg = 0;
+  for (const i of items || []) kg += (weightBySku[String(i.sku ?? "")] || 0) * Number(i.quantity || 1);
+  return Math.max(minKg, Math.round(kg * 100) / 100);
+}
+
+/** Item description for Excel/API: "title x3 (+1 საჩუქარი)" per SKU. */
+export function itemsDescription(items: (LabelItem & { title?: unknown })[] | null | undefined): string {
+  const m = new Map<string, { title: string; q: number; gift: number }>();
+  for (const i of items || []) {
+    const sku = String(i.sku ?? ""), q = Number(i.quantity || 1);
+    const e = m.get(sku) ?? { title: String(i.title ?? sku), q: 0, gift: 0 };
+    e.q += q; if (i.is_gift === true) e.gift += q; m.set(sku, e);
+  }
+  return [...m.values()].map((e) => `${e.title} x${e.q}${e.gift ? ` (+${e.gift} საჩუქარი)` : ""}`).join(", ");
 }
 
 /** Calendar date (YYYY-MM-DD) in Tbilisi. */

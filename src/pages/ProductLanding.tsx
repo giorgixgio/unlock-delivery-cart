@@ -39,6 +39,7 @@ import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
 import FreeGiftCard from "@/components/landing/FreeGiftCard";
 import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
+import { readScratch, scratchGiftEligible } from "@/lib/scratchGift";
 import ProductDemoGif from "@/components/landing/ProductDemoGif";
 import ProductPromoImage from "@/components/landing/ProductPromoImage";
 import SkuUrgencyTimer from "@/components/landing/SkuUrgencyTimer";
@@ -253,6 +254,9 @@ const GenericLanding = ({
   const badges = getDemoBadges(product.id);
 
   const [selectedQty, setSelectedQty] = useState(1);
+  // Scratch-card +1 gift (wood disc only; never test SKUs). Persisted per visitor.
+  const scratchEligible = woodPresentation && scratchGiftEligible(product.sku);
+  const [scratchActive, setScratchActive] = useState(() => scratchEligible && readScratch().active);
 
   // 1+1 offer: 2 units for the price of one (50% off the 2-unit total)
   const effectiveQty = onePlusOneEnabled ? 2 : selectedQty;
@@ -359,7 +363,7 @@ const GenericLanding = ({
 
   return (
     <div className={`min-h-screen bg-background ${woodPresentation ? "" : "pb-36"}`}>
-      {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} skin={usesVacuumPresentation(product.sku) ? 'vacuum' : undefined} gift={giftOffer && giftProduct ? <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} /> : undefined} /> : <>
+      {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} scratchEligible={scratchEligible} giftActive={scratchActive} onActivateGift={() => setScratchActive(true)}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} skin={usesVacuumPresentation(product.sku) ? 'vacuum' : undefined} gift={giftOffer && giftProduct ? <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} /> : undefined} /> : <>
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
@@ -523,8 +527,7 @@ const GenericLanding = ({
           setCodOpen(false);
         }}
         giftProduct={giftProduct}
-
-
+        scratchGift={scratchEligible && scratchActive}
       />
       {hasSku002QuantityOffer && (
         <BumpOfferModal

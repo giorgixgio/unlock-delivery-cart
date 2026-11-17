@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { hasGiftLine, itemSummary } from "@/lib/scratchGift";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export interface EditorItem {
   unit_price: number;
   line_total: number;
   image_url: string;
+  is_gift?: boolean | null;
 }
 
 export interface EditorOrder {
@@ -50,7 +52,7 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
   const refreshItemsAndTotals = useCallback(async () => {
     const { data: items } = await supabase
       .from("order_items")
-      .select("id, product_id, title, sku, quantity, unit_price, line_total, image_url")
+      .select("id, product_id, title, sku, quantity, unit_price, line_total, image_url, is_gift")
       .eq("order_id", order.id);
     const list = (items || []) as EditorItem[];
     const newSubtotal = list.reduce((s, i) => s + Number(i.line_total), 0);
@@ -114,7 +116,7 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
   }, [searchTerm, searchOpen]);
 
   const addProduct = async (p: ProductSearchResult) => {
-    const existing = order.order_items.find((i) => i.product_id === p.id || i.sku === p.sku);
+    const existing = order.order_items.find((i) => !i.is_gift && (i.product_id === p.id || i.sku === p.sku));
     if (existing) {
       await changeItemQty(existing, existing.quantity + 1);
       toast({ title: "პროდუქტი უკვე იყო — რაოდენობა გაიზარდა" });
@@ -182,6 +184,7 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
         </div>
       )}
 
+      {hasGiftLine(order.order_items) && <p className="mb-2 rounded-md bg-success/10 px-2 py-1 text-sm font-bold text-success">{itemSummary(order.order_items)}</p>}
       <div className="space-y-2">
         {order.order_items?.map((it) => (
           <div key={it.id} className="flex items-center gap-2 text-sm border-b border-border/60 last:border-0 pb-2 last:pb-0">
@@ -189,10 +192,10 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
               {it.image_url && <img src={it.image_url} alt="" className="w-full h-full object-cover" />}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{it.title}</div>
+              <div className="font-medium truncate">{it.title}{it.is_gift && <span className="ml-1 rounded-full bg-success px-1.5 py-0.5 text-[11px] font-black text-success-foreground">🎁 საჩუქარი +1</span>}</div>
               <div className="text-xs text-muted-foreground">SKU {it.sku} · {Number(it.unit_price).toFixed(1)} ₾</div>
             </div>
-            <div className="flex items-center gap-1">
+            {it.is_gift ? <span className="w-16 text-center text-sm font-bold">1</span> : <div className="flex items-center gap-1">
               <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => changeItemQty(it, it.quantity - 1)} disabled={saving || it.quantity <= 1}>
                 <Minus className="w-3 h-3" />
               </Button>
@@ -200,11 +203,11 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
               <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => changeItemQty(it, it.quantity + 1)} disabled={saving}>
                 <Plus className="w-3 h-3" />
               </Button>
-            </div>
+            </div>}
             <div className="font-bold whitespace-nowrap w-16 text-right">{Number(it.line_total).toFixed(1)} ₾</div>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeItem(it)}>
+            {!it.is_gift && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeItem(it)}>
               <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+            </Button>}
           </div>
         ))}
         {(!order.order_items || order.order_items.length === 0) && (
@@ -212,10 +215,10 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
         )}
       </div>
 
-      {order.order_items && order.order_items.length === 1 && (
+      {order.order_items && order.order_items.filter((i) => !i.is_gift).length === 1 && (
         <LandingQtyDiscountActions
           orderId={order.id}
-          items={order.order_items.map((it) => ({
+          items={order.order_items.filter((i) => !i.is_gift).map((it) => ({
             id: it.id, sku: it.sku, title: it.title, quantity: it.quantity,
             unit_price: Number(it.unit_price), line_total: Number(it.line_total),
           }))}

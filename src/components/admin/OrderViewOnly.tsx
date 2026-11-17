@@ -8,7 +8,7 @@ import OrderActivityLog from "@/components/admin/OrderActivityLog";
 import { CANCEL_REASON_LABEL } from "@/lib/cancelReasons";
 
 const SELECT =
-  "id, public_order_number, created_at, status, customer_name, customer_phone, city, normalized_city, address_line1, address_line2, normalized_address, notes_customer, internal_note, subtotal, shipping_fee, discount_total, total, is_return, is_confirmed, auto_confirmed, is_fulfilled, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, final_cancel_note, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, onway_last_status_at, order_items(id, sku, title, quantity, unit_price, line_total, image_url)";
+  "id, public_order_number, created_at, status, customer_name, customer_phone, city, normalized_city, address_line1, address_line2, normalized_address, notes_customer, internal_note, subtotal, shipping_fee, discount_total, total, is_return, is_confirmed, auto_confirmed, is_fulfilled, call_outcome, call_attempt_count, next_call_after, final_cancel_reason, final_cancel_note, onway_sent_at, onway_tracking, tracking_number, packed_at, packing_wave_id, merged_into_order_id, onway_last_status, onway_last_status_at, order_items(id, sku, title, quantity, unit_price, line_total, image_url, is_gift)";
 
 /** Read-only order screen for operators: everything visible, nothing editable, no action buttons. */
 export default function OrderViewOnly({ orderId }: { orderId: string }) {
@@ -78,7 +78,7 @@ export default function OrderViewOnly({ orderId }: { orderId: string }) {
           <div key={i.id} className="flex items-center gap-2 p-2 text-sm">
             {i.image_url && <img src={i.image_url} alt="" className="w-10 h-10 rounded object-cover border border-border" />}
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium">{i.title}</div>
+              <div className="truncate font-medium">{i.title}{i.is_gift && <span className="ml-1 rounded-full bg-success px-1.5 py-0.5 text-[11px] font-black text-success-foreground">🎁 საჩუქარი +1</span>}</div>
               <div className="text-xs text-muted-foreground">{i.sku} · {i.quantity} × {Number(i.unit_price || 0).toFixed(2)} ₾</div>
             </div>
             <b>{Number(i.line_total || 0).toFixed(2)} ₾</b>

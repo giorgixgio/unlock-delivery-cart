@@ -15,6 +15,7 @@ interface ItemData {
   unit_price: number;
   line_total: number;
   image_url: string;
+  is_gift?: boolean | null;
 }
 
 interface EditableItemRowProps {
@@ -188,7 +189,7 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
         <img src={item.image_url} alt="" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{item.title}</p>
+        <p className="text-sm font-medium truncate">{item.title}{item.is_gift && <span className="ml-1 rounded-full bg-success px-1.5 py-0.5 text-[11px] font-black text-success-foreground">🎁 საჩუქარი +1</span>}</p>
         <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
       </div>
 
@@ -224,7 +225,7 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
             <p>{item.quantity} × {Number(item.unit_price).toFixed(1)} ₾</p>
             <p className="font-bold">{Number(item.line_total).toFixed(1)} ₾</p>
           </div>
-          {canEdit && (
+          {canEdit && !item.is_gift && (
             <div className="flex gap-1">
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(true)}>
                 <Pencil className="w-3 h-3" />

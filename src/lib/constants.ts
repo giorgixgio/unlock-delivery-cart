@@ -50,4 +50,6 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  /** Free promo unit stored as its own 0 ₾ order line (order_items.is_gift). */
+  isGift?: boolean;
 }

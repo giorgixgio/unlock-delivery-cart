@@ -624,6 +624,13 @@
       "when": 1794866626117,
       "tag": "0088_mark_testumbrella_test_sku",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794929809629,
+      "tag": "0089_scratch_gift_flags",
+      "breakpoints": true
     }
   ]
 }
