@@ -14,7 +14,6 @@ import { satoriImages, satoriVisibleFaq, satoriVisibleSpecs } from '@/lib/satori
 import { resolveWoodDiscConfig, woodDiscTiers, woodDiscMedia, woodDiscVisibleReviews, woodDiscTodayVisible, woodDiscStockVisible, discountPct, money, type WoodDiscConfig } from '@/lib/woodDiscConfig';
 import RepeatOrderBlock from './RepeatOrderBlock';
 import ScratchGiftPopup from './ScratchGiftPopup';
-import { activateScratchGift } from '@/lib/scratchGift';
 import { useScratchTrigger } from '@/hooks/useScratchTrigger';
 import DiscDemoMedia from './DiscDemoMedia';
 import logo from '@/assets/logo.png';
@@ -31,7 +30,7 @@ function OfferTimer() {
  useEffect(()=>{const start=Date.now();const timer=setInterval(()=>setLeft(woodDiscTimerSeconds(start,Date.now())),1000);return()=>clearInterval(timer);},[]);
  return <div className="wd-timer rounded-lg px-4 py-4 text-center" role="timer" aria-live="off"><p className="flex items-center justify-center gap-2 text-base font-bold mb-3"><Timer className="wd-accent w-5 h-5"/>15-წუთიანი ტაიმერი</p><div className="flex items-start justify-center gap-3">{[{v:Math.floor(left/60),label:'წუთი'},{v:left%60,label:'წამი'}].map((item,i)=><div key={item.label} className="flex items-start gap-3">{i>0&&<span className="wd-accent text-[32px] font-black pt-1">:</span>}<div><span className="wd-timer-digit block rounded-lg text-[36px] font-black tabular-nums leading-none px-4 py-3 min-w-[80px]">{String(item.v).padStart(2,'0')}</span><span className="wd-muted block text-sm mt-1">{item.label}</span></div></div>)}</div></div>;
 }
-export default function WoodDiscLanding({product,config,selectedQty,onSelect,onBuy,repeatBlocked,onReorder,preview,modalOpen,entry,scratchEligible=false,giftActive=false,onActivateGift}:{scratchEligible?:boolean;giftActive?:boolean;onActivateGift?:()=>void;product:Product;config?:Partial<WoodDiscConfig>;selectedQty:number;onSelect:(n:number)=>void;onBuy:()=>void;repeatBlocked:LastOrderRecord|null;onReorder:()=>void;preview:boolean;modalOpen:boolean;entry:DrLanding}) {
+export default function WoodDiscLanding({product,config,selectedQty,onSelect,onBuy,repeatBlocked,onReorder,preview,modalOpen,entry,scratchEligible=false,giftActive=false,onActivateGift,scratchTester=false,scratchPhone=''}:{scratchEligible?:boolean;giftActive?:boolean;onActivateGift?:(phone:string)=>void|Promise<void>;scratchTester?:boolean;scratchPhone?:string;product:Product;config?:Partial<WoodDiscConfig>;selectedQty:number;onSelect:(n:number)=>void;onBuy:()=>void;repeatBlocked:LastOrderRecord|null;onReorder:()=>void;preview:boolean;modalOpen:boolean;entry:DrLanding}) {
  const c=resolveWoodDiscConfig(config),tiers=woodDiscTiers(product.price,product.compareAtPrice,product.sku),sel=tiers.find(t=>t.qty===selectedQty)??tiers[0];
  const compare=product.compareAtPrice&&product.compareAtPrice>product.price?product.compareAtPrice:null,pct=discountPct(product.price,compare);
  const {logoUrl,siteName}=useSiteBranding();const {data:feed=[]}=useProductReviews(product.id,product.sku,true);const reviews=woodDiscVisibleReviews(feed,preview);const real=woodDiscVisibleReviews(feed,false);const rating=cameraRating(real);
@@ -42,8 +41,8 @@ export default function WoodDiscLanding({product,config,selectedQty,onSelect,onB
  const heroCTA=useRef<HTMLDivElement>(null),offerA=useRef<HTMLElement>(null),offerB=useRef<HTMLElement>(null),mid=useRef<HTMLDivElement>(null);
  useEffect(()=>{const a=new IntersectionObserver(e=>setHeroOut(!e[0].isIntersecting&&e[0].boundingClientRect.top<0));const b=new IntersectionObserver(es=>setVis(v=>{const n={...v};for(const e of es){const k=(e.target as HTMLElement).dataset.offer;if(k==='a'||k==='b')n[k]=e.isIntersecting;}return n;}));if(heroCTA.current)a.observe(heroCTA.current);for(const el of [offerA.current,offerB.current])if(el)b.observe(el);return()=>{a.disconnect();b.disconnect();};},[]);
  useEffect(()=>{if(!c.sections.recent||!stats?.recent_cities?.length)return;let i=0;let hide:ReturnType<typeof setTimeout>|undefined;const timer=setInterval(()=>{const used=Number(sessionStorage.getItem(entry.toastKey)??0);if(used>=4)return;setToast(stats.recent_cities[i++%stats.recent_cities.length]);sessionStorage.setItem(entry.toastKey,String(used+1));hide=setTimeout(()=>setToast(''),5000);},25000);return()=>{clearInterval(timer);if(hide)clearTimeout(hide);};},[stats,c.sections.recent,entry.toastKey]);
- const [popup,setPopup]=useScratchTrigger(scratchEligible&&!giftActive,offerA);
- const activate=()=>{activateScratchGift();onActivateGift?.();setPopup(false);};
+ const [popup,setPopup]=useScratchTrigger(scratchEligible&&!giftActive,offerA,scratchTester);
+ const activate=async(phone:string)=>{await onActivateGift?.(phone);setPopup(false);};
  const sticky=heroOut&&!vis.a&&!vis.b&&!modalOpen;
  const select=(n:number)=>{setChosen(true);onSelect(n);};
  const farBuy=()=>{if(chosen){onBuy();return;}const y=mid.current?.getBoundingClientRect().top??0;const cards=[offerA.current,offerB.current].filter((x):x is HTMLElement=>!!x);cards.sort((a,b)=>Math.abs(a.getBoundingClientRect().top-y)-Math.abs(b.getBoundingClientRect().top-y))[0]?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});};
@@ -55,7 +54,7 @@ export default function WoodDiscLanding({product,config,selectedQty,onSelect,onB
  const benefitIcons=[CircleDot,Hammer,Wrench],useIcons=[Armchair,Hammer,Paintbrush,Shapes,Leaf,Axe];
  return <div className="wood-disc-page min-h-screen pb-28">
  {giftActive&&<div role="status" className="wd-gift-banner sticky top-0 z-40 px-4 py-2 text-center text-base font-bold">🎁 საჩუქარი გააქტიურებულია — +1 ცალი უფასოდ შენს შეკვეთაზე</div>}
- {popup&&<ScratchGiftPopup image={hero||product.image} onActivate={activate} onClose={()=>setPopup(false)}/>}
+ {popup&&<ScratchGiftPopup image={hero||product.image} onActivate={activate} initialPhone={scratchPhone} onClose={()=>setPopup(false)}/>}
  <header className="wd-steel"><div className="max-w-lg mx-auto px-4 py-2 flex justify-between items-center"><a href="/" aria-label={siteName}><img src={logoUrl||logo} alt={siteName} className="h-7 wd-logo"/></a><span className="text-base font-bold flex gap-1 items-center"><ShieldCheck className="w-4 h-4 wd-accent"/>გადახდა მიღებისას</span></div></header>
  <main><section className="max-w-lg mx-auto px-4 pt-3"><div className="wd-hero mx-auto overflow-hidden rounded-lg">{hero&&!bad?<img src={hero} alt={c.title} onError={()=>setBad(true)} loading="eager" fetchPriority="high" className="w-full h-auto"/>:<div className="h-full grid place-items-center"><CircleDot className="w-20 h-20 wd-accent"/></div>}</div><h1 className="text-[26px] leading-[1.2] font-black mt-3">{c.headline}</h1><ul className="grid gap-1 mt-2">{c.benefits.slice(0,3).map((b,i)=>{const I=benefitIcons[i]??Check;return <li key={i} className="flex gap-2 items-center text-base font-semibold"><I className="w-5 h-5 shrink-0 wd-accent"/>{b}</li>;})}</ul>
  {rating.count>=5?<a href="#wood-disc-reviews" className="flex gap-2 items-center mt-2"><Star className="wd-accent fill-current w-5 h-5"/>{rating.average.toFixed(1)} · {rating.count} შეფასება</a>:sold>0?<p className="mt-2 flex gap-2 items-center"><Flame className="wd-accent w-5 h-5"/>{sold}+ გაყიდული</p>:null}

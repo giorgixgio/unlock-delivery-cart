@@ -22,6 +22,8 @@ interface OrderInput {
   status?: string;
   /** Landing promo code stored on orders.promo (e.g. scratch_0012_4). */
   promo?: string;
+  /** Owner test number on the scratch promo: tag as test so it never ships or moves stock. */
+  testOrder?: boolean;
 }
 
 interface SubmitOrderInput {
@@ -166,6 +168,7 @@ export async function createOrder(input: OrderInput) {
         tags: [
           ...(input.landingSlug ? [`landing:${input.landingSlug}`] : []),
           ...(addressInherited ? ["address:inherited"] : []),
+          ...(input.testOrder ? ["test_sku", "scratch_tester"] : []),
         ],
       } as any)
       .select("id, public_order_number")

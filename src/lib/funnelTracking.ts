@@ -62,6 +62,8 @@ export function trackPhoneSubmitted(params: {
   baseValue: number;
   landingSlug: string;
   landingVariant?: string;
+  /** Owner test number: no Meta events at all. */
+  skipMeta?: boolean;
 }) {
   // PostHog main conversion
   trackEvent("phone_submitted", {
@@ -76,6 +78,7 @@ export function trackPhoneSubmitted(params: {
     ...(params.landingVariant ? { landingVariant: params.landingVariant } : {}),
   }, true); // flush immediately
 
+  if (params.skipMeta) return;
   // Meta Purchase — fires NOW, base product value only, no shipping
   trackPurchase({
     value: params.baseValue,

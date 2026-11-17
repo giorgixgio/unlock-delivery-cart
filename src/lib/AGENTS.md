@@ -8,3 +8,4 @@
 - Wood-disc uses its uploaded grinder clip and poster as presentation fallback when editor media slots are empty; configured media takes precedence, preserving editability without altering checkout or other landings.
 
 - Same-SKU promo units (wood-disc scratch card) are separate `order_items` rows with `is_gift=true` and 0 ₾ plus `orders.promo`, rules in pure `src/lib/scratchGift.ts`; label/description/weight text comes from `_shared/courierLabel.ts` and merges must never stack or reprice gift rows, because stock and packing sum all rows while revenue must exclude the gift.
+- Scratch-card phone captures live in `scratch_leads` (never orders): anon writes only through the deduping `scratch_lead_submit` RPC, an orders AFTER INSERT trigger links leads by phone, and pure mirrors live in `src/lib/scratchLeads.ts`; the owner tester device (`scratch_tester`) suppresses all Meta events in `metaPixel.ts`, so lead stats and ad signals stay clean.

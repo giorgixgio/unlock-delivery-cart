@@ -3175,6 +3175,56 @@ export type Database = {
           },
         ]
       }
+      scratch_leads: {
+        Row: {
+          created_at: string
+          id: string
+          is_test: boolean
+          landing_slug: string | null
+          note: string | null
+          order_id: string | null
+          phone: string
+          promo: string
+          sku: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_test?: boolean
+          landing_slug?: string | null
+          note?: string | null
+          order_id?: string | null
+          phone: string
+          promo?: string
+          sku?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_test?: boolean
+          landing_slug?: string | null
+          note?: string | null
+          order_id?: string | null
+          phone?: string
+          promo?: string
+          sku?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_leads_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           key: string
@@ -4278,6 +4328,19 @@ export type Database = {
       review_photo_upload_allowed: {
         Args: { p_path: string }
         Returns: boolean
+      }
+      scratch_lead_link: {
+        Args: { p_lead_id: string; p_order_id: string }
+        Returns: undefined
+      }
+      scratch_lead_submit: {
+        Args: {
+          p_is_test: boolean
+          p_landing_slug: string
+          p_phone: string
+          p_sku: string
+        }
+        Returns: string
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

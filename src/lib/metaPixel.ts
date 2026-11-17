@@ -7,19 +7,28 @@ declare global {
 // ── Deduplication: prevent double-firing Purchase on same order ──
 let _lastPurchaseOrderId: string | null = null;
 
+/** Owner tester device (scratch_tester=1) never sends Meta events. */
+export function metaSuppressed(): boolean {
+  try { return localStorage.getItem("scratch_tester") === "1"; } catch { return false; }
+}
+function fire(...args: unknown[]) {
+  if (metaSuppressed()) return;
+  window.fbq?.(...args);
+}
+
 function debugLog(event: string) {
   console.log(`%c✅ Meta OK: ${event}`, "color:#1877F2;font-weight:bold");
 }
 
 // ── PageView (SPA route change) ──
 export function trackPageView() {
-  window.fbq?.("track", "PageView");
+  fire("track", "PageView");
   debugLog("PageView");
 }
 
 // ── ViewContent ──
 export function trackViewContent(product: { id: string; title: string; price: number }) {
-  window.fbq?.("track", "ViewContent", {
+  fire("track", "ViewContent", {
     content_ids: [product.id],
     content_name: product.title,
     content_type: "product",
@@ -32,7 +41,7 @@ export function trackViewContent(product: { id: string; title: string; price: nu
 
 // ── AddToCart ──
 export function trackAddToCart(product: { id: string; title: string; price: number }) {
-  window.fbq?.("track", "AddToCart", {
+  fire("track", "AddToCart", {
     content_ids: [product.id],
     content_name: product.title,
     content_type: "product",
@@ -49,7 +58,7 @@ export function trackInitiateCheckout(params: {
   value: number;
   items: Array<{ id: string; quantity: number; price: number }>;
 }) {
-  window.fbq?.("track", "InitiateCheckout", {
+  fire("track", "InitiateCheckout", {
     content_ids: params.items.map((i) => i.id),
     contents: params.items.map((i) => ({
       id: i.id,
@@ -70,7 +79,7 @@ export function trackLead(params: {
   orderId?: string;
   productId: string;
 }) {
-  window.fbq?.("track", "Lead", {
+  fire("track", "Lead", {
     value: params.value,
     currency: "GEL",
     content_category: "phone_order",
@@ -93,7 +102,7 @@ export function trackPurchase(params: {
   }
   if (params.orderId) _lastPurchaseOrderId = params.orderId;
 
-  window.fbq?.("track", "Purchase", {
+  fire("track", "Purchase", {
     content_ids: params.items.map((i) => i.id),
     contents: params.items.map((i) => ({
       id: i.id,
@@ -112,12 +121,12 @@ export function trackPurchase(params: {
 // ── Custom funnel events ──
 
 export function trackMetaUpsellView(orderId: string) {
-  window.fbq?.("trackCustom", "UpsellView", { order_id: orderId });
+  fire("trackCustom", "UpsellView", { order_id: orderId });
   debugLog("UpsellView");
 }
 
 export function trackMetaUpsellAccepted(orderId: string, value: number) {
-  window.fbq?.("trackCustom", "UpsellAccepted", {
+  fire("trackCustom", "UpsellAccepted", {
     order_id: orderId,
     value,
     currency: "GEL",
@@ -126,12 +135,12 @@ export function trackMetaUpsellAccepted(orderId: string, value: number) {
 }
 
 export function trackMetaUpsellSkipped(orderId: string) {
-  window.fbq?.("trackCustom", "UpsellSkipped", { order_id: orderId });
+  fire("trackCustom", "UpsellSkipped", { order_id: orderId });
   debugLog("UpsellSkipped");
 }
 
 export function trackMetaAddressSubmitted(orderId: string) {
-  window.fbq?.("trackCustom", "AddressSubmitted", { order_id: orderId });
+  fire("trackCustom", "AddressSubmitted", { order_id: orderId });
   debugLog("AddressSubmitted");
 }
 
@@ -143,7 +152,7 @@ export function trackStockoutAttempt(params: {
   sku?: string | null;
   value?: number;
 }) {
-  window.fbq?.("trackCustom", "OutOfStockAttempt", {
+  fire("trackCustom", "OutOfStockAttempt", {
     content_ids: [params.productId],
     content_name: params.productName,
     content_type: "product",

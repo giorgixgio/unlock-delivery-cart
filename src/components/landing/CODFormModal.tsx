@@ -1,7 +1,7 @@
 import { trackFunnel } from "@/lib/funnelTracker";
 import { isKeraveVariant } from '@/lib/keratinMaskConfig';
 import { drByProductId, drByVariant } from '@/lib/drLandings';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Phone, CheckCircle2, Check, Gift } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { buildScratchGiftItems, scratchGiftEligible, SCRATCH_PROMO } from "@/lib/scratchGift";
+import { linkScratchLead, metaAllowedForPhone, noteTesterPhone, isTesterPhone } from "@/lib/scratchLeads";
+import { formatGePhone } from "./ScratchPhoneLine";
 import { submitCustomerOrder } from "@/lib/orderService";
 import { loadCustomerInfo, saveCustomerInfo } from "@/lib/customerStore";
 import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking";
@@ -38,6 +40,8 @@ interface CODFormModalProps {
   freeShipping?: boolean;
   /** Scratch-card promo: +1 unit of the same product at 0 ₾ (separate gift line). */
   scratchGift?: boolean;
+  /** Saved scratch-popup phone: when set with an active gift, the order is placed immediately. */
+  oneTapPhone?: string;
 }
 
 
@@ -54,6 +58,7 @@ const CODFormModal = ({
   giftProduct,
   freeShipping = false,
   scratchGift = false,
+  oneTapPhone = "",
 }: CODFormModalProps) => {
   const bonusActive = scratchGift && scratchGiftEligible(product.sku);
 
@@ -107,13 +112,21 @@ const CODFormModal = ({
     setShowStockout(true);
   };
 
-  const handleSubmit = async () => {
+  const oneTap = bonusActive && isValidGeorgianMobile(oneTapPhone);
+  const autoFired = useRef(false);
+  useEffect(() => {
+    if (!open) { autoFired.current = false; return; }
+    if (oneTap && !autoFired.current) { autoFired.current = true; setPhone(oneTapPhone); void handleSubmit(oneTapPhone); }
+  }, [open, oneTap]);
+
+  const handleSubmit = async (override?: string) => {
     setTouched(true);
-    if (!isValid) {
+    const submitPhone = override && isValidGeorgianMobile(override) ? override : cleanedPhone;
+    if (!isValidGeorgianMobile(submitPhone)) {
       setError("");
       return;
     }
-    const submitPhone = cleanedPhone;
+    noteTesterPhone(submitPhone);
 
     setSubmitting(true);
     setError("");
@@ -158,6 +171,7 @@ const CODFormModal = ({
           landingSlug,
           status: "pending_details",
           ...(bonusActive ? { promo: SCRATCH_PROMO } : {}),
+          ...(isTesterPhone(submitPhone) && bonusActive ? { testOrder: true } : {}),
         },
         stockout: {
           productId: product.id,
@@ -190,6 +204,7 @@ const CODFormModal = ({
       }
 
       const { order } = result;
+      if (bonusActive) void linkScratchLead(order.id);
 
       // ═══ MAIN CONVERSION: Fire Meta Purchase + PostHog phone_submitted ═══
       trackPhoneSubmitted({
@@ -200,6 +215,7 @@ const CODFormModal = ({
         baseValue: totalAfter, // base product value only, no shipping
         landingSlug,
         ...variantMeta,
+        skipMeta: !metaAllowedForPhone(submitPhone),
       });
 
       // Show brief success flash
@@ -230,6 +246,13 @@ const CODFormModal = ({
               }}
             />
           </>
+        ) : oneTap && !error ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            {success ? <CheckCircle2 className="w-14 h-14 text-success animate-bounce" /> : <Loader2 className="w-10 h-10 animate-spin text-primary" />}
+            <SheetTitle className="text-lg font-extrabold text-foreground">{success ? "✔️ შეკვეთა დაფიქსირდა" : "შეკვეთა ფორმდება..."}</SheetTitle>
+            <p className="text-base font-bold text-foreground">📞 {formatGePhone(oneTapPhone)}</p>
+            <p className="text-sm font-semibold text-success">+1 საჩუქარი (უფასო) — 0 ₾</p>
+          </div>
         ) : success ? (
           <div className="flex flex-col items-center justify-center py-10 gap-3">
             <CheckCircle2 className="w-14 h-14 text-success animate-bounce" />
@@ -341,7 +364,7 @@ const CODFormModal = ({
             </div>
 
             <Button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit()}
               disabled={submitting || !isValid}
               className="w-full h-14 text-lg font-bold rounded-xl bg-success hover:bg-success/90 text-success-foreground"
               size="lg"

@@ -139,3 +139,6 @@
 - [x] Add editable demo media/content and product-scoped reviews with 12 preview-only samples.
 - [x] Verify mobile/desktop, quantity modal totals and intercepted phone/bump/address flow; 300 tests pass, build green; not published.
 - [ ] Verify signed-in admin editor/save and review filter — requesting user has no app account and temporary-account approval is unavailable; no real operational order placed.
+
+# Roadmap — Scratch phone capture
+- [x] Popup phone step, scratch_leads table + dedupe/link, one-tap checkout, ScratchLead event, tester mode, operator tab, tests.

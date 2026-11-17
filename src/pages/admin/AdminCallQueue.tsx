@@ -26,6 +26,7 @@ import IssueFlagButton from "@/components/admin/IssueFlagButton";
 import CancelReasonModal from "@/components/admin/CancelReasonModal";
 import CallbackPickerModal from "@/components/admin/CallbackPickerModal";
 import ToggleStore from "@/components/admin/ToggleStore";
+import ScratchLeadsTab from "@/components/admin/ScratchLeadsTab";
 import { startSession, endSession, markAction, currentSessionId } from "@/lib/operatorSession";
 import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "@/lib/callAttemptService";
 import { applyOrderCancelStock } from "@/lib/stockService";
@@ -150,7 +151,9 @@ export default function AdminCallQueue() {
         <TabsList>
           {access.allowed && <TabsTrigger value="queue">რიგი / Queue</TabsTrigger>}
           {access.isManager && <TabsTrigger value="team">Team</TabsTrigger>}
+          <TabsTrigger value="scratch">🎁 Scratch leads</TabsTrigger>
         </TabsList>
+        <TabsContent value="scratch"><ScratchLeadsTab /></TabsContent>
         {access.allowed && <TabsContent value="queue"><QueueTab /></TabsContent>}
         {access.isManager && (
           <TabsContent value="team">

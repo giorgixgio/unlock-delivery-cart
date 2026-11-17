@@ -2,13 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cleanPhoneInput } from '@/lib/phoneValidation';
+import { normalizeScratchPhone } from '@/lib/scratchLeads';
 
 /** Fraction of silver pixels that must be cleared before the gift is revealed. */
 const REVEAL_AT = 0.45;
 /** Brush radius in CSS px — big strokes so a few swipes clear it. */
 const BRUSH = 46;
 
-export default function ScratchGiftPopup({ image, onActivate, onClose }: { image: string; onActivate: () => void; onClose: () => void }) {
+export default function ScratchGiftPopup({ image, onActivate, onClose, initialPhone = '' }: { image: string; onActivate: (phone: string) => void | Promise<void>; onClose: () => void; initialPhone?: string }) {
+  const [phone, setPhone] = useState(cleanPhoneInput(initialPhone));
+  const [busy, setBusy] = useState(false);
+  const validPhone = normalizeScratchPhone(phone);
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
@@ -92,7 +98,16 @@ export default function ScratchGiftPopup({ image, onActivate, onClose }: { image
               onMouseLeave={() => { if (drawing.current) { drawing.current = false; last.current = null; check(); } }} />}
             {!done && !touched && <span aria-hidden className="scratch-finger pointer-events-none absolute left-1/2 top-[62%] text-5xl">👆</span>}
           </div>
-          {done && <Button onClick={onActivate} className="scratch-cta mt-5 w-full min-h-16 rounded-2xl text-xl font-black">საჩუქრის გააქტიურება</Button>}
+          {done && <div className="mt-5 text-left">
+            <label htmlFor="scratch-phone" className="block text-base font-bold">შეიყვანე ნომერი, რომ საჩუქარი შენზე დავაფიქსიროთ</label>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="scratch-close grid h-14 place-items-center rounded-xl px-3 text-base font-bold">🇬🇪 +995</span>
+              <Input id="scratch-phone" type="tel" inputMode="numeric" autoComplete="tel" maxLength={9} placeholder="5XX XXX XXX" value={phone}
+                onChange={(e) => setPhone(cleanPhoneInput(e.target.value))} className="h-14 flex-1 rounded-xl text-lg font-bold text-foreground" />
+            </div>
+            {phone.length === 9 && !validPhone && <p className="mt-1 text-sm font-semibold text-destructive">შეიყვანე სწორი ნომერი — 9 ციფრი, იწყება 5-ით</p>}
+            <Button disabled={!validPhone || busy} onClick={async () => { if (!validPhone) return; setBusy(true); try { await onActivate(validPhone); } finally { setBusy(false); } }} className="scratch-cta mt-4 w-full min-h-16 rounded-2xl text-xl font-black">საჩუქრის გააქტიურება</Button>
+          </div>}
         </div>
       </div>
     </div>

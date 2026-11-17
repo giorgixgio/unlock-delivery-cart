@@ -631,6 +631,13 @@
       "when": 1794929809629,
       "tag": "0089_scratch_gift_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794931502903,
+      "tag": "0090_scratch_leads",
+      "breakpoints": true
     }
   ]
 }

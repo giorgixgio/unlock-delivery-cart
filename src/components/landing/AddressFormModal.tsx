@@ -1,6 +1,7 @@
 import { trackFunnel } from "@/lib/funnelTracker";
 import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import ScratchPhoneLine from "./ScratchPhoneLine";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, X } from "lucide-react";
@@ -41,6 +42,9 @@ interface AddressFormModalProps {
   unitPrice: number;
   landingSlug: string;
   onComplete: () => void;
+  /** One-tap scratch orders: show the saved phone with a change link. */
+  phone?: string;
+  onPhoneChange?: (p: string) => void;
 }
 
 type View = "form" | "skip_confirm" | "success";
@@ -60,6 +64,8 @@ const AddressFormModal = ({
   orderTotal,
   deliveryFee,
   onComplete,
+  phone,
+  onPhoneChange,
 }: AddressFormModalProps) => {
   const [form, setForm] = useState({ region: "", address: "" });
   const { cities, loading: citiesLoading, error: citiesError } = useOnwayCities();
@@ -279,6 +285,7 @@ const AddressFormModal = ({
                   </div>
                 </div>
               </SheetTitle>
+              {phone && orderId && <ScratchPhoneLine orderId={orderId} phone={phone} onChange={(p) => onPhoneChange?.(p)} />}
 
               {/* Short helper line */}
               <p className="mt-4 text-[13px] font-semibold text-foreground leading-snug">
