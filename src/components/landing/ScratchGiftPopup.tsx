@@ -78,16 +78,16 @@ export default function ScratchGiftPopup({ image, onActivate, onClose, initialPh
   useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
 
   return (
-    <div className="scratch-overlay fixed inset-0 z-[10000] grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="სიურპრიზი">
+    <div className="scratch-overlay fixed inset-0 z-[10000] grid place-items-center overflow-y-auto p-3" role="dialog" aria-modal="true" aria-label="სიურპრიზი">
       <div className="scratch-card relative w-full max-w-md rounded-3xl p-[4px]">
-        <div className="scratch-inner relative overflow-hidden rounded-[22px] px-5 pb-6 pt-7 text-center">
+        <div className="scratch-inner relative max-h-[calc(100dvh-24px)] overflow-y-auto overflow-x-hidden rounded-[22px] px-5 pb-6 pt-7 text-center">
           <button type="button" onClick={onClose} aria-label="დახურვა" className="scratch-close absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full"><X className="h-5 w-5" /></button>
           {!done ? <>
             <div aria-hidden className="scratch-gift-icon mx-auto mb-2 text-5xl">🎁</div>
             <h2 className="text-[26px] font-black leading-tight px-6">შენთვის სიურპრიზი გვაქვს!</h2>
             <p className="scratch-sub mt-2 text-lg font-semibold">გადაფხიკე და ნახე შენი საჩუქარი 👇</p>
           </> : <h2 className="text-[26px] font-black leading-tight px-6">🎉 გილოცავ! მიიღებ +1 ცალს საჩუქრად</h2>}
-          <div className="relative mx-auto mt-4 aspect-square w-full max-w-[340px] overflow-hidden rounded-2xl scratch-frame">
+          <div className={`relative mx-auto mt-4 aspect-square w-full ${done ? "max-w-[170px]" : "max-w-[340px]"} overflow-hidden rounded-2xl scratch-frame`}>
             <img src={image} alt="საჩუქარი" className="h-full w-full object-cover" />
             <span className="scratch-badge absolute right-2 top-2 rounded-full px-3 py-1 text-lg font-black">+1 🎁</span>
             <span className="scratch-prize absolute inset-x-0 bottom-0 py-2 text-lg font-black">+1 ცალი საჩუქრად</span>
