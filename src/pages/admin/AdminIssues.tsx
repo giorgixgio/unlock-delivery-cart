@@ -21,6 +21,7 @@ interface Ticket {
 interface Msg { id: string; author_type: string; author: string | null; body: string; link_url: string | null; video_url: string | null; status_set: string | null; notify_customer: boolean; created_at: string }
 interface Sms { id: string; type: string; status: string; send_after: string; sent_at: string | null; last_error: string | null }
 
+const HOW_TO_VIDEO_URL = "https://youtu.be/lotCuTbH0l4";
 const fmt = (t: string) => new Date(t).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const age = (t: string) => { const h = Math.floor((Date.now() - new Date(t).getTime()) / 3600_000); return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`; };
 
@@ -156,6 +157,16 @@ function IssueDetail({ ticket, refund, onChanged }: { ticket: Ticket; refund?: R
             <p className="text-xs text-muted-foreground">1) კლიენტს მიდის SMS „დავიწყეთ განხილვა“ — ტვირთავს ფოტოს/ვიდეოს. 2) ნახე მასალა და დააჭირე „დამტკიცება“ — მიდის მეორე SMS, კლიენტი წერს IBAN-ს. 3) გადარიცხე და მონიშნე „გადავრიცხე“ (💸 დაბრუნებები ტაბი).</p>
           </div>
           {open && <>
+            <div className="space-y-1">
+              <Button variant="secondary" className="h-12 w-full text-base font-bold" disabled={busy} onClick={() => {
+                if (!confirm("კლიენტს მიუვა SMS — გამოყენების ვიდეო-ინსტრუქციის ბმულით. გავაგრძელო?")) return;
+                void run(async () => {
+                  const r = await postTicketUpdate(ticket.id, "გამოყენების ვიდეო-ინსტრუქცია 👇 ნახეთ ბმულზე:", "", HOW_TO_VIDEO_URL, "waiting_customer", true);
+                  if (!r.sms_queued) toast({ title: "შენიშვნა შეინახა, SMS არ გაიგზავნა (გამორთულია ან ლიმიტი)" });
+                }, "🎬 ვიდეო-ინსტრუქცია გაიგზავნა");
+              }}>🎬 გამოყენების ვიდეოს გაგზავნა (SMS)</Button>
+              <p className="text-xs text-muted-foreground">კლიენტს მიუვა SMS და ბმულზე ნახავს ვიდეო-ინსტრუქციას, როგორ გამოიყენოს პროდუქტი. Issue რჩება ღია.</p>
+            </div>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="შენიშვნა (არასავალდებულო)" className="text-base" />
             <div className="space-y-1">
               <Button variant="secondary" className="h-12 w-full text-base font-bold" disabled={busy} onClick={() => {
