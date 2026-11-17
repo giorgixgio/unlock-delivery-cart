@@ -1032,3 +1032,11 @@
 @media (prefers-reduced-motion: reduce) { .scratch-finger { animation:none; } }
 .wd-gift-banner { background:linear-gradient(90deg,hsl(var(--wd-orange)),hsl(38 95% 55%)); color:hsl(0 0% 100%); }
 .wd-gift-badge { background:hsl(145 63% 42%); color:hsl(0 0% 100%); }
+.scratch-inner { background:radial-gradient(120% 80% at 50% 0%,hsl(var(--primary)/.35),transparent 60%),hsl(210 12% 10%); }
+.scratch-card { animation:scratch-pop .45s cubic-bezier(.2,1.4,.4,1); }
+.scratch-frame { box-shadow:0 0 0 3px hsl(38 95% 55%/.8),0 12px 40px -10px hsl(var(--primary)/.7); }
+.scratch-sub { color:hsl(38 95% 70%); }
+.scratch-gift-icon { animation:scratch-bob 1.8s ease-in-out infinite; filter:drop-shadow(0 6px 14px hsl(var(--primary)/.6)); }
+@keyframes scratch-pop { from { transform:scale(.7); opacity:0; } to { transform:scale(1); opacity:1; } }
+@keyframes scratch-bob { 0%,100% { transform:translateY(0) rotate(-6deg); } 50% { transform:translateY(-6px) rotate(6deg); } }
+@media (prefers-reduced-motion: reduce) { .scratch-card,.scratch-gift-icon { animation:none; } }

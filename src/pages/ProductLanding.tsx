@@ -1,6 +1,6 @@
 import { trackFunnel } from "@/lib/funnelTracker";
 import { lazyWithRetry } from "@/lib/deployGuard";
-import { useMemo, useEffect, useState, lazy, Suspense } from "react";
+import { useMemo, useEffect, useState, lazy, Suspense, useRef } from "react";
 import logoSrc from "@/assets/logo.png";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { useParams, useNavigate } from "react-router-dom";
@@ -39,7 +39,9 @@ import { getSingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import OnePlusOneOffer from "@/components/landing/OnePlusOneOffer";
 import FreeGiftCard from "@/components/landing/FreeGiftCard";
 import { getFreeGiftOffer } from "@/lib/freeGiftOffers";
-import { readScratch, scratchGiftEligible } from "@/lib/scratchGift";
+import { activateScratchGift, readScratch, scratchGiftEligible } from "@/lib/scratchGift";
+import { useScratchTrigger } from "@/hooks/useScratchTrigger";
+import ScratchGiftPopup from "@/components/landing/ScratchGiftPopup";
 import ProductDemoGif from "@/components/landing/ProductDemoGif";
 import ProductPromoImage from "@/components/landing/ProductPromoImage";
 import SkuUrgencyTimer from "@/components/landing/SkuUrgencyTimer";
@@ -255,8 +257,11 @@ const GenericLanding = ({
 
   const [selectedQty, setSelectedQty] = useState(1);
   // Scratch-card +1 gift (wood disc only; never test SKUs). Persisted per visitor.
-  const scratchEligible = woodPresentation && scratchGiftEligible(product.sku);
+  const scratchEligible = scratchGiftEligible(product.sku) && !cameraPresentation && !satoriPresentation && !keratinPresentation;
+  const genericScratch = scratchEligible && !woodPresentation;
+  const priceAnchor = useRef<HTMLDivElement>(null);
   const [scratchActive, setScratchActive] = useState(() => scratchEligible && readScratch().active);
+  const [genericPopup, setGenericPopup] = useScratchTrigger(genericScratch && !scratchActive, priceAnchor);
 
   // 1+1 offer: 2 units for the price of one (50% off the 2-unit total)
   const effectiveQty = onePlusOneEnabled ? 2 : selectedQty;
@@ -364,6 +369,8 @@ const GenericLanding = ({
   return (
     <div className={`min-h-screen bg-background ${woodPresentation ? "" : "pb-36"}`}>
       {woodPresentation && drEntry ? <WoodDiscLanding product={product} config={woodDiscConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} scratchEligible={scratchEligible} giftActive={scratchActive} onActivateGift={() => setScratchActive(true)}/> : satoriPresentation ? <SatoriKnifeLanding product={product} config={satoriConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={satoriPreviewMode(window.location.search)} modalOpen={codOpen || bumpOpen || addressOpen || doneOpen || singleUpsellOpen || upsellOpen} entry={drEntry} /> : keratinPresentation ? <KeratinMaskLanding product={product} config={keratinConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} preview={keratinPreviewMode(window.location.search)} entry={keraveEntry} /> : cameraPresentation ? <MiniCameraLanding product={product} config={cameraConfig} selectedQty={selectedQty} onSelect={setSelectedQty} onBuy={handleCTA} repeatBlocked={repeatBlocked} onReorder={handleReorder} skin={usesVacuumPresentation(product.sku) ? 'vacuum' : undefined} gift={giftOffer && giftProduct ? <FreeGiftCard offer={giftOffer} giftProduct={giftProduct} /> : undefined} /> : <>
+      {genericScratch && scratchActive && <div role="status" className="scratch-cta px-4 py-2 text-center text-sm font-bold">🎁 საჩუქარი გააქტიურებულია — +1 ცალი უფასოდ შენს შეკვეთაზე</div>}
+      {genericPopup && <ScratchGiftPopup image={product.images?.[0] || product.image} onActivate={() => { activateScratchGift(); setScratchActive(true); setGenericPopup(false); }} onClose={() => setGenericPopup(false)} />}
       <StickyAnnouncementBar />
       <header className="sticky top-[28px] z-40 bg-card border-b border-border shadow-sm">
         <div className="container max-w-lg mx-auto px-4 py-3 flex items-center">
@@ -402,7 +409,7 @@ const GenericLanding = ({
         <ProductBenefitBadges sku={product.sku} />
 
 
-        <div>
+        <div ref={priceAnchor}>
           <h1 className="text-xl font-extrabold text-foreground leading-tight">{product.title}</h1>
           {product.sku && (
             <p className="text-[11px] text-muted-foreground font-mono mt-1">SKU: {product.sku}</p>
@@ -419,6 +426,9 @@ const GenericLanding = ({
               <span className="text-xs font-bold text-destructive">2 ცალი ერთი ფასად</span>
             )}
           </div>
+          {genericScratch && scratchActive && (
+            <p className="mt-2 inline-flex rounded-full bg-success px-3 py-1 text-sm font-black text-success-foreground">🎁 საჩუქარი დამატებულია: +1 ცალი უფასოდ</p>
+          )}
 
         </div>
 
