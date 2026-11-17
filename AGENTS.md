@@ -36,4 +36,3 @@ Queue RPCs mirror `callQueuePolicy.ts`; reuse call/cancel/callback services (`ca
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
 - Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
-- Same-SKU promo units (wood-disc scratch card) are separate `order_items` rows with `is_gift=true` and 0 ₾ plus `orders.promo`, rules in pure `src/lib/scratchGift.ts`; label/description/weight text comes from `_shared/courierLabel.ts` and merges must never stack or reprice gift rows, because stock and packing sum all rows while revenue must exclude the gift.
