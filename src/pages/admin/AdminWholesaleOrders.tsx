@@ -1505,8 +1505,9 @@ const AdminWholesaleOrders = () => {
       const row = (Array.isArray(data) ? data[0] : data) as Item;
       const patch: Partial<Item> = {
         storefront_product_id: product.id,
-        // Reorders always keep the existing product's own SKU as the carton mark.
-        shipping_mark: product.sku || row.sku,
+        // Every carton gets its own unique numeric G888-T4656-#### mark (the row SKU);
+        // the catalog link above keeps it tied to the existing product.
+        shipping_mark: row.sku,
         title: product.title,
         image_url: product.image || null,
         selling_price: Number(product.price),
