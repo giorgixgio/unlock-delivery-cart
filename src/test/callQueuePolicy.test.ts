@@ -86,6 +86,25 @@ describe("night leads", () => {
   });
 });
 
+import { DEFAULT_QUEUE_SETTINGS } from "@/lib/callQueuePolicy";
+describe("one-time today-only cutoff (2026-11-24)", () => {
+  const s = { ...DEFAULT_QUEUE_SETTINGS, minLeadCreatedAt: "2026-11-23T20:00:00.000Z" }; // 00:00 Tbilisi Nov 24
+  const now = new Date("2026-11-24T08:00:00Z"); // 12:00 Tbilisi
+  it("hides old fresh leads, no-answer retries and callbacks", () => {
+    expect(queueTier({ id: "oldFresh", created_at: "2026-11-23T10:00:00Z", status: "new" }, "op", now, 120, s)).toBeNull();
+    expect(queueTier({ id: "oldRetry", created_at: "2026-11-20T10:00:00Z", status: "new", call_attempt_count: 1, call_outcome: "no_answer", last_call_attempt_at: "2026-11-23T09:00:00Z" }, "op", now, 120, s)).toBeNull();
+    expect(queueTier({ id: "oldCb", created_at: "2026-11-22T10:00:00Z", status: "on_hold", call_outcome: "callback", queue_last_touched_by: "op" }, "op", now, 120, s)).toBeNull();
+  });
+  it("serves leads created today; boundary at exactly midnight Tbilisi", () => {
+    expect(queueTier({ id: "todayFresh", created_at: "2026-11-24T06:30:00Z", status: "new" }, "op", now, 120, s)).toBe(2);
+    expect(queueTier({ id: "edge", created_at: "2026-11-23T20:00:00.000Z", status: "new" }, "op", now, 120, s)).toBe(2);
+    expect(queueTier({ id: "edgePrev", created_at: "2026-11-23T19:59:59.000Z", status: "new" }, "op", now, 120, s)).toBeNull();
+  });
+  it("no cutoff setting keeps old leads eligible", () => {
+    expect(queueTier({ id: "oldFresh", created_at: "2026-11-23T10:00:00Z", status: "new" }, "op", now, 120, DEFAULT_QUEUE_SETTINGS)).toBe(2);
+  });
+});
+
 import { isQueueOnlyOperator, queueOnlyRedirect } from "@/lib/adminPermissions";
 describe("master switch routing", () => {
   const on = { operators_use_queue: true, manager_emails: ["eto@bigmart.ge"] };

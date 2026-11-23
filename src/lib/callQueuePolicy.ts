@@ -21,6 +21,8 @@ export interface QueuePolicySettings {
   backlogMix?: 2 | 3;
   catchUpEnabled?: boolean;
   catchUpGapMinutes?: number;
+  /** ONE-TIME (2026-11-24): hide leads created before this instant (today 00:00 Tbilisi). Mirrored by the hardcoded cutoff in SQL call_queue_tier. Remove both when the owner decides. */
+  minLeadCreatedAt?: string;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
@@ -119,6 +121,8 @@ export function queueTier(
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!QUEUE_STATUSES.includes(o.status)) return null;
   const createdAt = ts(o.created_at);
+  // ONE-TIME (2026-11-24): today-only cutoff, first WHEN in SQL call_queue_tier.
+  if (s.minLeadCreatedAt && createdAt !== null && createdAt < Date.parse(s.minLeadCreatedAt)) return null;
   if (!s.catchUpEnabled && o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
   if ((o.tags ?? []).includes("test_sku")) return null;
