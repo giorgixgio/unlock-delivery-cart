@@ -14,7 +14,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { downloadCourierLabelsPdf, type CourierLabelOrder } from "@/components/CourierLabel";
+import {
+  CourierLabelPreview,
+  downloadCourierLabelsPdf,
+  type CourierLabelOrder,
+} from "@/components/CourierLabel";
+import {
+  expandOrdersToLabels,
+  type CourierLabelRenderItem,
+  type OnwayLabelDataRow,
+} from "@/lib/onwayLabelView";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 import { useStore } from "@/contexts/StoreContext";
 
@@ -25,6 +34,48 @@ const STORE_OPTIONS: { value: LabelStore; label: string; description: string }[]
   { value: "B", label: "TrendMart", description: "Warehouse B orders only" },
   { value: "A", label: "BigMart", description: "Warehouse A orders only" },
 ];
+
+const SAMPLE_PREVIEW_FALLBACK: CourierLabelOrder = {
+  id: "sample-125081",
+  tracking_number: "106163719",
+  courier_zone_id: 1,
+  courier_label_text: "[S-0007] 002 - 1",
+  courier_label_date: "2026-11-04",
+  customer_phone: "593404593",
+  address: "საბურთალო, ვაჟა ფშაველას 49, კომაროვის სკოლა.",
+  city: "თბილისი",
+};
+
+async function fetchOnwayLabelRows(orderIds: string[]): Promise<Map<string, OnwayLabelDataRow[]>> {
+  const byOrder = new Map<string, OnwayLabelDataRow[]>();
+  if (orderIds.length === 0) return byOrder;
+  const CHUNK = 200;
+  for (let i = 0; i < orderIds.length; i += CHUNK) {
+    const { data, error } = await supabase
+      .from("onway_label_data")
+      .select("order_id, tracking, box_index, box_count, payload")
+      .in("order_id", orderIds.slice(i, i + CHUNK));
+    if (error) continue;
+    for (const row of (data || []) as OnwayLabelDataRow[]) {
+      const list = byOrder.get(row.order_id) || [];
+      list.push(row);
+      byOrder.set(row.order_id, list);
+    }
+  }
+  return byOrder;
+}
+
+/** Non-blocking best-effort call to refresh status-37 OnWay label rows once before printing. */
+async function tryRefreshOnwayLabelsOnce(): Promise<void> {
+  try {
+    await Promise.race([
+      supabase.functions.invoke("onway-status-pull", { body: { action: "labels_fetch" } }),
+      new Promise((resolve) => setTimeout(resolve, 6000)),
+    ]);
+  } catch {
+    // Never block printing if OnWay fetch fails or times out.
+  }
+}
 
 /**
  * Print courier shipping labels for orders that already have a tracking
@@ -119,6 +170,43 @@ export default function AdminCourierLabels() {
   const [groups, setGroups] = useState<LabelGroup[]>([]);
   const [unmatched, setUnmatched] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
+  const [previewItem, setPreviewItem] = useState<CourierLabelRenderItem>(
+    () => expandOrdersToLabels([SAMPLE_PREVIEW_FALLBACK], new Map())[0]
+  );
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await (supabase.from("orders") as any)
+          .select(ORDER_COLS)
+          .or("tracking_number.eq.106163719,public_order_number.eq.125081")
+          .limit(1)
+          .maybeSingle();
+        if (!alive || !data) return;
+        const r = data as Row;
+        const orderInput: CourierLabelOrder = {
+          id: r.id,
+          tracking_number: r.tracking_number,
+          courier_zone_id: r.courier_zone_id,
+          courier_label_text: r.courier_label_text,
+          courier_label_date: r.courier_label_date,
+          customer_phone: r.customer_phone,
+          address: r.normalized_address || r.raw_address || "",
+          city: r.normalized_city || r.raw_city || "",
+        };
+        const onwayMap = await fetchOnwayLabelRows([r.id]);
+        if (!alive) return;
+        const expanded = expandOrdersToLabels([orderInput], onwayMap);
+        if (expanded[0]) setPreviewItem(expanded[0]);
+      } catch {
+        // Keep fallback sample preview.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Per-screen store choice. Inherits the global toggle when it points at a
   // specific store; "All Stores" means the operator must pick one here first.
@@ -688,12 +776,24 @@ export default function AdminCourierLabels() {
     return m ? Number(m[1]) : 0;
   };
 
+  const enrichAndExpandLabels = async (batchRows: Row[]): Promise<CourierLabelRenderItem[]> => {
+    const ids = batchRows.map((r) => r.id);
+    let byOrder = await fetchOnwayLabelRows(ids);
+    const missing = ids.filter((id) => !byOrder.has(id));
+    if (missing.length > 0) {
+      await tryRefreshOnwayLabelsOnce();
+      const refreshed = await fetchOnwayLabelRows(missing);
+      for (const [oid, list] of refreshed.entries()) byOrder.set(oid, list);
+    }
+    return expandOrdersToLabels(batchRows.map(toLabelOrder), byOrder);
+  };
+
   const downloadGroup = async (g: LabelGroup) => {
     setGroupBusy(g.key);
     try {
       // The [R##-##] code already lives at the start of courier_label_text —
       // never re-stamp or recompute it here.
-      const labels = g.rows.map(toLabelOrder);
+      const labels = await enrichAndExpandLabels(g.rows);
       await downloadCourierLabelsPdf(
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
@@ -862,8 +962,9 @@ export default function AdminCourierLabels() {
   const handleDownload = async () => {
     setGenerating(true);
     try {
+      const labels = await enrichAndExpandLabels(selectedRows);
       await downloadCourierLabelsPdf(
-        selectedRows.map(toLabelOrder),
+        labels,
         `courier-labels-${new Date().toISOString().slice(0, 10)}.pdf`
       );
     } catch (e: any) {
@@ -901,6 +1002,22 @@ export default function AdminCourierLabels() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Label preview (76×92 mm · Order 125081)</h2>
+            <span className="text-xs text-muted-foreground">
+              {previewItem.hasOnwayData
+                ? "Using captured OnWay label data"
+                : "Using order fallbacks (no OnWay label row captured yet)"}
+            </span>
+          </div>
+          <div data-testid="courier-label-preview">
+            <CourierLabelPreview order={previewItem} />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Live packer status (shared across all devices, realtime) ── */}
       <Card className="border-primary/40">
