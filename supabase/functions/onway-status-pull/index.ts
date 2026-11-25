@@ -16,6 +16,28 @@ const ONWAY_BASE = "https://onway.ge/index.php?route=";
 const PROBE_ROUTES = ["api/order/get", "api/order/status", "api/order/tracking", "api/order/history", "api/order/info"];
 const sha256 = async (t: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, "0")).join("");
 const mask = (raw: string) => raw.replace(/("?(to_phone|from_phone|phone|to_address|address|to_name|from_name)"?\s*:\s*")[^"]*"/gi, '$1***"').slice(0, 1500);
+const maskSecrets = (raw: string, u: string, k: string) => mask((k ? raw.split(k).join("***") : raw).split(u || "\0").join("***"));
+const toB64 = (bytes: Uint8Array) => {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+};
+const classifyBytes = (bytes: Uint8Array, ct: string) => {
+  const head = new TextDecoder("latin1").decode(bytes.subarray(0, 32));
+  if (head.startsWith("%PDF")) return "pdf";
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes.subarray(0, 600)).trim();
+  if (/^<!doctype html|^<html/i.test(text) || /text\/html/i.test(ct)) return "html";
+  if (/^https?:\/\//i.test(text)) return "url";
+  if (/^JVBERi0/.test(text)) return "base64_pdf";
+  if (text.startsWith("{") || text.startsWith("[") || /json/i.test(ct)) {
+    if (/JVBERi0/.test(text)) return "json_base64_pdf";
+    if (/https?:\/\/[^\s"]+\.pdf/i.test(text)) return "json_pdf_url";
+    return "json";
+  }
+  return /image\//i.test(ct) ? ct : "text";
+};
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -71,6 +93,61 @@ Deno.serve(async (req) => {
       }
     }
     return json({ trackings_tested: [t0], results });
+  }
+
+  if (action === "labels_probe") {
+    const username = Deno.env.get("ONWAY_API_USERNAME") || "", apiKey = Deno.env.get("ONWAY_API_KEY") || "";
+    if (!username || !apiKey) return json({ error: "Onway API credentials missing" }, 500);
+    const { data: ords } = await db.from("orders").select("onway_tracking, onway_sent_at").not("onway_tracking", "is", null)
+      .not("onway_sent_at", "is", null).order("onway_sent_at", { ascending: false }).limit(3);
+    const rawTr = (ords || []).map((o: any) => String(o.onway_tracking)).slice(0, 3);
+    if (!rawTr.length) return json({ error: "No API trackings found" }, 404);
+    // Non-monotonic order [middle, newest, oldest] so we can tell sent-order vs sorted.
+    const tr = rawTr.length === 3 ? [rawTr[1], rawTr[0], rawTr[2]] : rawTr;
+    const t0 = tr[0];
+    const formOf = (pairs: [string, string][]) => new URLSearchParams(pairs).toString();
+    const attempts: { id: string; ct: string; body: string; multi: boolean }[] = [
+      { id: "1_auth_only_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey }), multi: true },
+      { id: "2_trackingnumber_one_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey, trackingnumber: t0 }), multi: false },
+      { id: "3_trackingnumbers_arr_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey, trackingnumbers: tr }), multi: true },
+      { id: "4_trackingnumber_csv_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey, trackingnumber: tr.join(",") }), multi: true },
+      { id: "5a_tracking_arr_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey, tracking: tr }), multi: true },
+      { id: "5b_orders_arr_json", ct: "application/json", body: JSON.stringify({ username, key: apiKey, orders: tr }), multi: true },
+      { id: "6a_trackingnumber_one_form", ct: "application/x-www-form-urlencoded", body: formOf([["username", username], ["key", apiKey], ["trackingnumber", t0]]), multi: false },
+      { id: "6b_trackingnumbers_arr_form", ct: "application/x-www-form-urlencoded", body: formOf([["username", username], ["key", apiKey], ...tr.map((x): [string, string] => ["trackingnumbers[]", x])]), multi: true },
+    ];
+    const results: any[] = [];
+    let singleHit = false;
+    for (const a of attempts) {
+      if (singleHit && !a.multi) continue;
+      let status: number | null = null, ct = "", size = 0, kind = "error", sample = "", err: string | null = null, pdfB64: string | undefined;
+      try {
+        const r = await proxyFetch(ONWAY_BASE + "api/order/labels", { method: "POST", headers: { "Content-Type": a.ct }, body: a.body });
+        status = r.status;
+        ct = r.headers.get("content-type") || "";
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        size = bytes.length;
+        kind = classifyBytes(bytes, ct);
+        if (kind === "pdf") {
+          sample = "%PDF (" + size + " bytes)";
+          if (size <= 2_500_000) pdfB64 = toB64(bytes);
+        } else {
+          sample = maskSecrets(new TextDecoder("utf-8", { fatal: false }).decode(bytes), username, apiKey);
+        }
+      } catch (e) { err = String(e); }
+      const isLabel = status === 200 && size > 100 && (kind === "pdf" || kind.startsWith("image/") || kind === "base64_pdf" || kind === "json_base64_pdf" || kind === "json_pdf_url" || (kind === "html" && /barcode|tracking|onway|1062/i.test(sample)));
+      await db.from("onway_api_log").insert({
+        created_by: "labels_probe", endpoint: "api/order/labels",
+        request_masked: { shape: a.id, content_type: a.ct, trackings: a.multi ? tr : [t0] },
+        http_status: status, response_raw: `${kind} (${size}B) ${sample}`.slice(0, 1500), error_message: err,
+      });
+      results.push({ shape: a.id, http_status: status, content_type: ct, byte_size: size, kind, is_label: isLabel, sample: sample.slice(0, 300), ...(pdfB64 ? { pdf_base64: pdfB64 } : {}), error: err });
+      if (isLabel) {
+        if (a.multi) break;
+        singleHit = true; // Got single label; keep going only for multi-tracking shapes to test order.
+      }
+    }
+    return json({ trackings_sent_order: tr, single_tracking: t0, results });
   }
 
   if (action === "silent_check") {
