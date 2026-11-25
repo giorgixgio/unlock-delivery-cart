@@ -680,6 +680,13 @@
       "when": 1795623039725,
       "tag": "0096_accountant_failed_fees_and_paid_payout",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795623669986,
+      "tag": "0097_accountant_api_2pct_cod_commission",
+      "breakpoints": true
     }
   ]
 }
