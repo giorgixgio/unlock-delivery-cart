@@ -12,6 +12,7 @@ import { trackPhoneFormViewed, trackPhoneSubmitted } from "@/lib/funnelTracking"
 import { consumeIntentionalRepeat } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
 import { cleanPhoneInput, isValidGeorgianMobile } from "@/lib/phoneValidation";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 
 
 interface BundlePhoneSheetProps {
@@ -82,8 +83,8 @@ const BundlePhoneSheet = ({
           items: products.map((product) => ({ product, quantity: 1 })),
           // Flat bundle price — individual prices are display-only anchors.
           subtotal: flatTotal,
-          shippingFee: 5,
-          total: flatTotal + 5,
+          shippingFee: STANDARD_SHIPPING_FEE,
+          total: flatTotal + STANDARD_SHIPPING_FEE,
           source: "landing_cod",
           landingSlug,
           status: "pending_details",

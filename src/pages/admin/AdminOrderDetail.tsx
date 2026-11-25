@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { applyOrderConfirmStock } from "@/lib/stockService";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -568,9 +569,10 @@ const AdminOrderDetail = () => {
         .select("line_total")
         .eq("order_id", id);
       const newSubtotal = (remainingItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
+      const normalized = normalizeOrderAmounts(newSubtotal, Number(order.shipping_fee || 0), Number(order.discount_total || 0));
       await supabase.from("orders").update({
-        subtotal: newSubtotal,
-        total: newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0),
+        subtotal: normalized.subtotal,
+        total: normalized.total,
       }).eq("id", id);
 
       await logEvent("undo_merge", { children_restored: childIds });
@@ -679,20 +681,20 @@ const AdminOrderDetail = () => {
         .select("line_total")
         .eq("order_id", id);
       const newSubtotal = (updatedItems || []).reduce((sum, i) => sum + Number(i.line_total), 0);
-      const newTotal = newSubtotal + Number(order.shipping_fee || 0) - Number(order.discount_total || 0);
+      const normalized = normalizeOrderAmounts(newSubtotal, Number(order.shipping_fee || 0), Number(order.discount_total || 0));
 
       const existingChildIds = order.merged_child_order_ids || [];
       await supabase.from("orders").update({
-        subtotal: newSubtotal,
-        total: newTotal,
+        subtotal: normalized.subtotal,
+        total: normalized.total,
         merged_child_order_ids: [...existingChildIds, ...selectedPrevIds],
         tags: [...new Set([...(order.tags || []), "auto_merged"])],
       }).eq("id", id);
 
       await logEvent("customer_merge", {
         merged_order_ids: selectedPrevIds,
-        new_subtotal: newSubtotal,
-        new_total: newTotal,
+        new_subtotal: normalized.subtotal,
+        new_total: normalized.total,
       });
       await logSystemEvent({
         entityType: "order", entityId: id, eventType: "ORDER_MERGE" as any, actorId: actor,

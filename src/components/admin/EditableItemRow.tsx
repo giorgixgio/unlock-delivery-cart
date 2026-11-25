@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Minus, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
 import { getTieredLineTotal, getTieredUnitPrice, getDiscountedTotal } from "@/lib/landingDiscounts";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 
 interface ItemData {
   id: string;
@@ -88,12 +89,13 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
 
       const shipping = Number(orderData?.shipping_fee || 0);
       const discount = Number(orderData?.discount_total || 0);
+      const normalized = normalizeOrderAmounts(newSubtotal, shipping, discount);
 
       await supabase
         .from("orders")
         .update({
-          subtotal: newSubtotal,
-          total: newSubtotal + shipping - discount,
+          subtotal: normalized.subtotal,
+          total: normalized.total,
         })
         .eq("id", orderId);
 
@@ -151,12 +153,13 @@ const EditableItemRow = ({ item, orderId, actor, canEdit, onUpdated }: EditableI
 
       const shipping = Number(orderData?.shipping_fee || 0);
       const discount = Number(orderData?.discount_total || 0);
+      const normalized = normalizeOrderAmounts(newSubtotal, shipping, discount);
 
       await supabase
         .from("orders")
         .update({
-          subtotal: newSubtotal,
-          total: newSubtotal + shipping - discount,
+          subtotal: normalized.subtotal,
+          total: normalized.total,
         })
         .eq("id", orderId);
 

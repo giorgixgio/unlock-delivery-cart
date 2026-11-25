@@ -8,6 +8,7 @@ import { Loader2, RotateCcw, Plus, Minus, Trash2, Search, AlertTriangle } from "
 import LandingQtyDiscountActions from "@/components/admin/LandingQtyDiscountActions";
 import { getTieredLineTotal, getTieredUnitPrice } from "@/lib/landingDiscounts";
 import { markAction } from "@/lib/operatorSession";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 
 export interface EditorItem {
   id: string;
@@ -58,9 +59,9 @@ export default function OrderItemsEditor({ order, actor, saving, onChanged, onCr
     const newSubtotal = list.reduce((s, i) => s + Number(i.line_total), 0);
     const shipping = Number(order.shipping_fee || 0);
     const discount = Number(order.discount_total || 0);
-    const newTotal = newSubtotal + shipping - discount;
-    await supabase.from("orders").update({ subtotal: newSubtotal, total: newTotal }).eq("id", order.id);
-    onChanged({ order_items: list, subtotal: newSubtotal, total: newTotal });
+    const normalized = normalizeOrderAmounts(newSubtotal, shipping, discount);
+    await supabase.from("orders").update({ subtotal: normalized.subtotal, total: normalized.total }).eq("id", order.id);
+    onChanged({ order_items: list, subtotal: normalized.subtotal, total: normalized.total });
   }, [order.id, order.shipping_fee, order.discount_total, onChanged]);
 
   const changeItemQty = async (item: EditorItem, nextQty: number) => {

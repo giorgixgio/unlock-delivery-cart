@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cleanPhoneInput, isValidGeorgianMobile } from "@/lib/phoneValidation";
 import { SCRATCH_GIFT_SKU, SCRATCH_PROMO, buildScratchGiftItems } from "@/lib/scratchGift";
 import type { Product } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE, normalizeOrderAmounts } from "@/lib/orderPricing";
 
 /** Scratch-card leads: phone captured in the popup (NOT an order). */
 export const SCRATCH_TESTER_PHONE = "550501194";
@@ -38,8 +39,10 @@ export const metaAllowedForPhone = (phone?: string | null) => !isTesterPhone(pho
 /** One-tap order: saved phone + chosen qty + gift line. */
 export function buildOneTapOrder(product: Product, qty: number, phone: string, subtotal: number, landingSlug: string) {
   const items = buildScratchGiftItems(product, qty, true);
+  const amounts = normalizeOrderAmounts(subtotal, STANDARD_SHIPPING_FEE);
   return {
-    customerName: phone, customerPhone: phone, items, subtotal, total: subtotal + 5, shippingFee: 5,
+    customerName: phone, customerPhone: phone, items,
+    subtotal: amounts.subtotal, total: amounts.total, shippingFee: amounts.shippingFee,
     source: "landing_cod", landingSlug, status: "pending_details",
     promo: items.some((i) => i.isGift) ? SCRATCH_PROMO : undefined,
   };

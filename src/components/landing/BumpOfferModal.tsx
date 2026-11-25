@@ -7,6 +7,7 @@ import { Product } from "@/lib/constants";
 import { BumpConfig } from "@/hooks/useLandingConfig";
 import { addUpsellItems } from "@/lib/orderService";
 import { bumpLineTotal } from "@/lib/bumpPricing";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 
 interface BumpOfferModalProps {
   open: boolean;
@@ -43,12 +44,12 @@ const BumpOfferModal = ({
   const handleAccept = async () => {
     setLoading(true);
     try {
-      const newSubtotal = basePrice + bumpTotal;
+      const normalized = normalizeOrderAmounts(basePrice + bumpTotal, deliveryFee);
       await addUpsellItems(
         orderId,
         [{ product: { ...product, price: bumpUnitPrice }, quantity: bumpConfig.bump_qty }],
-        deliveryFee,
-        newSubtotal + deliveryFee
+        normalized.shippingFee,
+        normalized.total
       );
 
       await (supabase as any).rpc("storefront_log_order_event", {

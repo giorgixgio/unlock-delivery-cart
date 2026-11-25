@@ -18,6 +18,7 @@ import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
 import AddressFormModal from "@/components/landing/AddressFormModal";
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 import { trackViewContent } from "@/lib/metaPixel";
 import { trackLandingView, trackConfirmationViewed } from "@/lib/funnelTracking";
 import { useNavigate } from "react-router-dom";
@@ -91,7 +92,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(5);
+  const [deliveryFee, setDeliveryFee] = useState(STANDARD_SHIPPING_FEE);
 
   const totalPrice = getDiscountedTotal(UNIT_PRICE, selectedQty);
   const qtyDiscountPct = getQtyDiscountPct(selectedQty);
@@ -130,7 +131,7 @@ const SpyDetectorLanding = ({ product, config: _config, landingSlug, landingVari
       createdAt: Date.now(),
     });
     // NEW ORDER: address first, upsell second.
-    setDeliveryFee(5);
+    setDeliveryFee(STANDARD_SHIPPING_FEE);
     setAddressOpen(true);
   };
 

@@ -78,7 +78,7 @@ function OfferCard({ tiers, compareUnit, selectedQty, onSelect, onBuy, repeatBlo
       </div>
       <div className="mt-4">{repeatBlocked ? <RepeatOrderBlock orderNumber={repeatBlocked.orderNumber} onReorder={onReorder}/> : <ShineButton onClick={onBuy}>{CTA}</ShineButton>}</div>
       <ul className="mt-3 grid gap-1.5 text-[14px] font-semibold sat-body">
-        <li className="flex gap-2 items-center"><Truck className="w-4 h-4 shrink-0 sat-accent"/>მიტანა — 5₾ · თბილისი 1–2 დღე, რეგიონები 2–4 დღე</li>
+        <li className="flex gap-2 items-center"><Truck className="w-4 h-4 shrink-0 sat-accent"/>მიტანა — 6₾ · თბილისი 1–2 დღე, რეგიონები 2–4 დღე</li>
         <li className="flex gap-2 items-center"><ShieldCheck className="w-4 h-4 shrink-0 sat-accent"/>გადახდა მიღებისას</li>
         <li className="flex gap-2 items-center"><PhoneCall className="w-4 h-4 shrink-0 sat-accent"/>უსაფრთხო შეკვეთა — ოპერატორი დაგიკავშირდება</li>
       </ul>

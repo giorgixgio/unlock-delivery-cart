@@ -19,6 +19,7 @@ import { trackStockoutAttempt } from "@/lib/metaPixel";
 import { consumeIntentionalRepeat } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
 import { cleanPhoneInput, isValidGeorgianMobile } from "@/lib/phoneValidation";
+import { STANDARD_SHIPPING_FEE, normalizeOrderAmounts } from "@/lib/orderPricing";
 import StockoutMessageView from "./StockoutMessageView";
 
 
@@ -81,7 +82,9 @@ const CODFormModal = ({
 
   const unitPrice = product.price;
   const totalBefore = unitPrice * quantity;
-  const totalAfter = totalBefore * (1 - discountPct / 100);
+  const rawSubtotal = totalBefore * (1 - discountPct / 100);
+  const shippingFee = freeShipping ? 0 : STANDARD_SHIPPING_FEE;
+  const { subtotal: totalAfter, total: finalOrderTotal } = normalizeOrderAmounts(rawSubtotal, shippingFee);
 
   // Load saved phone + track form view
   useEffect(() => {
@@ -165,8 +168,8 @@ const CODFormModal = ({
               : []),
           ],
           subtotal: totalAfter,
-          total: totalAfter + (freeShipping ? 0 : 5),
-          shippingFee: freeShipping ? 0 : 5,
+          total: finalOrderTotal,
+          shippingFee,
           source: "landing_cod",
           landingSlug,
           status: "pending_details",
@@ -275,7 +278,7 @@ const CODFormModal = ({
                   {discountPct > 0 && ` (-${discountPct}%)`}
                 </p>
               </div>
-              <p className="text-lg font-extrabold text-primary">{totalAfter.toFixed(2)} ₾</p>
+              <p className="text-lg font-extrabold text-primary">{Number.isInteger(totalAfter) ? totalAfter : totalAfter.toFixed(2)} ₾</p>
             </div>
 
             {bonusActive && (
@@ -355,11 +358,11 @@ const CODFormModal = ({
               <span className="text-muted-foreground font-semibold">მიწოდება</span>
               {freeShipping ? (
                 <span className="flex items-center gap-2">
-                  <span className="text-muted-foreground line-through">5 ₾</span>
+                  <span className="text-muted-foreground line-through">{STANDARD_SHIPPING_FEE} ₾</span>
                   <span className="font-extrabold text-emerald-600 dark:text-emerald-400">უფასო</span>
                 </span>
               ) : (
-                <span className="font-semibold text-foreground">5 ₾</span>
+                <span className="font-semibold text-foreground">{STANDARD_SHIPPING_FEE} ₾</span>
               )}
             </div>
 

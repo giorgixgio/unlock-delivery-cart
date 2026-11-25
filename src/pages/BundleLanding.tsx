@@ -17,11 +17,12 @@ import RepeatOrderBlock from "@/components/landing/RepeatOrderBlock";
 import { readLastBundleOrder, readLastOrder, saveLastOrder, markIntentionalRepeat } from "@/lib/lastOrderStore";
 import { trackEvent } from "@/lib/analytics";
 import { getUrgencySignal } from "@/lib/bundleUrgency";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 
 const BUNDLE_SIZE = 3;
 const BUNDLE_PRICE = 29;
 /** Regular courier fee charged on bundle orders (recorded in the order, not advertised on the landing). */
-const BUNDLE_DELIVERY_FEE = 5;
+const BUNDLE_DELIVERY_FEE = STANDARD_SHIPPING_FEE;
 const LANDING_SLUG = "5for39";
 const COUNTDOWN_MIN = 60;
 const STORAGE_KEY = "bundle_5for39_countdown_end";

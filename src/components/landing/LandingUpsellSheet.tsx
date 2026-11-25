@@ -5,6 +5,7 @@ import { Product } from "@/lib/constants";
 import { useStorefrontProducts as useProducts } from "@/hooks/useProducts";
 import { getRelated } from "@/lib/rankingEngine";
 import { addUpsellItems } from "@/lib/orderService";
+import { STANDARD_SHIPPING_FEE, normalizeOrderTotal } from "@/lib/orderPricing";
 import {
   trackUpsellViewed,
   trackUpsellItemSelected,
@@ -38,7 +39,7 @@ const LandingUpsellSheet = ({
   orderNumber,
   baseProduct,
   basePrice,
-  baseDeliveryFee = 5,
+  baseDeliveryFee = STANDARD_SHIPPING_FEE,
   onComplete,
   onSkip,
 }: LandingUpsellSheetProps) => {
@@ -94,7 +95,7 @@ const LandingUpsellSheet = ({
 
   const deliveryFee = complete ? 0 : baseDeliveryFee;
   const upsellTotal = complete ? BUNDLE_PRICE : selectedProductsTotal;
-  const total = basePrice + upsellTotal + deliveryFee;
+  const total = normalizeOrderTotal(basePrice + upsellTotal + deliveryFee);
 
   const handleClose = () => {
     trackUpsellSkipped(orderId, filled);
@@ -122,7 +123,7 @@ const LandingUpsellSheet = ({
         onComplete(0, total);
       } else {
         // 1 selected: add at regular price, keep the base order's shipping fee
-        const newTotal = basePrice + selectedProductsTotal + baseDeliveryFee;
+        const newTotal = normalizeOrderTotal(basePrice + selectedProductsTotal + baseDeliveryFee);
         await addUpsellItems(orderId, selectedItems, baseDeliveryFee, newTotal);
         trackUpsellSkipped(orderId, filled);
         onComplete(baseDeliveryFee, newTotal);
@@ -190,7 +191,7 @@ const LandingUpsellSheet = ({
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
                 ცალკე ღირს ~40₾ · +{" "}
                 <span className="font-bold text-success">მიტანა უფასო</span>{" "}
-                (ზოგავ 5₾-ს)
+                (ზოგავ {STANDARD_SHIPPING_FEE}₾-ს)
               </p>
             </div>
           </div>

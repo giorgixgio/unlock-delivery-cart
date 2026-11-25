@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { GitMerge, Loader2, X, AlertTriangle } from "lucide-react";
 import { logSystemEvent } from "@/lib/systemEventService";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 
 interface MergeOrder {
   id: string;
@@ -114,9 +115,10 @@ const ManualMergeModal = ({ open, orderIds, onClose, onComplete }: ManualMergeMo
 
       // 3. Update primary order
       const shippingFee = Number((primary as any).shipping_fee || 0);
+      const normalized = normalizeOrderAmounts(mergedTotal, shippingFee);
       await (supabase.from("orders") as any).update({
-        subtotal: mergedTotal,
-        total: mergedTotal + shippingFee,
+        subtotal: normalized.subtotal,
+        total: normalized.total,
         merged_child_order_ids: secondaryIds,
         tags: [...new Set([...(primary as any).tags || [], "manual_merged"])],
         internal_note: `${(primary as any).internal_note || ""}\nManual merge: absorbed orders ${secondaryOrders.map(o => `#${o.public_order_number}`).join(", ")}`.trim(),

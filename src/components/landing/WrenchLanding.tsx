@@ -12,6 +12,7 @@ import LandingReviews from "@/components/landing/LandingReviews";
 
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 import CODFormModal from "@/components/landing/CODFormModal";
 import LandingUpsellSheet from "@/components/landing/LandingUpsellSheet";
 import LandingDoneSheet from "@/components/landing/LandingDoneSheet";
@@ -90,7 +91,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(5);
+  const [deliveryFee, setDeliveryFee] = useState(STANDARD_SHIPPING_FEE);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
@@ -126,7 +127,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
       createdAt: Date.now(),
     });
     // NEW ORDER: address first, upsell second, with standard delivery.
-    setDeliveryFee(5);
+    setDeliveryFee(STANDARD_SHIPPING_FEE);
     setAddressOpen(true);
   };
 
@@ -370,7 +371,7 @@ const WrenchLanding = ({ product, config: _config, landingSlug }: WrenchLandingP
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
-        baseDeliveryFee={5}
+        baseDeliveryFee={STANDARD_SHIPPING_FEE}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />

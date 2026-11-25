@@ -4,6 +4,7 @@ import { Check, Clock, Loader2 } from "lucide-react";
 import { Product } from "@/lib/constants";
 import { SingleUpsellOffer } from "@/lib/singleUpsellOffers";
 import { addUpsellItems } from "@/lib/orderService";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 import { trackEvent } from "@/lib/analytics";
 
 interface SingleUpsellSheetProps {
@@ -67,20 +68,20 @@ const SingleUpsellSheet = ({
   const handleAccept = async () => {
     if (submitting) return;
     setSubmitting(true);
-    const newSubtotal = basePrice + offer.offerPrice;
+    const normalized = normalizeOrderAmounts(basePrice + offer.offerPrice, deliveryFee);
     try {
       await addUpsellItems(
         orderId,
         [{ product: { ...offerProduct, price: offer.offerPrice }, quantity: 1 }],
-        deliveryFee,
-        newSubtotal + deliveryFee
+        normalized.shippingFee,
+        normalized.total
       );
       trackEvent("single_upsell_accepted", {
         order_id: orderId,
         offer_sku: offer.offerSku,
         offer_price: offer.offerPrice,
       });
-      onDone(true, newSubtotal);
+      onDone(true, normalized.subtotal);
     } catch (err) {
       console.error("Single upsell failed:", err);
       onDone(false, basePrice);

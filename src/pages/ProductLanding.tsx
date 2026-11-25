@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft, Gift, Truck } from "lucide-react";
 import { getDemoBadges, getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { getDiscountedTotal, getQtyDiscountPct, getOriginalTotal } from "@/lib/landingDiscounts";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 import ProductImageSlider from "@/components/landing/ProductImageSlider";
 import LandingDealStrip from "@/components/landing/LandingDealStrip";
 import ProductBenefitBadges from "@/components/landing/ProductBenefitBadges";
@@ -294,7 +295,7 @@ const GenericLanding = ({
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(5);
+  const [deliveryFee, setDeliveryFee] = useState(STANDARD_SHIPPING_FEE);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
   const hasStockLimitedPrice = product.sku === "G888-T4656-0016";
   const landingMedia = getProductLandingMedia(product.sku);
@@ -337,7 +338,7 @@ const GenericLanding = ({
       createdAt: Date.now(),
     });
     // NEW ORDER: single offer (if configured) → address → done.
-    setDeliveryFee(5);
+    setDeliveryFee(STANDARD_SHIPPING_FEE);
     if (hasSku002QuantityOffer && effectiveQty < 2) setBumpOpen(true);
     else if (hasSku002QuantityOffer) setAddressOpen(true);
     else if (singleOfferActive) setSingleUpsellOpen(true);
@@ -583,7 +584,7 @@ const GenericLanding = ({
         orderNumber={pendingOrderNumber}
         baseProduct={product}
         basePrice={pendingOrderTotal}
-        baseDeliveryFee={5}
+        baseDeliveryFee={STANDARD_SHIPPING_FEE}
         onComplete={handleUpsellComplete}
         onSkip={handleUpsellSkip}
       />

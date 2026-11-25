@@ -165,7 +165,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
     <ul className="k-assure mt-4">
       <li><Banknote className="w-5 h-5" /><span>გადახდა მიღებისას</span></li>
       <li><PhoneCall className="w-5 h-5" /><span>ოპერატორი დაგიკავშირდება დასადასტურებლად</span></li>
-      <li><Truck className="w-5 h-5" /><span>მიტანა — 5₾</span></li>
+      <li><Truck className="w-5 h-5" /><span>მიტანა — 6₾</span></li>
     </ul>
   </div>;
 
@@ -215,7 +215,7 @@ export default function KeratinMaskLanding({ product, config, selectedQty, onSel
         <span className="text-[13px] k-mutetx mb-1 ml-auto">{selectedQty} ცალი</span>
       </div>
       <div ref={heroCta} className="mt-3">{cta()}</div>
-      <p className="flex items-center justify-center gap-3 text-[13px] k-mutetx mt-2 flex-wrap"><span className="flex items-center gap-1"><Banknote className="w-4 h-4 k-rose" />გადახდა მიღებისას</span><span className="flex items-center gap-1"><Truck className="w-4 h-4 k-rose" />მიტანა — 5₾</span></p>
+      <p className="flex items-center justify-center gap-3 text-[13px] k-mutetx mt-2 flex-wrap"><span className="flex items-center gap-1"><Banknote className="w-4 h-4 k-rose" />გადახდა მიღებისას</span><span className="flex items-center gap-1"><Truck className="w-4 h-4 k-rose" />მიტანა — 6₾</span></p>
     </section>
 
     {/* Live strips */}

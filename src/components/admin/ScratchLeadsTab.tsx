@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createOrder } from "@/lib/orderService";
 import { buildScratchGiftItems, SCRATCH_GIFT_SKU, SCRATCH_PROMO } from "@/lib/scratchGift";
 import type { Product } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE, normalizeOrderAmounts } from "@/lib/orderPricing";
 
 interface Lead { id: string; phone: string; created_at: string; status: string; note: string | null; is_test: boolean; landing_slug: string | null; order_id: string | null }
 const STATUSES = [["new", "ახალი"], ["called", "დავურეკე"], ["no_answer", "არ პასუხობს"], ["declined", "უარი"], ["ordered", "შეუკვეთა"]] as const;
@@ -48,10 +49,11 @@ export default function ScratchLeadsTab() {
       const { data: p, error } = await supabase.from("products").select("id, sku, title, price, image, handle").eq("sku", SCRATCH_GIFT_SKU).maybeSingle();
       if (error || !p) throw new Error("პროდუქტი ვერ მოიძებნა");
       const product = { id: p.id, sku: p.sku, title: p.title, price: Number(p.price), image: p.image || "", handle: p.handle || "" } as unknown as Product;
+      const amounts = normalizeOrderAmounts(product.price, STANDARD_SHIPPING_FEE);
       const order = await createOrder({
         customerName: lead.phone, customerPhone: lead.phone,
         items: buildScratchGiftItems(product, 1, true),
-        subtotal: product.price, total: product.price + 5, shippingFee: 5,
+        subtotal: amounts.subtotal, total: amounts.total, shippingFee: amounts.shippingFee,
         source: "scratch_lead", landingSlug: lead.landing_slug || undefined, status: "new",
         promo: SCRATCH_PROMO, testOrder: lead.is_test,
       });

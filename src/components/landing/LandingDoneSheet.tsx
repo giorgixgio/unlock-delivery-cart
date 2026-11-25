@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Package, MapPin, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { trackDoneScreenViewed, trackDoneScreenClosed } from "@/lib/funnelTracking";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 
 interface OrderItem {
   id: string;
@@ -178,7 +179,7 @@ const LandingDoneSheet = ({
                     <span className="font-semibold text-foreground">{shipping.toFixed(0)}₾</span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      <span className="text-muted-foreground line-through">5₾</span>
+                      <span className="text-muted-foreground line-through">{STANDARD_SHIPPING_FEE}₾</span>
                       <span className="font-extrabold text-emerald-600 dark:text-emerald-400">უფასო</span>
                     </span>
                   )}

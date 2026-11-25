@@ -241,9 +241,24 @@ async function attemptAutoMerge(supabase: any, order: any): Promise<{ merged: bo
   const newTags = existingTags.includes("auto_merged") ? existingTags : [...existingTags, "auto_merged"];
   const existingChildIds: string[] = primaryOrder.merged_child_order_ids || [];
 
+  const shippingFee = Number(primaryOrder.shipping_fee || 0);
+  const discountTotal = Number(primaryOrder.discount_total || 0);
+  const rawTotal = newSubtotal + shippingFee - discountTotal;
+  const normalizedTotal = (() => {
+    if (!Number.isFinite(rawTotal) || rawTotal <= 0) return 0;
+    const rounded = Math.round(rawTotal);
+    if (Math.abs(rawTotal - rounded) < 1e-6) return rounded;
+    if (rawTotal >= 50) {
+      const floored = Math.floor(rawTotal);
+      return floored % 5 === 1 ? floored - 1 : floored;
+    }
+    return Math.ceil(rawTotal);
+  })();
+  const normalizedSubtotal = Math.max(0, Math.round((normalizedTotal - shippingFee + discountTotal) * 100) / 100);
+
   await supabase.from("orders").update({
-    subtotal: newSubtotal,
-    total: newSubtotal + Number(primaryOrder.shipping_fee || 0) - Number(primaryOrder.discount_total || 0),
+    subtotal: normalizedSubtotal,
+    total: normalizedTotal,
     internal_note: existingNote ? `${existingNote}\n${mergeNote}` : mergeNote,
     tags: newTags,
     merged_child_order_ids: [...existingChildIds, childId],

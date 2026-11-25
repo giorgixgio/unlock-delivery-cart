@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tag, Loader2 } from "lucide-react";
 import { getQtyDiscountPct, getDiscountedTotal } from "@/lib/landingDiscounts";
 import { logSystemEvent } from "@/lib/systemEventService";
+import { normalizeOrderAmounts } from "@/lib/orderPricing";
 
 interface Item {
   id: string;
@@ -69,10 +70,11 @@ const LandingQtyDiscountActions = ({ orderId, items, actor, disabled, onApplied 
         .single();
       const shipping = Number(orderRow?.shipping_fee || 0);
       const discount = Number(orderRow?.discount_total || 0);
+      const normalized = normalizeOrderAmounts(newSubtotal, shipping, discount);
 
       const { error: ordErr } = await supabase
         .from("orders")
-        .update({ subtotal: newSubtotal, total: newSubtotal + shipping - discount })
+        .update({ subtotal: normalized.subtotal, total: normalized.total })
         .eq("id", orderId);
       if (ordErr) throw ordErr;
 

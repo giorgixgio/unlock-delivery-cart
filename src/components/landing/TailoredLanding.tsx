@@ -6,6 +6,7 @@ import { useGlobalUpsellsEnabled, resolveUpsellEnabled } from "@/hooks/useUpsell
 import { LandingConfig } from "@/hooks/useLandingConfig";
 import { getFakeOldPrice, getDiscountPercent } from "@/lib/demoData";
 import { getDiscountedTotal, getQtyDiscountPct } from "@/lib/landingDiscounts";
+import { STANDARD_SHIPPING_FEE } from "@/lib/orderPricing";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LandingQuantitySelector from "@/components/landing/LandingQuantitySelector";
@@ -59,7 +60,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
   const [pendingOrderId, setPendingOrderId] = useState("");
   const [pendingOrderNumber, setPendingOrderNumber] = useState("");
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(5);
+  const [deliveryFee, setDeliveryFee] = useState(STANDARD_SHIPPING_FEE);
   const [repeatBlocked, setRepeatBlocked] = useState<LastOrderRecord | null>(null);
 
   useEffect(() => {
@@ -99,7 +100,7 @@ const TailoredLanding = ({ product, config, landingSlug, upsellOverride = null }
       createdAt: Date.now(),
     });
     // NEW ORDER: address first, upsell second.
-    setDeliveryFee(5);
+    setDeliveryFee(STANDARD_SHIPPING_FEE);
     setAddressOpen(true);
   };
 

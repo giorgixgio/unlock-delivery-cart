@@ -32,7 +32,8 @@ describe("scratch leads", () => {
     expect(o.items).toHaveLength(2);
     expect(o.items[1]).toMatchObject({ quantity: 1, isGift: true });
     expect(o.items[1].product.price).toBe(0);
-    expect(o.total).toBe(49);
+    expect(o.total).toBe(50);
+    expect(o.shippingFee).toBe(6);
     expect(o.promo).toBe("scratch_0012_4");
   });
   it("tester flag forces popup and ignores revealed state", () => {

@@ -12,7 +12,7 @@ const StockLimitedPriceBadge = () => (
     </div>
     <div className="flex items-center justify-center gap-2 border-t border-destructive/15 bg-card px-3 py-2 text-sm font-semibold text-muted-foreground">
       <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
-      მიტანა — 5₾
+      მიტანა — 6₾
     </div>
   </div>
 );
