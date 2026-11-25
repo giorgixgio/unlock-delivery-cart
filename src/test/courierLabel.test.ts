@@ -76,11 +76,26 @@ describe("OnWay label view mapping", () => {
     expect(label.tagLine).toBe("[S-0007] 002 - 1");
   });
 
-  it("falls back to courier_zone_id and omits line_id when no onway_label_data exists", () => {
+  it("uses our zone number as the district prefix when the captured row has no line_id", () => {
+    const rows: OnwayLabelDataRow[] = [
+      {
+        order_id: sampleOrder.id,
+        tracking: "106163719",
+        box_index: 1,
+        box_count: 1,
+        payload: { to_branch_id: 4, weight: 1.2, quantity: 1 },
+      },
+    ];
+    const [label] = expandOrdersToLabels([sampleOrder], new Map([[sampleOrder.id, rows]]));
+    expect(label.zone).toBe("4");
+    expect(label.trackingLine).toBe("1 #106163719");
+  });
+
+  it("falls back to courier_zone_id as the district prefix when no onway_label_data exists", () => {
     const [label] = expandOrdersToLabels([sampleOrder], new Map());
     expect(label.zone).toBe("1");
     expect(label.dateText).toBe("04/11/2026");
-    expect(label.trackingLine).toBe("#106163719");
+    expect(label.trackingLine).toBe("1 #106163719");
     expect(label.qrValue).toBe("106163719");
     expect(label.weightText).toBe("1.0");
     expect(label.hasOnwayData).toBe(false);
@@ -105,6 +120,8 @@ describe("OnWay label view mapping", () => {
     expect(buildRecipientText("593404593", "ვაჟა 49", "თბილისი")).toBe("593404593, ვაჟა 49, თბილისი, 593404593");
     expect(formatTrackingLine("106163719", "116")).toBe("116 #106163719");
     expect(formatTrackingLine("106163719", null)).toBe("#106163719");
+    expect(formatTrackingLine("106163719", null, "1")).toBe("1 #106163719");
+    expect(formatTrackingLine("106163719", "116", "1")).toBe("116 #106163719");
     expect(formatQtyLine(1, 1, 2)).toBe("1 (ყუთი 1/2)");
     expect(formatQtyLine(1, 1, 1)).toBe("1");
   });

@@ -81,9 +81,18 @@ export function buildRecipientText(phone: string | null | undefined, address: st
   return [p, a, c, p].filter(Boolean).join(", ");
 }
 
-export function formatTrackingLine(tracking: string | null | undefined, lineId: string | null | undefined): string {
+/**
+ * "{district} #{tracking}" — OnWay's sticker always has the district zone number
+ * in front of the tracking number. `lineId` (OnWay's line_id) is preferred; when it
+ * is not captured yet we fall back to our own zone number so the line is never bare.
+ */
+export function formatTrackingLine(
+  tracking: string | null | undefined,
+  lineId: string | null | undefined,
+  fallbackPrefix?: string | null | undefined
+): string {
   const tr = (tracking || "").trim() || "—";
-  const lid = (lineId || "").trim();
+  const lid = (lineId || "").trim() || (fallbackPrefix || "").trim();
   return lid ? `${lid} #${tr}` : `#${tr}`;
 }
 
@@ -117,6 +126,9 @@ export function expandOrdersToLabels(
       order.courier_zone_id != null && String(order.courier_zone_id).trim() !== ""
         ? String(order.courier_zone_id).trim()
         : "?";
+    // Our zone number doubles as the district prefix in front of the tracking number
+    // whenever OnWay's line_id has not been captured.
+    const fallbackDistrict = fallbackZone === "?" ? null : fallbackZone;
     const dateText = formatLabelDate(order.courier_label_date);
     const recipientText = buildRecipientText(order.customer_phone, order.address, order.city);
     const tagLine = (order.courier_label_text || "").trim();
@@ -132,7 +144,7 @@ export function expandOrdersToLabels(
         qrValue: tracking,
         qtyText: formatQtyLine(1, 1, 1),
         weightText: formatWeight(1),
-        trackingLine: formatTrackingLine(tracking, null),
+        trackingLine: formatTrackingLine(tracking, null, fallbackDistrict),
         tagLine,
         boxIndex: 1,
         boxCount: 1,
@@ -160,7 +172,7 @@ export function expandOrdersToLabels(
         qrValue: tracking,
         qtyText: formatQtyLine(qty, boxIndex, boxCount),
         weightText: formatWeight(weight),
-        trackingLine: formatTrackingLine(tracking, lineId),
+        trackingLine: formatTrackingLine(tracking, lineId, fallbackDistrict),
         tagLine,
         boxIndex,
         boxCount,
