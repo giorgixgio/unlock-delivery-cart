@@ -13,7 +13,7 @@ import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { isTestOrder } from "../_shared/testOrders.ts";
 import {
-  alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking, validPickupPhone,
+  alreadySent, buildOnwayPayload, isZeroPriceAllowed, maskPayload, missingFields, parseTracking, validPickupPhone,
 } from "./payload.ts";
 
 const ONWAY_BASE = "https://onway.ge/index.php?route=";
@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
       const region=resolveCity(order);
       if(region) { payload.to_city=region.name; Object.assign(payload,{to_city_id:region.id}); }
       const held=reasonsFor(order);
-      const missing = missingFields(payload);
+      const missing = missingFields(payload, { allowZeroPrice: isZeroPriceAllowed(order) });
       if (!(order.order_items || []).length) missing.push("items");
       return { order, tag: a.tag, payload, missing, held };
     });

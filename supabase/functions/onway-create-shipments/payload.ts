@@ -71,14 +71,24 @@ export function maskPayload<T extends { key?: unknown }>(p: T): T {
   return { ...p, key: MASKED_KEY };
 }
 
-export function missingFields(p: OnwayPayload): string[] {
+/** Free replacements / returns legitimately have 0 GEL COD value. */
+export function isZeroPriceAllowed(order: { is_return?: boolean | null; tags?: string[] | null }): boolean {
+  if (order.is_return) return true;
+  const tags = Array.isArray(order.tags) ? order.tags : [];
+  return tags.includes("replacement") || tags.includes("support_replacement");
+}
+
+export function missingFields(p: OnwayPayload, opts?: { allowZeroPrice?: boolean }): string[] {
   const out: string[] = [];
   if (!p.to_name) out.push("to_name");
   if (!p.to_phone) out.push("to_phone");
   if (!p.to_city) out.push("to_city");
   if (!p.to_address) out.push("to_address");
   if (!p.order_number) out.push("order_number");
-  if (!(p.order_price > 0)) out.push("order_price");
+  const priceOk = opts?.allowZeroPrice
+    ? Number.isFinite(p.order_price) && p.order_price >= 0
+    : p.order_price > 0;
+  if (!priceOk) out.push("order_price");
   return out;
 }
 

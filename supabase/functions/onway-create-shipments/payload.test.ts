@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { validPickupPhone, alreadySent, buildOnwayPayload, maskPayload, missingFields, parseTracking } from "./payload.ts";
+import { validPickupPhone, alreadySent, buildOnwayPayload, isZeroPriceAllowed, maskPayload, missingFields, parseTracking } from "./payload.ts";
 
 const order = {
   id: "1", public_order_number: "1234", customer_name: "ნინო", customer_phone: "599111222",
@@ -23,6 +23,15 @@ Deno.test("masks key", () => {
 Deno.test("flags missing fields", () => {
   const p = buildOnwayPayload({ ...order, customer_phone: "", total: 0 }, "", { username: "u", key: "k" }, "599000111");
   assertEquals(missingFields(p), ["to_phone", "order_price"]);
+});
+
+Deno.test("allows 0 GEL order_price for replacement and return orders only", () => {
+  const zero = buildOnwayPayload({ ...order, total: 0 }, "", { username: "u", key: "k" }, "599000111");
+  assertEquals(missingFields(zero, { allowZeroPrice: isZeroPriceAllowed({ tags: ["replacement"] }) }), []);
+  assertEquals(missingFields(zero, { allowZeroPrice: isZeroPriceAllowed({ is_return: true }) }), []);
+  assertEquals(missingFields(zero, { allowZeroPrice: isZeroPriceAllowed({ tags: [] }) }), ["order_price"]);
+  const neg = buildOnwayPayload({ ...order, total: -5 }, "", { username: "u", key: "k" }, "599000111");
+  assertEquals(missingFields(neg, { allowZeroPrice: true }), ["order_price"]);
 });
 
 Deno.test("skips sent or tracked orders", () => {
