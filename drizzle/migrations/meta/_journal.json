@@ -673,6 +673,13 @@
       "when": 1795622216585,
       "tag": "0095_accountant_rpcs_revoke_anon_and_pin_search_path",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795623039725,
+      "tag": "0096_accountant_failed_fees_and_paid_payout",
+      "breakpoints": true
     }
   ]
 }

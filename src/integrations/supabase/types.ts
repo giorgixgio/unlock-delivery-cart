@@ -3989,6 +3989,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _accountant_failed_shipments: {
+        Args: {
+          p_from: string
+          p_sku_search?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: {
+          event_date: string
+          failed_fee: number
+          payout_date: string
+          shipment_id: string
+          source: string
+          store: string
+        }[]
+      }
       _accountant_lines: {
         Args: {
           p_from: string

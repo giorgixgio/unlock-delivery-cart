@@ -26,7 +26,10 @@ const EMPTY_KPIS: SummaryKpis = {
   units_sold: 0,
   gross_collected: 0,
   onway_fees: 0,
+  failed_orders: 0,
+  failed_delivery_fees: 0,
   net_payout: 0,
+  pending_payout: 0,
   avg_order_value: 0,
 };
 
@@ -264,8 +267,23 @@ const AccountantPortal = () => {
     { label: "Delivered orders", value: kpis.delivered_orders.toLocaleString() },
     { label: "Units sold", value: kpis.units_sold.toLocaleString() },
     { label: "Gross collected", value: formatMoney(kpis.gross_collected), highlight: true },
-    { label: "Onway fees", value: formatMoney(kpis.onway_fees) },
-    { label: "Net payout", value: formatMoney(kpis.net_payout) },
+    { label: "Delivered fees", value: formatMoney(kpis.onway_fees) },
+    {
+      label: "Failed delivery fees",
+      value: formatMoney(kpis.failed_delivery_fees),
+      sub: kpis.failed_orders > 0 ? `${kpis.failed_orders.toLocaleString()} failed` : undefined,
+    },
+    {
+      label: "Paid-out net payout",
+      value: formatMoney(kpis.net_payout),
+      highlight: true,
+      sub: "Due ≤ today, after failed fees",
+    },
+    {
+      label: "Pending payout",
+      value: formatMoney(kpis.pending_payout),
+      sub: "Next Tue/Fri, not yet paid",
+    },
     { label: "Avg order value", value: formatMoney(kpis.avg_order_value) },
   ];
 
@@ -280,7 +298,7 @@ const AccountantPortal = () => {
       )}
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {kpiCards.map((c) => (
           <div
             key={c.label}
@@ -292,6 +310,9 @@ const AccountantPortal = () => {
             <div className="mt-1 text-lg sm:text-xl font-bold tabular-nums tracking-tight">
               {summaryLoading ? "…" : c.value}
             </div>
+            {c.sub && (
+              <div className="mt-0.5 text-[11px] text-muted-foreground">{c.sub}</div>
+            )}
           </div>
         ))}
       </div>
