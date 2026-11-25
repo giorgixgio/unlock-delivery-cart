@@ -6,6 +6,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { upsertOnwayShipment } from "../_shared/courierApiUpsert.ts";
+import { fetchAndStoreOnwayLabels } from "../_shared/onwayLabels.ts";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
 import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { isOwnerAlertEnabled } from "../_shared/telegramAlertPolicy.ts";
@@ -48,6 +49,7 @@ Deno.serve(async (req) => {
 
   const given = req.headers.get("x-cron-secret");
   let allowed = false;
+  let isAdmin = false;
   if (given) {
     const { data: s } = await db.from("internal_job_secrets").select("value").eq("name", "onway_status_pull").maybeSingle();
     allowed = !!s?.value && s.value === given;
@@ -57,7 +59,8 @@ Deno.serve(async (req) => {
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
     const { data: claims } = await createClient(url, anon, { global: { headers: { Authorization: auth } } }).auth.getClaims(auth.slice(7));
     const uid = claims?.claims?.sub;
-    const { data: isAdmin } = uid ? await db.rpc("is_active_admin", { user_id: uid }) : { data: false };
+    const { data: adminFlag } = uid ? await db.rpc("is_active_admin", { user_id: uid }) : { data: false };
+    isAdmin = !!adminFlag;
     if (!isAdmin) return json({ error: "Forbidden" }, 403);
   }
 
@@ -148,6 +151,14 @@ Deno.serve(async (req) => {
       }
     }
     return json({ trackings_sent_order: tr, single_tracking: t0, results });
+  }
+
+  if (action === "labels_fetch") {
+    if (!isAdmin) return json({ error: "Forbidden" }, 403);
+    const username = Deno.env.get("ONWAY_API_USERNAME") || "", apiKey = Deno.env.get("ONWAY_API_KEY") || "";
+    if (!username || !apiKey) return json({ error: "Onway API credentials missing" }, 500);
+    const summary = await fetchAndStoreOnwayLabels(db, { username, key: apiKey });
+    return json(summary);
   }
 
   if (action === "silent_check") {

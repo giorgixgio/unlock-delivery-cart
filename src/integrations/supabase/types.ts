@@ -1571,6 +1571,71 @@ export type Database = {
         }
         Relationships: []
       }
+      onway_label_data: {
+        Row: {
+          box_count: number
+          box_index: number
+          fetched_at: string
+          id: string
+          order_id: string
+          payload: Json
+          tracking: string
+        }
+        Insert: {
+          box_count?: number
+          box_index?: number
+          fetched_at?: string
+          id?: string
+          order_id: string
+          payload: Json
+          tracking: string
+        }
+        Update: {
+          box_count?: number
+          box_index?: number
+          fetched_at?: string
+          id?: string
+          order_id?: string
+          payload?: Json
+          tracking?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onway_label_data_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onway_label_fetches: {
+        Row: {
+          error: string | null
+          fetched_at: string
+          http_status: number | null
+          id: string
+          order_count: number
+          raw: string | null
+        }
+        Insert: {
+          error?: string | null
+          fetched_at?: string
+          http_status?: number | null
+          id?: string
+          order_count?: number
+          raw?: string | null
+        }
+        Update: {
+          error?: string | null
+          fetched_at?: string
+          http_status?: number | null
+          id?: string
+          order_count?: number
+          raw?: string | null
+        }
+        Relationships: []
+      }
       onway_order_reviews: {
         Row: {
           decision: string

@@ -652,6 +652,13 @@
       "when": 1795477873852,
       "tag": "0092_call_queue_today_only_cutoff",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795599787644,
+      "tag": "0093_onway_label_capture_tables",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { onwayBatchCounts } from "../_shared/telegramAlertPolicy.ts";
 import { heldReasons, reviewState, classifyOnwayReply } from "../_shared/onwayReview.ts";
 import { cityKey } from "../_shared/onwayRegions.ts";
 import { finalizeOnwaySent, type FinalizeEntry } from "../_shared/onwayFulfill.ts";
+import { fetchAndStoreOnwayLabels } from "../_shared/onwayLabels.ts";
 import { apiBatchName, reviewBatchName, ONWAY_MAX_SEND_PER_REQUEST, pickTag, skuWithQtyText, parcelWeightKg } from "../_shared/courierLabel.ts";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -313,6 +314,15 @@ Deno.serve(async (req) => {
         fulfil = { batch_id: null, file_name: null, fulfilled_ids: [], skipped_ids: [], failed: toFinalize.map((t) => ({ order_id: t.order.id, error: msg })) };
       }
       for (const f of fulfil.failed) { const r = results.find((x) => x.order_id === f.order_id); if (r) r.fulfil_error = f.error; }
+    }
+    // Capture-only: fetch OnWay label details while orders are still in status "გაფორმებული".
+    // Runs only if at least one order was actually sent; errors only log and never affect send/fulfillment.
+    if (results.some((r) => r.ok)) {
+      try {
+        await fetchAndStoreOnwayLabels(supabase, { username, key });
+      } catch (e) {
+        console.error("onway labels capture failed:", e);
+      }
     }
     // One owner notification per actual API batch, never per order or preview.
     const chunkCounts = onwayBatchCounts(results);
