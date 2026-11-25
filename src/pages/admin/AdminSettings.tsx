@@ -233,8 +233,8 @@ const AdminSettings = () => {
               <option value="admin">Admin</option>
               <option value="operator">Operator</option>
               <option value="warehouse">Warehouse</option>
-                      <option value="scanner">Scanner (Product Scan)</option>
               <option value="scanner">Scanner (Product Scan)</option>
+              <option value="accountant">Accountant (Sales Only)</option>
             </select>
           </div>
           <Button onClick={addUser} disabled={adding} className="h-10">
@@ -271,6 +271,8 @@ const AdminSettings = () => {
                       <option value="admin">Admin</option>
                       <option value="operator">Operator</option>
                       <option value="warehouse">Warehouse</option>
+                      <option value="scanner">Scanner (Product Scan)</option>
+                      <option value="accountant">Accountant (Sales Only)</option>
                     </select>
                   </td>
                   <td className="px-4 py-3">

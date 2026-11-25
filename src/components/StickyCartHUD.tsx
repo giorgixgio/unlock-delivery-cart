@@ -45,7 +45,7 @@ const StickyCartHUD = () => {
     clearTimeout(collapseTimer.current);
   }, []);
 
-  if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin")) return null;
+  if (location.pathname === "/success" || location.pathname === "/cart" || location.pathname.startsWith("/admin") || location.pathname.startsWith("/accountant")) return null;
   if (itemCount === 0) return null;
 
   // ── Completion mode: full-width CTA only ──

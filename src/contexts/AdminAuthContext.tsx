@@ -17,6 +17,8 @@ interface AdminAuthContextType {
   isAdmin: boolean;
   /** Any active staff member (admin, operator, warehouse, scanner). */
   isStaff: boolean;
+  /** Active accountant (locked down to /accountant/* only). */
+  isAccountant: boolean;
   isDemo: boolean;
   /** Admin role from admin_users.role (e.g. 'admin', 'operator', 'warehouse'). */
   role: string | null;
@@ -36,6 +38,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
+  const [isAccountant, setIsAccountant] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [isPresentation, setIsPresentation] = useState(false);
@@ -56,6 +59,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!nextSession?.user?.id) {
       setIsAdmin(false);
       setIsStaff(false);
+      setIsAccountant(false);
       setIsDemo(false);
       setRole(null);
       setDemoMode(false);
@@ -69,20 +73,27 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // The staff check can transiently fail (offline, token refresh in another
     // tab holding the auth lock, cold start). Retry a couple of times before
     // treating it as an error — and never as "not staff".
-    const checkStaff = async (): Promise<boolean | null> => {
+    const checkStaff = async (): Promise<{ staff: boolean; accountant: boolean } | null> => {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const [{ data: adminData, error: adminErr }, { data: staffData, error: staffErr }] =
+          const [
+            { data: adminData, error: adminErr },
+            { data: staffData, error: staffErr },
+            { data: accData, error: accErr },
+          ] =
             await Promise.all([
               supabase.rpc("is_active_admin", { user_id: nextSession.user.id }),
               supabase.rpc("is_active_staff", { user_id: nextSession.user.id }),
+              supabase.rpc("is_active_accountant", { user_id: nextSession.user.id }),
             ]);
-          if (!staffErr && !adminErr) {
-            return staffData === true || adminData === true
-              ? (setIsAdmin(adminData === true), true)
-              : (setIsAdmin(false), false);
+          if (!staffErr && !adminErr && !accErr) {
+            const isAcc = accData === true;
+            const isSt = !isAcc && (staffData === true || adminData === true);
+            setIsAdmin(!isAcc && adminData === true);
+            setIsAccountant(isAcc);
+            return { staff: isSt, accountant: isAcc };
           }
-          console.warn("[auth] staff check error", staffErr ?? adminErr);
+          console.warn("[auth] staff check error", staffErr ?? adminErr ?? accErr);
         } catch (e) {
           console.warn("[auth] staff check threw", e);
         }
@@ -91,15 +102,28 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return null;
     };
 
-    const staffActive = await checkStaff();
+    const access = await checkStaff();
 
-    if (staffActive === null) {
+    if (access === null) {
       // Unknown — keep whatever access state we already had, stay signed in.
       setLoading(false);
       return null;
     }
 
+    const staffActive = access.staff;
+    const accountantActive = access.accountant;
     setIsStaff(staffActive);
+
+    if (accountantActive) {
+      setIsDemo(false);
+      setRole("accountant");
+      setDemoMode(false);
+      setIsPresentation(false);
+      setPresentationMultiplierState(1);
+      setPresentationMode(null);
+      setLoading(false);
+      return true;
+    }
 
     const email = nextSession.user.email?.toLowerCase() ?? null;
 
@@ -210,6 +234,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUser(null);
     setIsAdmin(false);
     setIsStaff(false);
+    setIsAccountant(false);
     setIsDemo(false);
     setRole(null);
     setDemoMode(false);
@@ -225,6 +250,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user,
         isAdmin,
         isStaff,
+        isAccountant,
         isDemo,
         role,
         isPresentation,

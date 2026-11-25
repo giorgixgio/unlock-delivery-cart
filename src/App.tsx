@@ -71,6 +71,8 @@ import AdminReviews from './pages/admin/AdminReviews';
 const AdminCallQueue = lazy(() => import('./pages/admin/AdminCallQueue'));
 const AdminIssues = lazy(() => import('./pages/admin/AdminIssues'));
 const AdminImportCalculator = lazy(() => import('./pages/admin/AdminImportCalculator'));
+const AccountantLayout = lazy(() => import('./pages/accountant/AccountantLayout'));
+const AccountantPortal = lazy(() => import('./pages/accountant/AccountantPortal'));
 import ReviewForm from './pages/ReviewForm';
 const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const RefundRequest = lazy(() => import('./pages/RefundRequest'));
@@ -94,9 +96,10 @@ import { canAccessPath, roleHomePath } from "@/lib/adminPermissions";
 const queryClient = new QueryClient();
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { loading, isStaff, session, role } = useAdminAuth();
+  const { loading, isStaff, isAccountant, session, role } = useAdminAuth();
   const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (session && isAccountant) return <Navigate to="/accountant" replace />;
   if (!session || !isStaff) return <Navigate to="/admin/login" replace />;
   // Restricted roles (warehouse, scanner): only their allowed sections
   if (!canAccessPath(role, location.pathname)) {
@@ -105,10 +108,19 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AdminLoginGuard = () => {
-  const { loading, isStaff, session, role } = useAdminAuth();
+const AccountantGuard = ({ children }: { children: React.ReactNode }) => {
+  const { loading, isAccountant, isStaff, session, role } = useAdminAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (session && isStaff) {
+  if (!session) return <Navigate to="/admin/login" replace />;
+  if (isAccountant || role === "admin") return <>{children}</>;
+  if (isStaff) return <Navigate to={roleHomePath(role)} replace />;
+  return <Navigate to="/admin/login" replace />;
+};
+
+const AdminLoginGuard = () => {
+  const { loading, isStaff, isAccountant, session, role } = useAdminAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (session && (isStaff || isAccountant)) {
     return <Navigate to={roleHomePath(role)} replace />;
   }
   return <AdminLogin />;
@@ -133,10 +145,10 @@ const CartOverlayRenderer = () => {
   return <Cart isOpen={isCartOpen} />;
 };
 
-/** Applies per-domain storefront branding (never on /admin) */
+/** Applies per-domain storefront branding (never on /admin or /accountant) */
 const StorefrontBranding = () => {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
+  const isAdmin = location.pathname.startsWith("/admin") || location.pathname.startsWith("/accountant");
   return isAdmin ? null : <StorefrontBrandingApplier />;
 };
 
@@ -187,6 +199,26 @@ const App = () => (
                     <Route path="/products/:handle" element={<LegacyProductRedirect />} />
 
                     {/* Admin */}
+                    <Route
+                      path="/accountant"
+                      element={
+                        <AccountantGuard>
+                          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+                            <AccountantLayout />
+                          </Suspense>
+                        </AccountantGuard>
+                      }
+                    >
+                      <Route
+                        index
+                        element={
+                          <Suspense fallback={null}>
+                            <AccountantPortal />
+                          </Suspense>
+                        }
+                      />
+                      <Route path="*" element={<Navigate to="/accountant" replace />} />
+                    </Route>
                     <Route path="/admin/packing-list" element={<AdminGuard><AdminPackingList /></AdminGuard>} />
                     <Route path="/admin/login" element={<AdminLoginGuard />} />
                     <Route

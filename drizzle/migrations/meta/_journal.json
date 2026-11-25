@@ -659,6 +659,20 @@
       "when": 1795599787644,
       "tag": "0093_onway_label_capture_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795621984012,
+      "tag": "0094_accountant_portal_rpcs_and_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795622216585,
+      "tag": "0095_accountant_rpcs_revoke_anon_and_pin_search_path",
+      "breakpoints": true
     }
   ]
 }

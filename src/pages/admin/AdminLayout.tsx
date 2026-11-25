@@ -27,6 +27,7 @@ const navGroups = [
       { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
       { to: "/admin/operator-stats", label: "Operator Stats", icon: BarChart3 },
       { to: "/admin/feedback", label: "Customer feedback", icon: BarChart3 },
+      { to: "/accountant", label: "Accounting", icon: Calculator, adminOnly: true },
     ],
   },
   {

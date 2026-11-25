@@ -3989,6 +3989,77 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _accountant_lines: {
+        Args: {
+          p_from: string
+          p_sku_search?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: {
+          attributed_amount: number
+          final_price: number
+          line_idx: number
+          net_payout: number
+          onway_fee: number
+          order_number: string
+          payout_date: string
+          qty: number
+          sale_date: string
+          shipment_id: string
+          sku: string
+          source: string
+          store: string
+          title: string
+          tracking_number: string
+        }[]
+      }
+      accountant_by_sku: {
+        Args: {
+          p_from: string
+          p_sku_search?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      accountant_export_line_items: {
+        Args: {
+          p_from: string
+          p_sku_search?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      accountant_sales: {
+        Args: {
+          p_from: string
+          p_page?: number
+          p_page_size?: number
+          p_sku_search?: string
+          p_sort_by?: string
+          p_sort_dir?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      accountant_summary: {
+        Args: {
+          p_from: string
+          p_group_by?: string
+          p_sku_search?: string
+          p_source?: string
+          p_store?: string
+          p_to: string
+        }
+        Returns: Json
+      }
       adjust_product_stock: {
         Args: {
           p_comment?: string
@@ -4291,6 +4362,8 @@ export type Database = {
       dispatch_telegram_owner_alert: { Args: { p_body: Json }; Returns: number }
       gen_tracking_token: { Args: never; Returns: string }
       ip_geo_refresh: { Args: { p_order_id: string }; Returns: undefined }
+      is_accountant_or_admin: { Args: { user_id: string }; Returns: boolean }
+      is_active_accountant: { Args: { user_id: string }; Returns: boolean }
       is_active_admin: { Args: { user_id: string }; Returns: boolean }
       is_active_staff: { Args: { user_id: string }; Returns: boolean }
       is_queue_only_operator: { Args: { p_uid: string }; Returns: boolean }
@@ -4329,6 +4402,10 @@ export type Database = {
       onway_claim_shipment: {
         Args: { p_order_id: string; p_version: number }
         Returns: boolean
+      }
+      onway_expected_payout_date: {
+        Args: { p_sale_date: string }
+        Returns: string
       }
       onway_review_save: {
         Args: {
