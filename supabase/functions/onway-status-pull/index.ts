@@ -6,7 +6,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { upsertOnwayShipment } from "../_shared/courierApiUpsert.ts";
+import { onwayPayloadToShipment } from "../_shared/courierShipment.ts";
 import { fetchAndStoreOnwayLabels } from "../_shared/onwayLabels.ts";
+import { fetchOnwayOrderInfo, openOnwaySession } from "../_shared/onwayPublicTrack.ts";
 import { proxyFetch } from "../_shared/proxyFetch.ts";
 import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { isOwnerAlertEnabled } from "../_shared/telegramAlertPolicy.ts";
@@ -159,6 +161,72 @@ Deno.serve(async (req) => {
     if (!username || !apiKey) return json({ error: "Onway API credentials missing" }, 500);
     const summary = await fetchAndStoreOnwayLabels(db, { username, key: apiKey });
     return json(summary);
+  }
+
+  if (action === "sync_stale") {
+    const limit = Math.min(Math.max(Number(body?.limit) || 50, 1), 100);
+    const statusFilter = typeof body?.status === "string" && body.status.trim() ? body.status.trim() : null;
+    const olderThanHours = body?.older_than_hours != null ? Math.max(Number(body.older_than_hours) || 0, 0) : 0;
+    let trackings: string[] = Array.isArray(body?.trackings)
+      ? body.trackings.map((t: unknown) => String(t).trim()).filter(Boolean).slice(0, limit)
+      : [];
+    if (!trackings.length) {
+      let q = db.from("courier_shipments")
+        .select("tracking_number, source_status_at, status_changed_at")
+        .eq("source", "api")
+        .eq("is_return", false)
+        .in("derived_state", ["IN_PROGRESS", "FAILED_ATTEMPT"])
+        .order("last_seen_at", { ascending: true, nullsFirst: true })
+        .limit(limit);
+      if (statusFilter) q = q.eq("current_courier_status", statusFilter);
+      if (olderThanHours > 0) {
+        const cutoff = new Date(Date.now() - olderThanHours * 3600_000).toISOString();
+        q = q.lt("source_status_at", cutoff);
+      }
+      const { data: rows, error: qErr } = await q;
+      if (qErr) return json({ error: qErr.message }, 500);
+      trackings = (rows || []).map((r: any) => String(r.tracking_number));
+    }
+    if (!trackings.length) return json({ ok: true, checked: 0, results: {}, orders_updated: 0, not_found: 0, failed: 0 });
+
+    const cookie = await openOnwaySession();
+    const results: Record<string, number> = {};
+    let ordersUpdated = 0, notFound = 0, failed = 0;
+    const CONCURRENCY = 6;
+    for (let i = 0; i < trackings.length; i += CONCURRENCY) {
+      const chunk = trackings.slice(i, i + CONCURRENCY);
+      await Promise.all(chunk.map(async (tn) => {
+        try {
+          const payload = await fetchOnwayOrderInfo(tn, cookie);
+          if (!payload) { notFound++; return; }
+          const r = await upsertOnwayShipment(db, payload, "api");
+          results[r.result] = (results[r.result] || 0) + 1;
+          const parsed = onwayPayloadToShipment(payload, new Map());
+          const statusName = String(parsed?.row?.current_courier_status ?? "").trim();
+          const statusAt = (parsed?.row?.source_status_at as string | null) ?? null;
+          if (statusName) {
+            const { data: ord } = await db.from("orders")
+              .select("id, onway_last_status, onway_last_status_at")
+              .eq("onway_tracking", tn).maybeSingle();
+            if (ord) {
+              const evMs = statusAt ? Date.parse(statusAt) : NaN;
+              const curMs = ord.onway_last_status_at ? Date.parse(ord.onway_last_status_at) : NaN;
+              const isNewer = Number.isNaN(evMs) || Number.isNaN(curMs) || evMs >= curMs;
+              if (isNewer && (ord.onway_last_status !== statusName || (statusAt && ord.onway_last_status_at !== statusAt))) {
+                await db.from("orders")
+                  .update({ onway_last_status: statusName, onway_last_status_at: statusAt || new Date().toISOString() })
+                  .eq("id", ord.id);
+                ordersUpdated++;
+              }
+            }
+          }
+        } catch (e) {
+          failed++;
+          console.error("sync_stale", tn, e instanceof Error ? e.message : e);
+        }
+      }));
+    }
+    return json({ ok: true, checked: trackings.length, results, orders_updated: ordersUpdated, not_found: notFound, failed });
   }
 
   if (action === "silent_check") {
