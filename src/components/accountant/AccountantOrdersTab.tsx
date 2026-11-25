@@ -13,7 +13,6 @@ export interface AccountantOrderRow {
   skus_summary: string;
   titles_summary: string;
   units: number;
-  final_price: number;
   onway_fee: number | null;
   net_payout: number;
 }
@@ -25,7 +24,6 @@ export type OrderSortCol =
   | "order_number"
   | "store"
   | "units"
-  | "final_price"
   | "onway_fee"
   | "net_payout";
 
@@ -127,7 +125,6 @@ const AccountantOrdersTab = ({
               <th className="text-left px-3 py-2.5 font-semibold whitespace-nowrap">SKU(s)</th>
               <th className="text-left px-3 py-2.5 font-semibold">Product title(s)</th>
               <SortHeader col="units" label="Units" align="right" />
-              <SortHeader col="final_price" label="Final price" align="right" />
               <SortHeader col="onway_fee" label="Onway fee" align="right" />
               <SortHeader col="net_payout" label="Net payout" align="right" />
             </tr>
@@ -135,7 +132,7 @@ const AccountantOrdersTab = ({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">
                   {loading ? "Loading..." : "No delivered shipments match these filters."}
                 </td>
               </tr>
@@ -152,7 +149,6 @@ const AccountantOrdersTab = ({
                     {r.titles_summary}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.units}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.final_price)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {r.onway_fee === null ? "—" : formatMoney(r.onway_fee)}
                   </td>

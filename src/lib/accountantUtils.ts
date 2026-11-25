@@ -153,16 +153,16 @@ export function saveAccountantFilters(filters: AccountantFilters): void {
 }
 
 /**
- * Proportional revenue attribution across shipment lines with exact sum.
+ * Proportional net-payout attribution across shipment lines with exact sum.
  * Mirrors SQL `_accountant_lines`: splits by price*qty (or qty if all prices <= 0),
  * rounds each line to 2 decimals, and adds any rounding remainder to the largest line.
  */
 export function attributeRevenue(
-  finalPrice: number,
+  netPayout: number,
   lines: Array<{ qty: number; unitPrice: number }>,
 ): number[] {
   if (lines.length === 0) return [];
-  const targetCents = Math.round(finalPrice * 100);
+  const targetCents = Math.round(netPayout * 100);
   const priceWeights = lines.map((l) => Math.max(0, l.unitPrice) * Math.max(1, l.qty));
   const priceSum = priceWeights.reduce((a, b) => a + b, 0);
   const weights = priceSum > 0 ? priceWeights : lines.map((l) => Math.max(1, l.qty));

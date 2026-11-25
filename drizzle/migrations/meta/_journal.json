@@ -687,6 +687,13 @@
       "when": 1795623669986,
       "tag": "0097_accountant_api_2pct_cod_commission",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795623965859,
+      "tag": "0098_accountant_net_payout_only",
+      "breakpoints": true
     }
   ]
 }

@@ -21,7 +21,6 @@ export interface SummaryPeriodRow {
   period_label: string;
   orders: number;
   units: number;
-  gross: number;
   onway_fees: number;
   failed_orders: number;
   failed_fees: number;
@@ -32,13 +31,12 @@ export interface SummaryPeriodRow {
 export interface SummaryKpis {
   delivered_orders: number;
   units_sold: number;
-  gross_collected: number;
   onway_fees: number;
   failed_orders: number;
   failed_delivery_fees: number;
   net_payout: number;
   pending_payout: number;
-  avg_order_value: number;
+  avg_net_payout: number;
 }
 
 interface Props {
@@ -65,7 +63,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       PERIOD_HEADER[groupBy],
       "Delivered orders",
       "Units sold",
-      "Gross collected",
       "Delivered Onway fees",
       "Failed delivery fees",
       "Actual net payout",
@@ -75,7 +72,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       p.period_label,
       String(p.orders),
       String(p.units),
-      Number(p.gross),
       Number(p.onway_fees),
       Number(p.failed_fees ?? 0),
       Number(p.net_payout),
@@ -85,7 +81,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       "TOTAL",
       String(kpis.delivered_orders),
       String(kpis.units_sold),
-      Number(kpis.gross_collected),
       Number(kpis.onway_fees),
       Number(kpis.failed_delivery_fees),
       totalActualNet,
@@ -112,11 +107,11 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
         </Button>
       </div>
 
-      {/* Bar chart of gross per period */}
+      {/* Bar chart of actual net payout per period */}
       {periods.length > 0 && (
         <div className="bg-card border border-border rounded-lg p-3 sm:p-4">
           <div className="text-xs font-semibold text-muted-foreground mb-2">
-            Gross collected per period (GEL)
+            Actual net payout per period (GEL)
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -135,10 +130,10 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
                   width={56}
                 />
                 <Tooltip
-                  formatter={(value: number) => [formatMoney(value), "Gross"]}
+                  formatter={(value: number) => [formatMoney(value), "Actual net"]}
                   labelFormatter={(label) => `${PERIOD_HEADER[groupBy]}: ${label}`}
                 />
-                <Bar dataKey="gross" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} maxBarSize={42} />
+                <Bar dataKey="net_payout" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} maxBarSize={42} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -153,7 +148,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
               <th className="text-left px-3 py-2.5 font-semibold">{PERIOD_HEADER[groupBy]}</th>
               <th className="text-right px-3 py-2.5 font-semibold">Orders</th>
               <th className="text-right px-3 py-2.5 font-semibold">Units</th>
-              <th className="text-right px-3 py-2.5 font-semibold">Gross collected</th>
               <th className="text-right px-3 py-2.5 font-semibold">Delivered fees</th>
               <th className="text-right px-3 py-2.5 font-semibold">Failed fees</th>
               <th className="text-right px-3 py-2.5 font-semibold">Actual net</th>
@@ -162,7 +156,7 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
           <tbody>
             {periods.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                   {loading ? "Loading..." : "No delivered sales in this period."}
                 </td>
               </tr>
@@ -179,7 +173,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{p.orders.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{p.units.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(p.gross)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatMoney(p.onway_fees)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-destructive">{formatMoney(p.failed_fees ?? 0)}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(p.net_payout)}</td>
@@ -193,7 +186,6 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
                 <td className="px-3 py-2.5">Total</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{kpis.delivered_orders.toLocaleString()}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{kpis.units_sold.toLocaleString()}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(kpis.gross_collected)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(kpis.onway_fees)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-destructive">{formatMoney(kpis.failed_delivery_fees)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalActualNet)}</td>

@@ -24,13 +24,12 @@ import {
 const EMPTY_KPIS: SummaryKpis = {
   delivered_orders: 0,
   units_sold: 0,
-  gross_collected: 0,
   onway_fees: 0,
   failed_orders: 0,
   failed_delivery_fees: 0,
   net_payout: 0,
   pending_payout: 0,
-  avg_order_value: 0,
+  avg_net_payout: 0,
 };
 
 const PAGE_SIZE = 50;
@@ -55,7 +54,7 @@ const AccountantPortal = () => {
 
   // SKU state
   const [skuRows, setSkuRows] = useState<AccountantSkuRow[]>([]);
-  const [skuTotalRev, setSkuTotalRev] = useState(0);
+  const [skuTotalNet, setSkuTotalNet] = useState(0);
   const [skuTotalUnits, setSkuTotalUnits] = useState(0);
   const [skuLoading, setSkuLoading] = useState(false);
 
@@ -156,11 +155,11 @@ const AccountantPortal = () => {
       } else if (data) {
         const parsed = data as unknown as {
           rows?: AccountantSkuRow[];
-          total_revenue?: number;
+          total_net_payout?: number;
           total_units?: number;
         };
         setSkuRows(parsed.rows ?? []);
-        setSkuTotalRev(parsed.total_revenue ?? 0);
+        setSkuTotalNet(parsed.total_net_payout ?? 0);
         setSkuTotalUnits(parsed.total_units ?? 0);
       }
       setSkuLoading(false);
@@ -209,7 +208,6 @@ const AccountantPortal = () => {
       "SKU(s)",
       "Product title(s)",
       "Units",
-      "Final price",
       "Onway fee",
       "Net payout",
     ];
@@ -222,7 +220,6 @@ const AccountantPortal = () => {
       r.skus_summary,
       r.titles_summary,
       String(r.units),
-      Number(r.final_price),
       r.onway_fee === null ? "" : Number(r.onway_fee),
       Number(r.net_payout),
     ]);
@@ -251,7 +248,7 @@ const AccountantPortal = () => {
       qty: number;
       attributed_amount: number;
     }>) ?? [];
-    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Qty", "Attributed amount"];
+    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Qty", "Attributed net payout"];
     const csvRows = items.map((it) => [
       it.tracking_number,
       it.sale_date,
@@ -266,7 +263,6 @@ const AccountantPortal = () => {
   const kpiCards = [
     { label: "Delivered orders", value: kpis.delivered_orders.toLocaleString() },
     { label: "Units sold", value: kpis.units_sold.toLocaleString() },
-    { label: "Gross collected", value: formatMoney(kpis.gross_collected), highlight: true },
     { label: "Delivered fees", value: formatMoney(kpis.onway_fees) },
     {
       label: "Failed delivery fees",
@@ -284,7 +280,7 @@ const AccountantPortal = () => {
       value: formatMoney(kpis.pending_payout),
       sub: "Next Tue/Fri, not yet paid",
     },
-    { label: "Avg order value", value: formatMoney(kpis.avg_order_value) },
+    { label: "Avg net payout", value: formatMoney(kpis.avg_net_payout) },
   ];
 
   return (
@@ -357,7 +353,7 @@ const AccountantPortal = () => {
         <TabsContent value="sku" className="mt-4">
           <AccountantSkuTab
             rows={skuRows}
-            totalRevenue={skuTotalRev}
+            totalNetPayout={skuTotalNet}
             totalUnits={skuTotalUnits}
             from={filters.from}
             to={filters.to}

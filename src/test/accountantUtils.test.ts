@@ -49,6 +49,15 @@ describe("attributeRevenue (proportional split, exact sum)", () => {
     ]);
     expect(res).toEqual([12.5, 37.5]);
   });
+
+  it("attributes negative net payout (e.g. 0-GEL replacement with shipping fee) with exact sum", () => {
+    const res = attributeRevenue(-5, [
+      { qty: 1, unitPrice: 20 },
+      { qty: 1, unitPrice: 10 },
+    ]);
+    expect(Number(res.reduce((a, b) => a + b, 0).toFixed(2))).toBe(-5);
+    expect(res[0]).toBeLessThan(res[1]!);
+  });
 });
 
 describe("buildCsv (UTF-8 BOM, plain numbers, Georgian text)", () => {

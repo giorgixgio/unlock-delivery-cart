@@ -7,29 +7,29 @@ export interface AccountantSkuRow {
   title: string;
   units_sold: number;
   orders_count: number;
-  revenue_attributed: number;
+  net_payout_attributed: number;
 }
 
 interface Props {
   rows: AccountantSkuRow[];
-  totalRevenue: number;
+  totalNetPayout: number;
   totalUnits: number;
   from: string;
   to: string;
   loading: boolean;
 }
 
-const AccountantSkuTab = ({ rows, totalRevenue, totalUnits, from, to, loading }: Props) => {
+const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading }: Props) => {
   const handleDownloadCsv = () => {
-    const headers = ["SKU", "Product title", "Units sold", "Orders containing SKU", "Revenue attributed"];
+    const headers = ["SKU", "Product title", "Units sold", "Orders containing SKU", "Net payout attributed"];
     const csvRows: Array<Array<string | number>> = rows.map((r) => [
       r.sku,
       r.title,
       String(r.units_sold),
       String(r.orders_count),
-      Number(r.revenue_attributed),
+      Number(r.net_payout_attributed),
     ]);
-    csvRows.push(["TOTAL", "", String(totalUnits), "", Number(totalRevenue)]);
+    csvRows.push(["TOTAL", "", String(totalUnits), "", Number(totalNetPayout)]);
     const csv = buildCsv(headers, csvRows);
     triggerCsvDownload(csv, `sales_by_sku_${from}_${to}.csv`);
   };
@@ -38,7 +38,7 @@ const AccountantSkuTab = ({ rows, totalRevenue, totalUnits, from, to, loading }:
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Multi-item orders split proportionally by catalog price × qty; column total matches Gross collected exactly.
+          Multi-item orders split proportionally by catalog price × qty; column total matches delivered net payout exactly.
         </p>
         <Button
           variant="outline"
@@ -59,7 +59,7 @@ const AccountantSkuTab = ({ rows, totalRevenue, totalUnits, from, to, loading }:
               <th className="text-left px-3 py-2.5 font-semibold">Product title</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Units sold</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Orders</th>
-              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Revenue attributed</th>
+              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Net payout attributed</th>
             </tr>
           </thead>
           <tbody>
@@ -76,7 +76,7 @@ const AccountantSkuTab = ({ rows, totalRevenue, totalUnits, from, to, loading }:
                   <td className="px-3 py-2">{r.title}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.units_sold.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.orders_count.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.revenue_attributed)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.net_payout_attributed)}</td>
                 </tr>
               ))
             )}
@@ -87,7 +87,7 @@ const AccountantSkuTab = ({ rows, totalRevenue, totalUnits, from, to, loading }:
                 <td className="px-3 py-2.5" colSpan={2}>Total</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{totalUnits.toLocaleString()}</td>
                 <td className="px-3 py-2.5" />
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalRevenue)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalNetPayout)}</td>
               </tr>
             </tfoot>
           )}
