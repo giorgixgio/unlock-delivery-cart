@@ -24,7 +24,7 @@ async function processEvent(db: any, logId: string, body: unknown) {
   const action: string = known?.action || 'none';
 
   // Match ONLY by the tracking number stored by onway-create-shipments.
-  const { data: order } = await db.from('orders').select('id, public_order_number, onway_planned_date, status, onway_last_status, onway_problem_at, onway_problem_resolved_at, onway_problem_status').eq('onway_tracking', ev.tracking).maybeSingle();
+  const { data: order } = await db.from('orders').select('id, public_order_number, onway_planned_date, status, onway_last_status, onway_last_status_at, onway_problem_at, onway_problem_resolved_at, onway_problem_status').eq('onway_tracking', ev.tracking).maybeSingle();
   await db.from('onway_webhook_log').update({ match_status: order ? 'matched' : 'unmatched', order_id: order?.id ?? null, processed_at: now }).eq('id', logId);
 
   // AI reason for problem statuses, and for any commented status not mapped yet.
@@ -38,7 +38,12 @@ async function processEvent(db: any, logId: string, body: unknown) {
   }).select('id').maybeSingle();
   if (!order || !inserted) return; // unmatched or a re-sent duplicate: nothing else
 
-  const patch: Record<string, unknown> = { onway_last_status: ev.statusName, onway_last_status_at: ev.eventTime || now };
+  const evMs = ev.eventTime ? Date.parse(ev.eventTime) : NaN;
+  const curMs = order.onway_last_status_at ? Date.parse(order.onway_last_status_at) : NaN;
+  const isNewerOrEqual = Number.isNaN(evMs) || Number.isNaN(curMs) || evMs >= curMs;
+  const patch: Record<string, unknown> = isNewerOrEqual
+    ? { onway_last_status: ev.statusName, onway_last_status_at: ev.eventTime || now }
+    : {};
   if (ev.plannedDate && ev.plannedDate !== order.onway_planned_date) patch.onway_planned_date = ev.plannedDate;
   if (action === 'delivery_failed' || action === 'pickup_problem') Object.assign(patch, {
     onway_problem_comment: ev.comment || ev.reason, onway_problem_image: ev.image, onway_problem_at: ev.eventTime || now, onway_problem_resolved_at: null,
@@ -54,7 +59,7 @@ async function processEvent(db: any, logId: string, body: unknown) {
       : { data: null };
     if (closesProblemFlag(prev?.action ?? null, ev.statusName)) patch.onway_problem_resolved_at = now;
   }
-  await db.from('orders').update(patch).eq('id', order.id);
+  if (Object.keys(patch).length > 0) await db.from('orders').update(patch).eq('id', order.id);
 
   if (action === 'out_for_delivery') await db.rpc('sms_enqueue', { p_order_id: order.id, p_type: 'out_for_delivery', p_max_seq: 1, p_send_after: now });
   if (action === 'delivery_failed') {

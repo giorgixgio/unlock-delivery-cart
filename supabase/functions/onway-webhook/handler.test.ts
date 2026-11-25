@@ -70,3 +70,27 @@ Deno.test('slow logging does not block the response', async () => {
   release?.();
   await Promise.all(tasks);
 });
+
+Deno.test('reads request body before returning 200 so runtime cannot interrupt stream', async () => {
+  let release: (() => void) | undefined;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  const rows: WebhookLog[] = [];
+  const tasks: Promise<void>[] = [];
+  const handler = createWebhookHandler({
+    token: () => 'test-only-credential',
+    corsHeaders: {},
+    save: async (row) => { await pending; rows.push(row); },
+    background: (task) => { tasks.push(task); },
+  });
+  const req = new Request('https://example.test/?token=test-only-credential', {
+    method: 'POST',
+    body: '{"order_info":{"trackingnumber":"106159966","order_status_id":"22"}}',
+  });
+  const response = await handler(req);
+  assertEquals(response.status, 200);
+  assertEquals(req.bodyUsed, true);
+  release?.();
+  await Promise.all(tasks);
+  assertEquals(rows.length, 1);
+  assertEquals((rows[0].body_json as any)?.order_info?.trackingnumber, '106159966');
+});

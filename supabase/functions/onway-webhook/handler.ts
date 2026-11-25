@@ -38,29 +38,39 @@ export function createWebhookHandler(deps: Dependencies) {
       return respond(405, '{"error":"Method not allowed"}');
     }
 
+    // Read headers, query, and request body BEFORE returning 200 OK: returning first
+    // lets the runtime close/abort the unread body stream ("Interrupted").
+    const headers: Record<string, string> = {};
+    req.headers.forEach((value, key) => {
+      headers[key] = sensitive.test(key) ? '[REDACTED]' : redact(value, token);
+    });
+    const query: Record<string, string[]> = {};
+    url.searchParams.forEach((value, key) => {
+      (query[key] ??= []).push(sensitive.test(key) ? '[REDACTED]' : redact(value, token));
+    });
+    let bodyRaw: string | null = null;
+    let bodyError: string | null = null;
+    try { bodyRaw = redact(await req.text(), token); } catch (e) { bodyError = e instanceof Error ? e.name : 'unknown'; }
+    let bodyJson: unknown = null;
+    if (bodyRaw) {
+      try { bodyJson = JSON.parse(bodyRaw); } catch { /* Unknown payload formats are expected. */ }
+    }
+    const sourceIp = req.headers.get('cf-connecting-ip')
+      || req.headers.get('x-real-ip')
+      || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || null;
+    const row: WebhookLog = {
+      method: req.method,
+      headers,
+      query,
+      body_raw: bodyRaw,
+      body_json: bodyJson ?? (bodyError ? { _body_read_error: bodyError } : null),
+      source_ip: sourceIp ? redact(sourceIp, token) : null,
+    };
+
     const capture = async () => {
       try {
-        const headers: Record<string, string> = {};
-        req.headers.forEach((value, key) => {
-          headers[key] = sensitive.test(key) ? '[REDACTED]' : redact(value, token);
-        });
-        const query: Record<string, string[]> = {};
-        url.searchParams.forEach((value, key) => {
-          (query[key] ??= []).push(sensitive.test(key) ? '[REDACTED]' : redact(value, token));
-        });
-        let bodyRaw: string | null = null;
-        let bodyError: string | null = null;
-        try { bodyRaw = redact(await req.text(), token); } catch (e) { bodyError = e instanceof Error ? e.name : 'unknown'; }
-        let bodyJson: unknown = null;
-        if (bodyRaw) {
-          try { bodyJson = JSON.parse(bodyRaw); } catch { /* Unknown payload formats are expected. */ }
-        }
-        const sourceIp = req.headers.get('cf-connecting-ip')
-          || req.headers.get('x-real-ip')
-          || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-          || null;
-        await deps.save({ method: req.method, headers, query, body_raw: bodyRaw,
-          body_json: bodyJson ?? (bodyError ? { _body_read_error: bodyError } : null), source_ip: sourceIp ? redact(sourceIp, token) : null });
+        await deps.save(row);
       } catch {
         // Do not print request data, database errors or secrets.
         console.error('onway-webhook: capture failed');
