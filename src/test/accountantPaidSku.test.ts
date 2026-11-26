@@ -36,14 +36,16 @@ beforeAll(() => {
     INSERT INTO public.courier_shipments VALUES
       ('00000000-0000-0000-0000-0000000000f1','00000000-0000-0000-0000-0000000000b1',null,null),
       ('00000000-0000-0000-0000-0000000000f2',null,'002',null),
-      ('00000000-0000-0000-0000-0000000000f3',null,'002',null);
+      ('00000000-0000-0000-0000-0000000000f3',null,'002',null),
+      ('00000000-0000-0000-0000-0000000000f4',null,'failed-only',null);
     CREATE FUNCTION public._accountant_failed_shipments(date,date,text,text,text)
     RETURNS TABLE(shipment_id uuid,payout_date date,failed_fee numeric) LANGUAGE sql AS $$ SELECT * FROM (VALUES
       ('00000000-0000-0000-0000-0000000000f1'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date,6::numeric),
       ('00000000-0000-0000-0000-0000000000f2'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date-2,6::numeric),
-      ('00000000-0000-0000-0000-0000000000f3'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date+1,6::numeric)
+      ('00000000-0000-0000-0000-0000000000f3'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date+1,6::numeric),
+      ('00000000-0000-0000-0000-0000000000f4'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date,5.5::numeric)
     ) AS f(shipment_id,payout_date,failed_fee) $$;`);
-  sql(readFileSync("drizzle/migrations/0105_accountant_sku_bank_money.sql", "utf8"));
+  sql(readFileSync("drizzle/migrations/0108_accountant_sku_rows_sum_to_bank_total.sql", "utf8"));
 }, 30000);
 
 afterAll(() => {
@@ -59,12 +61,17 @@ describe("By SKU shows only money received in the bank", () => {
     expect(result.rows[0].orders_count).toBe(2);
     expect(result.total_units).toBe(3);
   });
-  it("deducts courier charges Onway already kept for failed deliveries, but not future ones", () => {
+  it("total is only the bank money: paid deliveries minus charges Onway already kept", () => {
     const result = report();
-    // 60.25 + 30.50 paid in - 6 - 6 failed charges already kept; the 6 GEL due tomorrow is ignored
-    expect(result.rows[0].net_payout_attributed).toBe(78.75);
-    expect(result.total_net_payout).toBe(78.75);
-    expect(result.paid_failed_delivery_fees).toBe(12);
+    // 60.25 + 30.50 paid in - 6 - 6 - 5.5 failed charges already kept; the 6 GEL due tomorrow is ignored
+    expect(result.rows[0].net_payout_attributed).toBe(73.25);
+    expect(result.total_net_payout).toBe(73.25);
+  });
+  it("lists no failed-only products and reports no separate deduction lines", () => {
+    const result = report();
+    expect(result.rows.map((r: { sku: string }) => r.sku)).not.toContain("failed-only");
+    expect(result.total_delivered_payout).toBe(73.25);
+    expect(result.paid_failed_delivery_fees).toBe(0);
     expect(result.pending_delivered_payout).toBe(0);
   });
   it("preserves the staff-only report permission", () => {

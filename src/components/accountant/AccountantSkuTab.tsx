@@ -40,7 +40,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Money already received in the bank · future payouts excluded · Onway failed-delivery charges already taken off each product
+          Successful paid deliveries only · money already received in the bank
         </p>
         <Button
           variant="outline"
