@@ -4,21 +4,27 @@ import { getSiteConfig, SiteConfig } from "@/config/siteConfig";
 
 const LOGO_CACHE_KEY = "site-logo-urls-v1";
 
-async function fetchLogoUrls(): Promise<Record<string, string>> {
-  const { data } = await supabase
-    .from("site_settings")
-    .select("key, value")
-    .in("key", ["logo_url_trendmart", "logo_url_bigmart"]);
-  const map: Record<string, string> = {};
-  for (const row of data || []) {
-    if (row.value) map[row.key] = row.value;
-  }
+export async function fetchLogoUrls(): Promise<Record<string, string> | null> {
   try {
-    localStorage.setItem(LOGO_CACHE_KEY, JSON.stringify(map));
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("key, value")
+      .in("key", ["logo_url_trendmart", "logo_url_bigmart"]);
+    // A transient settings failure must not erase the last known good logo.
+    if (error) return null;
+    const map: Record<string, string> = {};
+    for (const row of data || []) {
+      if (row.value) map[row.key] = row.value;
+    }
+    try {
+      localStorage.setItem(LOGO_CACHE_KEY, JSON.stringify(map));
+    } catch {
+      /* Storage can be unavailable; the fetched logo still works for this visit. */
+    }
+    return map;
   } catch {
-    /* ignore */
+    return null;
   }
-  return map;
 }
 
 function readLogoCache(): Record<string, string> {
@@ -70,7 +76,8 @@ export function useSiteBranding(): SiteConfig {
   useEffect(() => {
     let alive = true;
     fetchLogoUrls().then((map) => {
-      if (alive) setLogoUrl(map[base.logoSettingKey] || null);
+      // Keep the cached logo rendered when the backend request was unsuccessful.
+      if (alive && map) setLogoUrl(map[base.logoSettingKey] || null);
     });
     return () => {
       alive = false;

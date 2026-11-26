@@ -1,3 +1,8 @@
+# Roadmap — Storefront logo and loading health
+- [x] Preserve the last correct logo when the branding settings request fails; three regression tests pass.
+- [x] Defer courier-city downloads until checkout opens and remove unused catalog fields, cutting the catalog response from 1.66 MB to 1.45 MB.
+- [x] Backend/auth are healthy with no recent database or function errors; browser checks confirm the correct logo survives a failed settings request, initial city requests drop to zero, and opening checkout loads all city pages successfully with no page errors.
+
 # Roadmap — Courier label daily stats and automatic finishes
 - [x] Migration 0110 corrects daily totals to order totals including customer delivery and product totals excluding that delivery, with no actual courier-charge dependency or pending message.
 - [x] Migration 0109 automatically finishes previously started packing groups on a new group's first print action; preserves reprints, untouched work and other warehouses, without changing orders.

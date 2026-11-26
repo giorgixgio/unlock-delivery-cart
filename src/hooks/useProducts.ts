@@ -146,7 +146,7 @@ async function fetchAllProducts(skipCache = false): Promise<Product[]> {
       while (true) {
         const { data, error } = await supabase
           .from("products")
-          .select("*")
+          .select("id,title,handle,description,vendor,sku,price,compare_at_price,image,images,category,tags,available,bin_location,is_verified,is_priority_impulse,warehouse")
           .order("title")
           .range(from, from + PAGE - 1);
         if (error) throw error;

@@ -99,7 +99,7 @@ const Cart = ({ isOpen }: CartOverlayProps) => {
   const canCheckout = isLandingPage ? items.length > 0 : remaining <= 0;
 
   const [form, setForm] = useState({ phone: "", region: "", address: "" });
-  const { cities, loading: citiesLoading } = useOnwayCities();
+  const { cities, loading: citiesLoading } = useOnwayCities(isOpen);
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
