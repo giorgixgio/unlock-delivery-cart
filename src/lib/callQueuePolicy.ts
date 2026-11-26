@@ -121,6 +121,8 @@ export function queueTier(
   const me = caller.toLowerCase();
   if (lockUntil !== null && lockUntil > t && (o.queue_locked_by ?? "").toLowerCase() !== me) return null;
   if (o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
+  const callbackAt = ts(o.next_call_after);
+  if (o.call_outcome === "callback" && callbackAt !== null && callbackAt > t) return null;
   if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") return 2;
   if (o.call_outcome === "callback" && (o.queue_last_touched_by ?? "").toLowerCase() === me) return 1;
   if (o.call_outcome === "callback") return 3;

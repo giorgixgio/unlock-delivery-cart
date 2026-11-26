@@ -154,16 +154,20 @@ export async function scheduleCallback(
   return true;
 }
 
-export function callbackQuickOption(opt: "later_today" | "tomorrow" | "in_2h"): string {
-  const d = new Date();
-  if (opt === "in_2h") {
-    d.setHours(d.getHours() + 2);
-  } else if (opt === "later_today") {
-    // 4 hours later, capped at 21:00
-    d.setHours(Math.min(21, d.getHours() + 4), 0, 0, 0);
-  } else if (opt === "tomorrow") {
-    d.setDate(d.getDate() + 1);
-    d.setHours(11, 0, 0, 0);
-  }
-  return d.toISOString();
+export type CallbackQuickOption = "in_2h" | "in_3h" | "in_4h" | "tomorrow";
+
+/** Asia/Tbilisi is UTC+4 year-round; use UTC methods to ignore the device timezone. */
+export function callbackQuickOption(opt: CallbackQuickOption, now = new Date()): string {
+  const offset = 4 * 3600000;
+  const localNow = new Date(now.getTime() + offset);
+  const nextOpening = new Date(localNow);
+  nextOpening.setUTCDate(nextOpening.getUTCDate() + 1);
+  nextOpening.setUTCHours(opt === "tomorrow" ? 12 : 10, 0, 0, 0);
+  if (opt === "tomorrow") return new Date(nextOpening.getTime() - offset).toISOString();
+  const hours = { in_2h: 2, in_3h: 3, in_4h: 4 }[opt];
+  const candidate = new Date(localNow.getTime() + hours * 3600000);
+  const time = candidate.getUTCHours() * 3600000 + candidate.getUTCMinutes() * 60000
+    + candidate.getUTCSeconds() * 1000 + candidate.getUTCMilliseconds();
+  const result = time < 10 * 3600000 || time > 21 * 3600000 ? nextOpening : candidate;
+  return new Date(result.getTime() - offset).toISOString();
 }

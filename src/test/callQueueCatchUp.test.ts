@@ -27,11 +27,11 @@ describe.each([false, true])("fresh-first ordering (catch-up %s)", (catchUpEnabl
     expect(sortQueue(rows, me, now, 0, s).map(o => o.id)).toEqual(["freshNew", "freshOld", "old", "recent", "many", "mineEarlier", "mineLater", "other"]);
     expect(sortQueue(rows.filter(o => o.call_outcome === "callback"), me, now, 0, s).map(o => o.id)).toEqual(["mineEarlier", "mineLater", "other"]);
   });
-  it("future callbacks and another active operator's callbacks are eligible", () => {
+  it("hides future callbacks without imposing sticky holds on due callbacks", () => {
     const callbacks = rows.filter(o => o.call_outcome === "callback");
     callbacks.push({ ...base, id: "future", call_outcome: "callback", queue_last_touched_by: me, next_call_after: "2026-11-10T10:00:00Z" });
     callbacks.push({ ...base, id: "sticky", call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-10T08:55:00Z" });
-    expect(sortQueue(callbacks, me, now, 0, s).map(o => o.id)).toEqual(["mineEarlier", "mineLater", "future", "other", "sticky"]);
+    expect(sortQueue(callbacks, me, now, 0, s).map(o => o.id)).toEqual(["mineEarlier", "mineLater", "other", "sticky"]);
   });
   it("all backlog and retry-turn settings leave fresh ahead of callbacks and retries", () => {
     for (const backlogMix of [2, 3] as const) for (const retryEveryN of [1, 4]) for (let picks = 0; picks < 8; picks++) {
@@ -57,9 +57,9 @@ describe("temporary catch-up", () => {
     expect(queueTier(lead, me, now, 120, { ...settings, catchUpGapMinutes: 5 })).toBe(4);
     expect(queueTier(lead, me, new Date("2026-11-10T09:05:00Z"), 120, settings)).toBe(4);
   });
-  it("future own callbacks remain eligible", () => {
+  it("future own callbacks wait until due", () => {
     const callback = { ...base, call_outcome: "callback", next_call_after: "2026-11-10T10:00:00Z", queue_last_touched_by: me };
-    expect(queueTier(callback, me, now, 120, settings)).toBe(1);
+    expect(queueTier(callback, me, now, 120, settings)).toBeNull();
     expect(queueTier(callback, me, new Date("2026-11-10T10:00:00Z"), 120, settings)).toBe(1);
   });
   it("zero gap makes the just-attempted lead immediately callable without cancelling", () => {
@@ -78,9 +78,9 @@ describe("temporary catch-up", () => {
     ];
     expect(sortQueue(rows, me, now, 0, zero).map(o => o.id)).toEqual(["fresh", "fewer", "olderCall", "justCalled"]);
   });
-  it("selection never holds future callbacks or retries when catch-up is switched off", () => {
+  it("selection holds future callbacks but not retries in either mode", () => {
     const zero = { ...settings, catchUpGapMinutes: 0 };
-    expect(queueTier({ ...base, call_outcome: "callback", next_call_after: "2026-11-10T10:00:00Z" }, me, now, 120, zero)).toBe(3);
+    expect(queueTier({ ...base, call_outcome: "callback", next_call_after: "2026-11-10T10:00:00Z" }, me, now, 120, zero)).toBeNull();
     expect(queueTier({ ...base, call_attempt_count: 4, last_call_attempt_at: now.toISOString(), next_call_after: "2026-11-11T06:00:00Z" }, me, now, 120, { ...zero, catchUpEnabled: false })).toBe(4);
     expect(computeRetry(1, now, now, { ...zero, catchUpEnabled: false })).toEqual({ action: "retry", at: new Date("2026-11-10T11:00:00Z") });
   });

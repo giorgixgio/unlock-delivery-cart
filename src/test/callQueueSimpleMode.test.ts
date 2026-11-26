@@ -10,7 +10,12 @@ describe.each([false, true])("Simple Mode eligibility (catch-up %s)", catchUpEna
   it("serves pre-November-23 fresh leads", () => expect(tier({})).toBe(2));
   it("does not hold night leads", () => expect(tier({ created_at: "2026-11-26T01:00:00Z" })).toBe(2));
   it("does not hold a future next-call time", () => expect(tier({ next_call_after: "2026-11-27T12:00:00Z" })).toBe(2));
-  it("does not hold another operator's future callback", () => expect(tier({ call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-27T12:00:00Z" })).toBe(3));
+  it.each(["me", "other"])("hides %s's callback until exactly the chosen time", owner => {
+    const callback = { ...base, call_outcome: "callback", queue_last_touched_by: owner, next_call_after: "2026-11-27T12:00:00Z" };
+    expect(queueTier(callback, "me", now, 120, settings)).toBeNull();
+    expect(queueTier(callback, "me", new Date("2026-11-27T11:59:59.999Z"), 120, settings)).toBeNull();
+    expect(queueTier(callback, "me", new Date("2026-11-27T12:00:00Z"), 120, settings)).toBe(owner === "me" ? 1 : 3);
+  });
   it("does not impose a retry gap", () => expect(tier({ call_attempt_count: 1, last_call_attempt_at: now.toISOString() })).toBe(4));
   it("keeps form grace until exactly 10 minutes", () => {
     expect(tier({ status: "pending_details", created_at: new Date(now.getTime() - 10 * 60000 + 1).toISOString() })).toBeNull();
@@ -25,10 +30,11 @@ describe.each([false, true])("Simple Mode eligibility (catch-up %s)", catchUpEna
     { queue_locked_by: "other", queue_locked_until: "2026-11-26T10:00:00Z" },
   ])("keeps safety exclusion %j", patch => expect(tier(patch)).toBeNull());
   it("allows own locks case-insensitively", () => expect(tier({ queue_locked_by: "ME", queue_locked_until: "2026-11-26T10:00:00Z" })).toBe(2));
-  it("serves all fresh leads ahead of retries and callbacks without time holds", () => {
+  it("serves fresh leads, retries, then due callbacks", () => {
     const rows: QueueOrderLike[] = [
-      { ...base, id: "other", call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-27T12:00:00Z" },
-      { ...base, id: "mine", call_outcome: "callback", queue_last_touched_by: "ME", next_call_after: "2026-11-28T12:00:00Z" },
+      { ...base, id: "other", call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-26T08:00:00Z" },
+      { ...base, id: "mine", call_outcome: "callback", queue_last_touched_by: "ME", next_call_after: "2026-11-26T09:00:00Z" },
+      { ...base, id: "future", call_outcome: "callback", next_call_after: "2026-11-27T12:00:00Z" },
       { ...base, id: "retry", call_attempt_count: 1, last_call_attempt_at: now.toISOString() },
       base, { ...base, id: "new", created_at: "2026-11-26T09:38:00Z" },
     ];

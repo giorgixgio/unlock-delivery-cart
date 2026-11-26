@@ -1,3 +1,8 @@
+# Roadmap — Callback timing
+- [x] Captured exact live tier in migration 0111 and mirrored callback-only due-time eligibility in both modes.
+- [x] Shared picker offers 2/3/4 hours and tomorrow with Tbilisi previews and working-hour rollover; custom datetime interpreted in Tbilisi. Quick Review now releases its callback lock too.
+- [x] 148 tests pass, including disposable PostgreSQL save/release/next-fresh checks in both modes. Real temporary-account sign-in verified both screens with intercepted order writes; queue advanced to next fresh and Quick Review saved/released. Picker fits desktop/mobile; existing underlying queue page has mobile overflow/bottom-nav interception outside this change. Preview clean; temporary access removed, customer orders unchanged. Live tier execution via read-only tooling is restricted by is_test_order permissions; exact live definition was captured/applied.
+
 # Roadmap — Storefront logo and loading health
 - [x] Preserve the last correct logo when the branding settings request fails; three regression tests pass.
 - [x] Defer courier-city downloads until checkout opens and remove unused catalog fields, cutting the catalog response from 1.66 MB to 1.45 MB.

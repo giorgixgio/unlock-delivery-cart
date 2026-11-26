@@ -470,6 +470,11 @@ export default function OrderQuickReviewModal({
     const ok = await scheduleCallback(order.id, actor, whenIso, "quick_review", currentSessionId());
     setSaving(false);
     if (!ok) { toast({ title: "გადარეკვის შენახვა ვერ მოხერხდა", variant: "destructive" }); return; }
+    const { error: releaseError } = await supabase.rpc("call_queue_release", { p_order_id: order.id });
+    if (releaseError) {
+      toast({ title: "გადარეკვა შენახულია, რიგის გათავისუფლება ვერ მოხერხდა", variant: "destructive" });
+      return;
+    }
     markAction("callback");
     setCallbackOpen(false);
     const patch = {
@@ -480,7 +485,7 @@ export default function OrderQuickReviewModal({
     };
     onOrderUpdated(order.id, patch);
     setOrder({ ...order, ...(patch as Partial<OrderFull>) });
-    toast({ title: `გადარეკვა დანიშნულია: ${new Date(whenIso).toLocaleString("ka-GE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` });
+    toast({ title: `გადარეკვა დანიშნულია: ${new Date(whenIso).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` });
     void endSession("outcome", "callback");
     if (hasNext) setTimeout(() => goNext(), 280);
   };
