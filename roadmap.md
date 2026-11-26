@@ -1,3 +1,7 @@
+# Roadmap — Paid deliveries By SKU
+- [x] Migration 0104 filters SKU rows, quantities and totals to delivered shipments whose scheduled payout date has arrived; pending and failed-fee deductions removed from tab/CSV, customs names and other reports preserved. No bank-payment confirmation exists in current shipment records.
+- [x] Nineteen accountant tests pass, including real PostgreSQL payout-boundary/count/total/access checks. Signed-in temporary accountant download verified nine product rows, Georgian customs names, no deduction rows and exact 94,230.29 GEL row-to-footer total; build clean.
+
 # Roadmap — Accountant payout totals
 - [x] Migration 0103 reconciles SKU final total to paid dashboard net; SKU/Summary tables and CSVs show transparent pending/failed-fee adjustments. Delivered-only order/line exports are clearly labeled, financial records unchanged.
 - [x] Read summary, sales, SKU, line export, failed-shipment and shared line SQL plus all accountant screens/downloads. Temporary accountant verified dashboard/Summary/SKU/CSVs at 82,998.99 GEL and live store/source/product-filter parity; 23 tests pass, zero runtime errors, test access removed.

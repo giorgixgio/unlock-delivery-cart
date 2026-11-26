@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { buildCsv, formatMoney, triggerCsvDownload } from "@/lib/accountantUtils";
 import { getInvoiceProductName } from "@/lib/accountantInvoiceNames";
-import { payoutAdjustments } from "@/lib/accountantPayoutReconciliation";
 
 export interface AccountantSkuRow {
   sku: string;
@@ -15,19 +14,15 @@ export interface AccountantSkuRow {
 interface Props {
   rows: AccountantSkuRow[];
   totalNetPayout: number;
-  totalDeliveredPayout: number;
-  pendingDeliveredPayout: number;
-  paidFailedFees: number;
   totalUnits: number;
   from: string;
   to: string;
   loading: boolean;
 }
 
-const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingDeliveredPayout, paidFailedFees, totalUnits, from, to, loading }: Props) => {
-  const adjustments = payoutAdjustments(pendingDeliveredPayout, paidFailedFees);
+const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading }: Props) => {
   const handleDownloadCsv = () => {
-    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Orders containing SKU", "Delivered net payout attributed"];
+    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Paid deliveries containing SKU", "Paid delivery net payout"];
     const csvRows: Array<Array<string | number>> = rows.map((r) => [
       r.sku,
       r.title,
@@ -36,9 +31,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingD
       String(r.orders_count),
       Number(r.net_payout_attributed),
     ]);
-    csvRows.push(["DELIVERED SUBTOTAL", "", "", String(totalUnits), "", Number(totalDeliveredPayout)]);
-    adjustments.forEach((a) => csvRows.push([a.label, "", "", "", "", a.amount]));
-    csvRows.push(["PAID-OUT NET PAYOUT", "", "", "", "", Number(totalNetPayout)]);
+    csvRows.push(["PAID DELIVERY TOTAL", "", "", String(totalUnits), "", Number(totalNetPayout)]);
     const csv = buildCsv(headers, csvRows);
     triggerCsvDownload(csv, `sales_by_sku_${from}_${to}.csv`);
   };
@@ -47,7 +40,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingD
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Delivered earnings
+          Paid deliveries · Net collected
         </p>
         <Button
           variant="outline"
@@ -68,15 +61,15 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingD
               <th className="text-left px-3 py-2.5 font-semibold">Product title</th>
               <th className="text-left px-3 py-2.5 font-semibold">Invoice product name (customs)</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Units sold</th>
-              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Orders</th>
-              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Delivered net payout attributed</th>
+              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Paid deliveries</th>
+              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Paid delivery net payout</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
-                  {loading ? "Loading..." : "No product sales in this period."}
+                  {loading ? "Loading..." : "No paid deliveries in this period."}
                 </td>
               </tr>
             ) : (
@@ -95,19 +88,9 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingD
           {rows.length > 0 && (
             <tfoot className="bg-muted/60 border-t-2 border-border font-bold">
               <tr>
-                <td className="px-3 py-2.5" colSpan={3}>Delivered subtotal</td>
+                <td className="px-3 py-2.5" colSpan={3}>Paid delivery total</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{totalUnits.toLocaleString()}</td>
                 <td className="px-3 py-2.5" />
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalDeliveredPayout)}</td>
-              </tr>
-              {adjustments.map((a) => (
-                <tr key={a.label} className="border-t border-border font-normal">
-                  <td colSpan={5} className="px-3 py-2.5">{a.label}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(a.amount)}</td>
-                </tr>
-              ))}
-              <tr className="border-t-2 border-border">
-                <td colSpan={5} className="px-3 py-2.5">Paid-out net payout</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalNetPayout)}</td>
               </tr>
             </tfoot>
