@@ -21,8 +21,6 @@ export interface QueuePolicySettings {
   backlogMix?: 2 | 3;
   catchUpEnabled?: boolean;
   catchUpGapMinutes?: number;
-  /** ONE-TIME (2026-11-24): hide leads created before this instant (today 00:00 Tbilisi). Mirrored by the hardcoded cutoff in SQL call_queue_tier. Remove both when the owner decides. */
-  minLeadCreatedAt?: string;
 }
 
 export const DEFAULT_QUEUE_SETTINGS: QueuePolicySettings = {
@@ -43,14 +41,6 @@ const atLocal = (day: number, minute: number) => new Date(day * 86400000 + minut
 export function isNightLead(createdAt: Date, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS): boolean {
   const from = hm(s.nightFrom ?? "00:00"), to = hm(s.nightTo ?? "07:00"), m = local(createdAt).minute;
   return from <= to ? m >= from && m < to : m >= from || m < to;
-}
-
-/** When a fresh night lead becomes eligible, or null if it is not a night lead. ↔ call_queue_night_held */
-export function nightReleaseAt(createdAt: Date, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS): Date | null {
-  if (!isNightLead(createdAt, s)) return null;
-  const from = hm(s.nightFrom ?? "00:00"), to = hm(s.nightTo ?? "07:00"), c = local(createdAt);
-  const day = from > to && c.minute >= from ? c.day + 1 : c.day;
-  return atLocal(day, hm(s.nightFirstCallAfter ?? "12:00"));
 }
 
 export type RetryDecision = { action: "retry"; at: Date } | { action: "cancel" };
@@ -109,47 +99,37 @@ export interface QueueOrderLike {
   merged_into_order_id?: string | null;
   packed_at?: string | null;
   packing_wave_id?: string | null;
+  /** Mirrors is_test_order's order-item SKU check, in addition to order tags. */
+  is_test_order?: boolean;
 }
 
-/** 1 = my sticky callback, 2 = fresh, 3 = other callback, 4 = no-answer retry; null = not eligible now. */
+/** Simple Mode: 1 = my callback, 2 = fresh, 3 = any other callback, 4 = retry. */
 export function queueTier(
-  o: QueueOrderLike, caller: string, now: Date, gapMinutes = DEFAULT_QUEUE_SETTINGS.retryGapMinutes,
-  s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
-  isOnShift: (email: string) => boolean = () => true,
+  o: QueueOrderLike, caller: string, now: Date, _gapMinutes = DEFAULT_QUEUE_SETTINGS.retryGapMinutes,
+  _s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
+  _isOnShift: (email: string) => boolean = () => true,
 ): number | null {
   const t = now.getTime();
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   if (!QUEUE_STATUSES.includes(o.status)) return null;
   const createdAt = ts(o.created_at);
-  // ONE-TIME (2026-11-24): today-only cutoff, first WHEN in SQL call_queue_tier.
-  if (s.minLeadCreatedAt && createdAt !== null && createdAt < Date.parse(s.minLeadCreatedAt)) return null;
-  if (!s.catchUpEnabled && o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
   if (o.is_return || o.auto_confirmed || o.is_confirmed || o.is_fulfilled) return null;
-  if ((o.tags ?? []).includes("test_sku")) return null;
+  if (o.is_test_order || (o.tags ?? []).includes("test_sku")) return null;
   if (o.support_hold) return null; // handed to support (operator issue ticket)
-  if (s.catchUpEnabled && (o.onway_sent_at || o.merged_into_order_id || o.onway_tracking || o.tracking_number || o.packed_at || o.packing_wave_id || ["sent", "sending"].includes(o.onway_api_status ?? ""))) return null;
-  const next = ts(o.next_call_after);
-  if ((!s.catchUpEnabled || o.call_outcome === "callback") && next !== null && next > t) return null;
+  if (o.onway_sent_at || o.merged_into_order_id || o.onway_tracking || o.tracking_number || o.packed_at || o.packing_wave_id || ["sent", "sending"].includes(o.onway_api_status ?? "")) return null;
   const lockUntil = ts(o.queue_locked_until);
   const me = caller.toLowerCase();
   if (lockUntil !== null && lockUntil > t && (o.queue_locked_by ?? "").toLowerCase() !== me) return null;
-  if (s.catchUpEnabled && o.call_outcome !== "callback") {
-    const last = ts(o.last_call_attempt_at);
-    if (last !== null && last > t - (s.catchUpGapMinutes ?? 15) * 60000) return null;
-    return Number(o.call_attempt_count || 0) === 0 ? 2 : 4;
-  }
-  if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") {
-    const rel = nightReleaseAt(new Date(o.created_at), s);
-    if (rel && t < rel.getTime()) return null;
-  }
-  if (o.call_outcome === "callback" && (o.queue_last_touched_by ?? "").toLowerCase() === me) return 1;
+  if (o.status === "pending_details" && createdAt !== null && t - createdAt < PENDING_DETAILS_GRACE_MS) return null;
   if (Number(o.call_attempt_count || 0) === 0 && o.call_outcome !== "callback") return 2;
-  if (o.call_outcome === "callback") {
-    return !o.queue_last_touched_by || next === null || next <= t - 30 * 60000 || !isOnShift(o.queue_last_touched_by) ? 3 : null;
-  }
-  const last = ts(o.last_call_attempt_at);
-  if (next === null && last !== null && last > t - gapMinutes * 60000) return null;
+  if (o.call_outcome === "callback" && (o.queue_last_touched_by ?? "").toLowerCase() === me) return 1;
+  if (o.call_outcome === "callback") return 3;
   return 4;
+}
+
+/** SKIP LOCKED can return no assignment while eligible rows are temporarily busy. */
+export function isQueueFinished(result: { order_id: string | null; error?: string; eligible_count?: number }): boolean {
+  return !result.error && result.order_id === null && result.eligible_count === 0;
 }
 
 const STARVE_MS = 3 * 3600000;

@@ -31,7 +31,7 @@ import { startSession, endSession, markAction, currentSessionId } from "@/lib/op
 import { recordNoAnswerAttempt, cancelOrderWithReason, scheduleCallback } from "@/lib/callAttemptService";
 import { applyOrderCancelStock } from "@/lib/stockService";
 import { tbilisiStartOfDay, TBILISI_OFFSET_MS } from "@/lib/tbilisiTime";
-import { isOutsideWorkHours } from "@/lib/callQueuePolicy";
+import { isOutsideWorkHours, isQueueFinished } from "@/lib/callQueuePolicy";
 import { isRefreshableError, refreshNow } from "@/lib/deployGuard";
 import { useDeployBusy } from "@/components/admin/NewVersionBanner";
 import { ToastAction } from "@/components/ui/toast";
@@ -145,7 +145,7 @@ export default function AdminCallQueue() {
         {access.settings?.catch_up_enabled && (
           <div role="status" className="my-3 border-2 border-primary bg-accent text-accent-foreground px-3 py-3 text-base font-bold flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 shrink-0" />
-            <span>Catch-up mode ON · დაჩქარებული რეჟიმი ჩართულია · განმეორებით ზარებს შორის მინიმუმ {access.settings.catch_up_gap_minutes} წუთი</span>
+            <span>Simple Mode · მარტივი რეჟიმი</span>
           </div>
         )}
         <TabsList>
@@ -180,6 +180,7 @@ function QueueTab() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [empty, setEmpty] = useState(false);
+  useEffect(() => { setEmpty(false); }, [activeStore]);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [restoreStock, setRestoreStock] = useState(true);
   const [callbackOpen, setCallbackOpen] = useState(false);
@@ -301,7 +302,7 @@ function QueueTab() {
         void loadShift();
         return;
       }
-      if (!res.order_id) { setOrder(null); setEmpty(true); return; }
+      if (!res.order_id) { setOrder(null); setEmpty(isQueueFinished(res)); return; }
       await openOrder(res.order_id);
     } catch (e: any) {
       queueError("რიგი ვერ ჩაიტვირთა", e);

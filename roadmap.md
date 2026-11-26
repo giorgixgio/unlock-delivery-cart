@@ -1,3 +1,8 @@
+# Roadmap — Call Queue Simple Mode
+- [x] Captured exact live tier in migration 0102; selector order unchanged, empty response now includes operator/store eligible count.
+- [x] Mirrored safety-only eligibility in both modes, removed unused night-release helper/cutoff, corrected stale gap banner and completion message, updated docs; 159 tests pass and preview build clean. Read-only reconstructed eligibility plus actual SQL rank confirms fresh-first for all four on-shift operators, including 1,334 old-fresh/operator pairs; no order data changed.
+- [ ] Verify signed-in operator assignment/completion UI — requesting user has no matching auth account; preview redirects to login, so real operator round trip remains unverified.
+
 # Roadmap — Confirmation scoring race
 - [x] Guard scoring/auto-confirm writes and add confirmed-hold trigger; deliberate versioned admin holds and callbacks use an invoker RPC preserving RLS. Audited quick review, queue actions, checkout/address scoring, courier export/send normalization, and relevant database functions; existing orders untouched.
 - [x] Deployed normalize-and-score; live trigger/invoker permissions verified read-only, 47 tests passed including delayed-handler races and a disposable PostgreSQL cluster; preview build clean.

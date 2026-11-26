@@ -46,15 +46,15 @@ describe("queue priority", () => {
     ];
     expect(sortQueue(orders, me, now).map((o) => o.id)).toEqual(["freshNew", "freshOld", "retry", "myCb", "otherCb"]);
   });
-  it("another operator's callback is sticky for 30 minutes", () => {
+  it("another operator's callback is immediately eligible without a sticky hold", () => {
     const o = { ...base, status: "on_hold", call_outcome: "callback", next_call_after: "2026-11-02T09:45:00Z", queue_last_touched_by: "b@x.ge" };
-    expect(queueTier(o, me, now)).toBeNull();
+    expect(queueTier(o, me, now)).toBe(3);
     expect(queueTier(o, "b@x.ge", now)).toBe(1);
   });
-  it("excludes locked-by-others, future retries, confirmed and auto-confirmed", () => {
+  it("excludes locked-by-others and confirmed orders, but not future due times", () => {
     expect(queueTier({ ...base, queue_locked_by: "b@x.ge", queue_locked_until: "2026-11-02T10:05:00Z" }, me, now)).toBeNull();
     expect(queueTier({ ...base, queue_locked_by: "b@x.ge", queue_locked_until: "2026-11-02T09:55:00Z" }, me, now)).toBe(2);
-    expect(queueTier({ ...base, next_call_after: "2026-11-02T11:00:00Z" }, me, now)).toBeNull();
+    expect(queueTier({ ...base, next_call_after: "2026-11-02T11:00:00Z" }, me, now)).toBe(2);
     expect(queueTier({ ...base, auto_confirmed: true }, me, now)).toBeNull();
     expect(queueTier({ ...base, is_confirmed: true }, me, now)).toBeNull();
   });
@@ -63,9 +63,9 @@ describe("queue priority", () => {
 describe("night leads", () => {
   const tb2 = (day: string, hhmm: string) => new Date(`${day}T${hhmm}:00+04:00`);
   const base = { id: "n", status: "new", call_attempt_count: 0 };
-  it("lead at 02:30 is not eligible at 10:15, eligible at 12:00", () => {
+  it("lead at 02:30 is already eligible at 10:15 without a night hold", () => {
     const o = { ...base, created_at: tb2("2026-11-03", "02:30").toISOString() };
-    expect(queueTier(o, "op", tb2("2026-11-03", "10:15"))).toBeNull();
+    expect(queueTier(o, "op", tb2("2026-11-03", "10:15"))).toBe(2);
     expect(queueTier(o, "op", tb2("2026-11-03", "12:00"))).toBe(2);
   });
   it("first no-answer at 12:30 retries at 18:00", () => {
@@ -87,18 +87,18 @@ describe("night leads", () => {
 });
 
 import { DEFAULT_QUEUE_SETTINGS } from "@/lib/callQueuePolicy";
-describe("one-time today-only cutoff (2026-11-24)", () => {
-  const s = { ...DEFAULT_QUEUE_SETTINGS, minLeadCreatedAt: "2026-11-23T20:00:00.000Z" }; // 00:00 Tbilisi Nov 24
+describe("Simple Mode has no created-at cutoff", () => {
+  const s = DEFAULT_QUEUE_SETTINGS;
   const now = new Date("2026-11-24T08:00:00Z"); // 12:00 Tbilisi
-  it("hides old fresh leads, no-answer retries and callbacks", () => {
-    expect(queueTier({ id: "oldFresh", created_at: "2026-11-23T10:00:00Z", status: "new" }, "op", now, 120, s)).toBeNull();
-    expect(queueTier({ id: "oldRetry", created_at: "2026-11-20T10:00:00Z", status: "new", call_attempt_count: 1, call_outcome: "no_answer", last_call_attempt_at: "2026-11-23T09:00:00Z" }, "op", now, 120, s)).toBeNull();
-    expect(queueTier({ id: "oldCb", created_at: "2026-11-22T10:00:00Z", status: "on_hold", call_outcome: "callback", queue_last_touched_by: "op" }, "op", now, 120, s)).toBeNull();
+  it("serves old fresh leads, no-answer retries and callbacks", () => {
+    expect(queueTier({ id: "oldFresh", created_at: "2026-11-23T10:00:00Z", status: "new" }, "op", now, 120, s)).toBe(2);
+    expect(queueTier({ id: "oldRetry", created_at: "2026-11-20T10:00:00Z", status: "new", call_attempt_count: 1, call_outcome: "no_answer", last_call_attempt_at: "2026-11-23T09:00:00Z" }, "op", now, 120, s)).toBe(4);
+    expect(queueTier({ id: "oldCb", created_at: "2026-11-22T10:00:00Z", status: "on_hold", call_outcome: "callback", queue_last_touched_by: "op" }, "op", now, 120, s)).toBe(1);
   });
   it("serves leads created today; boundary at exactly midnight Tbilisi", () => {
     expect(queueTier({ id: "todayFresh", created_at: "2026-11-24T06:30:00Z", status: "new" }, "op", now, 120, s)).toBe(2);
     expect(queueTier({ id: "edge", created_at: "2026-11-23T20:00:00.000Z", status: "new" }, "op", now, 120, s)).toBe(2);
-    expect(queueTier({ id: "edgePrev", created_at: "2026-11-23T19:59:59.000Z", status: "new" }, "op", now, 120, s)).toBeNull();
+    expect(queueTier({ id: "edgePrev", created_at: "2026-11-23T19:59:59.000Z", status: "new" }, "op", now, 120, s)).toBe(2);
   });
   it("no cutoff setting keeps old leads eligible", () => {
     expect(queueTier({ id: "oldFresh", created_at: "2026-11-23T10:00:00Z", status: "new" }, "op", now, 120, DEFAULT_QUEUE_SETTINGS)).toBe(2);
@@ -143,11 +143,11 @@ describe("shift gate", () => {
     expect(startShiftPlan(open)).toBe("resume");
     expect(startShiftPlan(null)).toBe("insert");
   });
-  it("sticky callback falls through when its operator is off shift", () => {
+  it("other callbacks are eligible whether their owner is on or off shift", () => {
     const o = { id: "c", created_at: T("2026-11-03T09:00:00").toISOString(), status: "on_hold", call_outcome: "callback",
       call_attempt_count: 1, queue_last_touched_by: "a@x.ge", next_call_after: T("2026-11-03T11:00:00").toISOString() };
     const now = T("2026-11-03T11:05:00");
-    expect(queueTier(o, "b@x.ge", now, 120, undefined, () => true)).toBeNull();
+    expect(queueTier(o, "b@x.ge", now, 120, undefined, () => true)).toBe(3);
     expect(queueTier(o, "b@x.ge", now, 120, undefined, () => false)).toBe(3);
   });
   it("auto-end rules", () => {
