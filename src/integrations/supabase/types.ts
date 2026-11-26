@@ -599,6 +599,7 @@ export type Database = {
           id: string
           kind: string
           title: string
+          warehouse: string | null
         }
         Insert: {
           actor?: string | null
@@ -607,6 +608,7 @@ export type Database = {
           id?: string
           kind: string
           title: string
+          warehouse?: string | null
         }
         Update: {
           actor?: string | null
@@ -615,6 +617,7 @@ export type Database = {
           id?: string
           kind?: string
           title?: string
+          warehouse?: string | null
         }
         Relationships: []
       }
@@ -4317,6 +4320,10 @@ export type Database = {
       }
       courier_feed_status: { Args: never; Returns: Json }
       courier_items_key: { Args: { p: Json }; Returns: string }
+      courier_label_daily_stats: {
+        Args: { p_day?: string; p_store?: string }
+        Returns: Json
+      }
       courier_link_returns: { Args: { p_trackings: string[] }; Returns: Json }
       courier_sync_orders: {
         Args: { p_batch_id: string; p_rows: Json }

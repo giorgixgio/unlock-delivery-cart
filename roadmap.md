@@ -1,3 +1,8 @@
+# Roadmap — Courier label daily stats and automatic finishes
+- [x] Show Tbilisi-today applied upload order counts and totals before/after actual courier charges, respecting the store selector and excluding duplicate uploads; unknown charges remain pending.
+- [x] Migration 0109 automatically finishes previously started packing groups on a new group's first print action; preserves reprints, untouched work and other warehouses, without changing orders.
+- [x] 27 tests pass; signed-in test user verified 4 uploads / 348 orders / 11,925.90 GEL gross, 6,730.65 GEL known net with 89 charges pending, store switching and refresh, no mobile overflow/runtime errors. Isolated live progress inserts verified automatic finishing and were removed; preview build clean.
+
 # Roadmap — Paid deliveries By SKU
 - [x] Migration 0104 filters SKU rows, quantities and totals to delivered shipments whose scheduled payout date has arrived; pending and failed-fee deductions removed from tab/CSV, customs names and other reports preserved. No bank-payment confirmation exists in current shipment records.
 - [x] Nineteen accountant tests pass, including real PostgreSQL payout-boundary/count/total/access checks. Signed-in temporary accountant download verified nine product rows, Georgian customs names, no deduction rows and exact 94,230.29 GEL row-to-footer total; build clean.

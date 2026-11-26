@@ -26,6 +26,8 @@ import {
 } from "@/lib/onwayLabelView";
 import { buildTagsForRounds, downloadItemTagsPdf, type RoundUnit } from "@/components/ItemTags";
 import { useStore } from "@/contexts/StoreContext";
+import { CourierLabelDailyStats } from "@/components/admin/CourierLabelDailyStats";
+import { tbilisiDayKey } from "@/lib/tbilisiTime";
 
 
 type LabelStore = "A" | "B";
@@ -318,11 +320,11 @@ export default function AdminCourierLabels() {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("courier_label_actions")
-      .insert({ group_key: scopedKey(key), title, kind, actor: auth?.user?.email ?? null });
+      .insert({ group_key: scopedKey(key), title, kind, actor: auth?.user?.email ?? null, warehouse: labelStore });
     if (error) {
       toast({ title: "ჟურნალი ვერ შეინახა", description: error.message, variant: "destructive" });
     }
-    loadLog();
+    await Promise.all([loadLog(), loadBatchActions()]);
   };
 
   const doneKinds = (key: string) =>
@@ -798,7 +800,7 @@ export default function AdminCourierLabels() {
         labels,
         `courier-labels-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
-      logAction(g.key, g.title, "pdf");
+      await logAction(g.key, g.title, "pdf");
     } catch (e: any) {
       toast({ title: "PDF generation failed", description: e.message, variant: "destructive" });
     } finally {
@@ -849,7 +851,7 @@ export default function AdminCourierLabels() {
         tags,
         `sku-tags-${g.key}-${new Date().toISOString().slice(0, 10)}.pdf`
       );
-      logAction(g.key, g.title, "tags");
+      await logAction(g.key, g.title, "tags");
     } catch (e: any) {
       toast({ title: "Tag generation failed", description: e.message, variant: "destructive" });
     } finally {
@@ -994,6 +996,7 @@ export default function AdminCourierLabels() {
           ))}
         </div>
       </div>
+      <CourierLabelDailyStats store={labelStore} day={tbilisiDayKey(new Date(now))} />
       {!labelStore && (
         <Card className="border-primary/40 bg-primary/5">
           <CardContent className="p-3 text-sm">
