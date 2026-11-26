@@ -736,6 +736,20 @@
       "when": 1795689337514,
       "tag": "0104_accountant_sku_paid_deliveries_only",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795689633857,
+      "tag": "0105_accountant_sku_bank_money",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795690014666,
+      "tag": "0106_accountant_lines_fast_plan",
+      "breakpoints": true
     }
   ]
 }

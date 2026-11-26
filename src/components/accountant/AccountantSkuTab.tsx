@@ -22,7 +22,7 @@ interface Props {
 
 const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading }: Props) => {
   const handleDownloadCsv = () => {
-    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Paid deliveries containing SKU", "Paid delivery net payout"];
+    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Paid deliveries containing SKU", "Money received in bank"];
     const csvRows: Array<Array<string | number>> = rows.map((r) => [
       r.sku,
       r.title,
@@ -31,7 +31,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
       String(r.orders_count),
       Number(r.net_payout_attributed),
     ]);
-    csvRows.push(["PAID DELIVERY TOTAL", "", "", String(totalUnits), "", Number(totalNetPayout)]);
+    csvRows.push(["TOTAL RECEIVED IN BANK", "", "", String(totalUnits), "", Number(totalNetPayout)]);
     const csv = buildCsv(headers, csvRows);
     triggerCsvDownload(csv, `sales_by_sku_${from}_${to}.csv`);
   };
@@ -40,7 +40,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Paid deliveries · Net collected
+          Money already received in the bank · future payouts excluded · Onway failed-delivery charges already taken off each product
         </p>
         <Button
           variant="outline"
@@ -62,7 +62,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
               <th className="text-left px-3 py-2.5 font-semibold">Invoice product name (customs)</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Units sold</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Paid deliveries</th>
-              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Paid delivery net payout</th>
+              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Money received</th>
             </tr>
           </thead>
           <tbody>
@@ -88,7 +88,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
           {rows.length > 0 && (
             <tfoot className="bg-muted/60 border-t-2 border-border font-bold">
               <tr>
-                <td className="px-3 py-2.5" colSpan={3}>Paid delivery total</td>
+                <td className="px-3 py-2.5" colSpan={3}>Total received in bank</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{totalUnits.toLocaleString()}</td>
                 <td className="px-3 py-2.5" />
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalNetPayout)}</td>

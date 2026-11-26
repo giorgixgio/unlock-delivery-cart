@@ -168,3 +168,4 @@
 
 # Roadmap — Scratch phone capture
 - [x] Popup phone step, scratch_leads table + dedupe/link, one-tap checkout, ScratchLead event, tester mode, operator tab, tests.
+- [x] By SKU shows only money received in the bank (paid-out deliveries minus Onway failed-delivery charges already taken, split per product); total matches dashboard 82,998.99; sped up accountant reports that were timing out.

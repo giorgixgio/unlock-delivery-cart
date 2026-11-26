@@ -27,9 +27,23 @@ beforeAll(() => {
       ('00000000-0000-0000-0000-000000000003'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date+1,'002','Camera',10,300::numeric),
       ('00000000-0000-0000-0000-000000000004'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date+1,'pending-only','Pending product',5,150::numeric)
     ) AS fixtures(shipment_id,payout_date,sku,title,qty,attributed_amount) $$;
+    CREATE TABLE public.products(id uuid, sku text, title text, created_at timestamptz DEFAULT now());
+    CREATE TABLE public.order_items(id serial, order_id uuid, product_id uuid, sku text, title text, quantity int, is_gift boolean);
+    CREATE TABLE public.courier_shipments(id uuid, original_order_id uuid, sku text, comment_items jsonb);
+    INSERT INTO public.products VALUES ('00000000-0000-0000-0000-0000000000a1','002','Camera');
+    INSERT INTO public.order_items(order_id,product_id,sku,title,quantity,is_gift) VALUES
+      ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000a1','002','Camera',1,false);
+    INSERT INTO public.courier_shipments VALUES
+      ('00000000-0000-0000-0000-0000000000f1','00000000-0000-0000-0000-0000000000b1',null,null),
+      ('00000000-0000-0000-0000-0000000000f2',null,'002',null),
+      ('00000000-0000-0000-0000-0000000000f3',null,'002',null);
     CREATE FUNCTION public._accountant_failed_shipments(date,date,text,text,text)
-    RETURNS TABLE(failed_fee numeric,payout_date date) LANGUAGE sql AS $$ SELECT 12::numeric,current_date $$;`);
-  sql(readFileSync("drizzle/migrations/0104_accountant_sku_paid_deliveries_only.sql", "utf8"));
+    RETURNS TABLE(shipment_id uuid,payout_date date,failed_fee numeric) LANGUAGE sql AS $$ SELECT * FROM (VALUES
+      ('00000000-0000-0000-0000-0000000000f1'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date,6::numeric),
+      ('00000000-0000-0000-0000-0000000000f2'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date-2,6::numeric),
+      ('00000000-0000-0000-0000-0000000000f3'::uuid,(now() AT TIME ZONE 'Asia/Tbilisi')::date+1,6::numeric)
+    ) AS f(shipment_id,payout_date,failed_fee) $$;`);
+  sql(readFileSync("drizzle/migrations/0105_accountant_sku_bank_money.sql", "utf8"));
 }, 30000);
 
 afterAll(() => {
@@ -37,21 +51,21 @@ afterAll(() => {
   if (directory) rmSync(directory, { recursive: true, force: true });
 });
 
-describe("paid successful delivery SKU accounting", () => {
-  it("excludes pending quantities, counts and pending-only products", () => {
-    expect(report().rows).toEqual([{ sku: "002", title: "Camera", units_sold: 3, orders_count: 2, net_payout_attributed: 90.75 }]);
-    expect(report().total_units).toBe(3);
-  });
-  it("includes today's payouts and makes the footer equal paid product amounts", () => {
+describe("By SKU shows only money received in the bank", () => {
+  it("excludes future payouts, their quantities and pending-only products", () => {
     const result = report();
-    expect(result.total_net_payout).toBe(90.75);
-    expect(result.rows.reduce((sum: number, row: { net_payout_attributed: number }) => sum + row.net_payout_attributed, 0)).toBe(90.75);
+    expect(result.rows.map((r: { sku: string }) => r.sku)).toEqual(["002"]);
+    expect(result.rows[0].units_sold).toBe(3);
+    expect(result.rows[0].orders_count).toBe(2);
+    expect(result.total_units).toBe(3);
   });
-  it("does not deduct failed-delivery fees or pending earnings", () => {
+  it("deducts courier charges Onway already kept for failed deliveries, but not future ones", () => {
     const result = report();
-    expect(result.paid_failed_delivery_fees).toBe(0);
+    // 60.25 + 30.50 paid in - 6 - 6 failed charges already kept; the 6 GEL due tomorrow is ignored
+    expect(result.rows[0].net_payout_attributed).toBe(78.75);
+    expect(result.total_net_payout).toBe(78.75);
+    expect(result.paid_failed_delivery_fees).toBe(12);
     expect(result.pending_delivered_payout).toBe(0);
-    expect(result.total_net_payout).toBe(90.75);
   });
   it("preserves the staff-only report permission", () => {
     expect(sql("SELECT has_function_privilege('anon','public.accountant_by_sku(date,date,text,text,text)','EXECUTE');")).toBe("f");
