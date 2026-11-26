@@ -969,11 +969,11 @@ function TeamTab({ lockMinutes }: { lockMinutes: number }) {
       <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
         {[
           ["ახალი / Fresh waiting", stats?.fresh_waiting],
-          ["გადარეკვა / Callbacks due", stats?.callbacks_due],
           ["განმეორება / Retries due now", stats?.retries_due],
           ["ღამის / Night leads (from 12:00)", stats?.night_waiting],
           ["მოგვიანებით / Retries later", stats ? (stats.retries_later_today ?? 0) + (stats.retries_tomorrow ?? 0) : undefined],
           ["დაგვიანებული / Retries overdue", stats ? `${stats.retries_overdue ?? 0}${stats.oldest_retry_overdue_seconds ? ` · ${fmtAge(stats.oldest_retry_overdue_seconds)}` : ""}` : undefined],
+          ["გადარეკვა / Callbacks due", stats?.callbacks_due],
         ].map(([l, v]) => (
           <div key={l as string} className="rounded-lg border border-border bg-card p-2">
             <div className="text-[11px] text-muted-foreground">{l}</div>

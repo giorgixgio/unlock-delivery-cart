@@ -5,6 +5,40 @@ const now = new Date("2026-11-10T09:00:00Z");
 const settings = { ...DEFAULT_QUEUE_SETTINGS, catchUpEnabled: true, catchUpGapMinutes: 15 };
 const base: QueueOrderLike = { id: "x", status: "new", created_at: "2026-11-10T08:00:00Z" };
 const me = "operator";
+describe.each([false, true])("fresh-first ordering (catch-up %s)", (catchUpEnabled) => {
+  const s = { ...settings, catchUpEnabled };
+  const rows: QueueOrderLike[] = [
+    { ...base, id: "freshOld", last_call_attempt_at: "2026-11-10T04:00:00Z" },
+    { ...base, id: "freshNew", created_at: "2026-11-10T08:30:00Z", last_call_attempt_at: "2026-11-10T06:00:00Z" },
+    { ...base, id: "many", call_attempt_count: 3, last_call_attempt_at: "2026-11-09T04:00:00Z" },
+    { ...base, id: "recent", call_attempt_count: 1, last_call_attempt_at: "2026-11-10T06:00:00Z", next_call_after: "2026-11-10T07:00:00Z" },
+    { ...base, id: "old", call_attempt_count: 1, last_call_attempt_at: "2026-11-09T05:00:00Z", next_call_after: "2026-11-10T08:00:00Z" },
+    { ...base, id: "other", call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-10T07:00:00Z" },
+    { ...base, id: "mineLater", call_outcome: "callback", queue_last_touched_by: me, next_call_after: "2026-11-10T08:50:00Z" },
+    { ...base, id: "mineEarlier", call_outcome: "callback", queue_last_touched_by: me, next_call_after: "2026-11-10T08:30:00Z" },
+  ];
+  it("fresh sorts solely by newest creation, not last call", () => {
+    expect(sortQueue(rows, me, now, 3, s).slice(0, 2).map(o => o.id)).toEqual(["freshNew", "freshOld"]);
+  });
+  it("retries use fewest attempts then oldest last call, not due time", () => {
+    expect(sortQueue(rows.filter(o => (o.call_attempt_count ?? 0) > 0), me, now, 3, s).map(o => o.id)).toEqual(["old", "recent", "many"]);
+  });
+  it("callbacks wait until every eligible fresh and retry is gone", () => {
+    expect(sortQueue(rows, me, now, 0, s).map(o => o.id)).toEqual(["freshNew", "freshOld", "old", "recent", "many", "mineEarlier", "mineLater", "other"]);
+    expect(sortQueue(rows.filter(o => o.call_outcome === "callback"), me, now, 0, s).map(o => o.id)).toEqual(["mineEarlier", "mineLater", "other"]);
+  });
+  it("due-time and sticky callback exclusions remain unchanged", () => {
+    const callbacks = rows.filter(o => o.call_outcome === "callback");
+    callbacks.push({ ...base, id: "future", call_outcome: "callback", queue_last_touched_by: me, next_call_after: "2026-11-10T10:00:00Z" });
+    callbacks.push({ ...base, id: "sticky", call_outcome: "callback", queue_last_touched_by: "other", next_call_after: "2026-11-10T08:55:00Z" });
+    expect(sortQueue(callbacks, me, now, 0, s).map(o => o.id)).toEqual(["mineEarlier", "mineLater", "other"]);
+  });
+  it("all backlog and retry-turn settings leave fresh ahead of callbacks and retries", () => {
+    for (const backlogMix of [2, 3] as const) for (const retryEveryN of [1, 4]) for (let picks = 0; picks < 8; picks++) {
+      expect(sortQueue(rows, me, now, picks, { ...s, backlogMix, retryEveryN })[0].id).toBe("freshNew");
+    }
+  });
+});
 describe("temporary catch-up", () => {
   it("ignores future retry and fresh phone-only grace", () => {
     expect(queueTier({ ...base, next_call_after: "2026-11-11T10:00:00Z" }, me, now, 120, settings)).toBe(2);

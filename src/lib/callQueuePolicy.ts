@@ -161,42 +161,22 @@ const isGuardItem = (tier: number, o: QueueOrderLike, now: Date, s: QueuePolicyS
   (tier === 2 && new Date(o.created_at).getTime() < now.getTime() - STARVE_MS)
   || (tier === 4 && retryDue(o, s) < now.getTime() - STARVE_MS);
 /**
- * Sort key [group, key] (lower first). ↔ public.call_queue_rank
- * Callbacks and morning carried-over retries precede all lanes. During backlog,
- * old turns rank guards oldest first; fresh turns rank all never-called leads newest first.
- * Without backlog preserve morning off-hours priority and every-Nth retry ordering.
+ * Lexicographic sort key (lower first). ↔ public.call_queue_rank
+ * Fresh newest first, retries fewest attempts/oldest call, own callbacks, other callbacks.
+ * Legacy mixing/turn arguments remain compatible but cannot override these priorities.
  */
 export function queueRank(
   tier: number, o: QueueOrderLike, now: Date, retryTurn: boolean, s: QueuePolicySettings = DEFAULT_QUEUE_SETTINGS,
   hasBacklog = false, oldTurn = true,
-): [number, number] {
+): number[] {
   const ts = (v?: string | null) => (v ? new Date(v).getTime() : null);
   const created = new Date(o.created_at).getTime();
   const last = ts(o.last_call_attempt_at);
-  const due = ts(o.next_call_after) ?? (last !== null ? last + s.retryGapMinutes * 60000 : created);
-  if (tier === 1) return [0, due];
-  if (tier === 3) return [1, due];
-  const n = local(now);
-  const morning = n.minute >= hm(s.workStart) && n.minute < hm(s.morningBlockUntil ?? "12:00");
-  if (morning) {
-    if (tier === 4 && last !== null && local(new Date(last)).day < n.day) return [2, due];
-  }
-  if (hasBacklog) {
-    const guard = isGuardItem(tier, o, now, s);
-    if (oldTurn) {
-      if (guard) return [3, tier === 2 ? created : due];
-      if (tier === 2) return [4, -created];
-      return [5, due];
-    }
-    if (tier === 2) return [3, -created];
-    if (guard) return [4, due];
-    return [5, due];
-  }
-  const cm = local(new Date(created)).minute;
-  if (morning && tier === 2 && (cm < hm(s.workStart) || cm >= hm(s.workEnd))) return [3, -created];
-  if (tier === 4 && retryTurn) return [5, due];
-  if (tier === 2) return [6, -created];
-  return [7, due];
+  const due = ts(o.next_call_after) ?? created;
+  if (tier === 2) return [0, -created];
+  if (tier === 1) return [2, due, -created];
+  if (tier === 3) return [3, due, -created];
+  return [1, Number(o.call_attempt_count || 0), last ?? Number.NEGATIVE_INFINITY, -created];
 }
 
 /** Whether the operator's next hand-out is a retry turn (picksToday = call_queue_next hand-outs so far today). */
@@ -213,19 +193,14 @@ export function sortQueue<T extends QueueOrderLike>(
     .map((o) => ({ o, tier: queueTier(o, caller, now, s.retryGapMinutes, s) }))
     .filter((x): x is { o: T; tier: number } => x.tier !== null);
   const backlog = eligible.some((x) => isGuardItem(x.tier, x.o, now, s));
-  if (s.catchUpEnabled) {
-    const rank = (x: { o: T; tier: number }) => x.tier === 1 || x.tier === 3
-      ? [0, new Date(x.o.next_call_after ?? x.o.created_at).getTime(), 0, 0]
-      : [1, Number(x.o.call_attempt_count || 0), x.o.last_call_attempt_at ? new Date(x.o.last_call_attempt_at).getTime() : 0, -new Date(x.o.created_at).getTime()];
-    return eligible.sort((a, b) => {
-      const ar = rank(a), br = rank(b);
-      for (let i = 0; i < ar.length; i++) { if (ar[i] !== br[i]) return ar[i] - br[i]; }
-      return a.o.id.localeCompare(b.o.id);
-    }).map((x) => x.o);
-  }
   return eligible
     .map((x) => ({ ...x, r: queueRank(x.tier, x.o, now, turn, s, backlog, isOldTurn(picksToday, s.backlogMix)) }))
-    .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.o.created_at.localeCompare(b.o.created_at))
+    .sort((a, b) => {
+      for (let i = 0; i < a.r.length; i++) {
+        if (a.r[i] !== b.r[i]) return a.r[i] - b.r[i];
+      }
+      return a.o.id.localeCompare(b.o.id);
+    })
     .map((x) => x.o);
 }
 

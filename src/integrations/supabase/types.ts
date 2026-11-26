@@ -4236,6 +4236,23 @@ export type Database = {
             }
             Returns: number[]
           }
+        | {
+            Args: {
+              p_attempts: number
+              p_created: string
+              p_due: string
+              p_has_backlog: boolean
+              p_last: string
+              p_morning_until: string
+              p_now: string
+              p_old_turn: boolean
+              p_retry_turn: boolean
+              p_tier: number
+              p_we: string
+              p_ws: string
+            }
+            Returns: number[]
+          }
       call_queue_release: { Args: { p_order_id: string }; Returns: undefined }
       call_queue_release_view: {
         Args: { p_order_id: string }

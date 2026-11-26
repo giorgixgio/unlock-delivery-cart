@@ -1,3 +1,7 @@
+# Roadmap — Fresh-first Call Queue
+- [x] Apply ordering-only migration in both modes, preserve eligibility/cutoff, mirror pure rules and reorder counters; 95 regression tests and preview build pass.
+- [x] Read-only live on-shift SELECTs pass: currently no eligible fresh/due callbacks, so retries are first; actual SQL rank fixture SELECTs verify fresh-first and own/other callback fallback. Signed-in UI check unavailable because requesting user has no auth account; no live assignments or order changes made.
+
 # Roadmap — SMS lead recovery
 - [x] Confirm eligible real orders atomically when customers submit a valid tracking-page address; preserve support holds and test isolation.
 - [x] Record reminder-linked visits, address entries and confirmations, with admin-only campaign totals in Settings SMS.
