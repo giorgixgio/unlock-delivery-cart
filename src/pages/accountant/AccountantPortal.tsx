@@ -12,6 +12,7 @@ import AccountantOrdersTab, {
   type OrderSortCol,
 } from "@/components/accountant/AccountantOrdersTab";
 import AccountantSkuTab, { type AccountantSkuRow } from "@/components/accountant/AccountantSkuTab";
+import { getInvoiceProductName, getInvoiceNamesSummary } from "@/lib/accountantInvoiceNames";
 import {
   type AccountantFilters,
   buildCsv,
@@ -207,6 +208,7 @@ const AccountantPortal = () => {
       "Store",
       "SKU(s)",
       "Product title(s)",
+      "Invoice product name(s) (customs)",
       "Units",
       "Onway fee",
       "Net payout",
@@ -219,6 +221,7 @@ const AccountantPortal = () => {
       r.store,
       r.skus_summary,
       r.titles_summary,
+      getInvoiceNamesSummary(r.skus_summary, r.titles_summary),
       String(r.units),
       r.onway_fee === null ? "" : Number(r.onway_fee),
       Number(r.net_payout),
@@ -248,12 +251,13 @@ const AccountantPortal = () => {
       qty: number;
       attributed_amount: number;
     }>) ?? [];
-    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Qty", "Attributed net payout"];
+    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Invoice product name (customs)", "Qty", "Attributed net payout"];
     const csvRows = items.map((it) => [
       it.tracking_number,
       it.sale_date,
       it.sku,
       it.title,
+      getInvoiceProductName(it.sku, it.title) ?? "Not in import document",
       String(it.qty),
       Number(it.attributed_amount),
     ]);

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { buildCsv, formatMoney, triggerCsvDownload } from "@/lib/accountantUtils";
+import { getInvoiceProductName } from "@/lib/accountantInvoiceNames";
 
 export interface AccountantSkuRow {
   sku: string;
@@ -21,15 +22,16 @@ interface Props {
 
 const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading }: Props) => {
   const handleDownloadCsv = () => {
-    const headers = ["SKU", "Product title", "Units sold", "Orders containing SKU", "Net payout attributed"];
+    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Orders containing SKU", "Net payout attributed"];
     const csvRows: Array<Array<string | number>> = rows.map((r) => [
       r.sku,
       r.title,
+      getInvoiceProductName(r.sku, r.title) ?? "Not in import document",
       String(r.units_sold),
       String(r.orders_count),
       Number(r.net_payout_attributed),
     ]);
-    csvRows.push(["TOTAL", "", String(totalUnits), "", Number(totalNetPayout)]);
+    csvRows.push(["TOTAL", "", "", String(totalUnits), "", Number(totalNetPayout)]);
     const csv = buildCsv(headers, csvRows);
     triggerCsvDownload(csv, `sales_by_sku_${from}_${to}.csv`);
   };
@@ -57,6 +59,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
             <tr>
               <th className="text-left px-3 py-2.5 font-semibold whitespace-nowrap">SKU</th>
               <th className="text-left px-3 py-2.5 font-semibold">Product title</th>
+              <th className="text-left px-3 py-2.5 font-semibold">Invoice product name (customs)</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Units sold</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Orders</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Net payout attributed</th>
@@ -65,7 +68,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                   {loading ? "Loading..." : "No product sales in this period."}
                 </td>
               </tr>
@@ -74,6 +77,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
                 <tr key={r.sku} className="border-t border-border hover:bg-muted/30">
                   <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{r.sku}</td>
                   <td className="px-3 py-2">{r.title}</td>
+                  <td className="px-3 py-2 min-w-[240px]">{getInvoiceProductName(r.sku, r.title) ?? <span className="text-muted-foreground">Not in import document</span>}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.units_sold.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.orders_count.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-medium">{formatMoney(r.net_payout_attributed)}</td>
@@ -84,7 +88,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
           {rows.length > 0 && (
             <tfoot className="bg-muted/60 border-t-2 border-border font-bold">
               <tr>
-                <td className="px-3 py-2.5" colSpan={2}>Total</td>
+                <td className="px-3 py-2.5" colSpan={3}>Total</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{totalUnits.toLocaleString()}</td>
                 <td className="px-3 py-2.5" />
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalNetPayout)}</td>

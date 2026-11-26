@@ -1,3 +1,8 @@
+# Roadmap — Accountant customs names
+- [x] Matched all seven invoice rows: five catalog items and two wholesale-only items. Bottle cutter's reused catalog 0012 requires its exact verified title; wholesale mark 0031 maps to invoice 0012_1. Other products remain explicitly unmapped.
+- [x] Added exact column-D invoice names beside website titles in SKU/orders reports and all three CSV exports; financial calculations unchanged.
+- [x] Twenty tests passed; Excel audit preserved all seven names exactly. Temporary accountant account verified real SKU/orders views and downloads (4,446 orders / 5,043 lines), zero runtime errors, clean preview build; temporary access removed.
+
 # Roadmap — Call Queue Simple Mode
 - [x] Captured exact live tier in migration 0102; selector order unchanged, empty response now includes operator/store eligible count.
 - [x] Mirrored safety-only eligibility in both modes, removed unused night-release helper/cutoff, corrected stale gap banner and completion message, updated docs; 159 tests pass and preview build clean. Read-only reconstructed eligibility plus actual SQL rank confirms fresh-first for all four on-shift operators, including 1,334 old-fresh/operator pairs; no order data changed.

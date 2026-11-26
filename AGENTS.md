@@ -37,3 +37,4 @@ Queue RPCs mirror `callQueuePolicy.ts`; reuse call/cancel/callback services (`ca
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
 - Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
 - Normalization/risk metadata writes stay separate from live-guarded status writes; `orders_confirmed_hold_guard` preserves confirmed statuses, and intentional staff holds use the RLS-preserving `orders_intentional_hold` RPC with a transaction-local override so stale scoring cannot undo operator confirmation.
+- Accountant customs names resolve through the exact-SKU registry in `src/lib/accountantInvoiceNames.ts` for both tables and CSV exports; preserve suffixes/leading zeroes and mark absent mappings explicitly, so invoice descriptions never replace catalog titles or financial calculations.

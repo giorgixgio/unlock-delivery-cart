@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
 import { formatMoney } from "@/lib/accountantUtils";
+import { getInvoiceNamesSummary } from "@/lib/accountantInvoiceNames";
 
 export interface AccountantOrderRow {
   shipment_id: string;
@@ -124,6 +125,7 @@ const AccountantOrdersTab = ({
               <SortHeader col="store" label="Store" />
               <th className="text-left px-3 py-2.5 font-semibold whitespace-nowrap">SKU(s)</th>
               <th className="text-left px-3 py-2.5 font-semibold">Product title(s)</th>
+              <th className="text-left px-3 py-2.5 font-semibold">Invoice product name(s) (customs)</th>
               <SortHeader col="units" label="Units" align="right" />
               <SortHeader col="onway_fee" label="Onway fee" align="right" />
               <SortHeader col="net_payout" label="Net payout" align="right" />
@@ -132,7 +134,7 @@ const AccountantOrdersTab = ({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={11} className="px-3 py-8 text-center text-muted-foreground">
                   {loading ? "Loading..." : "No delivered shipments match these filters."}
                 </td>
               </tr>
@@ -148,6 +150,7 @@ const AccountantOrdersTab = ({
                   <td className="px-3 py-2 max-w-[260px] truncate" title={r.titles_summary}>
                     {r.titles_summary}
                   </td>
+                  <td className="px-3 py-2 min-w-[240px]">{getInvoiceNamesSummary(r.skus_summary, r.titles_summary)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.units}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {r.onway_fee === null ? "—" : formatMoney(r.onway_fee)}
