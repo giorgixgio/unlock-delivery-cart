@@ -128,7 +128,7 @@ const AccountantOrdersTab = ({
               <th className="text-left px-3 py-2.5 font-semibold">Invoice product name(s) (customs)</th>
               <SortHeader col="units" label="Units" align="right" />
               <SortHeader col="onway_fee" label="Onway fee" align="right" />
-              <SortHeader col="net_payout" label="Net payout" align="right" />
+              <SortHeader col="net_payout" label="Delivered net (includes pending)" align="right" />
             </tr>
           </thead>
           <tbody>

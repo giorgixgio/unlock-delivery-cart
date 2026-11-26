@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { buildCsv, formatMoney, triggerCsvDownload } from "@/lib/accountantUtils";
 import { getInvoiceProductName } from "@/lib/accountantInvoiceNames";
+import { payoutAdjustments } from "@/lib/accountantPayoutReconciliation";
 
 export interface AccountantSkuRow {
   sku: string;
@@ -14,15 +15,19 @@ export interface AccountantSkuRow {
 interface Props {
   rows: AccountantSkuRow[];
   totalNetPayout: number;
+  totalDeliveredPayout: number;
+  pendingDeliveredPayout: number;
+  paidFailedFees: number;
   totalUnits: number;
   from: string;
   to: string;
   loading: boolean;
 }
 
-const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading }: Props) => {
+const AccountantSkuTab = ({ rows, totalNetPayout, totalDeliveredPayout, pendingDeliveredPayout, paidFailedFees, totalUnits, from, to, loading }: Props) => {
+  const adjustments = payoutAdjustments(pendingDeliveredPayout, paidFailedFees);
   const handleDownloadCsv = () => {
-    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Orders containing SKU", "Net payout attributed"];
+    const headers = ["SKU", "Product title", "Invoice product name (customs)", "Units sold", "Orders containing SKU", "Delivered net payout attributed"];
     const csvRows: Array<Array<string | number>> = rows.map((r) => [
       r.sku,
       r.title,
@@ -31,7 +36,9 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
       String(r.orders_count),
       Number(r.net_payout_attributed),
     ]);
-    csvRows.push(["TOTAL", "", "", String(totalUnits), "", Number(totalNetPayout)]);
+    csvRows.push(["DELIVERED SUBTOTAL", "", "", String(totalUnits), "", Number(totalDeliveredPayout)]);
+    adjustments.forEach((a) => csvRows.push([a.label, "", "", "", "", a.amount]));
+    csvRows.push(["PAID-OUT NET PAYOUT", "", "", "", "", Number(totalNetPayout)]);
     const csv = buildCsv(headers, csvRows);
     triggerCsvDownload(csv, `sales_by_sku_${from}_${to}.csv`);
   };
@@ -40,7 +47,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Multi-item orders split proportionally by catalog price × qty; column total matches delivered net payout exactly.
+          Delivered earnings
         </p>
         <Button
           variant="outline"
@@ -62,7 +69,7 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
               <th className="text-left px-3 py-2.5 font-semibold">Invoice product name (customs)</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Units sold</th>
               <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Orders</th>
-              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Net payout attributed</th>
+              <th className="text-right px-3 py-2.5 font-semibold whitespace-nowrap">Delivered net payout attributed</th>
             </tr>
           </thead>
           <tbody>
@@ -88,9 +95,19 @@ const AccountantSkuTab = ({ rows, totalNetPayout, totalUnits, from, to, loading 
           {rows.length > 0 && (
             <tfoot className="bg-muted/60 border-t-2 border-border font-bold">
               <tr>
-                <td className="px-3 py-2.5" colSpan={3}>Total</td>
+                <td className="px-3 py-2.5" colSpan={3}>Delivered subtotal</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{totalUnits.toLocaleString()}</td>
                 <td className="px-3 py-2.5" />
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalDeliveredPayout)}</td>
+              </tr>
+              {adjustments.map((a) => (
+                <tr key={a.label} className="border-t border-border font-normal">
+                  <td colSpan={5} className="px-3 py-2.5">{a.label}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(a.amount)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-border">
+                <td colSpan={5} className="px-3 py-2.5">Paid-out net payout</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalNetPayout)}</td>
               </tr>
             </tfoot>

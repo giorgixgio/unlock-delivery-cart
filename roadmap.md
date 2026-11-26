@@ -1,3 +1,7 @@
+# Roadmap — Accountant payout totals
+- [x] Migration 0103 reconciles SKU final total to paid dashboard net; SKU/Summary tables and CSVs show transparent pending/failed-fee adjustments. Delivered-only order/line exports are clearly labeled, financial records unchanged.
+- [x] Read summary, sales, SKU, line export, failed-shipment and shared line SQL plus all accountant screens/downloads. Temporary accountant verified dashboard/Summary/SKU/CSVs at 82,998.99 GEL and live store/source/product-filter parity; 23 tests pass, zero runtime errors, test access removed.
+
 # Roadmap — Accountant customs names
 - [x] Matched all seven invoice rows: five catalog items and two wholesale-only items. Bottle cutter's reused catalog 0012 requires its exact verified title; wholesale mark 0031 maps to invoice 0012_1. Other products remain explicitly unmapped.
 - [x] Added exact column-D invoice names beside website titles in SKU/orders reports and all three CSV exports; financial calculations unchanged.

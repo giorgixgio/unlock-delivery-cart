@@ -65,7 +65,7 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       "Units sold",
       "Delivered Onway fees",
       "Failed delivery fees",
-      "Actual net payout",
+      "Period net payout (includes pending)",
       "Status",
     ];
     const rows: Array<Array<string | number>> = periods.map((p) => [
@@ -78,7 +78,7 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       p.is_pending ? "Pending" : "",
     ]);
     rows.push([
-      "TOTAL",
+      "PERIOD SUBTOTAL (includes pending)",
       String(kpis.delivered_orders),
       String(kpis.units_sold),
       Number(kpis.onway_fees),
@@ -86,6 +86,8 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       totalActualNet,
       "",
     ]);
+    rows.push(["Less: pending payout", "", "", "", "", -Number(kpis.pending_payout), ""]);
+    rows.push(["PAID-OUT NET PAYOUT", "", "", "", "", Number(kpis.net_payout), ""]);
     const csv = buildCsv(headers, rows);
     triggerCsvDownload(csv, `sales_summary_${from}_${to}.csv`);
   };
@@ -111,7 +113,7 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
       {periods.length > 0 && (
         <div className="bg-card border border-border rounded-lg p-3 sm:p-4">
           <div className="text-xs font-semibold text-muted-foreground mb-2">
-            Actual net payout per period (GEL)
+            Period net payout, including pending (GEL)
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -150,7 +152,7 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
               <th className="text-right px-3 py-2.5 font-semibold">Units</th>
               <th className="text-right px-3 py-2.5 font-semibold">Delivered fees</th>
               <th className="text-right px-3 py-2.5 font-semibold">Failed fees</th>
-              <th className="text-right px-3 py-2.5 font-semibold">Actual net</th>
+              <th className="text-right px-3 py-2.5 font-semibold">Period net (includes pending)</th>
             </tr>
           </thead>
           <tbody>
@@ -183,12 +185,20 @@ const AccountantSummaryTab = ({ periods, kpis, groupBy, from, to, loading }: Pro
           {periods.length > 0 && (
             <tfoot className="bg-muted/60 border-t-2 border-border font-bold">
               <tr>
-                <td className="px-3 py-2.5">Total</td>
+                <td className="px-3 py-2.5">Period subtotal (includes pending)</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{kpis.delivered_orders.toLocaleString()}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{kpis.units_sold.toLocaleString()}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(kpis.onway_fees)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-destructive">{formatMoney(kpis.failed_delivery_fees)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(totalActualNet)}</td>
+              </tr>
+              <tr className="border-t border-border font-normal">
+                <td colSpan={5} className="px-3 py-2.5">Less: pending payout</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(-kpis.pending_payout)}</td>
+              </tr>
+              <tr className="border-t-2 border-border">
+                <td colSpan={5} className="px-3 py-2.5">Paid-out net payout</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(kpis.net_payout)}</td>
               </tr>
             </tfoot>
           )}

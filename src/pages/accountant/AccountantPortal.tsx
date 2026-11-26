@@ -56,6 +56,9 @@ const AccountantPortal = () => {
   // SKU state
   const [skuRows, setSkuRows] = useState<AccountantSkuRow[]>([]);
   const [skuTotalNet, setSkuTotalNet] = useState(0);
+  const [skuDeliveredNet, setSkuDeliveredNet] = useState(0);
+  const [skuPendingNet, setSkuPendingNet] = useState(0);
+  const [skuPaidFailedFees, setSkuPaidFailedFees] = useState(0);
   const [skuTotalUnits, setSkuTotalUnits] = useState(0);
   const [skuLoading, setSkuLoading] = useState(false);
 
@@ -157,10 +160,16 @@ const AccountantPortal = () => {
         const parsed = data as unknown as {
           rows?: AccountantSkuRow[];
           total_net_payout?: number;
+          total_delivered_payout?: number;
+          pending_delivered_payout?: number;
+          paid_failed_delivery_fees?: number;
           total_units?: number;
         };
         setSkuRows(parsed.rows ?? []);
         setSkuTotalNet(parsed.total_net_payout ?? 0);
+        setSkuDeliveredNet(parsed.total_delivered_payout ?? 0);
+        setSkuPendingNet(parsed.pending_delivered_payout ?? 0);
+        setSkuPaidFailedFees(parsed.paid_failed_delivery_fees ?? 0);
         setSkuTotalUnits(parsed.total_units ?? 0);
       }
       setSkuLoading(false);
@@ -211,7 +220,7 @@ const AccountantPortal = () => {
       "Invoice product name(s) (customs)",
       "Units",
       "Onway fee",
-      "Net payout",
+      "Delivered net payout (includes pending)",
     ];
     const csvRows = allRows.map((r) => [
       r.sale_date,
@@ -251,7 +260,7 @@ const AccountantPortal = () => {
       qty: number;
       attributed_amount: number;
     }>) ?? [];
-    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Invoice product name (customs)", "Qty", "Attributed net payout"];
+    const headers = ["Tracking number", "Delivery date", "SKU", "Product title", "Invoice product name (customs)", "Qty", "Attributed delivered net payout (includes pending)"];
     const csvRows = items.map((it) => [
       it.tracking_number,
       it.sale_date,
@@ -358,6 +367,9 @@ const AccountantPortal = () => {
           <AccountantSkuTab
             rows={skuRows}
             totalNetPayout={skuTotalNet}
+            totalDeliveredPayout={skuDeliveredNet}
+            pendingDeliveredPayout={skuPendingNet}
+            paidFailedFees={skuPaidFailedFees}
             totalUnits={skuTotalUnits}
             from={filters.from}
             to={filters.to}
