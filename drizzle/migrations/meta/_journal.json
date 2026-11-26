@@ -708,6 +708,13 @@
       "when": 1795681413134,
       "tag": "0100_call_queue_fresh_first_callbacks_last",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795681912984,
+      "tag": "0101_protect_operator_confirmed_orders_from_scoring_holds",
+      "breakpoints": true
     }
   ]
 }

@@ -36,3 +36,4 @@ Queue RPCs mirror `callQueuePolicy.ts`; reuse call/cancel/callback services (`ca
 - Dedicated landings reuse GenericLanding checkout via a presentation prop; reviews/stats use product-id RPCs (`product_review_feed`/`product_landing_stats`) so SKU renames are safe.
 - KERAVÉ® landings share one page/editor via the `KERAVE_PRODUCTS` registry.
 - Test SKUs (`src/lib/testProducts.ts`) stay off storefront lists (homepage feed/search), never off admin or landing/checkout lookups.
+- Normalization/risk metadata writes stay separate from live-guarded status writes; `orders_confirmed_hold_guard` preserves confirmed statuses, and intentional staff holds use the RLS-preserving `orders_intentional_hold` RPC with a transaction-local override so stale scoring cannot undo operator confirmation.

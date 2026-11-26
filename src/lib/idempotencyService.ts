@@ -38,6 +38,19 @@ export async function versionedOrderUpdate(
 ): Promise<number> {
   const newVersion = currentVersion + 1;
 
+  // Intentional staff holds opt out of the confirmed-status backstop atomically.
+  // The invoker RPC preserves existing RLS and optimistic concurrency checks.
+  if (updates.status === "on_hold") {
+    const { data, error } = await supabase.rpc("orders_intentional_hold", {
+      p_order_id: orderId,
+      p_updates: updates as import("@/integrations/supabase/types").Json,
+      p_expected_version: currentVersion,
+    });
+    if (error) throw error;
+    if (data === null) throw new Error("CONFLICT: Order hold was not applied.");
+    return data;
+  }
+
   // Use RPC-style raw query to avoid deep type instantiation
   const allUpdates = { ...updates, version: newVersion };
 

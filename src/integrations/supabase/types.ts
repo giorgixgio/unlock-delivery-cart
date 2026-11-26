@@ -4471,6 +4471,14 @@ export type Database = {
         Returns: boolean
       }
       order_is_delivered: { Args: { p_order_id: string }; Returns: boolean }
+      orders_intentional_hold: {
+        Args: {
+          p_expected_version?: number
+          p_order_id: string
+          p_updates: Json
+        }
+        Returns: number
+      }
       product_landing_stats: {
         Args: { p_product_id?: string; p_sku: string }
         Returns: Json

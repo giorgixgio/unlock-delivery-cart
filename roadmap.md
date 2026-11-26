@@ -1,3 +1,7 @@
+# Roadmap — Confirmation scoring race
+- [x] Guard scoring/auto-confirm writes and add confirmed-hold trigger; deliberate versioned admin holds and callbacks use an invoker RPC preserving RLS. Audited quick review, queue actions, checkout/address scoring, courier export/send normalization, and relevant database functions; existing orders untouched.
+- [x] Deployed normalize-and-score; live trigger/invoker permissions verified read-only, 47 tests passed including delayed-handler races and a disposable PostgreSQL cluster; preview build clean.
+
 # Roadmap — Fresh-first Call Queue
 - [x] Apply ordering-only migration in both modes, preserve eligibility/cutoff, mirror pure rules and reorder counters; 95 regression tests and preview build pass.
 - [x] Read-only live on-shift SELECTs pass: currently no eligible fresh/due callbacks, so retries are first; actual SQL rank fixture SELECTs verify fresh-first and own/other callback fallback. Signed-in UI check unavailable because requesting user has no auth account; no live assignments or order changes made.

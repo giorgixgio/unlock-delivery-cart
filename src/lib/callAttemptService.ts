@@ -132,17 +132,17 @@ export async function scheduleCallback(
   source: CallOutcomeSource = "quick_review",
   sessionId?: string | null,
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from("orders")
-    .update({
+  const { error } = await supabase.rpc("orders_intentional_hold", {
+    p_order_id: orderId,
+    p_updates: {
       status: "on_hold",
       next_call_after: whenIso,
       call_outcome: "callback",
       operator_review_status: "callback",
       call_outcome_updated_at: new Date().toISOString(),
       call_outcome_updated_by: actor,
-    } as any)
-    .eq("id", orderId);
+    },
+  });
   if (error) return false;
   await supabase.from("order_events").insert({
     order_id: orderId,

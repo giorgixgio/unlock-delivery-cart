@@ -85,11 +85,12 @@ Deno.serve(async (req) => {
     updates.risk_level = riskLevel;
     updates.risk_reasons = riskReasons;
 
+    const statusUpdates: Record<string, unknown> = {};
     if (riskLevel === "high") {
-      updates.review_required = true;
-      updates.status = "on_hold";
+      statusUpdates.review_required = true;
+      statusUpdates.status = "on_hold";
     } else if (confidence < 0.75) {
-      updates.review_required = true;
+      statusUpdates.review_required = true;
     }
 
     // === AUTO-CONFIRM (low risk + high confidence) ===
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
     // "AUTO" badge appears next to an operator-confirmed order (e.g. #104527).
     // Test orders stay in the Test orders tab: never auto-confirmed or sent to review.
     const testOrder = isTestOrder(order);
-    if (testOrder) { delete updates.review_required; if (updates.status === "on_hold") delete updates.status; }
+    if (testOrder) { delete statusUpdates.review_required; if (statusUpdates.status === "on_hold") delete statusUpdates.status; }
     if (
       !testOrder &&
       riskLevel === "low" &&
@@ -106,14 +107,29 @@ Deno.serve(async (req) => {
       !order.is_confirmed &&
       !order.auto_confirmed
     ) {
-      updates.auto_confirmed = true;
-      updates.auto_confirm_reason = "High confidence: clean address + no duplicate signals";
-      updates.is_confirmed = true;
-      updates.status = "confirmed";
-      updates.review_required = false;
+      statusUpdates.auto_confirmed = true;
+      statusUpdates.auto_confirm_reason = "High confidence: clean address + no duplicate signals";
+      statusUpdates.is_confirmed = true;
+      statusUpdates.status = "confirmed";
+      statusUpdates.review_required = false;
     }
 
     await supabase.from("orders").update(updates).eq("id", order_id);
+
+    // Evaluate eligibility against the live row, after normalization/scoring.
+    // A human confirmation or closed/fulfilled state must win this race.
+    let autoConfirmApplied = false;
+    if (Object.keys(statusUpdates).length > 0) {
+      const { data: statusWritten } = await supabase.from("orders")
+        .update(statusUpdates)
+        .eq("id", order_id)
+        .eq("is_confirmed", false)
+        .eq("is_fulfilled", false)
+        .not("status", "in", "(confirmed,canceled,cancelled,merged,fulfilled)")
+        .select("id")
+        .maybeSingle();
+      autoConfirmApplied = !!statusWritten && statusUpdates.auto_confirmed === true;
+    }
 
     // Log events
     if (riskScore > 0) {
@@ -125,16 +141,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (updates.auto_confirmed) {
+    if (autoConfirmApplied) {
       await supabase.from("order_events").insert({
         order_id,
         actor: "system",
         event_type: "auto_confirm",
-        payload: { reason: updates.auto_confirm_reason },
+        payload: { reason: statusUpdates.auto_confirm_reason },
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, risk_score: riskScore, risk_level: riskLevel, auto_confirmed: !!updates.auto_confirmed }), {
+    return new Response(JSON.stringify({ ok: true, risk_score: riskScore, risk_level: riskLevel, auto_confirmed: autoConfirmApplied }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
