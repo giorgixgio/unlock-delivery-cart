@@ -18,6 +18,12 @@ describe("customs invoice identity matching", () => {
     expect(new Set(CUSTOMS_INVOICE_PRODUCTS.map((entry) => entry.sku)).size).toBe(7);
   });
 
+  it("matches owner-confirmed stikeri to invoice SKU 0028 in reports and shipment summaries", () => {
+    expect(resolveInvoiceProduct("stikeri")?.sku).toBe("G888-T4656-0028");
+    expect(getInvoiceProductName("stikeri")).toBe("მობილური ტელეფონის სტიკერი");
+    expect(getInvoiceNamesSummary("stikeri ×1, 002 ×2").split("; ")[0]).toBe("მობილური ტელეფონის სტიკერი");
+  });
+
   it("matches the wholesale bottle-cutter shipping mark to its legacy invoice identity", () => {
     expect(resolveInvoiceProduct("G888-T4656-0031")?.sku).toBe("0012_1");
   });
