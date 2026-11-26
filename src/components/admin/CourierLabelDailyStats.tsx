@@ -9,10 +9,7 @@ interface DailyStats {
   batch_count: number;
   order_count: number;
   total_with_fee: number;
-  total_without_fee: number | null;
-  known_net: number;
-  pending_fee_orders: number;
-  courier_fees: number;
+  total_without_fee: number;
 }
 
 const money = (value: number) => `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₾`;
@@ -41,8 +38,8 @@ export function CourierLabelDailyStats({ store, day = tbilisiDayKey(new Date()) 
           {[
             ["Uploaded batches", data?.batch_count.toLocaleString() ?? "—"],
             ["Uploaded orders", data?.order_count.toLocaleString() ?? "—"],
-            ["With courier fee", data ? money(data.total_with_fee) : "—"],
-            ["After courier fee · net", data ? data.total_without_fee === null ? "Pending" : money(data.total_without_fee) : "—"],
+            ["Total including delivery", data ? money(data.total_with_fee) : "—"],
+            ["Products excluding delivery", data ? money(data.total_without_fee) : "—"],
           ].map(([label, value]) => (
             <div key={label} className="min-w-0">
               <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -50,9 +47,6 @@ export function CourierLabelDailyStats({ store, day = tbilisiDayKey(new Date()) 
             </div>
           ))}
         </dl>
-      )}
-      {!!data?.pending_fee_orders && (
-        <p className="text-xs text-muted-foreground">Known net: {money(data.known_net)} · {data.pending_fee_orders} orders awaiting courier charges</p>
       )}
     </section>
   );

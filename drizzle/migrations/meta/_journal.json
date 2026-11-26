@@ -771,6 +771,13 @@
       "when": 1795704144285,
       "tag": "0109_courier_label_daily_stats_and_auto_finish",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1795704443622,
+      "tag": "0110_courier_label_sales_totals_customer_delivery",
+      "breakpoints": true
     }
   ]
 }

@@ -24,7 +24,7 @@ beforeAll(() => {
     CREATE FUNCTION public.is_test_order(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT $1='00000000-0000-0000-0000-000000000009'::uuid $$;
     CREATE TABLE public.import_batches(id uuid PRIMARY KEY,store text,created_at timestamptz,applied_at timestamptz);
     CREATE TABLE public.import_staging_rows(batch_id uuid,matched_order_id uuid,applied boolean,applied_at timestamptz);
-    CREATE TABLE public.orders(id uuid PRIMARY KEY,total numeric,tracking_number text,onway_tracking text);
+    CREATE TABLE public.orders(id uuid PRIMARY KEY,total numeric,tracking_number text,onway_tracking text,shipping_fee numeric DEFAULT 5);
     CREATE TABLE public.products(sku text,warehouse text);
     CREATE TABLE public.order_items(order_id uuid,sku text);
     CREATE TABLE public.courier_shipments(tracking_number text,onway_parent_tracking text,is_return boolean,cod_amount numeric,company_receives numeric);
@@ -32,7 +32,9 @@ beforeAll(() => {
     INSERT INTO public.import_batches VALUES
       ('00000000-0000-0000-0000-0000000000b1','B','2026-11-25 19:00Z','2026-11-25 20:00Z'),
       ('00000000-0000-0000-0000-0000000000b2','B','2026-11-26 10:00Z','2026-11-26 10:00Z');
-    INSERT INTO public.orders SELECT ('00000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,CASE n WHEN 1 THEN 60 WHEN 2 THEN 40 WHEN 3 THEN 30 WHEN 4 THEN 100 ELSE 999 END,'track-'||n,NULL FROM generate_series(1,9)n;
+    INSERT INTO public.orders(id,total,tracking_number,onway_tracking) SELECT ('00000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,CASE n WHEN 1 THEN 60 WHEN 2 THEN 40 WHEN 3 THEN 30 WHEN 4 THEN 100 ELSE 999 END,'track-'||n,NULL FROM generate_series(1,9)n;
+    UPDATE public.orders SET shipping_fee=0 WHERE tracking_number='track-2';
+    UPDATE public.orders SET shipping_fee=6 WHERE tracking_number='track-3';
     INSERT INTO public.products VALUES('B-sku','B'),('A-sku','A');
     INSERT INTO public.order_items SELECT id,CASE WHEN tracking_number='track-4' THEN 'A-sku' ELSE 'B-sku' END FROM public.orders WHERE tracking_number<>'track-3';
     INSERT INTO public.import_staging_rows SELECT '00000000-0000-0000-0000-0000000000b1',id,true,'2026-11-25 20:00Z' FROM public.orders WHERE tracking_number IN ('track-1','track-2','track-3','track-4','track-9');
@@ -43,6 +45,7 @@ beforeAll(() => {
       ('00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-000000000007',false,'2026-11-26 10:00Z');
     INSERT INTO public.courier_shipments VALUES('track-1',NULL,false,60,50),('box-2a','track-2',false,30,24),('box-2b','track-2',false,10,8),('track-4',NULL,false,100,90),('return-1','track-1',true,999,999);`);
   sql(readFileSync("drizzle/migrations/0109_courier_label_daily_stats_and_auto_finish.sql", "utf8"));
+  sql(readFileSync("drizzle/migrations/0110_courier_label_sales_totals_customer_delivery.sql", "utf8"));
 }, 30000);
 
 afterAll(() => {
@@ -56,22 +59,24 @@ describe("Daily uploaded batch totals", () => {
     expect(report().batch_count).toBe(2);
     expect(report().total_with_fee).toBe(130);
   });
-  it("uses courier net for all boxes, excludes returns, and does not invent missing fees", () => {
+  it("subtracts only the customer's delivery fees, including free delivery", () => {
     const result = report();
-    expect(result.known_net).toBe(82);
-    expect(result.courier_fees).toBe(18);
-    expect(result.pending_fee_orders).toBe(1);
-    expect(result.total_without_fee).toBeNull();
+    // 60 + 40 + 30 order totals minus 5 + 0 + 6 customer delivery fees.
+    expect(result.total_with_fee).toBe(130);
+    expect(result.total_without_fee).toBe(119);
+    expect(result.customer_delivery_fees).toBe(11);
+    expect(result.pending_fee_orders).toBe(0);
   });
-  it("shows the complete net once all courier amounts are known", () => {
-    const result = JSON.parse(sql(`BEGIN; INSERT INTO public.courier_shipments VALUES('track-3',NULL,false,30,22); SELECT public.courier_label_daily_stats('B','2026-11-26'); ROLLBACK;`).split("\n").find(line => line.startsWith("{")) ?? "{}");
-    expect(result.total_without_fee).toBe(104);
+  it("needs no real courier prices or shipment records", () => {
+    const result = JSON.parse(sql(`BEGIN; DELETE FROM public.courier_shipments; SELECT public.courier_label_daily_stats('B','2026-11-26'); ROLLBACK;`).split("\n").find(line => line.startsWith("{")) ?? "{}");
+    expect(result.total_with_fee).toBe(130);
+    expect(result.total_without_fee).toBe(119);
     expect(result.pending_fee_orders).toBe(0);
   });
   it("respects current item warehouses instead of batch labels", () => {
     expect(report("A").order_count).toBe(1);
     expect(report("A").total_with_fee).toBe(100);
-    expect(report("A").total_without_fee).toBe(90);
+    expect(report("A").total_without_fee).toBe(95);
   });
   it("keeps financial totals staff-only", () => {
     expect(sql("SELECT has_function_privilege('anon','public.courier_label_daily_stats(text,date)','EXECUTE');")).toBe("f");
